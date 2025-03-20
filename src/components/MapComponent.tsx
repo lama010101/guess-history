@@ -4,9 +4,10 @@ import { MapPin } from 'lucide-react';
 
 interface MapComponentProps {
   onLocationSelect?: (lat: number, lng: number) => void;
+  selectedLocation?: { lat: number; lng: number } | null;
 }
 
-const MapComponent = ({ onLocationSelect }: MapComponentProps) => {
+const MapComponent = ({ onLocationSelect, selectedLocation }: MapComponentProps) => {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [userMarker, setUserMarker] = useState<any>(null);
   const mapRef = useRef<any>(null);
@@ -59,6 +60,42 @@ const MapComponent = ({ onLocationSelect }: MapComponentProps) => {
     };
   }, []);
 
+  // Update marker when selectedLocation changes from parent
+  useEffect(() => {
+    if (!mapRef.current || !leafletLoadedRef.current) return;
+    
+    const L = window.L;
+    if (!L) return;
+    
+    // Clear existing marker
+    if (userMarker) {
+      mapRef.current.removeLayer(userMarker);
+      setUserMarker(null);
+    }
+    
+    // Add marker for selected location if it exists and is valid
+    if (selectedLocation && selectedLocation.lat !== 0 && selectedLocation.lng !== 0) {
+      const marker = L.marker([selectedLocation.lat, selectedLocation.lng], {
+        icon: L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div style="
+            background-color: rgb(59, 130, 246);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transform: translate(-50%, -50%);
+          "></div>`,
+          iconSize: [20, 20],
+          iconAnchor: [0, 0],
+        })
+      }).addTo(mapRef.current);
+      
+      setUserMarker(marker);
+    }
+  }, [selectedLocation, mapRef.current]);
+
   const initializeMap = () => {
     try {
       const L = window.L;
@@ -86,6 +123,7 @@ const MapComponent = ({ onLocationSelect }: MapComponentProps) => {
         // Remove existing marker if any
         if (userMarker) {
           mapInstance.removeLayer(userMarker);
+          setUserMarker(null);
         }
         
         // Create a new marker

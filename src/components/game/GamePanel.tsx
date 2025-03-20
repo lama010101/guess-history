@@ -14,15 +14,36 @@ interface GamePanelProps {
     description: string;
   };
   onLocationSelect: (lat: number, lng: number) => void;
+  selectedLocation: { lat: number; lng: number } | null;
+  gameRound: number;
+  maxRounds: number;
+  totalScore: number;
 }
 
-const GamePanel = ({ currentImage, onLocationSelect }: GamePanelProps) => {
+const GamePanel = ({ 
+  currentImage, 
+  onLocationSelect, 
+  selectedLocation,
+  gameRound,
+  maxRounds,
+  totalScore
+}: GamePanelProps) => {
   return (
     <div className="glass-card rounded-2xl overflow-hidden h-full">
       <div className="h-[500px] relative">
+        {/* Game score and round info in the top bar */}
+        <div className="absolute top-0 left-0 right-0 z-20 bg-black/40 backdrop-blur-sm py-2 px-4 flex justify-between items-center">
+          <div className="text-white text-sm font-medium">
+            Round {gameRound} of {maxRounds}
+          </div>
+          <div className="text-white text-sm font-medium">
+            Score: {totalScore}
+          </div>
+        </div>
+
         <Tabs defaultValue="image" className="w-full">
           {/* Tab buttons */}
-          <div className="absolute top-4 left-0 right-0 z-10 flex justify-center">
+          <div className="absolute top-16 left-0 right-0 z-10 flex justify-center">
             <TabsList className="bg-black/30 backdrop-blur-md rounded-full">
               <TabsTrigger value="image" className="rounded-full data-[state=active]:bg-white data-[state=active]:text-black text-white/90">
                 <span className="flex items-center">
@@ -50,7 +71,10 @@ const GamePanel = ({ currentImage, onLocationSelect }: GamePanelProps) => {
           {/* Map view */}
           <TabsContent value="map" className="m-0 h-full">
             <div className="absolute inset-0">
-              <MapComponent onLocationSelect={onLocationSelect} />
+              <MapComponent 
+                onLocationSelect={onLocationSelect} 
+                selectedLocation={selectedLocation}
+              />
             </div>
           </TabsContent>
         </Tabs>

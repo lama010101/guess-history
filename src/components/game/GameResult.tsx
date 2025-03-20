@@ -13,6 +13,8 @@ interface GameResultProps {
   distanceKm: number;
   yearDifference: number;
   onNextRound: () => void;
+  currentRound: number;
+  maxRounds: number;
 }
 
 const GameResult = ({
@@ -25,9 +27,13 @@ const GameResult = ({
   guessedYear,
   distanceKm,
   yearDifference,
-  onNextRound
+  onNextRound,
+  currentRound,
+  maxRounds
 }: GameResultProps) => {
   if (!isVisible) return null;
+  
+  const isLastRound = currentRound >= maxRounds;
   
   return (
     <div className="glass-card p-4 rounded-lg max-w-md w-full">
@@ -48,7 +54,7 @@ const GameResult = ({
           onClick={onNextRound} 
           className="px-6 w-full"
         >
-          Next Round
+          {isLastRound ? "See Final Results" : "Next Round"}
         </Button>
       </div>
     </div>

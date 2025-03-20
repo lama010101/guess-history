@@ -44,7 +44,10 @@ const GameResult = ({
       />
       
       <div className="mt-4 flex justify-center">
-        <Button onClick={onNextRound} className="px-6 w-full">
+        <Button 
+          onClick={onNextRound} 
+          className="px-6 w-full"
+        >
           Next Round
         </Button>
       </div>

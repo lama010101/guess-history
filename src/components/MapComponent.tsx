@@ -126,6 +126,11 @@ const MapComponent = ({ onLocationSelect }: MapComponentProps) => {
     if (mapRef.current && userMarker) {
       mapRef.current.removeLayer(userMarker);
       setUserMarker(null);
+      
+      // Reset the selected location
+      if (onLocationSelect) {
+        onLocationSelect(0, 0); // Reset to default/null location
+      }
     }
   };
 

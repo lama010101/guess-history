@@ -1,6 +1,7 @@
 
 import { Button } from '@/components/ui/button';
 import ScoreDisplay from '../ScoreDisplay';
+import ResultVisualization from './ResultVisualization';
 
 interface GameResultProps {
   isVisible: boolean;
@@ -57,6 +58,14 @@ const GameResult = ({
         yearHintUsed={yearHintUsed}
         hintPenalty={hintPenalty}
       />
+      
+      {guessedLocation && (
+        <ResultVisualization
+          actualLocation={actualLocation}
+          guessedLocation={guessedLocation}
+          isVisible={isVisible}
+        />
+      )}
       
       <div className="mt-4 flex justify-center">
         <Button 

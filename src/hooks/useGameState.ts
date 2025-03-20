@@ -1,16 +1,18 @@
 
 import { useState } from 'react';
-import { RoundScore } from '@/types/game';
-import { calculateScores } from '@/utils/scoreCalculations';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/services/auth';
 import { sampleImages } from '@/data/sampleImages';
 import { useHints } from './useHints';
+import { useGameRounds } from './useGameRounds';
+import { useGameScoring } from './useGameScoring';
 import { GameStateReturn } from '@/types/gameState';
 
 export const useGameState = (maxRounds = 5): GameStateReturn => {
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  // Use our new hooks
   const { 
     hintCoins, 
     locationHintUsed, 
@@ -20,19 +22,28 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     handleUseYearHint,
     addHintCoins 
   } = useHints();
+  
+  const {
+    currentRound,
+    currentImage,
+    currentImageIndex,
+    gameComplete,
+    nextRound,
+    resetGame
+  } = useGameRounds({ images: sampleImages, maxRounds });
+  
+  const {
+    totalScore,
+    roundScores,
+    calculateRoundScore,
+    addRoundScore,
+    resetScores
+  } = useGameScoring();
 
   // Game state
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(1960);
   const [showResults, setShowResults] = useState(false);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [currentRound, setCurrentRound] = useState(1);
-  const [totalScore, setTotalScore] = useState(0);
-  const [roundScores, setRoundScores] = useState<RoundScore[]>([]);
-  const [gameComplete, setGameComplete] = useState(false);
-  
-  // Current image based on the current image index
-  const currentImage = sampleImages[currentImageIndex % sampleImages.length];
   
   // Handle submitting a guess
   const handleSubmit = () => {
@@ -40,27 +51,24 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
       return;
     }
     
-    const scores = calculateScores(
+    const scores = calculateRoundScore(
       selectedLocation,
       selectedYear,
-      currentImage,
+      currentImage.location,
+      currentImage.year,
       locationHintUsed,
       yearHintUsed
     );
     
-    // Add current round scores to total (subtracting hint penalty)
-    const roundScore = scores.locationScore + scores.yearScore - scores.hintPenalty;
-    setTotalScore(prevScore => prevScore + roundScore);
-    
-    // Add scores to round history
-    setRoundScores(prevScores => [...prevScores, {
-      locationScore: scores.locationScore,
-      yearScore: scores.yearScore,
-      image: currentImageIndex,
+    // Add current round to scores history
+    addRoundScore(
+      currentImageIndex,
+      scores.locationScore,
+      scores.yearScore,
       locationHintUsed,
       yearHintUsed,
-      hintPenalty: scores.hintPenalty
-    }]);
+      scores.hintPenalty
+    );
     
     setShowResults(true);
   };
@@ -70,16 +78,8 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     // Hide the results modal first
     setShowResults(false);
     
-    // Check if game is complete
-    if (currentRound >= maxRounds) {
-      // Game complete
-      setGameComplete(true);
-      return;
-    }
-    
     // Move to next round
-    setCurrentRound(prevRound => prevRound + 1);
-    setCurrentImageIndex(prevIndex => (prevIndex + 1) % sampleImages.length);
+    nextRound();
     
     // Reset guesses for the next round
     setSelectedLocation(null);
@@ -95,13 +95,8 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     setSelectedLocation(null);
     setSelectedYear(1960);
     setShowResults(false);
-    setCurrentImageIndex(0);
-    setCurrentRound(1);
-    setTotalScore(0);
-    setRoundScores([]);
-    setGameComplete(false);
-    
-    // Reset hint usage for the new game
+    resetGame();
+    resetScores();
     resetHints();
     
     // Give some hint coins if the player is logged in
@@ -116,10 +111,11 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
   };
 
   // Calculate current scores
-  const currentScores = calculateScores(
+  const currentScores = calculateRoundScore(
     selectedLocation,
     selectedYear,
-    currentImage,
+    currentImage.location,
+    currentImage.year,
     locationHintUsed,
     yearHintUsed
   );

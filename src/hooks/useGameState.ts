@@ -1,38 +1,25 @@
 
 import { useState } from 'react';
-import { HistoricalImage, RoundScore } from '@/types/game';
+import { RoundScore } from '@/types/game';
 import { calculateScores } from '@/utils/scoreCalculations';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/services/auth';
+import { sampleImages } from '@/data/sampleImages';
+import { useHints } from './useHints';
+import { GameStateReturn } from '@/types/gameState';
 
-// Sample historical images
-const sampleImages: HistoricalImage[] = [
-  {
-    id: 1,
-    src: 'https://images.unsplash.com/photo-1565711561500-49678a10a63f?q=80&w=2940&auto=format&fit=crop',
-    year: 1950,
-    location: { lat: 48.8584, lng: 2.2945 },
-    description: 'Eiffel Tower, Paris'
-  },
-  {
-    id: 2,
-    src: 'https://images.unsplash.com/photo-1568797629192-789acf8e4df3?q=80&w=3174&auto=format&fit=crop',
-    year: 1932,
-    location: { lat: 40.7484, lng: -73.9857 },
-    description: 'Empire State Building, New York'
-  },
-  {
-    id: 3,
-    src: 'https://images.unsplash.com/photo-1526711657229-e7e080961425?q=80&w=2832&auto=format&fit=crop',
-    year: 1969,
-    location: { lat: 37.8199, lng: -122.4783 },
-    description: 'Golden Gate Bridge, San Francisco'
-  }
-];
-
-export const useGameState = (maxRounds = 5) => {
+export const useGameState = (maxRounds = 5): GameStateReturn => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { 
+    hintCoins, 
+    locationHintUsed, 
+    yearHintUsed, 
+    resetHints, 
+    handleUseLocationHint, 
+    handleUseYearHint,
+    addHintCoins 
+  } = useHints();
 
   // Game state
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -44,34 +31,8 @@ export const useGameState = (maxRounds = 5) => {
   const [roundScores, setRoundScores] = useState<RoundScore[]>([]);
   const [gameComplete, setGameComplete] = useState(false);
   
-  // Hint system state
-  const [hintCoins, setHintCoins] = useState(10);
-  const [locationHintUsed, setLocationHintUsed] = useState(false);
-  const [yearHintUsed, setYearHintUsed] = useState(false);
-
   // Current image based on the current image index
   const currentImage = sampleImages[currentImageIndex % sampleImages.length];
-  
-  // Reset hints when moving to a new round
-  const resetHints = () => {
-    setLocationHintUsed(false);
-    setYearHintUsed(false);
-  };
-  
-  // Hint handlers
-  const handleUseLocationHint = () => {
-    if (hintCoins > 0) {
-      setLocationHintUsed(true);
-      setHintCoins(prev => prev - 1);
-    }
-  };
-  
-  const handleUseYearHint = () => {
-    if (hintCoins > 0) {
-      setYearHintUsed(true);
-      setHintCoins(prev => prev - 1);
-    }
-  };
   
   // Handle submitting a guess
   const handleSubmit = () => {
@@ -146,7 +107,7 @@ export const useGameState = (maxRounds = 5) => {
     // Give some hint coins if the player is logged in
     if (user && !user.isGuest) {
       const earnedCoins = 2; // Earn 2 coins for playing a game when logged in
-      setHintCoins(prev => prev + earnedCoins);
+      addHintCoins(earnedCoins);
       toast({
         title: "Daily coins earned!",
         description: `You've earned ${earnedCoins} hint coins for playing today.`,

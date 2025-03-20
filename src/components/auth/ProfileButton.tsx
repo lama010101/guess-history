@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import AuthModal from "./AuthModal";
+import { Link } from "react-router-dom";
 
 const ProfileButton = () => {
   const { user, isAuthenticated, logout, isAdmin } = useAuth();
@@ -85,9 +86,11 @@ const ProfileButton = () => {
           {isAdmin && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Bell className="mr-2 h-4 w-4" />
-                <span>Admin Panel</span>
+              <DropdownMenuItem asChild>
+                <Link to="/admin">
+                  <Bell className="mr-2 h-4 w-4" />
+                  <span>Admin Panel</span>
+                </Link>
               </DropdownMenuItem>
             </>
           )}

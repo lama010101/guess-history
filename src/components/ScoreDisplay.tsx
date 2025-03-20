@@ -1,5 +1,5 @@
 
-import { AlertCircle, Award, Check, MapPin, Calendar } from 'lucide-react';
+import { AlertCircle, Award, Check, MapPin, Calendar, Lightbulb } from 'lucide-react';
 
 interface ScoreDisplayProps {
   locationScore?: number;
@@ -11,6 +11,9 @@ interface ScoreDisplayProps {
   distanceKm?: number;
   yearDifference?: number;
   isVisible?: boolean;
+  locationHintUsed?: boolean;
+  yearHintUsed?: boolean;
+  hintPenalty?: number;
 }
 
 const ScoreDisplay = ({
@@ -22,9 +25,13 @@ const ScoreDisplay = ({
   guessedYear,
   distanceKm = 0,
   yearDifference = 0,
-  isVisible = false
+  isVisible = false,
+  locationHintUsed = false,
+  yearHintUsed = false,
+  hintPenalty = 0
 }: ScoreDisplayProps) => {
-  const totalScore = locationScore + yearScore;
+  const baseScore = locationScore + yearScore;
+  const totalScore = baseScore - hintPenalty;
   const maxScore = 10000;
   const scorePercentage = (totalScore / maxScore) * 100;
   
@@ -68,6 +75,16 @@ const ScoreDisplay = ({
           <span className="font-semibold">{yearScore.toLocaleString()} pts</span>
         </div>
         
+        {(locationHintUsed || yearHintUsed) && (
+          <div className="flex justify-between items-center text-amber-500">
+            <div className="flex items-center">
+              <Lightbulb className="h-5 w-5 mr-2" />
+              <span className="text-sm font-medium">Hint Penalty</span>
+            </div>
+            <span className="font-semibold">-{hintPenalty.toLocaleString()} pts</span>
+          </div>
+        )}
+        
         <div className="h-px bg-border my-2"></div>
         
         <div className="flex justify-between items-center">
@@ -102,6 +119,22 @@ const ScoreDisplay = ({
             </p>
           </div>
         </div>
+        
+        {(locationHintUsed || yearHintUsed) && (
+          <div className="flex items-start gap-2">
+            <Lightbulb className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium">Hints Used</p>
+              <p className="text-xs text-muted-foreground">
+                {locationHintUsed && yearHintUsed
+                  ? 'You used both location and year hints (-1000 points).'
+                  : locationHintUsed
+                  ? 'You used a location hint (-500 points).'
+                  : 'You used a year hint (-500 points).'}
+              </p>
+            </div>
+          </div>
+        )}
         
         {actualYear && actualLocation && (
           <div className="flex items-start gap-2">

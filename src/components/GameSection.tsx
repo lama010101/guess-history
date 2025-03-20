@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import GamePanel from './game/GamePanel';
 import GameControls from './game/GameControls';
 import GameResult from './game/GameResult';
+import { useAuth } from '@/services/auth';
+import { useToast } from '@/hooks/use-toast';
 
 // Sample historical images
 const sampleImages = [
@@ -48,17 +50,52 @@ const deg2rad = (deg: number) => {
 };
 
 const GameSection = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(1960);
   const [showResults, setShowResults] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [currentRound, setCurrentRound] = useState(1);
   const [totalScore, setTotalScore] = useState(0);
-  const [roundScores, setRoundScores] = useState<{locationScore: number, yearScore: number, image: number}[]>([]);
+  const [roundScores, setRoundScores] = useState<{
+    locationScore: number, 
+    yearScore: number, 
+    image: number,
+    locationHintUsed: boolean,
+    yearHintUsed: boolean,
+    hintPenalty: number
+  }[]>([]);
   const [gameComplete, setGameComplete] = useState(false);
+  
+  // Hint system state
+  const [hintCoins, setHintCoins] = useState(10); // Start with 10 hint coins
+  const [locationHintUsed, setLocationHintUsed] = useState(false);
+  const [yearHintUsed, setYearHintUsed] = useState(false);
   
   const MAX_ROUNDS = 3; // Reduced to 3 for testing purposes
   const currentImage = sampleImages[currentImageIndex % sampleImages.length];
+  
+  // Reset hints when moving to a new round
+  useEffect(() => {
+    setLocationHintUsed(false);
+    setYearHintUsed(false);
+  }, [currentRound]);
+  
+  // Hint handlers
+  const handleUseLocationHint = () => {
+    if (hintCoins > 0) {
+      setLocationHintUsed(true);
+      setHintCoins(prev => prev - 1);
+    }
+  };
+  
+  const handleUseYearHint = () => {
+    if (hintCoins > 0) {
+      setYearHintUsed(true);
+      setHintCoins(prev => prev - 1);
+    }
+  };
   
   // Calculate scores based on guesses
   const calculateScores = () => {
@@ -81,11 +118,15 @@ const GameSection = () => {
     // Calculate year score (max 5000 points, losing 100 per year off)
     const yearScore = Math.max(0, 5000 - yearDiff * 100);
     
+    // Calculate hint penalty (500 points per hint used)
+    const hintPenalty = (locationHintUsed ? 500 : 0) + (yearHintUsed ? 500 : 0);
+    
     return { 
       locationScore, 
       yearScore, 
       distanceKm: distance, 
-      yearDifference: yearDiff 
+      yearDifference: yearDiff,
+      hintPenalty
     };
   };
   
@@ -96,15 +137,18 @@ const GameSection = () => {
     
     const scores = calculateScores();
     
-    // Add current round scores to total
-    const roundScore = scores.locationScore + scores.yearScore;
+    // Add current round scores to total (subtracting hint penalty)
+    const roundScore = scores.locationScore + scores.yearScore - scores.hintPenalty;
     setTotalScore(prevScore => prevScore + roundScore);
     
     // Add scores to round history
     setRoundScores(prevScores => [...prevScores, {
       locationScore: scores.locationScore,
       yearScore: scores.yearScore,
-      image: currentImageIndex
+      image: currentImageIndex,
+      locationHintUsed,
+      yearHintUsed,
+      hintPenalty: scores.hintPenalty
     }]);
     
     setShowResults(true);
@@ -138,7 +182,7 @@ const GameSection = () => {
     }
   };
   
-  const { locationScore, yearScore, distanceKm, yearDifference } = calculateScores();
+  const { locationScore, yearScore, distanceKm, yearDifference, hintPenalty } = calculateScores();
 
   const handleNewGame = () => {
     // Reset the entire game
@@ -150,6 +194,20 @@ const GameSection = () => {
     setTotalScore(0);
     setRoundScores([]);
     setGameComplete(false);
+    
+    // Reset hint usage for the new game
+    setLocationHintUsed(false);
+    setYearHintUsed(false);
+    
+    // Give some hint coins if the player is logged in
+    if (user && !user.isGuest) {
+      const earnedCoins = 2; // Earn 2 coins for playing a game when logged in
+      setHintCoins(prev => prev + earnedCoins);
+      toast({
+        title: "Daily coins earned!",
+        description: `You've earned ${earnedCoins} hint coins for playing today.`,
+      });
+    }
   };
 
   // Show game over screen if all rounds are completed
@@ -167,8 +225,17 @@ const GameSection = () => {
             <div className="space-y-2 mb-6">
               {roundScores.map((score, index) => (
                 <div key={index} className="flex justify-between items-center p-2 border-b">
-                  <span>Round {index + 1}: {sampleImages[score.image].description}</span>
-                  <span className="font-medium">{score.locationScore + score.yearScore} pts</span>
+                  <div>
+                    <span className="font-medium">Round {index + 1}: </span>
+                    <span>{sampleImages[score.image].description}</span>
+                    {(score.locationHintUsed || score.yearHintUsed) && (
+                      <span className="text-xs text-amber-500 ml-2">
+                        {score.locationHintUsed && score.yearHintUsed ? "Used both hints" :
+                         score.locationHintUsed ? "Used location hint" : "Used year hint"}
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-medium">{score.locationScore + score.yearScore - score.hintPenalty} pts</span>
                 </div>
               ))}
             </div>
@@ -196,6 +263,11 @@ const GameSection = () => {
             gameRound={currentRound}
             maxRounds={MAX_ROUNDS}
             totalScore={totalScore}
+            hintCoins={hintCoins}
+            onUseLocationHint={handleUseLocationHint}
+            onUseYearHint={handleUseYearHint}
+            locationHintUsed={locationHintUsed}
+            yearHintUsed={yearHintUsed}
           />
         </div>
         
@@ -223,6 +295,9 @@ const GameSection = () => {
               onNextRound={handleNextRound}
               currentRound={currentRound}
               maxRounds={MAX_ROUNDS}
+              locationHintUsed={locationHintUsed}
+              yearHintUsed={yearHintUsed}
+              hintPenalty={hintPenalty}
             />
           </div>
         )}

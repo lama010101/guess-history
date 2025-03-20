@@ -15,6 +15,9 @@ interface GameResultProps {
   onNextRound: () => void;
   currentRound: number;
   maxRounds: number;
+  locationHintUsed: boolean;
+  yearHintUsed: boolean;
+  hintPenalty: number;
 }
 
 const GameResult = ({
@@ -29,7 +32,10 @@ const GameResult = ({
   yearDifference,
   onNextRound,
   currentRound,
-  maxRounds
+  maxRounds,
+  locationHintUsed,
+  yearHintUsed,
+  hintPenalty
 }: GameResultProps) => {
   if (!isVisible) return null;
   
@@ -47,6 +53,9 @@ const GameResult = ({
         guessedYear={guessedYear}
         distanceKm={distanceKm}
         yearDifference={yearDifference}
+        locationHintUsed={locationHintUsed}
+        yearHintUsed={yearHintUsed}
+        hintPenalty={hintPenalty}
       />
       
       <div className="mt-4 flex justify-center">

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Map, Clock } from 'lucide-react';
 import MapComponent from '../MapComponent';
 import HistoricalImage from '../HistoricalImage';
+import HintSystem from './HintSystem';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface GamePanelProps {
@@ -18,6 +19,11 @@ interface GamePanelProps {
   gameRound: number;
   maxRounds: number;
   totalScore: number;
+  hintCoins: number;
+  onUseLocationHint: () => void;
+  onUseYearHint: () => void;
+  locationHintUsed: boolean;
+  yearHintUsed: boolean;
 }
 
 const GamePanel = ({ 
@@ -26,7 +32,12 @@ const GamePanel = ({
   selectedLocation,
   gameRound,
   maxRounds,
-  totalScore
+  totalScore,
+  hintCoins,
+  onUseLocationHint,
+  onUseYearHint,
+  locationHintUsed,
+  yearHintUsed
 }: GamePanelProps) => {
   return (
     <div className="glass-card rounded-2xl overflow-hidden h-full">
@@ -78,6 +89,18 @@ const GamePanel = ({
             </div>
           </TabsContent>
         </Tabs>
+        
+        {/* Hint system positioned in the top-right */}
+        <div className="absolute top-20 right-4 z-10 w-[200px]">
+          <HintSystem 
+            hintCoins={hintCoins}
+            onUseLocationHint={onUseLocationHint}
+            onUseYearHint={onUseYearHint}
+            locationHintUsed={locationHintUsed}
+            yearHintUsed={yearHintUsed}
+            currentImage={currentImage}
+          />
+        </div>
       </div>
     </div>
   );

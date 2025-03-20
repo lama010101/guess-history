@@ -1,105 +1,101 @@
 
-import { useState, useEffect } from 'react';
-import { Menu, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import ProfileButton from './auth/ProfileButton';
 
 const Navbar = () => {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 10) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <nav
-      className={cn(
-        'fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out',
-        isScrolled ? 'py-3 bg-white/80 backdrop-blur-lg shadow-sm' : 'py-5 bg-transparent'
-      )}
-    >
-      <div className="container mx-auto px-4 md:px-6">
-        <div className="flex items-center justify-between">
-          <a href="/" className="flex items-center space-x-2">
-            <span className="text-xl font-bold tracking-tight text-primary">EventGuesser</span>
-          </a>
-
-          {/* Desktop navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            <a href="#how-to-play" className="text-sm font-medium underline-animation">
+    <header className="sticky top-0 z-50 w-full backdrop-blur-lg bg-background/80 border-b border-border">
+      <div className="container flex h-16 items-center px-4">
+        <div className="mr-4 flex">
+          <Link to="/" className="flex items-center space-x-2">
+            <span className="text-2xl font-bold text-primary">EventGuesser</span>
+          </Link>
+        </div>
+        
+        <div className="hidden md:flex flex-1 items-center justify-center">
+          <nav className="flex items-center space-x-6 text-sm font-medium">
+            <Link to="/" className="transition-colors hover:text-foreground/80">
+              Home
+            </Link>
+            <a href="#game" className="transition-colors hover:text-foreground/80">
+              Play
+            </a>
+            <a href="#how-to-play" className="transition-colors hover:text-foreground/80">
               How to Play
             </a>
-            <a href="#game" className="text-sm font-medium underline-animation">
-              Play Now
-            </a>
-            <a href="#leaderboard" className="text-sm font-medium underline-animation">
+            <Link to="/leaderboard" className="transition-colors hover:text-foreground/80">
               Leaderboard
-            </a>
-            <button
-              className="px-5 py-2 rounded-full bg-primary text-primary-foreground text-sm font-medium btn-transition hover:shadow-md hover:brightness-110"
-            >
-              Sign In
-            </button>
-          </div>
-
-          {/* Mobile menu button */}
+            </Link>
+          </nav>
+        </div>
+        
+        <div className="flex flex-1 items-center justify-end space-x-4">
+          <ProfileButton />
+          
           <button
-            className="md:hidden flex items-center"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle menu"
+            className="flex items-center space-x-2 md:hidden"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
-            {mobileMenuOpen ? (
-              <X className="h-6 w-6" />
-            ) : (
-              <Menu className="h-6 w-6" />
-            )}
+            <span className="text-sm font-medium">Menu</span>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-5 w-5"
+            >
+              <line x1="4" x2="20" y1="12" y2="12" />
+              <line x1="4" x2="20" y1="6" y2="6" />
+              <line x1="4" x2="20" y1="18" y2="18" />
+            </svg>
           </button>
         </div>
-
-        {/* Mobile navigation */}
-        {mobileMenuOpen && (
-          <div className="md:hidden mt-4 animate-fade-in">
-            <div className="flex flex-col space-y-4">
-              <a
-                href="#how-to-play"
-                className="text-sm font-medium py-2"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                How to Play
-              </a>
-              <a
-                href="#game"
-                className="text-sm font-medium py-2"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Play Now
-              </a>
-              <a
-                href="#leaderboard"
-                className="text-sm font-medium py-2"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Leaderboard
-              </a>
-              <button
-                className="px-5 py-2 w-full rounded-full bg-primary text-primary-foreground text-sm font-medium"
-              >
-                Sign In
-              </button>
-            </div>
-          </div>
-        )}
       </div>
-    </nav>
+      
+      {isMenuOpen && (
+        <div className="md:hidden border-t border-border">
+          <nav className="flex flex-col space-y-3 p-4">
+            <Link 
+              to="/" 
+              className="transition-colors hover:text-foreground/80"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Home
+            </Link>
+            <a 
+              href="#game" 
+              className="transition-colors hover:text-foreground/80"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Play
+            </a>
+            <a 
+              href="#how-to-play" 
+              className="transition-colors hover:text-foreground/80"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              How to Play
+            </a>
+            <Link 
+              to="/leaderboard" 
+              className="transition-colors hover:text-foreground/80"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Leaderboard
+            </Link>
+          </nav>
+        </div>
+      )}
+    </header>
   );
 };
 

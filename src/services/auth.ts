@@ -1,0 +1,104 @@
+
+import { create } from 'zustand';
+
+// Define user types
+export interface User {
+  id: string;
+  username: string;
+  email?: string;
+  avatarUrl?: string;
+  isGuest: boolean;
+}
+
+// Define auth store type
+interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+  login: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, username: string) => Promise<void>;
+  logout: () => void;
+  continueAsGuest: () => void;
+}
+
+// For now, we'll implement a mock auth system
+// This would be replaced with Supabase or another auth provider later
+export const useAuth = create<AuthState>((set) => ({
+  user: null,
+  isAuthenticated: false,
+  isLoading: false,
+  error: null,
+  
+  login: async (email: string, password: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Mock successful login
+      set({
+        user: {
+          id: '1',
+          username: email.split('@')[0],
+          email,
+          isGuest: false,
+          avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + email,
+        },
+        isAuthenticated: true,
+        isLoading: false,
+      });
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to login', 
+        isLoading: false 
+      });
+    }
+  },
+  
+  signUp: async (email: string, password: string, username: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Mock successful registration
+      set({
+        user: {
+          id: '1',
+          username,
+          email,
+          isGuest: false,
+          avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + email,
+        },
+        isAuthenticated: true,
+        isLoading: false,
+      });
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to sign up', 
+        isLoading: false 
+      });
+    }
+  },
+  
+  logout: () => {
+    set({ 
+      user: null, 
+      isAuthenticated: false 
+    });
+  },
+  
+  continueAsGuest: () => {
+    const guestId = 'guest-' + Math.random().toString(36).substr(2, 9);
+    set({
+      user: {
+        id: guestId,
+        username: 'Guest',
+        isGuest: true,
+        avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + guestId,
+      },
+      isAuthenticated: true,
+    });
+  },
+}));

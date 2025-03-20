@@ -3,9 +3,12 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import ProfileButton from './auth/ProfileButton';
+import HintDisplay from './HintDisplay';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // Mock data - in a real app, this would come from your state management
+  const availableHints = 10;
 
   return (
     <header className="sticky top-0 z-50 w-full backdrop-blur-lg bg-background/80 border-b border-border">
@@ -34,6 +37,7 @@ const Navbar = () => {
         </div>
         
         <div className="flex flex-1 items-center justify-end space-x-4">
+          <HintDisplay availableHints={availableHints} />
           <ProfileButton />
           
           <button

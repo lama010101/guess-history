@@ -1,22 +1,15 @@
 
-import { useState, useRef, useCallback } from "react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { 
-  Table, TableHeader, TableRow, TableHead, 
-  TableBody, TableCell 
-} from "@/components/ui/table";
-import { 
-  Plus, Upload, Check, X, Edit, Image, 
-  Search, FileSpreadsheet, Save, RefreshCw 
+  Plus, Upload, FileSpreadsheet, Save, RefreshCw 
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { HistoricalImage } from "@/types/game";
 import * as XLSX from 'xlsx';
+import EventsTable from "./EventsTable";
+import EventEditor from "./EventEditor";
 
 // Mock data for demonstration
 const mockEvents: HistoricalImage[] = [
@@ -44,18 +37,21 @@ const mockEvents: HistoricalImage[] = [
 ];
 
 interface ExcelImageData {
-  description: string;
-  year: number;
-  latitude: number;
-  longitude: number;
+  description?: string;
+  year?: number;
+  latitude?: number;
+  longitude?: number;
   imageUrl?: string;
   location?: string;
   country?: string;
+  title?: string;
+  [key: string]: any;
 }
 
 const AdminEventsManager = () => {
   const { toast } = useToast();
-  const [events, setEvents] = useState<HistoricalImage[]>(mockEvents);
+  const [events, setEvents] = useState<HistoricalImage[]>([]);
+  const [savedEvents, setSavedEvents] = useState<HistoricalImage[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedEvent, setSelectedEvent] = useState<HistoricalImage | null>(null);
   const [isAddingEvent, setIsAddingEvent] = useState(false);
@@ -66,6 +62,25 @@ const AdminEventsManager = () => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // Load saved events on component mount
+  useEffect(() => {
+    // In a real application, this would fetch from your backend
+    // For now we'll simulate with localStorage
+    const savedEventsJson = localStorage.getItem('savedEvents');
+    if (savedEventsJson) {
+      try {
+        const parsed = JSON.parse(savedEventsJson);
+        setSavedEvents(parsed);
+        setEvents(parsed);
+      } catch (e) {
+        console.error("Error parsing saved events:", e);
+      }
+    } else {
+      // Use mock data if nothing is saved yet
+      setEvents(mockEvents);
+    }
+  }, []);
 
   const handleAddEvent = () => {
     setIsAddingEvent(true);
@@ -90,13 +105,37 @@ const AdminEventsManager = () => {
     });
   };
 
-  const handleSaveEvent = () => {
+  const handleSaveEvent = (eventData: Partial<HistoricalImage>) => {
+    if (selectedEvent) {
+      // Update existing event
+      setEvents(events.map(event => 
+        event.id === selectedEvent.id 
+          ? { ...event, ...eventData } 
+          : event
+      ));
+    } else {
+      // Add new event
+      const newEvent: HistoricalImage = {
+        id: events.length > 0 ? Math.max(...events.map(e => e.id)) + 1 : 1,
+        src: eventData.src || "https://via.placeholder.com/500",
+        year: eventData.year || 2000,
+        location: eventData.location || { lat: 0, lng: 0 },
+        description: eventData.description || "New Event"
+      };
+      setEvents([...events, newEvent]);
+    }
+    
     toast({
       title: "Event Saved",
       description: "Changes have been saved successfully.",
     });
     
     // Reset form
+    setSelectedEvent(null);
+    setIsAddingEvent(false);
+  };
+
+  const handleCancelEdit = () => {
     setSelectedEvent(null);
     setIsAddingEvent(false);
   };
@@ -140,14 +179,34 @@ const AdminEventsManager = () => {
   const handleSaveSelectedToDB = () => {
     setIsSaving(true);
     
-    // Simulate saving to database
+    // Get selected events
+    const eventsToSave = events.filter(event => selectedEvents.has(event.id));
+    
+    // In a real app, this would send to your backend
+    // For now, we'll simulate with localStorage
     setTimeout(() => {
+      // Merge with existing saved events (avoiding duplicates by id)
+      const newSavedEvents = [...savedEvents];
+      
+      eventsToSave.forEach(event => {
+        const existingIndex = newSavedEvents.findIndex(e => e.id === event.id);
+        if (existingIndex >= 0) {
+          newSavedEvents[existingIndex] = event;
+        } else {
+          newSavedEvents.push(event);
+        }
+      });
+      
+      // Save to localStorage
+      localStorage.setItem('savedEvents', JSON.stringify(newSavedEvents));
+      setSavedEvents(newSavedEvents);
+      
       setIsSaving(false);
       toast({
         title: "Events Saved to Database",
         description: `${selectedEvents.size} events have been saved to the database.`,
       });
-    }, 1500);
+    }, 1000);
   };
 
   const processExcelFile = async (file: File) => {
@@ -155,10 +214,9 @@ const AdminEventsManager = () => {
     
     try {
       const data = await readExcelFile(file);
+      console.log("Parsed Excel data:", data);
       
       if (data && data.length > 0) {
-        console.log("Excel data:", data);
-        
         // Convert Excel data to HistoricalImage format
         const newEvents: HistoricalImage[] = data.map((row, index) => {
           // Handle potential data inconsistencies
@@ -166,9 +224,21 @@ const AdminEventsManager = () => {
           const longitude = typeof row.longitude === 'number' ? row.longitude : parseFloat(String(row.longitude)) || 0;
           const year = typeof row.year === 'number' ? row.year : parseInt(String(row.year)) || 2000;
           
+          // Generate a unique ID
+          const newId = events.length > 0 ? Math.max(...events.map(e => e.id)) + index + 1 : index + 1;
+          
+          // Build a description that includes the title and location if available
+          let description = row.description || '';
+          if (row.title && !description.includes(row.title)) {
+            description = description ? `${row.title} - ${description}` : row.title;
+          }
+          if (row.location && !description.includes(row.location)) {
+            description = description ? `${description} (${row.location})` : row.location;
+          }
+          
           return {
-            id: events.length + index + 1,
-            description: row.description || 'Unknown location',
+            id: newId,
+            description: description || 'Unknown location',
             year: year,
             location: { 
               lat: latitude, 
@@ -178,8 +248,18 @@ const AdminEventsManager = () => {
           };
         });
         
+        console.log("Converted to HistoricalImages:", newEvents);
+        
         // Add new events to the list
         setEvents(prev => [...prev, ...newEvents]);
+        
+        // Auto-select the newly imported events
+        const newIds = newEvents.map(event => event.id);
+        setSelectedEvents(prev => {
+          const newSet = new Set(prev);
+          newIds.forEach(id => newSet.add(id));
+          return newSet;
+        });
         
         toast({
           title: "Upload Successful",
@@ -215,45 +295,88 @@ const AdminEventsManager = () => {
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
           
-          // Use headers option to handle column name variations
-          const jsonData = XLSX.utils.sheet_to_json<ExcelImageData>(worksheet, {
-            header: "A", // Use Excel column headers (A, B, C, etc.)
-            range: 1,    // Skip header row
-            raw: false   // Convert all cells to strings
+          // Get raw data with headers
+          const rawData = XLSX.utils.sheet_to_json(worksheet, { 
+            header: 1, 
+            raw: false,
+            defval: ""
           });
           
-          console.log("Raw Excel data:", jsonData);
+          console.log("Raw Excel data with headers:", rawData);
           
-          // Map Excel data to our expected format
-          // This is more flexible than direct mapping
-          const mappedData = jsonData.map((row: any) => {
-            // Check for common column name patterns
-            const description = row.description || row.Description || row.title || row.Title || row.A || '';
-            const year = row.year || row.Year || row.date || row.Date || row.B || 2000;
-            
-            // Try different variations of latitude/longitude names
-            const latitude = row.latitude || row.Latitude || row.lat || row.Lat || row.C || 0;
-            const longitude = row.longitude || row.Longitude || row.lng || row.Lng || row.D || 0;
-            
-            // Image URL might be called different things
-            const imageUrl = row.imageUrl || row.ImageUrl || row.image || row.Image || row.url || row.URL || row.E || '';
-            
-            // Country or location might be useful
-            const location = row.location || row.Location || row.place || row.Place || row.F || '';
-            const country = row.country || row.Country || row.nation || row.Nation || row.G || '';
-            
-            return {
-              description,
-              year: typeof year === 'string' ? parseInt(year) : year,
-              latitude: typeof latitude === 'string' ? parseFloat(latitude) : latitude,
-              longitude: typeof longitude === 'string' ? parseFloat(longitude) : longitude,
-              imageUrl,
-              location,
-              country
-            };
+          if (rawData.length < 2) {
+            throw new Error("Excel file must have at least a header row and one data row");
+          }
+          
+          // Extract header row and normalize headers
+          const headers = (rawData[0] as string[]).map(header => 
+            String(header).toLowerCase().trim()
+          );
+          
+          console.log("Normalized headers:", headers);
+          
+          // Map column indices to our expected fields
+          const fieldMap: Record<string, string> = {};
+          
+          // Define variations of each field name we want to capture
+          const fieldVariations: Record<string, string[]> = {
+            description: ['description', 'desc', 'text', 'info', 'details', 'caption'],
+            title: ['title', 'name', 'heading', 'subject'],
+            year: ['year', 'date', 'time', 'period', 'era'],
+            latitude: ['latitude', 'lat', 'y', 'yloc'],
+            longitude: ['longitude', 'lng', 'long', 'x', 'xloc'],
+            imageUrl: ['imageurl', 'image', 'img', 'url', 'src', 'picture', 'photo'],
+            location: ['location', 'place', 'city', 'town', 'address', 'site', 'spot'],
+            country: ['country', 'nation', 'land', 'territory', 'state']
+          };
+          
+          // Map each header to our expected fields if possible
+          headers.forEach((header, index) => {
+            for (const [field, variations] of Object.entries(fieldVariations)) {
+              if (variations.some(v => header.includes(v))) {
+                fieldMap[index] = field;
+                break;
+              }
+            }
           });
           
-          resolve(mappedData);
+          console.log("Field mapping:", fieldMap);
+          
+          // Process data rows
+          const processedData: ExcelImageData[] = [];
+          
+          for (let i = 1; i < rawData.length; i++) {
+            const row = rawData[i] as any[];
+            const item: ExcelImageData = {};
+            
+            // Map each cell to the appropriate field based on the mapping
+            for (let j = 0; j < row.length; j++) {
+              const field = fieldMap[j];
+              if (field) {
+                const value = row[j];
+                
+                // Convert to appropriate type
+                if (field === 'year') {
+                  item[field] = parseInt(String(value)) || null;
+                } else if (field === 'latitude' || field === 'longitude') {
+                  item[field] = parseFloat(String(value)) || null;
+                } else {
+                  item[field] = String(value).trim();
+                }
+              }
+            }
+            
+            // Only add if we have at least some basic data
+            if (
+              (item.description || item.title || item.location) && 
+              (item.latitude !== null || item.longitude !== null || item.year !== null)
+            ) {
+              processedData.push(item);
+            }
+          }
+          
+          console.log("Processed Excel data:", processedData);
+          resolve(processedData);
         } catch (error) {
           console.error("Excel parsing error:", error);
           reject(error);
@@ -284,7 +407,7 @@ const AdminEventsManager = () => {
         type="file" 
         ref={fileInputRef} 
         className="hidden" 
-        accept=".xlsx,.xls" 
+        accept=".xlsx,.xls,.csv" 
         onChange={handleExcelChange}
       />
       <input 
@@ -338,207 +461,33 @@ const AdminEventsManager = () => {
               </div>
             </div>
             <CardDescription>
-              Manage historical events and images for the game. Upload an Excel file with columns: description, year, latitude, longitude, imageUrl.
+              Manage historical events and images for the game. Upload an Excel file with columns: description, year, latitude, longitude, imageUrl, title, location.
             </CardDescription>
-            <div className="relative mt-2">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search events..."
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
           </CardHeader>
           <CardContent>
-            {filteredEvents.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No events found. Add some events to get started.
-              </div>
-            ) : (
-              <div className="border rounded-md overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted">
-                      <TableHead className="w-12 text-center">
-                        <Checkbox 
-                          checked={isAllSelected} 
-                          onCheckedChange={toggleSelectAll}
-                          aria-label="Select all events"
-                        />
-                      </TableHead>
-                      <TableHead className="w-12">#</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="w-20 text-center">Year</TableHead>
-                      <TableHead className="w-28 text-center">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredEvents.map((event) => (
-                      <TableRow key={event.id}>
-                        <TableCell className="text-center">
-                          <Checkbox 
-                            checked={selectedEvents.has(event.id)}
-                            onCheckedChange={() => toggleSelectEvent(event.id)}
-                            aria-label={`Select event ${event.id}`}
-                          />
-                        </TableCell>
-                        <TableCell>{event.id}</TableCell>
-                        <TableCell>{event.description}</TableCell>
-                        <TableCell className="text-center">{event.year}</TableCell>
-                        <TableCell>
-                          <div className="flex justify-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditEvent(event)}
-                              title="Edit event"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteEvent(event.id)}
-                              title="Delete event"
-                            >
-                              <X className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-            <div className="mt-4 text-sm text-muted-foreground">
-              {selectedEvents.size} of {filteredEvents.length} events selected
-            </div>
+            <EventsTable 
+              events={filteredEvents}
+              selectedEvents={selectedEvents}
+              onToggleSelectEvent={toggleSelectEvent}
+              onToggleSelectAll={toggleSelectAll}
+              onEdit={handleEditEvent}
+              onDelete={handleDeleteEvent}
+              isAllSelected={isAllSelected}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+            />
           </CardContent>
         </Card>
 
         {/* Event Editor */}
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {isAddingEvent ? "Add New Event" : selectedEvent ? "Edit Event" : "Event Details"}
-            </CardTitle>
-            <CardDescription>
-              {isAddingEvent ? "Create a new historical event" : selectedEvent ? "Modify event details" : "Select an event to edit or upload an Excel file to bulk add events"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {(isAddingEvent || selectedEvent) ? (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="event-description">Description</Label>
-                  <Textarea 
-                    id="event-description"
-                    placeholder="Enter event description..."
-                    defaultValue={selectedEvent?.description || ""}
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="event-year">Year</Label>
-                    <Input 
-                      id="event-year"
-                      type="number"
-                      placeholder="Year"
-                      defaultValue={selectedEvent?.year || 2000}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="event-image">Image Upload</Label>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" className="w-full" onClick={handleImageUpload}>
-                        <Image className="mr-2 h-4 w-4" />
-                        Upload Image
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="event-lat">Latitude</Label>
-                    <Input 
-                      id="event-lat"
-                      type="number"
-                      step="0.0001"
-                      placeholder="Latitude"
-                      defaultValue={selectedEvent?.location.lat || 0}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="event-lng">Longitude</Label>
-                    <Input 
-                      id="event-lng"
-                      type="number"
-                      step="0.0001"
-                      placeholder="Longitude"
-                      defaultValue={selectedEvent?.location.lng || 0}
-                    />
-                  </div>
-                </div>
-
-                {selectedEvent && (
-                  <div className="mt-4">
-                    <img 
-                      src={selectedEvent.src}
-                      alt={selectedEvent.description}
-                      className="w-full h-40 object-cover rounded-md border"
-                    />
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex flex-col items-center justify-center h-48 p-6 border-2 border-dashed border-muted-foreground/30 rounded-md bg-muted/30 text-center">
-                  <FileSpreadsheet className="h-10 w-10 text-muted-foreground mb-2" />
-                  <p className="text-sm font-medium mb-1">Upload Excel file with event data</p>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Required columns: description, year, latitude, longitude
-                  </p>
-                  <Button variant="secondary" size="sm" onClick={handleFileUpload}>
-                    <Upload className="mr-2 h-4 w-4" />
-                    Select Excel File
-                  </Button>
-                </div>
-                
-                <div className="text-xs text-muted-foreground">
-                  <p className="font-medium mb-1">Excel Format Example:</p>
-                  <div className="bg-muted p-2 rounded-md">
-                    <pre className="whitespace-pre-wrap">
-                      description | year | latitude | longitude | imageUrl
-                      ------------|------|----------|-----------|----------
-                      Eiffel Tower | 1950 | 48.8584 | 2.2945 | https://...
-                      Great Wall | 1976 | 40.4319 | 116.5704 | https://...
-                    </pre>
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardContent>
-          {(isAddingEvent || selectedEvent) && (
-            <CardFooter className="flex justify-between">
-              <Button variant="outline" onClick={() => {
-                setSelectedEvent(null);
-                setIsAddingEvent(false);
-              }}>
-                Cancel
-              </Button>
-              <Button onClick={handleSaveEvent}>
-                <Check className="mr-2 h-4 w-4" />
-                Save Event
-              </Button>
-            </CardFooter>
-          )}
-        </Card>
+        <EventEditor 
+          selectedEvent={selectedEvent}
+          isAddingEvent={isAddingEvent}
+          onSave={handleSaveEvent}
+          onCancel={handleCancelEdit}
+          onImageUpload={handleImageUpload}
+          onFileUpload={handleFileUpload}
+        />
       </div>
     </div>
   );

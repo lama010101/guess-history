@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import { Maps, Clock, Globe, ArrowRight, X, CheckCircle } from 'lucide-react';
+import { Map, Clock, Globe, ArrowRight, X, CheckCircle } from 'lucide-react';
 import YearSlider from './YearSlider';
 import MapComponent from './MapComponent';
 import HistoricalImage from './HistoricalImage';
@@ -130,7 +129,7 @@ const GameSection = () => {
                       }`}
                     >
                       <span className="flex items-center">
-                        <Maps className="h-4 w-4 mr-1.5" />
+                        <Map className="h-4 w-4 mr-1.5" />
                         Map
                       </span>
                     </button>
@@ -240,7 +239,7 @@ const GameSection = () => {
                       <h4 className="text-sm font-medium">Scoring System</h4>
                       <div className="flex gap-3 items-center text-xs text-muted-foreground">
                         <div className="flex-1 flex items-center">
-                          <Maps className="h-4 w-4 mr-1 text-primary" />
+                          <Map className="h-4 w-4 mr-1 text-primary" />
                           <p>5,000 pts for perfect location</p>
                         </div>
                         <div className="flex-1 flex items-center">

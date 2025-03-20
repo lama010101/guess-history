@@ -2,7 +2,8 @@
 import { RoundScore, HistoricalImage } from '@/types/game';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Award, MapPin, Calendar, ChevronRight, Lightbulb } from 'lucide-react';
+import { Award, MapPin, Calendar, ChevronRight, Lightbulb, Home } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface GameCompleteProps {
   totalScore: number;
@@ -87,13 +88,25 @@ const GameComplete = ({ totalScore, maxRounds, roundScores, images, onPlayAgain 
           })}
         </div>
         
-        <Button
-          onClick={onPlayAgain}
-          className="w-full bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center"
-        >
-          Play Again
-          <ChevronRight className="ml-1 h-4 w-4" />
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="flex-1 flex items-center justify-center"
+            asChild
+          >
+            <Link to="/">
+              <Home className="mr-1.5 h-4 w-4" />
+              Home
+            </Link>
+          </Button>
+          <Button
+            onClick={onPlayAgain}
+            className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center"
+          >
+            Play Again
+            <ChevronRight className="ml-1.5 h-4 w-4" />
+          </Button>
+        </div>
       </Card>
     </div>
   );

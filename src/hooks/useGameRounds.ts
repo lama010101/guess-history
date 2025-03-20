@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { HistoricalImage } from '@/types/game';
 
 interface UseGameRoundsOptions {
@@ -7,10 +7,27 @@ interface UseGameRoundsOptions {
   maxRounds?: number;
 }
 
-export const useGameRounds = ({ images, maxRounds = 5 }: UseGameRoundsOptions) => {
+export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameRoundsOptions) => {
   const [currentRound, setCurrentRound] = useState(1);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [gameComplete, setGameComplete] = useState(false);
+  const [images, setImages] = useState<HistoricalImage[]>(defaultImages);
+  
+  // Load images from localStorage if available
+  useEffect(() => {
+    const savedImagesJson = localStorage.getItem('savedEvents');
+    if (savedImagesJson) {
+      try {
+        const savedImages = JSON.parse(savedImagesJson);
+        if (Array.isArray(savedImages) && savedImages.length > 0) {
+          console.log('Loading saved images from localStorage:', savedImages.length);
+          setImages(savedImages);
+        }
+      } catch (error) {
+        console.error('Error loading saved images:', error);
+      }
+    }
+  }, []);
   
   // Current image based on the current image index
   const currentImage = images[currentImageIndex % images.length];
@@ -43,6 +60,7 @@ export const useGameRounds = ({ images, maxRounds = 5 }: UseGameRoundsOptions) =
     maxRounds,
     gameComplete,
     nextRound,
-    resetGame
+    resetGame,
+    images
   };
 };

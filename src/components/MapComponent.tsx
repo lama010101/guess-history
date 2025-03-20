@@ -9,6 +9,7 @@ interface MapComponentProps {
 
 const MapComponent = ({ onLocationSelect, selectedLocation }: MapComponentProps) => {
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(true);
   const mapRef = useRef<any>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const leafletLoadedRef = useRef(false);
@@ -147,6 +148,9 @@ const MapComponent = ({ onLocationSelect, selectedLocation }: MapComponentProps)
         // Save the new marker
         markerRef.current = marker;
         
+        // Hide instructions
+        setShowInstructions(false);
+        
         // Call the callback with selected coordinates
         if (onLocationSelect) {
           onLocationSelect(lat, lng);
@@ -169,6 +173,9 @@ const MapComponent = ({ onLocationSelect, selectedLocation }: MapComponentProps)
       if (onLocationSelect) {
         onLocationSelect(0, 0); // Reset to default/null location
       }
+      
+      // Show instructions again
+      setShowInstructions(true);
     }
   };
 
@@ -183,21 +190,23 @@ const MapComponent = ({ onLocationSelect, selectedLocation }: MapComponentProps)
         </div>
       )}
       <div ref={mapContainerRef} className="w-full h-full min-h-[300px]"></div>
-      <div className="absolute bottom-4 left-4 right-4 z-10 bg-white/80 backdrop-blur-sm p-3 rounded-lg shadow text-xs text-center flex flex-col gap-2">
-        <div className="flex items-center justify-center mb-1">
-          <MapPin className="h-4 w-4 mr-1 text-primary" />
-          <span className="font-medium">Click on the map to place your guess</span>
+      {showInstructions && (
+        <div className="absolute bottom-4 left-4 right-4 z-10 bg-white/80 backdrop-blur-sm p-3 rounded-lg shadow text-xs text-center flex flex-col gap-2">
+          <div className="flex items-center justify-center mb-1">
+            <MapPin className="h-4 w-4 mr-1 text-primary" />
+            <span className="font-medium">Click on the map to place your guess</span>
+          </div>
+          <p className="text-muted-foreground">Drag to move around and zoom in/out with the controls</p>
         </div>
-        <p className="text-muted-foreground">Drag to move around and zoom in/out with the controls</p>
-        {markerRef.current && (
-          <button 
-            onClick={clearMarker}
-            className="text-xs text-red-500 hover:underline"
-          >
-            Clear pin
-          </button>
-        )}
-      </div>
+      )}
+      {markerRef.current && (
+        <button 
+          onClick={clearMarker}
+          className="absolute bottom-4 right-4 z-10 bg-white/80 backdrop-blur-sm py-1 px-2 rounded text-xs text-red-500 hover:bg-white/90 transition-colors"
+        >
+          Clear pin
+        </button>
+      )}
     </div>
   );
 };

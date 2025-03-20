@@ -1,9 +1,10 @@
 
 import { Button } from '@/components/ui/button';
-import ScoreDisplay from '../ScoreDisplay';
-import ResultVisualization from './ResultVisualization';
 import { Card } from '@/components/ui/card';
-import { AlertCircle, Award, MapPin, Calendar, Lightbulb } from 'lucide-react';
+import { Award, MapPin, Calendar, Lightbulb, Home, ChevronRight } from 'lucide-react';
+import ResultVisualization from './ResultVisualization';
+import YearTimeline from './YearTimeline';
+import { Link } from 'react-router-dom';
 
 interface GameResultProps {
   isVisible: boolean;
@@ -57,7 +58,7 @@ const GameResult = ({
   const accuracy = getAccuracyLevel();
   
   return (
-    <Card className="glass-card p-4 rounded-lg max-w-md w-full">
+    <Card className="glass-card p-4 rounded-lg max-w-md w-full overflow-y-auto max-h-[90vh]">
       <div className="text-center mb-4">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-3">
           <Award className="h-8 w-8 text-primary" />
@@ -66,83 +67,109 @@ const GameResult = ({
         <p className={`font-medium ${accuracy.color}`}>{accuracy.text}</p>
       </div>
       
-      <div className="space-y-4 mb-4">
-        <div className="flex justify-between items-center">
+      {/* Event Title and Description */}
+      <div className="bg-secondary/50 p-3 rounded-lg mb-4">
+        <h4 className="font-semibold text-base">Historical Event</h4>
+        <p className="text-sm text-muted-foreground mt-1">
+          {/* This would come from the image data in a real app */}
+          This historical photo shows {guessedLocation ? 
+            `a scene from ${actualYear} in a location at coordinates ${actualLocation.lat.toFixed(2)}, ${actualLocation.lng.toFixed(2)}.` :
+            'a significant historical moment.'
+          }
+        </p>
+      </div>
+      
+      {/* Location Section */}
+      <div className="border border-border rounded-lg mb-4 overflow-hidden">
+        <div className="bg-muted px-4 py-2 flex justify-between items-center">
           <div className="flex items-center">
-            <MapPin className="h-5 w-5 mr-2 text-primary" />
+            <MapPin className="h-4 w-4 mr-2 text-primary" />
             <span className="text-sm font-medium">Location</span>
           </div>
           <span className="font-semibold">{locationScore.toLocaleString()} pts</span>
         </div>
-        
-        <div className="flex justify-between items-center">
+        <div className="p-3">
+          <p className="text-xs text-muted-foreground mb-2">
+            {distanceKm < 1
+              ? 'Perfect! You were spot on!'
+              : `You were ${Math.round(distanceKm)} km away from the actual location.`}
+          </p>
+          {guessedLocation && (
+            <ResultVisualization
+              actualLocation={actualLocation}
+              guessedLocation={guessedLocation}
+              isVisible={isVisible}
+            />
+          )}
+        </div>
+        {locationHintUsed && (
+          <div className="bg-amber-500/10 px-3 py-2 flex items-center text-xs text-amber-600">
+            <Lightbulb className="h-3 w-3 mr-1.5" />
+            Location hint used (-500 pts)
+          </div>
+        )}
+      </div>
+      
+      {/* Year Section */}
+      <div className="border border-border rounded-lg mb-4 overflow-hidden">
+        <div className="bg-muted px-4 py-2 flex justify-between items-center">
           <div className="flex items-center">
-            <Calendar className="h-5 w-5 mr-2 text-primary" />
+            <Calendar className="h-4 w-4 mr-2 text-primary" />
             <span className="text-sm font-medium">Year</span>
           </div>
           <span className="font-semibold">{yearScore.toLocaleString()} pts</span>
         </div>
-        
-        {(locationHintUsed || yearHintUsed) && (
-          <div className="flex justify-between items-center text-amber-500">
-            <div className="flex items-center">
-              <Lightbulb className="h-5 w-5 mr-2" />
-              <span className="text-sm font-medium">Hint Penalty</span>
-            </div>
-            <span className="font-semibold">-{hintPenalty.toLocaleString()} pts</span>
+        <div className="p-3">
+          <p className="text-xs text-muted-foreground mb-2">
+            {yearDifference === 0
+              ? 'Perfect! You guessed the exact year!'
+              : `You were ${yearDifference} year${yearDifference !== 1 ? 's' : ''} ${
+                  guessedYear > actualYear ? 'later' : 'earlier'
+                } than the actual year.`}
+          </p>
+          <YearTimeline 
+            guessedYear={guessedYear}
+            actualYear={actualYear}
+            minYear={1900}
+            maxYear={2025}
+          />
+        </div>
+        {yearHintUsed && (
+          <div className="bg-amber-500/10 px-3 py-2 flex items-center text-xs text-amber-600">
+            <Lightbulb className="h-3 w-3 mr-1.5" />
+            Year hint used (-500 pts)
           </div>
         )}
-        
-        <div className="h-px bg-border my-2"></div>
-        
+      </div>
+      
+      {/* Total Score */}
+      <div className="bg-primary/5 p-3 rounded-lg mb-4">
         <div className="flex justify-between items-center">
           <span className="text-sm font-medium">Total Score</span>
           <span className="text-lg font-bold">{totalScore.toLocaleString()} pts</span>
         </div>
       </div>
       
-      <div className="bg-secondary p-4 rounded-lg space-y-3 mb-4">
-        <div className="flex items-start gap-2">
-          <AlertCircle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-medium">Location Accuracy</p>
-            <p className="text-xs text-muted-foreground">
-              {distanceKm < 1
-                ? 'Perfect! You were spot on!'
-                : `You were ${Math.round(distanceKm)} km away from the actual location.`}
-            </p>
-          </div>
-        </div>
-        
-        <div className="flex items-start gap-2">
-          <AlertCircle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-medium">Year Accuracy</p>
-            <p className="text-xs text-muted-foreground">
-              {yearDifference === 0
-                ? 'Perfect! You guessed the exact year!'
-                : `You were ${yearDifference} year${yearDifference !== 1 ? 's' : ''} ${
-                    guessedYear > actualYear ? 'later' : 'earlier'
-                  } than the actual year.`}
-            </p>
-          </div>
-        </div>
-      </div>
-      
-      {guessedLocation && (
-        <ResultVisualization
-          actualLocation={actualLocation}
-          guessedLocation={guessedLocation}
-          isVisible={isVisible}
-        />
-      )}
-      
-      <div className="mt-4">
+      {/* Action Buttons */}
+      <div className="flex gap-2">
+        {isLastRound && (
+          <Button 
+            variant="outline" 
+            className="flex-1 flex items-center justify-center"
+            asChild
+          >
+            <Link to="/">
+              <Home className="mr-1.5 h-4 w-4" />
+              Home
+            </Link>
+          </Button>
+        )}
         <Button 
           onClick={onNextRound} 
-          className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+          className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center"
         >
           {isLastRound ? "See Final Results" : "Next Round"}
+          <ChevronRight className="ml-1.5 h-4 w-4" />
         </Button>
       </div>
     </Card>

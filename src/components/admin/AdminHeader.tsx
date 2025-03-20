@@ -1,8 +1,8 @@
 
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Home, ArrowLeft, HelpCircle } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ArrowLeft, Home } from "lucide-react";
+import HintDisplay from "../HintDisplay";
 
 const AdminHeader = () => {
   // Mock data - in a real app, this would come from your state management
@@ -21,20 +21,7 @@ const AdminHeader = () => {
         </div>
         
         <div className="flex items-center gap-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center bg-muted px-3 py-1 rounded-md">
-                  <span className="text-sm font-medium mr-1">Available Hints:</span>
-                  <span className="text-sm font-bold">{availableHints}</span>
-                  <HelpCircle className="h-4 w-4 ml-1 text-muted-foreground" />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="text-sm">Total number of hints available to users</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <HintDisplay availableHints={availableHints} />
         </div>
         
         <div>

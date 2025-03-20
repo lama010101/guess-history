@@ -1,9 +1,6 @@
 
-import { useState } from "react";
-import { useAuth } from "@/services/auth";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogIn, LogOut, User, Award, Users, Bell } from "lucide-react";
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,100 +9,97 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import AuthModal from "./AuthModal";
-import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from '@/services/auth';
+import { Home, LogOut, Settings, User } from 'lucide-react';
 
 const ProfileButton = () => {
-  const { user, isAuthenticated, logout, isAdmin } = useAuth();
+  const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
-
-  const handleOpenLogin = () => {
-    setShowAuthModal(true);
-  };
 
   const handleLogout = () => {
     logout();
   };
 
-  if (!isAuthenticated || !user) {
-    return (
-      <>
-        <Button size="sm" onClick={handleOpenLogin}>
-          <LogIn className="mr-2 h-4 w-4" />
-          Login
-        </Button>
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-        />
-      </>
-    );
-  }
+  // Mock user data - in a real app this would come from auth context
+  const userInitials = user?.name 
+    ? `${user.name.charAt(0)}${user.name.split(' ')[1]?.charAt(0) || ''}` 
+    : 'GU';
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-            <Avatar className="h-9 w-9">
-              <AvatarImage src={user.avatarUrl} alt={user.username} />
-              <AvatarFallback>
-                {user.username.substring(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56" align="end" forceMount>
-          <DropdownMenuLabel>
-            <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">
-                {user.username} {isAdmin && <span className="text-primary">(Admin)</span>}
-              </p>
-              <p className="text-xs leading-none text-muted-foreground">
-                {user.email || (user.isGuest ? "Guest User" : "")}
-              </p>
-            </div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          
-          <DropdownMenuItem>
-            <User className="mr-2 h-4 w-4" />
-            <span>Profile</span>
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem>
-            <Award className="mr-2 h-4 w-4" />
-            <span>Achievements</span>
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem>
-            <Users className="mr-2 h-4 w-4" />
-            <span>Friends</span>
-          </DropdownMenuItem>
-          
-          {isAdmin && (
-            <>
-              <DropdownMenuSeparator />
+      {isAuthenticated ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={user?.avatarUrl} alt={user?.name || "User"} />
+                <AvatarFallback>{userInitials}</AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" align="end" forceMount>
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">{user?.name || "Guest User"}</p>
+                <p className="text-xs leading-none text-muted-foreground">
+                  {user?.email || "guest@example.com"}
+                </p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link to="/" className="cursor-pointer flex w-full items-center">
+                <Home className="mr-2 h-4 w-4" />
+                <span>Home</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <User className="mr-2 h-4 w-4" />
+              <span>Profile</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Settings</span>
+            </DropdownMenuItem>
+            {isAdmin && (
               <DropdownMenuItem asChild>
-                <Link to="/admin">
-                  <Bell className="mr-2 h-4 w-4" />
+                <Link to="/admin" className="cursor-pointer flex w-full items-center">
+                  <Settings className="mr-2 h-4 w-4" />
                   <span>Admin Panel</span>
                 </Link>
               </DropdownMenuItem>
-            </>
-          )}
-          
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Log out</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-      />
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Log out</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : (
+        <Button onClick={() => setShowAuthModal(true)} variant="default" size="sm">
+          Sign In
+        </Button>
+      )}
+
+      {/* This import would be done at the component level in a real app */}
+      {showAuthModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setShowAuthModal(false)}
+        >
+          <div
+            className="bg-background rounded-lg p-6 w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-bold mb-4">Sign In</h2>
+            <p className="mb-4">Authentication modal would go here.</p>
+            <Button onClick={() => setShowAuthModal(false)}>Close</Button>
+          </div>
+        </div>
+      )}
     </>
   );
 };

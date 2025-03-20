@@ -1,15 +1,13 @@
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  Plus, Upload, FileSpreadsheet, Save, RefreshCw 
-} from "lucide-react";
+import { Plus, FileSpreadsheet, Save, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { HistoricalImage } from "@/types/game";
-import * as XLSX from 'xlsx';
 import EventsTable from "./EventsTable";
 import EventEditor from "./EventEditor";
+import ExcelImporter from "./ExcelImporter";
 
 // Mock data for demonstration
 const mockEvents: HistoricalImage[] = [
@@ -36,18 +34,6 @@ const mockEvents: HistoricalImage[] = [
   }
 ];
 
-interface ExcelImageData {
-  description?: string;
-  year?: number;
-  latitude?: number;
-  longitude?: number;
-  imageUrl?: string;
-  location?: string;
-  country?: string;
-  title?: string;
-  [key: string]: any;
-}
-
 const AdminEventsManager = () => {
   const { toast } = useToast();
   const [events, setEvents] = useState<HistoricalImage[]>([]);
@@ -59,9 +45,6 @@ const AdminEventsManager = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [selectedEvents, setSelectedEvents] = useState<Set<number>>(new Set());
   const [isAllSelected, setIsAllSelected] = useState(false);
-  
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Load saved events on component mount
   useEffect(() => {
@@ -140,18 +123,6 @@ const AdminEventsManager = () => {
     setIsAddingEvent(false);
   };
 
-  const handleFileUpload = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleImageUpload = () => {
-    if (imageInputRef.current) {
-      imageInputRef.current.click();
-    }
-  };
-
   const toggleSelectAll = () => {
     if (isAllSelected) {
       // Deselect all
@@ -209,190 +180,26 @@ const AdminEventsManager = () => {
     }, 1000);
   };
 
-  const processExcelFile = async (file: File) => {
-    setIsUploading(true);
+  const handleImportExcelData = (newEvents: HistoricalImage[]) => {
+    console.log("Importing new events from Excel:", newEvents);
     
-    try {
-      const data = await readExcelFile(file);
-      console.log("Parsed Excel data:", data);
-      
-      if (data && data.length > 0) {
-        // Convert Excel data to HistoricalImage format
-        const newEvents: HistoricalImage[] = data.map((row, index) => {
-          // Handle potential data inconsistencies
-          const latitude = typeof row.latitude === 'number' ? row.latitude : parseFloat(String(row.latitude)) || 0;
-          const longitude = typeof row.longitude === 'number' ? row.longitude : parseFloat(String(row.longitude)) || 0;
-          const year = typeof row.year === 'number' ? row.year : parseInt(String(row.year)) || 2000;
-          
-          // Generate a unique ID
-          const newId = events.length > 0 ? Math.max(...events.map(e => e.id)) + index + 1 : index + 1;
-          
-          // Build a description that includes the title and location if available
-          let description = row.description || '';
-          if (row.title && !description.includes(row.title)) {
-            description = description ? `${row.title} - ${description}` : row.title;
-          }
-          if (row.location && !description.includes(row.location)) {
-            description = description ? `${description} (${row.location})` : row.location;
-          }
-          
-          return {
-            id: newId,
-            description: description || 'Unknown location',
-            year: year,
-            location: { 
-              lat: latitude, 
-              lng: longitude 
-            },
-            src: row.imageUrl || 'https://via.placeholder.com/500'
-          };
-        });
-        
-        console.log("Converted to HistoricalImages:", newEvents);
-        
-        // Add new events to the list
-        setEvents(prev => [...prev, ...newEvents]);
-        
-        // Auto-select the newly imported events
-        const newIds = newEvents.map(event => event.id);
-        setSelectedEvents(prev => {
-          const newSet = new Set(prev);
-          newIds.forEach(id => newSet.add(id));
-          return newSet;
-        });
-        
-        toast({
-          title: "Upload Successful",
-          description: `${newEvents.length} events have been added from the Excel file.`,
-        });
-      } else {
-        toast({
-          title: "No Data Found",
-          description: "The Excel file doesn't contain any valid data.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Excel processing error:", error);
-      toast({
-        title: "Upload Failed",
-        description: "There was an error processing the Excel file. Check the console for details.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const readExcelFile = useCallback((file: File): Promise<ExcelImageData[]> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      
-      reader.onload = (e) => {
-        try {
-          const data = e.target?.result;
-          const workbook = XLSX.read(data, { type: 'binary' });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          
-          // Get raw data with headers
-          const rawData = XLSX.utils.sheet_to_json(worksheet, { 
-            header: 1, 
-            raw: false,
-            defval: ""
-          });
-          
-          console.log("Raw Excel data with headers:", rawData);
-          
-          if (rawData.length < 2) {
-            throw new Error("Excel file must have at least a header row and one data row");
-          }
-          
-          // Extract header row and normalize headers
-          const headers = (rawData[0] as string[]).map(header => 
-            String(header).toLowerCase().trim()
-          );
-          
-          console.log("Normalized headers:", headers);
-          
-          // Map column indices to our expected fields
-          const fieldMap: Record<string, string> = {};
-          
-          // Define variations of each field name we want to capture
-          const fieldVariations: Record<string, string[]> = {
-            description: ['description', 'desc', 'text', 'info', 'details', 'caption'],
-            title: ['title', 'name', 'heading', 'subject'],
-            year: ['year', 'date', 'time', 'period', 'era'],
-            latitude: ['latitude', 'lat', 'y', 'yloc'],
-            longitude: ['longitude', 'lng', 'long', 'x', 'xloc'],
-            imageUrl: ['imageurl', 'image', 'img', 'url', 'src', 'picture', 'photo'],
-            location: ['location', 'place', 'city', 'town', 'address', 'site', 'spot'],
-            country: ['country', 'nation', 'land', 'territory', 'state']
-          };
-          
-          // Map each header to our expected fields if possible
-          headers.forEach((header, index) => {
-            for (const [field, variations] of Object.entries(fieldVariations)) {
-              if (variations.some(v => header.includes(v))) {
-                fieldMap[index] = field;
-                break;
-              }
-            }
-          });
-          
-          console.log("Field mapping:", fieldMap);
-          
-          // Process data rows
-          const processedData: ExcelImageData[] = [];
-          
-          for (let i = 1; i < rawData.length; i++) {
-            const row = rawData[i] as any[];
-            const item: ExcelImageData = {};
-            
-            // Map each cell to the appropriate field based on the mapping
-            for (let j = 0; j < row.length; j++) {
-              const field = fieldMap[j];
-              if (field) {
-                const value = row[j];
-                
-                // Convert to appropriate type
-                if (field === 'year') {
-                  item[field] = parseInt(String(value)) || null;
-                } else if (field === 'latitude' || field === 'longitude') {
-                  item[field] = parseFloat(String(value)) || null;
-                } else {
-                  item[field] = String(value).trim();
-                }
-              }
-            }
-            
-            // Only add if we have at least some basic data
-            if (
-              (item.description || item.title || item.location) && 
-              (item.latitude !== null || item.longitude !== null || item.year !== null)
-            ) {
-              processedData.push(item);
-            }
-          }
-          
-          console.log("Processed Excel data:", processedData);
-          resolve(processedData);
-        } catch (error) {
-          console.error("Excel parsing error:", error);
-          reject(error);
-        }
-      };
-      
-      reader.onerror = (error) => reject(error);
-      reader.readAsBinaryString(file);
+    // Add new events to the list
+    setEvents(prev => [...prev, ...newEvents]);
+    
+    // Auto-select the newly imported events
+    const newIds = newEvents.map(event => event.id);
+    setSelectedEvents(prev => {
+      const newSet = new Set(prev);
+      newIds.forEach(id => newSet.add(id));
+      return newSet;
     });
-  }, []);
-
-  const handleExcelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      processExcelFile(files[0]);
-    }
+    
+    toast({
+      title: "Upload Successful",
+      description: `${newEvents.length} events have been added from the Excel file.`,
+    });
+    
+    setIsUploading(false);
   };
 
   const filteredEvents = events.filter(event => 
@@ -402,21 +209,6 @@ const AdminEventsManager = () => {
 
   return (
     <div className="space-y-6">
-      {/* Hidden file inputs */}
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        className="hidden" 
-        accept=".xlsx,.xls,.csv" 
-        onChange={handleExcelChange}
-      />
-      <input 
-        type="file" 
-        ref={imageInputRef} 
-        className="hidden" 
-        accept="image/*" 
-      />
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Events List */}
         <Card className="md:col-span-2">
@@ -424,19 +216,11 @@ const AdminEventsManager = () => {
             <div className="flex items-center justify-between">
               <CardTitle>Historical Events</CardTitle>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={handleFileUpload} disabled={isUploading}>
-                  {isUploading ? (
-                    <span className="flex items-center">
-                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                      Uploading...
-                    </span>
-                  ) : (
-                    <>
-                      <FileSpreadsheet className="mr-2 h-4 w-4" />
-                      Upload Excel
-                    </>
-                  )}
-                </Button>
+                <ExcelImporter 
+                  onImportComplete={handleImportExcelData}
+                  isUploading={isUploading}
+                  setIsUploading={setIsUploading}
+                />
                 <Button onClick={handleAddEvent}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add Event
@@ -485,8 +269,6 @@ const AdminEventsManager = () => {
           isAddingEvent={isAddingEvent}
           onSave={handleSaveEvent}
           onCancel={handleCancelEdit}
-          onImageUpload={handleImageUpload}
-          onFileUpload={handleFileUpload}
         />
       </div>
     </div>

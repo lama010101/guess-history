@@ -21,6 +21,7 @@ interface ExcelImageData {
   location?: string;
   country?: string;
   title?: string;
+  locationName?: string;
   [key: string]: any;
 }
 
@@ -66,23 +67,28 @@ const ExcelImporter = ({ onImportComplete, isUploading, setIsUploading }: ExcelI
           // Generate a unique ID
           const newId = maxId + index + 1;
           
-          // Build a description that includes the title and location if available
+          // Build a description if not provided
           let description = row.description || '';
-          if (row.title && !description.includes(row.title)) {
-            description = description ? `${row.title} - ${description}` : row.title;
+          if (!description && row.title) {
+            description = row.title;
           }
-          if (row.location && !description.includes(row.location)) {
-            description = description ? `${description} (${row.location})` : row.location;
+          
+          // Create locationName from location and country if provided
+          let locationName = row.locationName || row.location || '';
+          if (row.country && !locationName.includes(row.country)) {
+            locationName = locationName ? `${locationName}, ${row.country}` : row.country;
           }
           
           return {
             id: newId,
+            title: row.title || '',
             description: description || 'Unknown location',
             year: year,
             location: { 
               lat: latitude, 
               lng: longitude 
             },
+            locationName: locationName,
             src: row.imageUrl || 'https://via.placeholder.com/500'
           };
         });
@@ -152,7 +158,8 @@ const ExcelImporter = ({ onImportComplete, isUploading, setIsUploading }: ExcelI
             longitude: ['longitude', 'lng', 'long', 'x', 'xloc', 'longitude_deg'],
             imageUrl: ['imageurl', 'image', 'img', 'url', 'src', 'picture', 'photo', 'link'],
             location: ['location', 'place', 'city', 'town', 'address', 'site', 'spot', 'where'],
-            country: ['country', 'nation', 'land', 'territory', 'state', 'region']
+            country: ['country', 'nation', 'land', 'territory', 'state', 'region'],
+            locationName: ['locationname', 'placename', 'placefull', 'fullname', 'fullplace']
           };
           
           // Map each header to our expected fields if possible

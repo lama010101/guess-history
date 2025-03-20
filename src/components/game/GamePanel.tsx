@@ -4,6 +4,7 @@ import { Map, Clock } from 'lucide-react';
 import MapComponent from '../MapComponent';
 import HistoricalImage from '../HistoricalImage';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import HintDisplay from '../HintDisplay';
 
 interface GamePanelProps {
   currentImage: {
@@ -12,6 +13,8 @@ interface GamePanelProps {
     year: number;
     location: { lat: number; lng: number };
     description: string;
+    title?: string;
+    locationName?: string;
   };
   onLocationSelect: (lat: number, lng: number) => void;
   selectedLocation: { lat: number; lng: number } | null;
@@ -38,6 +41,29 @@ const GamePanel = ({
   locationHintUsed,
   yearHintUsed
 }: GamePanelProps) => {
+  // For location hint, we'll show the country name or location name if available
+  const getLocationHint = () => {
+    if (currentImage.locationName) {
+      return currentImage.locationName;
+    }
+    
+    // Simplified implementation - in a real app, you would use a geocoding service
+    const locations: Record<string, string> = {
+      "48.8584,2.2945": "France",
+      "40.7484,-73.9857": "United States",
+      "37.8199,-122.4783": "United States",
+    };
+    
+    const coordKey = `${currentImage.location.lat},${currentImage.location.lng}`;
+    return locations[coordKey] || "Unknown Country";
+  };
+  
+  // For year hint, we'll show the year with the last digit hidden
+  const getYearHint = () => {
+    const yearString = currentImage.year.toString();
+    return yearString.slice(0, -1) + "X";
+  };
+
   return (
     <div className="glass-card rounded-2xl overflow-hidden h-full">
       <div className="h-[500px] relative">
@@ -74,7 +100,7 @@ const GamePanel = ({
           {/* Image view */}
           <TabsContent value="image" className="m-0 h-full">
             <div className="absolute inset-0">
-              <HistoricalImage src={currentImage.src} />
+              <HistoricalImage src={currentImage.src} alt={currentImage.description} />
             </div>
           </TabsContent>
           
@@ -92,18 +118,27 @@ const GamePanel = ({
         {/* Display location hint if used */}
         {locationHintUsed && (
           <div className="absolute top-20 right-4 z-10 bg-background/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
-            <span className="font-medium">Country:</span> 
-            {/* In a real implementation, this would use actual data */}
-            {currentImage.location.lat > 35 ? "France" : currentImage.location.lng < 0 ? "United States" : "Japan"}
+            <span className="font-medium">Location:</span> {getLocationHint()}
           </div>
         )}
         
         {/* Display year hint if used */}
         {yearHintUsed && (
           <div className="absolute top-32 right-4 z-10 bg-background/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
-            <span className="font-medium">Year:</span> {currentImage.year.toString().slice(0, -1)}X
+            <span className="font-medium">Year:</span> {getYearHint()}
           </div>
         )}
+        
+        {/* Hints controls */}
+        <div className="absolute right-4 top-20 z-10">
+          <HintDisplay 
+            availableHints={hintCoins} 
+            onUseLocationHint={onUseLocationHint}
+            onUseYearHint={onUseYearHint}
+            locationHintUsed={locationHintUsed}
+            yearHintUsed={yearHintUsed}
+          />
+        </div>
       </div>
     </div>
   );

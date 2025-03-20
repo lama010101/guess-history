@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MapPin, Calendar, ChevronRight, Lightbulb, Home, Trophy, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
 
 interface GameCompleteProps {
   totalScore: number;
@@ -25,8 +24,8 @@ const GameComplete = ({ totalScore, maxRounds, roundScores, images, onPlayAgain 
   const maxPossibleScore = maxRounds * 10000;
   
   return (
-    <div className="relative flex-1 flex flex-col items-center justify-center p-4 max-h-screen">
-      <Card className="glass-card p-6 rounded-xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+    <div className="relative flex-1 flex flex-col items-center justify-center p-4 max-h-full h-full">
+      <Card className="glass-card p-6 rounded-xl max-w-md w-full h-[80vh] overflow-y-auto">
         <div className="text-center mb-6">
           <h2 className="text-2xl font-bold mb-1">Final Score</h2>
           <p className="text-center mt-2">
@@ -38,6 +37,7 @@ const GameComplete = ({ totalScore, maxRounds, roundScores, images, onPlayAgain 
         <div className="space-y-3 mb-6">
           {roundScores.map((score, index) => {
             const roundTotal = score.locationScore + score.yearScore - score.hintPenalty;
+            const currentImage = images[score.image];
             return (
               <div key={index} className="bg-secondary/50 rounded-lg p-3">
                 <div className="flex justify-between items-center mb-2">
@@ -45,7 +45,7 @@ const GameComplete = ({ totalScore, maxRounds, roundScores, images, onPlayAgain 
                   <span className="font-bold">{roundTotal} pts</span>
                 </div>
                 <p className="text-sm text-muted-foreground mb-2 line-clamp-1">
-                  {images[score.image]?.description}
+                  {currentImage?.title || currentImage?.description || "Historical Event"}
                 </p>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="flex items-center">
@@ -116,7 +116,7 @@ const GameComplete = ({ totalScore, maxRounds, roundScores, images, onPlayAgain 
           </div>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 mt-6">
           <Button
             variant="outline"
             className="flex-1 flex items-center justify-center"

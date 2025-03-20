@@ -5,6 +5,8 @@ export interface HistoricalImage {
   year: number;
   location: { lat: number; lng: number };
   description: string;
+  title?: string;
+  locationName?: string;
 }
 
 export interface RoundScore {

@@ -15,21 +15,27 @@ const mockEvents: HistoricalImage[] = [
     src: "https://images.unsplash.com/photo-1565711561500-49678a10a63f?q=80&w=2940&auto=format&fit=crop",
     year: 1950,
     location: { lat: 48.8584, lng: 2.2945 },
-    description: "Eiffel Tower, Paris"
+    description: "One of the most iconic landmarks in the world",
+    title: "Eiffel Tower",
+    locationName: "Paris, France"
   },
   {
     id: 2,
     src: "https://images.unsplash.com/photo-1568797629192-789acf8e4df3?q=80&w=3174&auto=format&fit=crop",
     year: 1932,
     location: { lat: 40.7484, lng: -73.9857 },
-    description: "Empire State Building, New York"
+    description: "A defining part of the New York City skyline",
+    title: "Empire State Building",
+    locationName: "New York, USA"
   },
   {
     id: 3,
     src: "https://images.unsplash.com/photo-1526711657229-e7e080961425?q=80&w=2832&auto=format&fit=crop",
     year: 1969,
     location: { lat: 37.8199, lng: -122.4783 },
-    description: "Golden Gate Bridge, San Francisco"
+    description: "The famous suspension bridge connecting San Francisco and Marin County",
+    title: "Golden Gate Bridge",
+    locationName: "San Francisco, USA"
   }
 ];
 
@@ -96,7 +102,9 @@ const AdminEventsManager = () => {
         src: eventData.src || "https://via.placeholder.com/500",
         year: eventData.year || 2000,
         location: eventData.location || { lat: 0, lng: 0 },
-        description: eventData.description || "New Event"
+        description: eventData.description || "New Event",
+        title: eventData.title || "",
+        locationName: eventData.locationName || ""
       };
       setEvents([...events, newEvent]);
     }
@@ -189,7 +197,9 @@ const AdminEventsManager = () => {
   };
 
   const filteredEvents = events.filter(event => 
-    event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (event.description && event.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (event.title && event.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (event.locationName && event.locationName.toLowerCase().includes(searchTerm.toLowerCase())) ||
     event.year.toString().includes(searchTerm)
   );
 
@@ -230,7 +240,7 @@ const AdminEventsManager = () => {
               </div>
             </div>
             <CardDescription>
-              Manage historical events and images for the game. Upload an Excel file with columns: description, year, latitude, longitude, imageUrl, title, location.
+              Manage historical events and images for the game. Upload an Excel file with columns: description, year, latitude, longitude, imageUrl, title, locationName, country.
             </CardDescription>
           </CardHeader>
           <CardContent>

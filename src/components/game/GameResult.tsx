@@ -21,6 +21,9 @@ interface GameResultProps {
   locationHintUsed: boolean;
   yearHintUsed: boolean;
   hintPenalty: number;
+  eventTitle?: string;
+  eventDescription?: string;
+  locationName?: string;
 }
 
 const GameResult = ({
@@ -38,7 +41,10 @@ const GameResult = ({
   maxRounds,
   locationHintUsed,
   yearHintUsed,
-  hintPenalty
+  hintPenalty,
+  eventTitle,
+  eventDescription,
+  locationName
 }: GameResultProps) => {
   if (!isVisible) return null;
   
@@ -53,12 +59,10 @@ const GameResult = ({
       
       {/* Event Title and Description */}
       <div className="bg-secondary/50 p-3 rounded-lg mb-4">
-        <h4 className="font-semibold text-base">Historical Event</h4>
+        <h4 className="font-semibold text-base">{eventTitle || "Historical Event"}</h4>
         <p className="text-sm text-muted-foreground mt-1">
-          {/* This would come from the image data in a real app */}
-          This historical photo shows {guessedLocation ? 
-            `a scene from ${actualYear} in a location at coordinates ${actualLocation.lat.toFixed(2)}, ${actualLocation.lng.toFixed(2)}.` :
-            'a significant historical moment.'
+          {eventDescription || 
+            `This historical photo shows a scene from ${actualYear} in a location at coordinates ${actualLocation.lat.toFixed(2)}, ${actualLocation.lng.toFixed(2)}.`
           }
         </p>
       </div>
@@ -68,12 +72,12 @@ const GameResult = ({
         <div className="bg-muted px-4 py-2 flex justify-between items-center">
           <div className="flex items-center">
             <MapPin className="h-4 w-4 mr-2 text-primary" />
-            <span className="text-sm font-medium">Location</span>
+            <span className="text-sm font-medium">Location{locationName ? `: ${locationName}` : ''}</span>
           </div>
           <span className="font-semibold">{locationScore.toLocaleString()} pts</span>
         </div>
         <div className="p-3">
-          <p className="text-xs text-muted-foreground mb-2">
+          <p className="text-sm text-muted-foreground mb-2 font-medium">
             {distanceKm < 1
               ? 'Perfect! You were spot on!'
               : `You were ${Math.round(distanceKm)} km away from the actual location.`}
@@ -104,7 +108,7 @@ const GameResult = ({
           <span className="font-semibold">{yearScore.toLocaleString()} pts</span>
         </div>
         <div className="p-3">
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground font-medium">
             {yearDifference === 0
               ? 'Perfect! You guessed the exact year!'
               : `You were ${yearDifference} year${yearDifference !== 1 ? 's' : ''} ${
@@ -126,29 +130,6 @@ const GameResult = ({
           <span className="text-sm font-medium">Total Score</span>
           <span className="text-lg font-bold">{totalScore.toLocaleString()} pts</span>
         </div>
-      </div>
-      
-      {/* Action Buttons */}
-      <div className="flex gap-2">
-        {isLastRound && (
-          <Button 
-            variant="outline" 
-            className="flex-1 flex items-center justify-center"
-            asChild
-          >
-            <Link to="/">
-              <Home className="mr-1.5 h-4 w-4" />
-              Home
-            </Link>
-          </Button>
-        )}
-        <Button 
-          onClick={onNextRound} 
-          className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center"
-        >
-          {isLastRound ? "See Final Results" : "Next Round"}
-          <ChevronRight className="ml-1.5 h-4 w-4" />
-        </Button>
       </div>
     </Card>
   );

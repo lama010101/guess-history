@@ -28,9 +28,11 @@ const EventEditor = ({
   const [eventData, setEventData] = useState<Partial<HistoricalImage>>(
     selectedEvent || {
       description: "",
+      title: "",
       year: 2000,
       location: { lat: 0, lng: 0 },
-      src: ""
+      src: "",
+      locationName: ""
     }
   );
 
@@ -69,6 +71,16 @@ const EventEditor = ({
         {(isAddingEvent || selectedEvent) ? (
           <div className="space-y-4">
             <div className="space-y-2">
+              <Label htmlFor="event-title">Title</Label>
+              <Input
+                id="event-title"
+                placeholder="Enter event title..."
+                value={eventData.title || ""}
+                onChange={(e) => handleChange("title", e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
               <Label htmlFor="event-description">Description</Label>
               <Textarea 
                 id="event-description"
@@ -91,19 +103,19 @@ const EventEditor = ({
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="event-image">Image Upload</Label>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="w-full" onClick={onImageUpload}>
-                    <Image className="mr-2 h-4 w-4" />
-                    Upload Image
-                  </Button>
-                </div>
+                <Label htmlFor="event-location-name">Location Name</Label>
+                <Input 
+                  id="event-location-name"
+                  placeholder="e.g. Paris, France"
+                  value={eventData.locationName || ""}
+                  onChange={(e) => handleChange("locationName", e.target.value)}
+                />
               </div>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="event-lat">Latitude</Label>
+                <Label htmlFor="event-lat">Latitude Coordinate</Label>
                 <Input 
                   id="event-lat"
                   type="number"
@@ -115,7 +127,7 @@ const EventEditor = ({
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="event-lng">Longitude</Label>
+                <Label htmlFor="event-lng">Longitude Coordinate</Label>
                 <Input 
                   id="event-lng"
                   type="number"
@@ -126,12 +138,32 @@ const EventEditor = ({
                 />
               </div>
             </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="event-image-url">Image URL</Label>
+              <Input 
+                id="event-image-url"
+                placeholder="Enter image URL..."
+                value={eventData.src || ""}
+                onChange={(e) => handleChange("src", e.target.value)}
+              />
+            </div>
 
-            {selectedEvent && selectedEvent.src && (
+            <div className="space-y-2">
+              <Label>Image Upload</Label>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="w-full" onClick={onImageUpload}>
+                  <Image className="mr-2 h-4 w-4" />
+                  Upload Image
+                </Button>
+              </div>
+            </div>
+
+            {eventData.src && (
               <div className="mt-4">
                 <img 
-                  src={selectedEvent.src}
-                  alt={selectedEvent.description}
+                  src={eventData.src}
+                  alt={eventData.description}
                   className="w-full h-40 object-cover rounded-md border"
                 />
               </div>
@@ -155,8 +187,8 @@ const EventEditor = ({
               <p className="font-medium mb-1">Excel Format Example:</p>
               <div className="bg-muted p-2 rounded-md">
                 <pre className="whitespace-pre-wrap">
-                  description | year | latitude | longitude | imageUrl | title | location
-                  ------------|------|----------|-----------|----------|-------|--------
+                  description | year | latitude | longitude | imageUrl | title | locationName
+                  ------------|------|----------|-----------|----------|-------|-------------
                   Eiffel Tower | 1950 | 48.8584 | 2.2945 | https://... | Paris | France
                   Great Wall | 1976 | 40.4319 | 116.5704 | https://... | Beijing | China
                 </pre>

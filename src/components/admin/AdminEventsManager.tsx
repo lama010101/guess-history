@@ -1,13 +1,20 @@
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Upload, Check, Delete, Edit, Image, Search, FileSpreadsheet } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { 
+  Table, TableHeader, TableRow, TableHead, 
+  TableBody, TableCell 
+} from "@/components/ui/table";
+import { 
+  Plus, Upload, Check, X, Edit, Image, 
+  Search, FileSpreadsheet, Save, RefreshCw 
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import EventsList from "./EventsList";
 import { HistoricalImage } from "@/types/game";
 import * as XLSX from 'xlsx';
 
@@ -42,6 +49,8 @@ interface ExcelImageData {
   latitude: number;
   longitude: number;
   imageUrl?: string;
+  location?: string;
+  country?: string;
 }
 
 const AdminEventsManager = () => {
@@ -51,6 +60,10 @@ const AdminEventsManager = () => {
   const [selectedEvent, setSelectedEvent] = useState<HistoricalImage | null>(null);
   const [isAddingEvent, setIsAddingEvent] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [selectedEvents, setSelectedEvents] = useState<Set<number>>(new Set());
+  const [isAllSelected, setIsAllSelected] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
@@ -66,6 +79,11 @@ const AdminEventsManager = () => {
 
   const handleDeleteEvent = (id: number) => {
     setEvents(events.filter(event => event.id !== id));
+    setSelectedEvents(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(id);
+      return newSet;
+    });
     toast({
       title: "Event Deleted",
       description: `Event #${id} has been removed.`,
@@ -95,6 +113,43 @@ const AdminEventsManager = () => {
     }
   };
 
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      // Deselect all
+      setSelectedEvents(new Set());
+    } else {
+      // Select all
+      const allIds = filteredEvents.map(event => event.id);
+      setSelectedEvents(new Set(allIds));
+    }
+    setIsAllSelected(!isAllSelected);
+  };
+
+  const toggleSelectEvent = (id: number) => {
+    setSelectedEvents(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSaveSelectedToDB = () => {
+    setIsSaving(true);
+    
+    // Simulate saving to database
+    setTimeout(() => {
+      setIsSaving(false);
+      toast({
+        title: "Events Saved to Database",
+        description: `${selectedEvents.size} events have been saved to the database.`,
+      });
+    }, 1500);
+  };
+
   const processExcelFile = async (file: File) => {
     setIsUploading(true);
     
@@ -102,17 +157,26 @@ const AdminEventsManager = () => {
       const data = await readExcelFile(file);
       
       if (data && data.length > 0) {
+        console.log("Excel data:", data);
+        
         // Convert Excel data to HistoricalImage format
-        const newEvents: HistoricalImage[] = data.map((row, index) => ({
-          id: events.length + index + 1,
-          description: row.description || 'Unknown location',
-          year: row.year || 2000,
-          location: { 
-            lat: row.latitude || 0, 
-            lng: row.longitude || 0 
-          },
-          src: row.imageUrl || 'https://via.placeholder.com/500'
-        }));
+        const newEvents: HistoricalImage[] = data.map((row, index) => {
+          // Handle potential data inconsistencies
+          const latitude = typeof row.latitude === 'number' ? row.latitude : parseFloat(String(row.latitude)) || 0;
+          const longitude = typeof row.longitude === 'number' ? row.longitude : parseFloat(String(row.longitude)) || 0;
+          const year = typeof row.year === 'number' ? row.year : parseInt(String(row.year)) || 2000;
+          
+          return {
+            id: events.length + index + 1,
+            description: row.description || 'Unknown location',
+            year: year,
+            location: { 
+              lat: latitude, 
+              lng: longitude 
+            },
+            src: row.imageUrl || 'https://via.placeholder.com/500'
+          };
+        });
         
         // Add new events to the list
         setEvents(prev => [...prev, ...newEvents]);
@@ -129,18 +193,18 @@ const AdminEventsManager = () => {
         });
       }
     } catch (error) {
+      console.error("Excel processing error:", error);
       toast({
         title: "Upload Failed",
-        description: "There was an error processing the Excel file.",
+        description: "There was an error processing the Excel file. Check the console for details.",
         variant: "destructive",
       });
-      console.error("Excel processing error:", error);
     } finally {
       setIsUploading(false);
     }
   };
 
-  const readExcelFile = (file: File): Promise<ExcelImageData[]> => {
+  const readExcelFile = useCallback((file: File): Promise<ExcelImageData[]> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       
@@ -150,10 +214,48 @@ const AdminEventsManager = () => {
           const workbook = XLSX.read(data, { type: 'binary' });
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json<ExcelImageData>(worksheet);
           
-          resolve(jsonData);
+          // Use headers option to handle column name variations
+          const jsonData = XLSX.utils.sheet_to_json<ExcelImageData>(worksheet, {
+            header: "A", // Use Excel column headers (A, B, C, etc.)
+            range: 1,    // Skip header row
+            raw: false   // Convert all cells to strings
+          });
+          
+          console.log("Raw Excel data:", jsonData);
+          
+          // Map Excel data to our expected format
+          // This is more flexible than direct mapping
+          const mappedData = jsonData.map((row: any) => {
+            // Check for common column name patterns
+            const description = row.description || row.Description || row.title || row.Title || row.A || '';
+            const year = row.year || row.Year || row.date || row.Date || row.B || 2000;
+            
+            // Try different variations of latitude/longitude names
+            const latitude = row.latitude || row.Latitude || row.lat || row.Lat || row.C || 0;
+            const longitude = row.longitude || row.Longitude || row.lng || row.Lng || row.D || 0;
+            
+            // Image URL might be called different things
+            const imageUrl = row.imageUrl || row.ImageUrl || row.image || row.Image || row.url || row.URL || row.E || '';
+            
+            // Country or location might be useful
+            const location = row.location || row.Location || row.place || row.Place || row.F || '';
+            const country = row.country || row.Country || row.nation || row.Nation || row.G || '';
+            
+            return {
+              description,
+              year: typeof year === 'string' ? parseInt(year) : year,
+              latitude: typeof latitude === 'string' ? parseFloat(latitude) : latitude,
+              longitude: typeof longitude === 'string' ? parseFloat(longitude) : longitude,
+              imageUrl,
+              location,
+              country
+            };
+          });
+          
+          resolve(mappedData);
         } catch (error) {
+          console.error("Excel parsing error:", error);
           reject(error);
         }
       };
@@ -161,7 +263,7 @@ const AdminEventsManager = () => {
       reader.onerror = (error) => reject(error);
       reader.readAsBinaryString(file);
     });
-  };
+  }, []);
 
   const handleExcelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -202,7 +304,7 @@ const AdminEventsManager = () => {
                 <Button variant="outline" onClick={handleFileUpload} disabled={isUploading}>
                   {isUploading ? (
                     <span className="flex items-center">
-                      <div className="animate-spin mr-2 h-4 w-4 border-2 border-primary border-r-transparent rounded-full"></div>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                       Uploading...
                     </span>
                   ) : (
@@ -215,6 +317,23 @@ const AdminEventsManager = () => {
                 <Button onClick={handleAddEvent}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add Event
+                </Button>
+                <Button 
+                  onClick={handleSaveSelectedToDB} 
+                  disabled={isSaving || selectedEvents.size === 0}
+                  variant="default"
+                >
+                  {isSaving ? (
+                    <span className="flex items-center">
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </span>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save to DB
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
@@ -232,11 +351,70 @@ const AdminEventsManager = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <EventsList 
-              events={filteredEvents} 
-              onEdit={handleEditEvent} 
-              onDelete={handleDeleteEvent} 
-            />
+            {filteredEvents.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No events found. Add some events to get started.
+              </div>
+            ) : (
+              <div className="border rounded-md overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted">
+                      <TableHead className="w-12 text-center">
+                        <Checkbox 
+                          checked={isAllSelected} 
+                          onCheckedChange={toggleSelectAll}
+                          aria-label="Select all events"
+                        />
+                      </TableHead>
+                      <TableHead className="w-12">#</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="w-20 text-center">Year</TableHead>
+                      <TableHead className="w-28 text-center">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredEvents.map((event) => (
+                      <TableRow key={event.id}>
+                        <TableCell className="text-center">
+                          <Checkbox 
+                            checked={selectedEvents.has(event.id)}
+                            onCheckedChange={() => toggleSelectEvent(event.id)}
+                            aria-label={`Select event ${event.id}`}
+                          />
+                        </TableCell>
+                        <TableCell>{event.id}</TableCell>
+                        <TableCell>{event.description}</TableCell>
+                        <TableCell className="text-center">{event.year}</TableCell>
+                        <TableCell>
+                          <div className="flex justify-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditEvent(event)}
+                              title="Edit event"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteEvent(event.id)}
+                              title="Delete event"
+                            >
+                              <X className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+            <div className="mt-4 text-sm text-muted-foreground">
+              {selectedEvents.size} of {filteredEvents.length} events selected
+            </div>
           </CardContent>
         </Card>
 

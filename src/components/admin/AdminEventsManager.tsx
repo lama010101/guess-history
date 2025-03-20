@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,6 @@ import EventsTable from "./EventsTable";
 import EventEditor from "./EventEditor";
 import ExcelImporter from "./ExcelImporter";
 
-// Mock data for demonstration
 const mockEvents: HistoricalImage[] = [
   {
     id: 1,
@@ -46,10 +44,7 @@ const AdminEventsManager = () => {
   const [selectedEvents, setSelectedEvents] = useState<Set<number>>(new Set());
   const [isAllSelected, setIsAllSelected] = useState(false);
 
-  // Load saved events on component mount
   useEffect(() => {
-    // In a real application, this would fetch from your backend
-    // For now we'll simulate with localStorage
     const savedEventsJson = localStorage.getItem('savedEvents');
     if (savedEventsJson) {
       try {
@@ -60,7 +55,6 @@ const AdminEventsManager = () => {
         console.error("Error parsing saved events:", e);
       }
     } else {
-      // Use mock data if nothing is saved yet
       setEvents(mockEvents);
     }
   }, []);
@@ -90,14 +84,12 @@ const AdminEventsManager = () => {
 
   const handleSaveEvent = (eventData: Partial<HistoricalImage>) => {
     if (selectedEvent) {
-      // Update existing event
       setEvents(events.map(event => 
         event.id === selectedEvent.id 
           ? { ...event, ...eventData } 
           : event
       ));
     } else {
-      // Add new event
       const newEvent: HistoricalImage = {
         id: events.length > 0 ? Math.max(...events.map(e => e.id)) + 1 : 1,
         src: eventData.src || "https://via.placeholder.com/500",
@@ -113,7 +105,6 @@ const AdminEventsManager = () => {
       description: "Changes have been saved successfully.",
     });
     
-    // Reset form
     setSelectedEvent(null);
     setIsAddingEvent(false);
   };
@@ -125,10 +116,8 @@ const AdminEventsManager = () => {
 
   const toggleSelectAll = () => {
     if (isAllSelected) {
-      // Deselect all
       setSelectedEvents(new Set());
     } else {
-      // Select all
       const allIds = filteredEvents.map(event => event.id);
       setSelectedEvents(new Set(allIds));
     }
@@ -150,13 +139,9 @@ const AdminEventsManager = () => {
   const handleSaveSelectedToDB = () => {
     setIsSaving(true);
     
-    // Get selected events
     const eventsToSave = events.filter(event => selectedEvents.has(event.id));
     
-    // In a real app, this would send to your backend
-    // For now, we'll simulate with localStorage
     setTimeout(() => {
-      // Merge with existing saved events (avoiding duplicates by id)
       const newSavedEvents = [...savedEvents];
       
       eventsToSave.forEach(event => {
@@ -168,7 +153,6 @@ const AdminEventsManager = () => {
         }
       });
       
-      // Save to localStorage
       localStorage.setItem('savedEvents', JSON.stringify(newSavedEvents));
       setSavedEvents(newSavedEvents);
       
@@ -183,10 +167,8 @@ const AdminEventsManager = () => {
   const handleImportExcelData = (newEvents: HistoricalImage[]) => {
     console.log("Importing new events from Excel:", newEvents);
     
-    // Add new events to the list
     setEvents(prev => [...prev, ...newEvents]);
     
-    // Auto-select the newly imported events
     const newIds = newEvents.map(event => event.id);
     setSelectedEvents(prev => {
       const newSet = new Set(prev);
@@ -202,6 +184,20 @@ const AdminEventsManager = () => {
     setIsUploading(false);
   };
 
+  const handleImageUpload = () => {
+    toast({
+      title: "Image Upload",
+      description: "Image upload functionality would be implemented here.",
+    });
+  };
+
+  const handleFileUpload = () => {
+    toast({
+      title: "File Upload",
+      description: "File upload functionality would be implemented here.",
+    });
+  };
+
   const filteredEvents = events.filter(event => 
     event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
     event.year.toString().includes(searchTerm)
@@ -210,7 +206,6 @@ const AdminEventsManager = () => {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Events List */}
         <Card className="md:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -263,12 +258,13 @@ const AdminEventsManager = () => {
           </CardContent>
         </Card>
 
-        {/* Event Editor */}
         <EventEditor 
           selectedEvent={selectedEvent}
           isAddingEvent={isAddingEvent}
           onSave={handleSaveEvent}
           onCancel={handleCancelEdit}
+          onImageUpload={handleImageUpload}
+          onFileUpload={handleFileUpload}
         />
       </div>
     </div>

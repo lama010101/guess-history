@@ -22,9 +22,9 @@ const ProfileButton = () => {
     logout();
   };
 
-  // Mock user data - in a real app this would come from auth context
-  const userInitials = user?.name 
-    ? `${user.name.charAt(0)}${user.name.split(' ')[1]?.charAt(0) || ''}` 
+  // Get user initials from username instead of name
+  const userInitials = user?.username 
+    ? `${user.username.charAt(0)}${user.username.split(' ')[1]?.charAt(0) || ''}` 
     : 'GU';
 
   return (
@@ -34,7 +34,7 @@ const ProfileButton = () => {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
               <Avatar className="h-8 w-8">
-                <AvatarImage src={user?.avatarUrl} alt={user?.name || "User"} />
+                <AvatarImage src={user?.avatarUrl} alt={user?.username || "User"} />
                 <AvatarFallback>{userInitials}</AvatarFallback>
               </Avatar>
             </Button>
@@ -42,7 +42,7 @@ const ProfileButton = () => {
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{user?.name || "Guest User"}</p>
+                <p className="text-sm font-medium leading-none">{user?.username || "Guest User"}</p>
                 <p className="text-xs leading-none text-muted-foreground">
                   {user?.email || "guest@example.com"}
                 </p>

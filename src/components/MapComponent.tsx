@@ -9,10 +9,10 @@ interface MapComponentProps {
 
 const MapComponent = ({ onLocationSelect, selectedLocation }: MapComponentProps) => {
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [userMarker, setUserMarker] = useState<any>(null);
   const mapRef = useRef<any>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const leafletLoadedRef = useRef(false);
+  const markerRef = useRef<any>(null); // Keep track of the current marker
 
   useEffect(() => {
     // Load Leaflet only once
@@ -68,9 +68,9 @@ const MapComponent = ({ onLocationSelect, selectedLocation }: MapComponentProps)
     if (!L) return;
     
     // Clear existing marker
-    if (userMarker) {
-      mapRef.current.removeLayer(userMarker);
-      setUserMarker(null);
+    if (markerRef.current) {
+      mapRef.current.removeLayer(markerRef.current);
+      markerRef.current = null;
     }
     
     // Add marker for selected location if it exists and is valid
@@ -92,7 +92,7 @@ const MapComponent = ({ onLocationSelect, selectedLocation }: MapComponentProps)
         })
       }).addTo(mapRef.current);
       
-      setUserMarker(marker);
+      markerRef.current = marker;
     }
   }, [selectedLocation, mapRef.current]);
 
@@ -121,9 +121,9 @@ const MapComponent = ({ onLocationSelect, selectedLocation }: MapComponentProps)
         const { lat, lng } = e.latlng;
         
         // Remove existing marker if any
-        if (userMarker) {
-          mapInstance.removeLayer(userMarker);
-          setUserMarker(null);
+        if (markerRef.current) {
+          mapInstance.removeLayer(markerRef.current);
+          markerRef.current = null;
         }
         
         // Create a new marker
@@ -145,7 +145,7 @@ const MapComponent = ({ onLocationSelect, selectedLocation }: MapComponentProps)
         }).addTo(mapInstance);
         
         // Save the new marker
-        setUserMarker(marker);
+        markerRef.current = marker;
         
         // Call the callback with selected coordinates
         if (onLocationSelect) {
@@ -161,9 +161,9 @@ const MapComponent = ({ onLocationSelect, selectedLocation }: MapComponentProps)
   };
 
   const clearMarker = () => {
-    if (mapRef.current && userMarker) {
-      mapRef.current.removeLayer(userMarker);
-      setUserMarker(null);
+    if (mapRef.current && markerRef.current) {
+      mapRef.current.removeLayer(markerRef.current);
+      markerRef.current = null;
       
       // Reset the selected location
       if (onLocationSelect) {
@@ -189,7 +189,7 @@ const MapComponent = ({ onLocationSelect, selectedLocation }: MapComponentProps)
           <span className="font-medium">Click on the map to place your guess</span>
         </div>
         <p className="text-muted-foreground">Drag to move around and zoom in/out with the controls</p>
-        {userMarker && (
+        {markerRef.current && (
           <button 
             onClick={clearMarker}
             className="text-xs text-red-500 hover:underline"

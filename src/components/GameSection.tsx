@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import GamePanel from './game/GamePanel';
 import GameControls from './game/GameControls';
@@ -121,13 +121,13 @@ const GameSection = () => {
       return;
     }
     
-    // Reset for next round (after a short delay to allow animations to complete)
-    setTimeout(() => {
-      setSelectedLocation(null);
-      setSelectedYear(1960);
-      setCurrentRound(prevRound => prevRound + 1);
-      setCurrentImageIndex(prevIndex => (prevIndex + 1) % sampleImages.length);
-    }, 100);
+    // Move to next round
+    setCurrentRound(prevRound => prevRound + 1);
+    setCurrentImageIndex(prevIndex => (prevIndex + 1) % sampleImages.length);
+    
+    // Reset guesses for the next round
+    setSelectedLocation(null);
+    setSelectedYear(1960);
   };
   
   const handleLocationSelect = (lat: number, lng: number) => {

@@ -41,7 +41,7 @@ const GamePanel = ({
           </div>
         </div>
 
-        <Tabs defaultValue="image" className="w-full">
+        <Tabs defaultValue="image" className="w-full h-full">
           {/* Tab buttons */}
           <div className="absolute top-16 left-0 right-0 z-10 flex justify-center">
             <TabsList className="bg-black/30 backdrop-blur-md rounded-full">

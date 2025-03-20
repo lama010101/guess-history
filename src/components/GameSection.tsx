@@ -23,7 +23,7 @@ const GameSection = () => {
     currentImage,
     currentScores,
     sampleImages,
-    setSelectedLocation,
+    setSelectedLocation: updateSelectedLocation,
     setSelectedYear,
     handleSubmit,
     handleNextRound,
@@ -32,6 +32,11 @@ const GameSection = () => {
     handleUseYearHint,
     maxRounds
   } = useGameState(MAX_ROUNDS);
+
+  // Create an adapter function to handle the different parameter types
+  const handleLocationSelect = (lat: number, lng: number) => {
+    updateSelectedLocation({ lat, lng });
+  };
 
   // Show game over screen if all rounds are completed
   if (gameComplete) {
@@ -54,7 +59,7 @@ const GameSection = () => {
         <div className="flex-1 overflow-hidden">
           <GamePanel 
             currentImage={currentImage} 
-            onLocationSelect={setSelectedLocation}
+            onLocationSelect={handleLocationSelect}
             selectedLocation={selectedLocation}
             gameRound={currentRound}
             maxRounds={MAX_ROUNDS}

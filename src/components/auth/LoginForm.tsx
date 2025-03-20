@@ -11,28 +11,39 @@ import { useToast } from "@/hooks/use-toast";
 interface LoginFormProps {
   isOpen: boolean;
   onClose: () => void;
-  switchToSignUp: () => void;
 }
 
-const LoginForm = ({ isOpen, onClose, switchToSignUp }: LoginFormProps) => {
+const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const { login, continueAsGuest, googleLogin, isLoading, error } = useAuth();
+  const [isNewUser, setIsNewUser] = useState(false);
+  const { login, signUp, continueAsGuest, googleLogin, isLoading, error } = useAuth();
   const { toast } = useToast();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await login(email, password);
-      toast({
-        title: "Welcome back!",
-        description: "You have successfully logged in.",
-      });
+      if (isNewUser) {
+        // Handle signup
+        await signUp(email, password, username);
+        toast({
+          title: "Account created!",
+          description: "You've successfully signed up for EventGuesser.",
+        });
+      } else {
+        // Handle login
+        await login(email, password);
+        toast({
+          title: "Welcome back!",
+          description: "You have successfully logged in.",
+        });
+      }
       onClose();
     } catch (error) {
       toast({
-        title: "Login failed",
+        title: isNewUser ? "Sign up failed" : "Login failed",
         description: error instanceof Error ? error.message : "Something went wrong",
         variant: "destructive",
       });
@@ -65,14 +76,20 @@ const LoginForm = ({ isOpen, onClose, switchToSignUp }: LoginFormProps) => {
     onClose();
   };
 
+  const toggleMode = () => {
+    setIsNewUser(!isNewUser);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl">Login to EventGuesser</DialogTitle>
+          <DialogTitle className="text-xl">
+            {isNewUser ? "Create your account" : "Login to EventGuesser"}
+          </DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleLogin} className="space-y-4 pt-4">
+        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -85,12 +102,28 @@ const LoginForm = ({ isOpen, onClose, switchToSignUp }: LoginFormProps) => {
             />
           </div>
           
+          {isNewUser && (
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                type="text"
+                placeholder="your_username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+              />
+            </div>
+          )}
+          
           <div className="space-y-2">
             <div className="flex justify-between">
               <Label htmlFor="password">Password</Label>
-              <a href="#" className="text-xs text-primary hover:underline">
-                Forgot password?
-              </a>
+              {!isNewUser && (
+                <a href="#" className="text-xs text-primary hover:underline">
+                  Forgot password?
+                </a>
+              )}
             </div>
             <div className="relative">
               <Input
@@ -119,7 +152,7 @@ const LoginForm = ({ isOpen, onClose, switchToSignUp }: LoginFormProps) => {
               className="w-full"
               disabled={isLoading}
             >
-              {isLoading ? "Logging in..." : "Login"}
+              {isLoading ? (isNewUser ? "Creating account..." : "Logging in...") : (isNewUser ? "Sign Up" : "Login")}
               <LogIn className="ml-2 h-4 w-4" />
             </Button>
             
@@ -172,13 +205,13 @@ const LoginForm = ({ isOpen, onClose, switchToSignUp }: LoginFormProps) => {
             </Button>
             
             <p className="text-center text-sm text-muted-foreground">
-              Don't have an account?{" "}
+              {isNewUser ? "Already have an account?" : "Don't have an account?"}{" "}
               <button
                 type="button"
-                onClick={switchToSignUp}
+                onClick={toggleMode}
                 className="text-primary hover:underline cursor-pointer"
               >
-                Sign up
+                {isNewUser ? "Log in" : "Sign up"}
               </button>
             </p>
           </div>

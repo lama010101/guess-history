@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import GamePanel from './game/GamePanel';
 import GameControls from './game/GameControls';
-import GameInstructions from './game/GameInstructions';
 import GameResult from './game/GameResult';
 
 // Sample historical images
@@ -106,7 +105,7 @@ const GameSection = () => {
   const { locationScore, yearScore, distanceKm, yearDifference } = calculateScores();
 
   return (
-    <section id="game" className="h-[calc(100vh-4rem)] flex flex-col">
+    <section id="game" className="h-full flex flex-col">
       <div className="relative flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-hidden">
           <GamePanel 
@@ -115,7 +114,7 @@ const GameSection = () => {
           />
         </div>
         
-        <div>
+        <div className="bg-background border-t border-border shadow-lg">
           <GameControls 
             selectedLocation={selectedLocation}
             selectedYear={selectedYear}
@@ -125,7 +124,7 @@ const GameSection = () => {
         </div>
         
         {showResults && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <GameResult 
               isVisible={showResults}
               locationScore={locationScore}

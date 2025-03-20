@@ -8,7 +8,7 @@ interface MapComponentProps {
 
 const MapComponent = ({ onLocationSelect }: MapComponentProps) => {
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [userMarker, setUserMarker] = useState<any>(null);
+  const [userMarkers, setUserMarkers] = useState<any[]>([]);
   const mapRef = useRef<any>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const leafletLoadedRef = useRef(false);
@@ -83,12 +83,7 @@ const MapComponent = ({ onLocationSelect }: MapComponentProps) => {
       mapInstance.on('click', (e: any) => {
         const { lat, lng } = e.latlng;
         
-        // Remove existing marker if any
-        if (userMarker) {
-          mapInstance.removeLayer(userMarker);
-        }
-        
-        // Create marker at clicked position
+        // Create a new marker for each click (allowing multiple pins)
         const marker = L.marker([lat, lng], {
           icon: L.divIcon({
             className: 'custom-div-icon',
@@ -106,7 +101,8 @@ const MapComponent = ({ onLocationSelect }: MapComponentProps) => {
           })
         }).addTo(mapInstance);
         
-        setUserMarker(marker);
+        // Save the new markers array
+        setUserMarkers([...userMarkers, marker]);
         
         // Call the callback with selected coordinates
         if (onLocationSelect) {
@@ -121,6 +117,15 @@ const MapComponent = ({ onLocationSelect }: MapComponentProps) => {
     }
   };
 
+  const clearMarkers = () => {
+    if (mapRef.current && userMarkers.length > 0) {
+      userMarkers.forEach(marker => {
+        mapRef.current.removeLayer(marker);
+      });
+      setUserMarkers([]);
+    }
+  };
+
   return (
     <div className="w-full h-full min-h-[300px] rounded-xl overflow-hidden shadow-lg">
       {!mapLoaded && (
@@ -132,12 +137,20 @@ const MapComponent = ({ onLocationSelect }: MapComponentProps) => {
         </div>
       )}
       <div ref={mapContainerRef} className="w-full h-full min-h-[300px]"></div>
-      <div className="absolute bottom-4 left-4 right-4 z-10 bg-white/80 backdrop-blur-sm p-3 rounded-lg shadow text-xs text-center">
+      <div className="absolute bottom-4 left-4 right-4 z-10 bg-white/80 backdrop-blur-sm p-3 rounded-lg shadow text-xs text-center flex flex-col gap-2">
         <div className="flex items-center justify-center mb-1">
           <MapPin className="h-4 w-4 mr-1 text-primary" />
           <span className="font-medium">Click on the map to place your guess</span>
         </div>
         <p className="text-muted-foreground">Drag to move around and zoom in/out with the controls</p>
+        {userMarkers.length > 0 && (
+          <button 
+            onClick={clearMarkers}
+            className="text-xs text-red-500 hover:underline"
+          >
+            Clear all pins
+          </button>
+        )}
       </div>
     </div>
   );

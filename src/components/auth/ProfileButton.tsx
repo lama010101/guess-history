@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useAuth } from "@/services/auth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogIn, UserPlus, LogOut, User } from "lucide-react";
+import { LogIn, LogOut, User, Award, Users, Bell } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,17 +15,10 @@ import {
 import AuthModal from "./AuthModal";
 
 const ProfileButton = () => {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, isAdmin } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authView, setAuthView] = useState<"login" | "signup">("login");
 
   const handleOpenLogin = () => {
-    setAuthView("login");
-    setShowAuthModal(true);
-  };
-
-  const handleOpenSignUp = () => {
-    setAuthView("signup");
     setShowAuthModal(true);
   };
 
@@ -36,20 +29,13 @@ const ProfileButton = () => {
   if (!isAuthenticated || !user) {
     return (
       <>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleOpenLogin}>
-            <LogIn className="mr-2 h-4 w-4" />
-            Log in
-          </Button>
-          <Button size="sm" onClick={handleOpenSignUp}>
-            <UserPlus className="mr-2 h-4 w-4" />
-            Sign up
-          </Button>
-        </div>
+        <Button size="sm" onClick={handleOpenLogin}>
+          <LogIn className="mr-2 h-4 w-4" />
+          Login
+        </Button>
         <AuthModal
           isOpen={showAuthModal}
           onClose={() => setShowAuthModal(false)}
-          initialView={authView}
         />
       </>
     );
@@ -71,17 +57,41 @@ const ProfileButton = () => {
         <DropdownMenuContent className="w-56" align="end" forceMount>
           <DropdownMenuLabel>
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">{user.username}</p>
+              <p className="text-sm font-medium leading-none">
+                {user.username} {isAdmin && <span className="text-primary">(Admin)</span>}
+              </p>
               <p className="text-xs leading-none text-muted-foreground">
                 {user.email || (user.isGuest ? "Guest User" : "")}
               </p>
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
+          
           <DropdownMenuItem>
             <User className="mr-2 h-4 w-4" />
             <span>Profile</span>
           </DropdownMenuItem>
+          
+          <DropdownMenuItem>
+            <Award className="mr-2 h-4 w-4" />
+            <span>Achievements</span>
+          </DropdownMenuItem>
+          
+          <DropdownMenuItem>
+            <Users className="mr-2 h-4 w-4" />
+            <span>Friends</span>
+          </DropdownMenuItem>
+          
+          {isAdmin && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Bell className="mr-2 h-4 w-4" />
+                <span>Admin Panel</span>
+              </DropdownMenuItem>
+            </>
+          )}
+          
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />
@@ -92,7 +102,6 @@ const ProfileButton = () => {
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-        initialView={authView}
       />
     </>
   );

@@ -4,9 +4,11 @@ import GameSection from '@/components/GameSection';
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-[100dvh] w-full overflow-hidden bg-background flex flex-col">
       <Navbar />
-      <GameSection />
+      <main className="flex-1 overflow-hidden">
+        <GameSection />
+      </main>
     </div>
   );
 };

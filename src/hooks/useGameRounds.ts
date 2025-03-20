@@ -15,13 +15,13 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
   
   // Load images from localStorage if available
   useEffect(() => {
-    const savedImagesJson = localStorage.getItem('savedEvents');
-    if (savedImagesJson) {
+    const savedEventsJson = localStorage.getItem('savedEvents');
+    if (savedEventsJson) {
       try {
-        const savedImages = JSON.parse(savedImagesJson);
-        if (Array.isArray(savedImages) && savedImages.length > 0) {
-          console.log('Loading saved images from localStorage:', savedImages.length);
-          setImages(savedImages);
+        const savedEvents = JSON.parse(savedEventsJson);
+        if (Array.isArray(savedEvents) && savedEvents.length > 0) {
+          console.log('Loading saved images from localStorage:', savedEvents);
+          setImages(savedEvents);
         }
       } catch (error) {
         console.error('Error loading saved images:', error);
@@ -30,7 +30,9 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
   }, []);
   
   // Current image based on the current image index
-  const currentImage = images[currentImageIndex % images.length];
+  const currentImage = images.length > 0 
+    ? images[currentImageIndex % images.length] 
+    : defaultImages[currentImageIndex % defaultImages.length];
   
   // Move to the next round
   const nextRound = () => {
@@ -43,7 +45,7 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
     
     // Move to next round
     setCurrentRound(prevRound => prevRound + 1);
-    setCurrentImageIndex(prevIndex => (prevIndex + 1) % images.length);
+    setCurrentImageIndex(prevIndex => (prevIndex + 1) % (images.length || defaultImages.length));
   };
   
   // Reset the game
@@ -61,6 +63,6 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
     gameComplete,
     nextRound,
     resetGame,
-    images
+    images: images.length > 0 ? images : defaultImages
   };
 };

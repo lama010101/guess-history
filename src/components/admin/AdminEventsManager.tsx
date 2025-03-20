@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -114,6 +115,20 @@ const AdminEventsManager = () => {
     setIsAddingEvent(false);
   };
 
+  const handleImageUpload = () => {
+    toast({
+      title: "Image Upload",
+      description: "Image upload functionality would be implemented here.",
+    });
+  };
+
+  const handleFileUpload = () => {
+    toast({
+      title: "File Upload",
+      description: "File upload functionality would be implemented here.",
+    });
+  };
+
   const toggleSelectAll = () => {
     if (isAllSelected) {
       setSelectedEvents(new Set());
@@ -142,19 +157,8 @@ const AdminEventsManager = () => {
     const eventsToSave = events.filter(event => selectedEvents.has(event.id));
     
     setTimeout(() => {
-      const newSavedEvents = [...savedEvents];
-      
-      eventsToSave.forEach(event => {
-        const existingIndex = newSavedEvents.findIndex(e => e.id === event.id);
-        if (existingIndex >= 0) {
-          newSavedEvents[existingIndex] = event;
-        } else {
-          newSavedEvents.push(event);
-        }
-      });
-      
-      localStorage.setItem('savedEvents', JSON.stringify(newSavedEvents));
-      setSavedEvents(newSavedEvents);
+      localStorage.setItem('savedEvents', JSON.stringify(eventsToSave));
+      setSavedEvents(eventsToSave);
       
       setIsSaving(false);
       toast({
@@ -182,20 +186,6 @@ const AdminEventsManager = () => {
     });
     
     setIsUploading(false);
-  };
-
-  const handleImageUpload = () => {
-    toast({
-      title: "Image Upload",
-      description: "Image upload functionality would be implemented here.",
-    });
-  };
-
-  const handleFileUpload = () => {
-    toast({
-      title: "File Upload",
-      description: "File upload functionality would be implemented here.",
-    });
   };
 
   const filteredEvents = events.filter(event => 

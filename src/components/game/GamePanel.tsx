@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { Map, Clock } from 'lucide-react';
 import MapComponent from '../MapComponent';
 import HistoricalImage from '../HistoricalImage';
-import HintSystem from './HintSystem';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface GamePanelProps {
@@ -90,17 +89,21 @@ const GamePanel = ({
           </TabsContent>
         </Tabs>
         
-        {/* Hint system positioned in the top-right */}
-        <div className="absolute top-20 right-4 z-10 w-[200px]">
-          <HintSystem 
-            hintCoins={hintCoins}
-            onUseLocationHint={onUseLocationHint}
-            onUseYearHint={onUseYearHint}
-            locationHintUsed={locationHintUsed}
-            yearHintUsed={yearHintUsed}
-            currentImage={currentImage}
-          />
-        </div>
+        {/* Display location hint if used */}
+        {locationHintUsed && (
+          <div className="absolute top-20 right-4 z-10 bg-background/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
+            <span className="font-medium">Country:</span> 
+            {/* In a real implementation, this would use actual data */}
+            {currentImage.location.lat > 35 ? "France" : currentImage.location.lng < 0 ? "United States" : "Japan"}
+          </div>
+        )}
+        
+        {/* Display year hint if used */}
+        {yearHintUsed && (
+          <div className="absolute top-32 right-4 z-10 bg-background/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
+            <span className="font-medium">Year:</span> {currentImage.year.toString().slice(0, -1)}X
+          </div>
+        )}
       </div>
     </div>
   );

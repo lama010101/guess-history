@@ -1,5 +1,4 @@
 
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import ProfileButton from './auth/ProfileButton';
 import HintDisplay from './HintDisplay';
@@ -11,25 +10,20 @@ const Navbar = () => {
   return (
     <header className="sticky top-0 z-50 w-full backdrop-blur-lg bg-background/80 border-b border-border">
       <div className="container flex h-16 items-center px-4">
-        <div className="flex-1 hidden md:flex items-center justify-center">
-          <nav className="flex items-center space-x-6 text-sm font-medium">
-            <Link to="/" className="transition-colors hover:text-foreground/80">
-              Home
-            </Link>
-            <a href="#game" className="transition-colors hover:text-foreground/80">
-              Play
-            </a>
-            <a href="#how-to-play" className="transition-colors hover:text-foreground/80">
-              How to Play
-            </a>
-            <Link to="/leaderboard" className="transition-colors hover:text-foreground/80">
-              Leaderboard
-            </Link>
-          </nav>
+        {/* Logo on the left */}
+        <div className="mr-4 flex">
+          <Link to="/" className="font-bold text-lg tracking-tight">
+            GUESSEVENTS
+          </Link>
+        </div>
+
+        {/* Hint button in center */}
+        <div className="flex-1 flex items-center justify-center">
+          <HintDisplay availableHints={availableHints} />
         </div>
         
-        <div className="flex flex-1 items-center justify-end space-x-4">
-          <HintDisplay availableHints={availableHints} />
+        {/* Profile button on the right */}
+        <div className="flex items-center justify-end">
           <ProfileButton />
         </div>
       </div>

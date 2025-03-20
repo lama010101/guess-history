@@ -2,8 +2,9 @@
 import { RoundScore, HistoricalImage } from '@/types/game';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Award, MapPin, Calendar, ChevronRight, Lightbulb, Home } from 'lucide-react';
+import { MapPin, Calendar, ChevronRight, Lightbulb, Home, Trophy, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
 
 interface GameCompleteProps {
   totalScore: number;
@@ -13,33 +14,21 @@ interface GameCompleteProps {
   onPlayAgain: () => void;
 }
 
+// Mock friends leaderboard data - in a real app this would come from the backend
+const friendsLeaderboard = [
+  { username: 'JaneDoe', score: 38250, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jane' },
+  { username: 'JohnSmith', score: 35600, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John' },
+  { username: 'SarahConnor', score: 32400, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah' },
+];
+
 const GameComplete = ({ totalScore, maxRounds, roundScores, images, onPlayAgain }: GameCompleteProps) => {
   const maxPossibleScore = maxRounds * 10000;
-  const scorePercentage = (totalScore / maxPossibleScore) * 100;
-  
-  // Display level based on final score percentage
-  const getScoreLevel = () => {
-    if (scorePercentage >= 90) return { text: 'Master Historian!', color: 'text-green-500' };
-    if (scorePercentage >= 75) return { text: 'History Expert', color: 'text-blue-500' };
-    if (scorePercentage >= 60) return { text: 'History Buff', color: 'text-blue-400' };
-    if (scorePercentage >= 45) return { text: 'History Enthusiast', color: 'text-yellow-500' };
-    if (scorePercentage >= 30) return { text: 'History Novice', color: 'text-orange-500' };
-    return { text: 'History Beginner', color: 'text-red-500' };
-  };
-  
-  const scoreLevel = getScoreLevel();
   
   return (
-    <div className="relative flex-1 flex flex-col items-center justify-center p-4">
-      <Card className="glass-card p-6 rounded-xl max-w-md w-full">
+    <div className="relative flex-1 flex flex-col items-center justify-center p-4 max-h-screen">
+      <Card className="glass-card p-6 rounded-xl max-w-md w-full max-h-[80vh] overflow-y-auto">
         <div className="text-center mb-6">
-          <div className="mx-auto w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-            <Award className="h-10 w-10 text-primary" />
-          </div>
-          <h2 className="text-2xl font-bold mb-1">Game Complete!</h2>
-          <p className={`text-lg font-medium ${scoreLevel.color}`}>
-            {scoreLevel.text}
-          </p>
+          <h2 className="text-2xl font-bold mb-1">Final Score</h2>
           <p className="text-center mt-2">
             Your final score: <span className="font-bold text-primary">{totalScore}</span> out of {maxPossibleScore}
           </p>
@@ -86,6 +75,45 @@ const GameComplete = ({ totalScore, maxRounds, roundScores, images, onPlayAgain 
               </div>
             );
           })}
+        </div>
+        
+        {/* Friends Leaderboard */}
+        <div className="mb-6">
+          <div className="flex items-center mb-3">
+            <Users className="h-5 w-5 mr-2 text-primary" />
+            <h3 className="text-lg font-semibold">Friends Leaderboard</h3>
+          </div>
+          
+          <div className="space-y-2">
+            {friendsLeaderboard.map((friend, index) => (
+              <div key={index} className="flex items-center justify-between bg-secondary/30 p-3 rounded-lg">
+                <div className="flex items-center">
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary mr-2">
+                    {index + 1}
+                  </div>
+                  <div className="w-8 h-8 rounded-full overflow-hidden mr-2">
+                    <img src={friend.avatar} alt={friend.username} className="w-full h-full object-cover" />
+                  </div>
+                  <span className="font-medium">{friend.username}</span>
+                </div>
+                <span className="font-mono font-semibold">{friend.score.toLocaleString()} pts</span>
+              </div>
+            ))}
+            
+            {/* Current user in the leaderboard */}
+            <div className="flex items-center justify-between bg-primary/10 p-3 rounded-lg">
+              <div className="flex items-center">
+                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground mr-2">
+                  <Trophy className="h-3 w-3" />
+                </div>
+                <div className="w-8 h-8 rounded-full overflow-hidden mr-2 border-2 border-primary">
+                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=You" alt="You" className="w-full h-full object-cover" />
+                </div>
+                <span className="font-medium">You</span>
+              </div>
+              <span className="font-mono font-semibold">{totalScore.toLocaleString()} pts</span>
+            </div>
+          </div>
         </div>
         
         <div className="flex gap-2">

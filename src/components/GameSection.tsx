@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import GamePanel from './game/GamePanel';
 import GameControls from './game/GameControls';
 import GameResult from './game/GameResult';
@@ -51,8 +52,13 @@ const GameSection = () => {
   const [selectedYear, setSelectedYear] = useState<number>(1960);
   const [showResults, setShowResults] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [currentRound, setCurrentRound] = useState(1);
+  const [totalScore, setTotalScore] = useState(0);
+  const [roundScores, setRoundScores] = useState<{locationScore: number, yearScore: number}[]>([]);
+  const [gameComplete, setGameComplete] = useState(false);
   
-  const currentImage = sampleImages[currentImageIndex];
+  const MAX_ROUNDS = 5;
+  const currentImage = sampleImages[currentImageIndex % sampleImages.length];
   
   // Calculate scores based on guesses
   const calculateScores = () => {
@@ -88,13 +94,33 @@ const GameSection = () => {
       return;
     }
     
+    const scores = calculateScores();
+    
+    // Add current round scores to total
+    const roundScore = scores.locationScore + scores.yearScore;
+    setTotalScore(totalScore + roundScore);
+    
+    // Add scores to round history
+    setRoundScores([...roundScores, {
+      locationScore: scores.locationScore,
+      yearScore: scores.yearScore
+    }]);
+    
     setShowResults(true);
   };
   
   const handleNextRound = () => {
+    if (currentRound >= MAX_ROUNDS) {
+      // Game complete
+      setGameComplete(true);
+      return;
+    }
+    
+    // Reset for next round
     setSelectedLocation(null);
     setSelectedYear(1960);
     setShowResults(false);
+    setCurrentRound(currentRound + 1);
     setCurrentImageIndex((currentImageIndex + 1) % sampleImages.length);
   };
   
@@ -104,9 +130,64 @@ const GameSection = () => {
   
   const { locationScore, yearScore, distanceKm, yearDifference } = calculateScores();
 
+  const handleNewGame = () => {
+    // Reset the entire game
+    setSelectedLocation(null);
+    setSelectedYear(1960);
+    setShowResults(false);
+    setCurrentImageIndex(0);
+    setCurrentRound(1);
+    setTotalScore(0);
+    setRoundScores([]);
+    setGameComplete(false);
+  };
+
+  // Show game over screen if all rounds are completed
+  if (gameComplete) {
+    return (
+      <section id="game" className="h-full flex flex-col">
+        <div className="relative flex-1 flex flex-col items-center justify-center p-4">
+          <div className="glass-card p-6 rounded-xl max-w-md w-full">
+            <h2 className="text-2xl font-bold text-center mb-4">Game Complete!</h2>
+            <p className="text-center mb-6">
+              Your final score: <span className="font-bold text-primary">{totalScore}</span> out of 50,000
+            </p>
+            
+            <h3 className="text-lg font-semibold mb-2">Round Scores:</h3>
+            <div className="space-y-2 mb-6">
+              {roundScores.map((score, index) => (
+                <div key={index} className="flex justify-between items-center p-2 border-b">
+                  <span>Round {index + 1}:</span>
+                  <span className="font-medium">{score.locationScore + score.yearScore} pts</span>
+                </div>
+              ))}
+            </div>
+            
+            <Button
+              onClick={handleNewGame}
+              className="w-full"
+            >
+              Play Again
+            </Button>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section id="game" className="h-full flex flex-col">
       <div className="relative flex-1 flex flex-col overflow-hidden">
+        {/* Round indicator */}
+        <div className="absolute top-4 left-4 right-4 z-10 flex justify-between items-center">
+          <div className="bg-black/30 backdrop-blur-md rounded-lg px-3 py-1 text-white">
+            <span className="text-sm font-medium">Round {currentRound} of {MAX_ROUNDS}</span>
+          </div>
+          <div className="bg-black/30 backdrop-blur-md rounded-lg px-3 py-1 text-white">
+            <span className="text-sm font-medium">Score: {totalScore}</span>
+          </div>
+        </div>
+        
         <div className="flex-1 overflow-hidden">
           <GamePanel 
             currentImage={currentImage} 

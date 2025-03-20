@@ -8,7 +8,7 @@ interface MapComponentProps {
 
 const MapComponent = ({ onLocationSelect }: MapComponentProps) => {
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [userMarkers, setUserMarkers] = useState<any[]>([]);
+  const [userMarker, setUserMarker] = useState<any>(null);
   const mapRef = useRef<any>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const leafletLoadedRef = useRef(false);
@@ -83,7 +83,12 @@ const MapComponent = ({ onLocationSelect }: MapComponentProps) => {
       mapInstance.on('click', (e: any) => {
         const { lat, lng } = e.latlng;
         
-        // Create a new marker for each click (allowing multiple pins)
+        // Remove existing marker if any
+        if (userMarker) {
+          mapInstance.removeLayer(userMarker);
+        }
+        
+        // Create a new marker
         const marker = L.marker([lat, lng], {
           icon: L.divIcon({
             className: 'custom-div-icon',
@@ -101,8 +106,8 @@ const MapComponent = ({ onLocationSelect }: MapComponentProps) => {
           })
         }).addTo(mapInstance);
         
-        // Save the new markers array
-        setUserMarkers([...userMarkers, marker]);
+        // Save the new marker
+        setUserMarker(marker);
         
         // Call the callback with selected coordinates
         if (onLocationSelect) {
@@ -117,12 +122,10 @@ const MapComponent = ({ onLocationSelect }: MapComponentProps) => {
     }
   };
 
-  const clearMarkers = () => {
-    if (mapRef.current && userMarkers.length > 0) {
-      userMarkers.forEach(marker => {
-        mapRef.current.removeLayer(marker);
-      });
-      setUserMarkers([]);
+  const clearMarker = () => {
+    if (mapRef.current && userMarker) {
+      mapRef.current.removeLayer(userMarker);
+      setUserMarker(null);
     }
   };
 
@@ -143,12 +146,12 @@ const MapComponent = ({ onLocationSelect }: MapComponentProps) => {
           <span className="font-medium">Click on the map to place your guess</span>
         </div>
         <p className="text-muted-foreground">Drag to move around and zoom in/out with the controls</p>
-        {userMarkers.length > 0 && (
+        {userMarker && (
           <button 
-            onClick={clearMarkers}
+            onClick={clearMarker}
             className="text-xs text-red-500 hover:underline"
           >
-            Clear all pins
+            Clear pin
           </button>
         )}
       </div>

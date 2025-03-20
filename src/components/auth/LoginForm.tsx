@@ -5,7 +5,7 @@ import { useAuth } from "@/services/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 
 interface LoginFormProps {
@@ -18,32 +18,42 @@ const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isNewUser, setIsNewUser] = useState(false);
+  const [showUsernameField, setShowUsernameField] = useState(false);
   const { login, signUp, continueAsGuest, googleLogin, isLoading, error } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (isNewUser) {
-        // Handle signup
+      if (showUsernameField) {
+        // This is a new user, handle signup
         await signUp(email, password, username);
         toast({
           title: "Account created!",
           description: "You've successfully signed up for EventGuesser.",
         });
       } else {
-        // Handle login
-        await login(email, password);
-        toast({
-          title: "Welcome back!",
-          description: "You have successfully logged in.",
-        });
+        try {
+          // Try login first
+          await login(email, password);
+          toast({
+            title: "Welcome back!",
+            description: "You have successfully logged in.",
+          });
+        } catch (loginError) {
+          // If login fails, show username field for signup
+          setShowUsernameField(true);
+          toast({
+            title: "Please create an account",
+            description: "Enter a username to sign up",
+          });
+          return; // Don't close modal, wait for user to complete signup
+        }
       }
       onClose();
     } catch (error) {
       toast({
-        title: isNewUser ? "Sign up failed" : "Login failed",
+        title: showUsernameField ? "Sign up failed" : "Login failed",
         description: error instanceof Error ? error.message : "Something went wrong",
         variant: "destructive",
       });
@@ -76,17 +86,18 @@ const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
     onClose();
   };
 
-  const toggleMode = () => {
-    setIsNewUser(!isNewUser);
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl">
-            {isNewUser ? "Create your account" : "Login to EventGuesser"}
+            {showUsernameField ? "Create your account" : "Login to EventGuesser"}
           </DialogTitle>
+          <DialogDescription>
+            {showUsernameField 
+              ? "Please choose a username to complete signup" 
+              : "Login or create a new account"}
+          </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
@@ -102,7 +113,7 @@ const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
             />
           </div>
           
-          {isNewUser && (
+          {showUsernameField && (
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
               <Input
@@ -119,11 +130,9 @@ const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
           <div className="space-y-2">
             <div className="flex justify-between">
               <Label htmlFor="password">Password</Label>
-              {!isNewUser && (
-                <a href="#" className="text-xs text-primary hover:underline">
-                  Forgot password?
-                </a>
-              )}
+              <a href="#" className="text-xs text-primary hover:underline">
+                Forgot password?
+              </a>
             </div>
             <div className="relative">
               <Input
@@ -152,7 +161,7 @@ const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
               className="w-full"
               disabled={isLoading}
             >
-              {isLoading ? (isNewUser ? "Creating account..." : "Logging in...") : (isNewUser ? "Sign Up" : "Login")}
+              {isLoading ? (showUsernameField ? "Creating account..." : "Logging in...") : "Login"}
               <LogIn className="ml-2 h-4 w-4" />
             </Button>
             
@@ -203,17 +212,6 @@ const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
               <Mail className="h-5 w-5 mr-2" />
               Continue as Guest
             </Button>
-            
-            <p className="text-center text-sm text-muted-foreground">
-              {isNewUser ? "Already have an account?" : "Don't have an account?"}{" "}
-              <button
-                type="button"
-                onClick={toggleMode}
-                className="text-primary hover:underline cursor-pointer"
-              >
-                {isNewUser ? "Log in" : "Sign up"}
-              </button>
-            </p>
           </div>
         </form>
       </DialogContent>

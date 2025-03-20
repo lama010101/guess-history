@@ -1,5 +1,4 @@
 
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import ScoreDisplay from '../ScoreDisplay';
 
@@ -31,7 +30,7 @@ const GameResult = ({
   if (!isVisible) return null;
   
   return (
-    <div className="glass-card p-4 rounded-lg">
+    <div className="glass-card p-4 rounded-lg max-w-md w-full">
       <ScoreDisplay
         isVisible={isVisible}
         locationScore={locationScore}
@@ -45,7 +44,7 @@ const GameResult = ({
       />
       
       <div className="mt-4 flex justify-center">
-        <Button onClick={onNextRound} className="px-6">
+        <Button onClick={onNextRound} className="px-6 w-full">
           Next Round
         </Button>
       </div>

@@ -17,7 +17,7 @@ const GameControls = ({
   onSubmit 
 }: GameControlsProps) => {
   return (
-    <div className="p-6 border-t border-border bg-white/50">
+    <div className="p-4 border-t border-border bg-white/50">
       <div className="mb-4">
         <YearSlider onChange={onYearChange} />
       </div>

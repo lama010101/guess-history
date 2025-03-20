@@ -1,5 +1,6 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import LoginForm from "./LoginForm";
 import SignUpForm from "./SignUpForm";
 
@@ -15,6 +16,14 @@ const AuthModal = ({
   initialView = "login",
 }: AuthModalProps) => {
   const [view, setView] = useState<"login" | "signup">(initialView);
+  const location = useLocation();
+
+  // Reset state when location changes to prevent stale modal state
+  useEffect(() => {
+    if (isOpen) {
+      onClose();
+    }
+  }, [location.pathname]);
 
   const handleSwitchToSignUp = () => {
     setView("signup");

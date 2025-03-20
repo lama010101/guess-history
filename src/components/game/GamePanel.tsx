@@ -19,7 +19,7 @@ const GamePanel = ({ currentImage, onLocationSelect }: GamePanelProps) => {
   const [activeTab, setActiveTab] = useState<'image' | 'map'>('image');
   
   return (
-    <div className="md:col-span-3 glass-card rounded-2xl overflow-hidden">
+    <div className="glass-card rounded-2xl overflow-hidden h-full">
       <div className="h-[500px] relative">
         {/* Tab buttons */}
         <div className="absolute top-4 left-0 right-0 z-10 flex justify-center">

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import GamePanel from './game/GamePanel';
 import GameControls from './game/GameControls';
 import GameInstructions from './game/GameInstructions';
-import ScoreDisplay from './ScoreDisplay';
+import GameResult from './game/GameResult';
 
 // Sample historical images
 const sampleImages = [
@@ -86,14 +86,13 @@ const GameSection = () => {
   
   const handleSubmit = () => {
     if (!selectedLocation) {
-      // Show error
       return;
     }
     
     setShowResults(true);
   };
   
-  const handleReset = () => {
+  const handleNextRound = () => {
     setSelectedLocation(null);
     setSelectedYear(1960);
     setShowResults(false);
@@ -107,66 +106,40 @@ const GameSection = () => {
   const { locationScore, yearScore, distanceKm, yearDifference } = calculateScores();
 
   return (
-    <section id="game" className="py-20 bg-gradient-to-b from-background to-secondary/30">
-      <div className="container px-4 mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4">Play EventGuesser</h2>
-          <p className="max-w-2xl mx-auto text-muted-foreground">
-            View the historical image, then guess when and where it was taken. Your score depends on how accurate your guesses are.
-          </p>
+    <section id="game" className="h-[calc(100vh-4rem)] flex flex-col">
+      <div className="relative flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-hidden">
+          <GamePanel 
+            currentImage={currentImage} 
+            onLocationSelect={handleLocationSelect} 
+          />
         </div>
         
-        <div className="max-w-4xl mx-auto">
-          {/* Game interface */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-            {/* Game panel - takes up 3 columns on desktop */}
-            <GamePanel 
-              currentImage={currentImage} 
-              onLocationSelect={handleLocationSelect} 
-            />
-            
-            {/* Controls section for the game panel */}
-            <div className="md:col-span-3">
-              <GameControls 
-                selectedLocation={selectedLocation}
-                selectedYear={selectedYear}
-                onYearChange={setSelectedYear}
-                onSubmit={handleSubmit}
-              />
-            </div>
-            
-            {/* Results or game info panel - takes up 2 columns on desktop */}
-            <div className="md:col-span-2">
-              {showResults ? (
-                <ScoreDisplay
-                  isVisible={showResults}
-                  locationScore={locationScore}
-                  yearScore={yearScore}
-                  actualLocation={currentImage.location}
-                  guessedLocation={selectedLocation ?? undefined}
-                  actualYear={currentImage.year}
-                  guessedYear={selectedYear}
-                  distanceKm={distanceKm}
-                  yearDifference={yearDifference}
-                />
-              ) : (
-                <GameInstructions />
-              )}
-            </div>
-          </div>
-          
-          {/* Actions for next game */}
-          {showResults && (
-            <div className="flex justify-center mt-8">
-              <button
-                onClick={handleReset}
-                className="px-6 py-3 border border-primary/30 rounded-full text-primary hover:bg-primary/5 transition-colors"
-              >
-                Try Another Image
-              </button>
-            </div>
-          )}
+        <div>
+          <GameControls 
+            selectedLocation={selectedLocation}
+            selectedYear={selectedYear}
+            onYearChange={setSelectedYear}
+            onSubmit={handleSubmit}
+          />
         </div>
+        
+        {showResults && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-4">
+            <GameResult 
+              isVisible={showResults}
+              locationScore={locationScore}
+              yearScore={yearScore}
+              actualLocation={currentImage.location}
+              guessedLocation={selectedLocation ?? undefined}
+              actualYear={currentImage.year}
+              guessedYear={selectedYear}
+              distanceKm={distanceKm}
+              yearDifference={yearDifference}
+              onNextRound={handleNextRound}
+            />
+          </div>
+        )}
       </div>
     </section>
   );

@@ -1,6 +1,5 @@
 
 import { useRef, useEffect, useState } from 'react';
-import 'leaflet/dist/leaflet.css';
 import { useLeafletMap } from '@/hooks/useLeafletMap';
 import MapInstructions from './map/MapInstructions';
 import LoadingIndicator from './map/LoadingIndicator';
@@ -32,7 +31,10 @@ const MapComponent = ({
     markerRef
   } = useLeafletMap({
     onLocationSelect,
-    selectedLocation
+    selectedLocation,
+    initialLocation,
+    actualLocation,
+    showActualLocationMarker
   });
 
   // Derive loading state from mapLoaded

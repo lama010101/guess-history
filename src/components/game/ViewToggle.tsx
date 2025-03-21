@@ -15,18 +15,18 @@ const ViewToggle = ({ activeView, onToggle, imageSrc }: ViewToggleProps) => {
   // Preload the image for the preview
   useEffect(() => {
     if (imageSrc) {
-      const img = new Image();
+      const img = new window.Image();
       img.onload = () => setPreviewImage(imageSrc);
       img.src = imageSrc;
     }
   }, [imageSrc]);
 
   return (
-    <div className="absolute top-2 right-2 z-10">
+    <div className="absolute top-0 right-0 z-10">
       <button 
         onClick={onToggle}
         className="bg-background/80 backdrop-blur-sm shadow-lg border p-1 rounded-md flex items-center justify-center overflow-hidden transition-all hover:opacity-90"
-        style={{ width: '90px', height: '90px' }}
+        style={{ width: '75px', height: '75px' }}
       >
         {activeView === 'image' ? (
           <div className="w-full h-full">
@@ -35,9 +35,6 @@ const ViewToggle = ({ activeView, onToggle, imageSrc }: ViewToggleProps) => {
               selectedLocation={null}
               hideInstructions={true}
             />
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-              <Map className="h-8 w-8 text-white" />
-            </div>
           </div>
         ) : (
           <div className="w-full h-full relative">

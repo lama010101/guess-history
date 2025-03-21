@@ -79,6 +79,18 @@ const ExcelImporter = ({ onImportComplete, isUploading, setIsUploading }: ExcelI
             locationName = locationName ? `${locationName}, ${row.country}` : row.country;
           }
           
+          // Process image URL for Wikimedia Commons and other sources
+          let imageUrl = row.imageUrl || '';
+          
+          // Handle Wikimedia Commons links
+          if (imageUrl && imageUrl.includes('wikimedia.org/wiki/File:')) {
+            const fileNameMatch = imageUrl.match(/File:([^/]+)$/);
+            if (fileNameMatch && fileNameMatch[1]) {
+              const fileName = fileNameMatch[1];
+              imageUrl = `https://commons.wikimedia.org/wiki/Special:FilePath/${fileName}?width=800`;
+            }
+          }
+          
           return {
             id: newId,
             title: row.title || '',
@@ -89,7 +101,7 @@ const ExcelImporter = ({ onImportComplete, isUploading, setIsUploading }: ExcelI
               lng: longitude 
             },
             locationName: locationName,
-            src: row.imageUrl || 'https://via.placeholder.com/500'
+            src: imageUrl || 'https://via.placeholder.com/500'
           };
         });
         

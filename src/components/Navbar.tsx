@@ -40,16 +40,16 @@ const Navbar = ({ roundInfo }: NavbarProps) => {
     <header className="sticky top-0 z-50 w-full backdrop-blur-lg bg-background/80 border-b border-border">
       <div className="container flex h-16 items-center px-4">
         {/* Game info on the left */}
-        <div className="mr-4 flex">
+        <div className="mr-4 flex flex-shrink-0">
           {roundInfo ? (
-            <div className="font-medium">
+            <div className="font-medium whitespace-nowrap">
               <span>Round {roundInfo.currentRound} of {roundInfo.maxRounds}</span>
               <span className="ml-4">Score: {roundInfo.totalScore}</span>
             </div>
           ) : (
-            <Link to="/" className="font-bold text-lg tracking-tight">
+            <span className="font-bold text-lg tracking-tight">
               GUESSEVENTS
-            </Link>
+            </span>
           )}
         </div>
 
@@ -59,14 +59,16 @@ const Navbar = ({ roundInfo }: NavbarProps) => {
         </div>
         
         {/* Share and Profile buttons on the right */}
-        <div className="flex items-center justify-end gap-2">
-          <button 
-            onClick={handleShare}
-            className="p-2 rounded-full hover:bg-muted transition-colors"
-            aria-label="Share"
-          >
-            <Share className="h-5 w-5" />
-          </button>
+        <div className="flex items-center justify-end gap-2 flex-shrink-0">
+          {!location.pathname.includes('admin') && (
+            <button 
+              onClick={handleShare}
+              className="p-2 rounded-full hover:bg-muted transition-colors"
+              aria-label="Share"
+            >
+              <Share className="h-5 w-5" />
+            </button>
+          )}
           <ProfileButton />
         </div>
       </div>

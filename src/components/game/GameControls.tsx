@@ -45,7 +45,7 @@ const GameControls = ({
               No location selected
             </span>
           ) : (
-            <span className="flex items-center text-amber-600">
+            <span className="flex items-center text-amber-600 opacity-0">
               <X className="h-4 w-4 mr-1" />
               No location selected
             </span>

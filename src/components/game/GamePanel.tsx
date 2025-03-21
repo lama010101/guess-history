@@ -102,17 +102,30 @@ const GamePanel = ({
         
         {/* Toggle button for image/map view */}
         <div className="absolute bottom-4 right-4 z-10">
-          <Toggle 
-            pressed={activeView === 'map'} 
-            onPressedChange={(pressed) => setActiveView(pressed ? 'map' : 'image')}
-            className="bg-background/80 backdrop-blur-sm shadow-lg border"
+          <button 
+            onClick={() => setActiveView(activeView === 'image' ? 'map' : 'image')}
+            className="bg-background/80 backdrop-blur-sm shadow-lg border p-1 rounded-md flex items-center justify-center w-20 h-20 overflow-hidden"
           >
             {activeView === 'image' ? (
-              <Map className="h-5 w-5" />
+              <div className="w-full h-full">
+                <MapComponent 
+                  onLocationSelect={() => {}} 
+                  selectedLocation={null}
+                />
+              </div>
             ) : (
-              <Image className="h-5 w-5" />
+              <div className="w-full h-full">
+                <img 
+                  src={currentImage.src} 
+                  alt="Preview" 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = "https://via.placeholder.com/500?text=Image+Preview";
+                  }}
+                />
+              </div>
             )}
-          </Toggle>
+          </button>
         </div>
       </div>
     </div>

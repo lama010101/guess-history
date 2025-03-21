@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { UserCircle, ChevronDown, LogOut } from 'lucide-react';
+import { UserCircle, ChevronDown, LogOut, Share } from 'lucide-react';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -13,10 +13,31 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/services/auth';
 import AuthModal from './AuthModal';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useToast } from '@/hooks/use-toast';
 
 const ProfileButton = () => {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const { toast } = useToast();
+
+  const handleShare = () => {
+    const shareUrl = window.location.href;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: 'GUESSEVENTS',
+        text: 'Test your knowledge of historical events!',
+        url: shareUrl,
+      }).catch((error) => console.log('Error sharing', error));
+    } else {
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        toast({
+          title: "Link copied!",
+          description: "Share this link with your friends to play together.",
+        });
+      });
+    }
+  };
 
   return (
     <>
@@ -42,6 +63,10 @@ const ProfileButton = () => {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleShare}>
+              <Share className="mr-2 h-4 w-4" />
+              <span>Share</span>
+            </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link to="/">Home</Link>
             </DropdownMenuItem>

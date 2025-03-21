@@ -10,6 +10,27 @@ interface HistoricalImageProps {
 const HistoricalImage = ({ src, alt = "Historical image" }: HistoricalImageProps) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [processedSrc, setProcessedSrc] = useState(src);
+
+  useEffect(() => {
+    // Process the source URL to handle Wikimedia Commons links
+    if (src) {
+      let finalSrc = src;
+      
+      // Handle Wikimedia Commons URLs
+      if (src.includes('wikimedia.org/wiki/File:')) {
+        // Extract file name
+        const fileNameMatch = src.match(/File:([^/]+)$/);
+        if (fileNameMatch && fileNameMatch[1]) {
+          const fileName = fileNameMatch[1];
+          // Convert to direct image URL using Wikimedia thumbnail API
+          finalSrc = `https://commons.wikimedia.org/wiki/Special:FilePath/${fileName}?width=800`;
+        }
+      }
+      
+      setProcessedSrc(finalSrc);
+    }
+  }, [src]);
 
   // Simulate a short loading time for demonstration purposes
   useEffect(() => {
@@ -27,6 +48,7 @@ const HistoricalImage = ({ src, alt = "Historical image" }: HistoricalImageProps
   const handleImageError = () => {
     setLoading(false);
     setError(true);
+    console.error("Failed to load image:", processedSrc);
   };
 
   return (
@@ -50,7 +72,7 @@ const HistoricalImage = ({ src, alt = "Historical image" }: HistoricalImageProps
       )}
 
       <img
-        src={src}
+        src={processedSrc}
         alt={alt}
         className={`w-full h-full object-cover transition-opacity duration-300 ${
           loading || error ? 'opacity-0' : 'opacity-100'

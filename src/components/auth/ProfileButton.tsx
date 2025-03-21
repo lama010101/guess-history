@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
-import { UserCircle, ChevronDown, LogOut, Share } from 'lucide-react';
+import { useAuth } from '@/services/auth';
+import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -9,16 +10,19 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
+import { User, Settings, LogOut, Share } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '@/services/auth';
-import AuthModal from './AuthModal';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 
 const ProfileButton = () => {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { toast } = useToast();
+  const [openDropdown, setOpenDropdown] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    setOpenDropdown(false);
+  };
 
   const handleShare = () => {
     const shareUrl = window.location.href;
@@ -37,72 +41,72 @@ const ProfileButton = () => {
         });
       });
     }
+    
+    setOpenDropdown(false);
   };
-
+  
   return (
-    <>
-      {isAuthenticated ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center space-x-2 focus:outline-none">
-            <Avatar className="h-8 w-8">
-              {user?.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.username} />}
-              <AvatarFallback className="bg-primary/10">
-                {user?.username ? user.username.charAt(0).toUpperCase() : "U"}
-              </AvatarFallback>
-            </Avatar>
-            <span className="hidden md:inline-block text-sm font-medium">
-              {user?.username || "User"}
-            </span>
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{user?.username || "User"}</p>
-                <p className="text-xs text-muted-foreground">{user?.email || "Guest"}</p>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleShare}>
-              <Share className="mr-2 h-4 w-4" />
-              <span>Share</span>
-            </DropdownMenuItem>
+    <DropdownMenu open={openDropdown} onOpenChange={setOpenDropdown}>
+      <DropdownMenuTrigger asChild>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="rounded-full border border-border"
+          aria-label="User menu"
+        >
+          <User className="h-5 w-5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel>
+          {isAuthenticated ? (
+            <div className="flex flex-col space-y-1">
+              <p className="text-sm font-medium leading-none">{user?.username || 'User'}</p>
+              <p className="text-xs text-muted-foreground">{user?.email || ''}</p>
+            </div>
+          ) : (
+            'Account'
+          )}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        
+        <DropdownMenuItem onClick={handleShare}>
+          <Share className="mr-2 h-4 w-4" />
+          <span>Share</span>
+        </DropdownMenuItem>
+        
+        {isAuthenticated ? (
+          <>
             <DropdownMenuItem asChild>
-              <Link to="/">Home</Link>
+              <Link to="/settings">
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Settings</span>
+              </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/leaderboard">Leaderboard</Link>
-            </DropdownMenuItem>
+            
             {isAdmin && (
               <DropdownMenuItem asChild>
-                <Link to="/admin">Admin Panel</Link>
+                <Link to="/admin">
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Admin Panel</span>
+                </Link>
               </DropdownMenuItem>
             )}
+            
             <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              className="text-red-500 focus:text-red-500" 
-              onClick={logout}
-            >
+            <DropdownMenuItem onSelect={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
-              <span>Log out</span>
+              <span>Sign Out</span>
             </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : (
-        <>
-          <button
-            onClick={() => setIsAuthModalOpen(true)}
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
-          >
-            Sign In
-          </button>
-          <AuthModal
-            isOpen={isAuthModalOpen}
-            onClose={() => setIsAuthModalOpen(false)}
-          />
-        </>
-      )}
-    </>
+          </>
+        ) : (
+          <DropdownMenuItem onSelect={() => setOpenDropdown(false)}>
+            <User className="mr-2 h-4 w-4" />
+            <span>Sign In</span>
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 

@@ -89,7 +89,26 @@ const AdminEventsManager = () => {
     });
   };
 
+  const processImageUrl = (url: string): string => {
+    // Process Wikimedia Commons URLs
+    if (url.includes('wikimedia.org/wiki/File:')) {
+      // Extract file name
+      const fileNameMatch = url.match(/File:([^/]+)$/);
+      if (fileNameMatch && fileNameMatch[1]) {
+        const fileName = fileNameMatch[1];
+        // Convert to direct image URL using Wikimedia thumbnail API
+        return `https://commons.wikimedia.org/wiki/Special:FilePath/${fileName}?width=800`;
+      }
+    }
+    return url;
+  };
+
   const handleSaveEvent = (eventData: Partial<HistoricalImage>) => {
+    // Process image URL if it's from Wikimedia Commons
+    if (eventData.src) {
+      eventData.src = processImageUrl(eventData.src);
+    }
+    
     if (selectedEvent) {
       setEvents(events.map(event => 
         event.id === selectedEvent.id 
@@ -164,9 +183,15 @@ const AdminEventsManager = () => {
     
     const eventsToSave = events.filter(event => selectedEvents.has(event.id));
     
+    // Process any Wikimedia URLs
+    const processedEvents = eventsToSave.map(event => ({
+      ...event,
+      src: event.src ? processImageUrl(event.src) : event.src
+    }));
+    
     setTimeout(() => {
-      localStorage.setItem('savedEvents', JSON.stringify(eventsToSave));
-      setSavedEvents(eventsToSave);
+      localStorage.setItem('savedEvents', JSON.stringify(processedEvents));
+      setSavedEvents(processedEvents);
       
       setIsSaving(false);
       toast({
@@ -176,12 +201,19 @@ const AdminEventsManager = () => {
     }, 1000);
   };
 
-  const handleImportExcelData = (newEvents: HistoricalImage[]) => {
-    console.log("Importing new events from Excel:", newEvents);
+  const handleImportExcelData = (newEventsData: HistoricalImage[]) => {
+    console.log("Importing new events from Excel:", newEventsData);
     
-    setEvents(prev => [...prev, ...newEvents]);
+    // Process any Wikimedia URLs in imported events
+    const processedNewEvents = newEventsData.map(event => ({
+      ...event,
+      id: events.length > 0 ? Math.max(...events.map(e => e.id)) + 1 + newEventsData.indexOf(event) : 1 + newEventsData.indexOf(event),
+      src: event.src ? processImageUrl(event.src) : event.src
+    }));
     
-    const newIds = newEvents.map(event => event.id);
+    setEvents(prev => [...prev, ...processedNewEvents]);
+    
+    const newIds = processedNewEvents.map(event => event.id);
     setSelectedEvents(prev => {
       const newSet = new Set(prev);
       newIds.forEach(id => newSet.add(id));
@@ -190,7 +222,7 @@ const AdminEventsManager = () => {
     
     toast({
       title: "Upload Successful",
-      description: `${newEvents.length} events have been added from the Excel file.`,
+      description: `${processedNewEvents.length} events have been added from the Excel file.`,
     });
     
     setIsUploading(false);

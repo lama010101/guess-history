@@ -1,10 +1,10 @@
 
 import { useState } from 'react';
-import { Image, Map } from 'lucide-react';
+import { Map, MapPin } from 'lucide-react';
 import MapComponent from '../MapComponent';
 import HistoricalImage from '../HistoricalImage';
 import { Button } from '@/components/ui/button';
-import { Toggle } from '@/components/ui/toggle';
+import ViewToggle from './ViewToggle';
 
 interface GamePanelProps {
   currentImage: {
@@ -101,32 +101,11 @@ const GamePanel = ({
         )}
         
         {/* Toggle button for image/map view */}
-        <div className="absolute bottom-4 right-4 z-10">
-          <button 
-            onClick={() => setActiveView(activeView === 'image' ? 'map' : 'image')}
-            className="bg-background/80 backdrop-blur-sm shadow-lg border p-1 rounded-md flex items-center justify-center w-20 h-20 overflow-hidden"
-          >
-            {activeView === 'image' ? (
-              <div className="w-full h-full">
-                <MapComponent 
-                  onLocationSelect={() => {}} 
-                  selectedLocation={null}
-                />
-              </div>
-            ) : (
-              <div className="w-full h-full">
-                <img 
-                  src={currentImage.src} 
-                  alt="Preview" 
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.src = "https://via.placeholder.com/500?text=Image+Preview";
-                  }}
-                />
-              </div>
-            )}
-          </button>
-        </div>
+        <ViewToggle 
+          activeView={activeView} 
+          onToggle={() => setActiveView(activeView === 'image' ? 'map' : 'image')}
+          imageSrc={currentImage.src}
+        />
       </div>
     </div>
   );

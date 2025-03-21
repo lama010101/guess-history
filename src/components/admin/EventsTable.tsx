@@ -7,7 +7,7 @@ import {
   Table, TableHeader, TableRow, TableHead, 
   TableBody, TableCell 
 } from "@/components/ui/table";
-import { Search, Edit, X } from "lucide-react";
+import { Search, Edit, X, Image } from "lucide-react";
 import { HistoricalImage } from "@/types/game";
 
 interface EventsTableProps {
@@ -62,6 +62,7 @@ const EventsTable = ({
                   />
                 </TableHead>
                 <TableHead className="w-12">#</TableHead>
+                <TableHead className="w-16">Image</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead className="w-24">Location</TableHead>
                 <TableHead className="w-20 text-center">Year</TableHead>
@@ -79,6 +80,24 @@ const EventsTable = ({
                     />
                   </TableCell>
                   <TableCell>{event.id}</TableCell>
+                  <TableCell>
+                    {event.src ? (
+                      <div className="w-12 h-12 rounded overflow-hidden">
+                        <img 
+                          src={event.src} 
+                          alt={event.description || 'Event image'} 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = "https://via.placeholder.com/60?text=No+Image";
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-12 h-12 rounded bg-muted flex items-center justify-center">
+                        <Image className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell className="max-w-[300px] truncate">{event.description}</TableCell>
                   <TableCell className="max-w-[120px] truncate">{event.location ? `${event.location.lat.toFixed(2)}, ${event.location.lng.toFixed(2)}` : '-'}</TableCell>
                   <TableCell className="text-center">{event.year}</TableCell>

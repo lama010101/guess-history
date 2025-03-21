@@ -29,17 +29,10 @@ const HistoricalImage = ({ src, alt = "Historical image" }: HistoricalImageProps
       }
       
       setProcessedSrc(finalSrc);
+      setLoading(true);
+      setError(false);
     }
   }, [src]);
-
-  // Simulate a short loading time for demonstration purposes
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 800);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   const handleImageLoad = () => {
     setLoading(false);

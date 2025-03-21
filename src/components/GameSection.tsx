@@ -43,7 +43,6 @@ const GameSection = () => {
   if (gameComplete) {
     return (
       <section id="game" className="h-full flex flex-col">
-        <Navbar />
         <GameComplete 
           totalScore={totalScore}
           maxRounds={MAX_ROUNDS}
@@ -63,7 +62,6 @@ const GameSection = () => {
 
   return (
     <section id="game" className="h-full flex flex-col">
-      <Navbar roundInfo={roundInfo} />
       <div className="relative flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-hidden">
           <GamePanel 

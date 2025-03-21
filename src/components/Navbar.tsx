@@ -2,8 +2,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import ProfileButton from './auth/ProfileButton';
 import HintDisplay from './HintDisplay';
-import { Share } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 
 interface NavbarProps {
   roundInfo?: {
@@ -14,28 +12,8 @@ interface NavbarProps {
 }
 
 const Navbar = ({ roundInfo }: NavbarProps) => {
-  const { toast } = useToast();
   const location = useLocation();
   
-  const handleShare = () => {
-    const shareUrl = window.location.href;
-    
-    if (navigator.share) {
-      navigator.share({
-        title: 'GUESSEVENTS',
-        text: 'Test your knowledge of historical events!',
-        url: shareUrl,
-      }).catch((error) => console.log('Error sharing', error));
-    } else {
-      navigator.clipboard.writeText(shareUrl).then(() => {
-        toast({
-          title: "Link copied!",
-          description: "Share this link with your friends to play together.",
-        });
-      });
-    }
-  };
-
   return (
     <header className="sticky top-0 z-50 w-full backdrop-blur-lg bg-background/80 border-b border-border">
       <div className="container flex h-16 items-center px-4">
@@ -58,17 +36,8 @@ const Navbar = ({ roundInfo }: NavbarProps) => {
           <HintDisplay availableHints={10} />
         </div>
         
-        {/* Share and Profile buttons on the right */}
+        {/* Profile button on the right */}
         <div className="flex items-center justify-end gap-2 flex-shrink-0">
-          {!location.pathname.includes('admin') && (
-            <button 
-              onClick={handleShare}
-              className="p-2 rounded-full hover:bg-muted transition-colors"
-              aria-label="Share"
-            >
-              <Share className="h-5 w-5" />
-            </button>
-          )}
           <ProfileButton />
         </div>
       </div>

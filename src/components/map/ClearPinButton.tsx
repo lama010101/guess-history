@@ -1,18 +1,18 @@
 
-interface ClearPinButtonProps {
-  isVisible: boolean;
+import { X } from 'lucide-react';
+
+export interface ClearPinButtonProps {
   onClear: () => void;
 }
 
-const ClearPinButton = ({ isVisible, onClear }: ClearPinButtonProps) => {
-  if (!isVisible) return null;
-  
+const ClearPinButton = ({ onClear }: ClearPinButtonProps) => {
   return (
-    <button 
+    <button
       onClick={onClear}
-      className="absolute bottom-4 right-4 z-10 bg-white/80 backdrop-blur-sm py-1 px-2 rounded text-xs text-red-500 hover:bg-white/90 transition-colors"
+      className="absolute top-4 right-4 bg-background/80 backdrop-blur-sm rounded-full p-2 shadow-lg z-20 hover:bg-background transition-colors"
+      aria-label="Clear pin"
     >
-      Clear pin
+      <X className="h-5 w-5 text-muted-foreground" />
     </button>
   );
 };

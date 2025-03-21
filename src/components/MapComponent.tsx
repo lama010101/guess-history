@@ -1,6 +1,5 @@
 
 import { useRef, useEffect, useState } from 'react';
-import { Map as LeafletMap, LatLng, Marker, TileLayer } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useLeafletMap } from '@/hooks/useLeafletMap';
 import MapInstructions from './map/MapInstructions';
@@ -26,36 +25,40 @@ const MapComponent = ({
 }: MapComponentProps) => {
   // Use the custom hook for map functionality
   const {
-    mapContainer,
-    map,
-    marker,
-    isLoading,
-    handleMapClick,
-    handleClearMarker
+    mapContainerRef,
+    mapLoaded,
+    showInstructions: showMapInstructions,
+    clearMarker,
+    markerRef
   } = useLeafletMap({
     onLocationSelect,
-    selectedLocation,
-    initialLocation,
-    actualLocation,
-    showActualLocationMarker
+    selectedLocation
   });
+
+  // Derive loading state from mapLoaded
+  const isLoading = !mapLoaded;
+
+  // Handler for clearing the marker
+  const handleClearMarker = () => {
+    clearMarker();
+  };
 
   return (
     <div className="h-full w-full relative">
       {/* Map Container */}
-      <div ref={mapContainer} className="h-full w-full z-10" />
+      <div ref={mapContainerRef} className="h-full w-full z-10" />
       
       {/* Loading Indicator */}
-      {isLoading && <LoadingIndicator />}
+      {isLoading && <LoadingIndicator isLoading={isLoading} />}
       
       {/* Only show instructions if not hidden and no marker */}
       {!hideInstructions && !selectedLocation && !isLoading && (
-        <MapInstructions />
+        <MapInstructions showInstructions={!hideInstructions} />
       )}
       
       {/* Clear Pin Button */}
       {selectedLocation && !isLoading && (
-        <ClearPinButton onClick={handleClearMarker} />
+        <ClearPinButton onClear={handleClearMarker} />
       )}
     </div>
   );

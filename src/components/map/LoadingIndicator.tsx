@@ -1,5 +1,7 @@
 
-interface LoadingIndicatorProps {
+import { Loader2 } from 'lucide-react';
+
+export interface LoadingIndicatorProps {
   isLoading: boolean;
 }
 
@@ -7,10 +9,10 @@ const LoadingIndicator = ({ isLoading }: LoadingIndicatorProps) => {
   if (!isLoading) return null;
   
   return (
-    <div className="w-full h-full min-h-[300px] bg-gray-100 rounded-xl flex items-center justify-center">
-      <div className="flex flex-col items-center">
-        <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mb-3"></div>
-        <p className="text-sm text-muted-foreground">Loading map...</p>
+    <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm z-20">
+      <div className="bg-background rounded-lg p-4 shadow-lg flex items-center gap-2">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <span className="font-medium">Loading map...</span>
       </div>
     </div>
   );

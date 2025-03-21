@@ -4,15 +4,25 @@ import { useEffect, useRef, useState } from 'react';
 interface UseLeafletMapProps {
   onLocationSelect?: (lat: number, lng: number) => void;
   selectedLocation?: { lat: number; lng: number } | null;
+  initialLocation?: { lat: number; lng: number };
+  actualLocation?: { lat: number; lng: number };
+  showActualLocationMarker?: boolean;
 }
 
-export const useLeafletMap = ({ onLocationSelect, selectedLocation }: UseLeafletMapProps) => {
+export const useLeafletMap = ({ 
+  onLocationSelect, 
+  selectedLocation,
+  initialLocation = { lat: 48.8566, lng: 2.3522 }, // Default to Paris
+  actualLocation,
+  showActualLocationMarker = false
+}: UseLeafletMapProps) => {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [showInstructions, setShowInstructions] = useState(true);
   const mapRef = useRef<any>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const leafletLoadedRef = useRef(false);
   const markerRef = useRef<any>(null);
+  const actualMarkerRef = useRef<any>(null);
 
   // Initialize Leaflet map
   const initializeMap = () => {
@@ -26,8 +36,11 @@ export const useLeafletMap = ({ onLocationSelect, selectedLocation }: UseLeaflet
         mapRef.current = null;
       }
       
-      // Create map centered on Europe
-      const mapInstance = L.map(mapContainerRef.current).setView([48.8566, 2.3522], 4);
+      // Create map centered on initialLocation or default to Europe
+      const mapInstance = L.map(mapContainerRef.current).setView(
+        [initialLocation.lat, initialLocation.lng], 
+        4
+      );
       
       // Add tile layer (OpenStreetMap)
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -74,6 +87,29 @@ export const useLeafletMap = ({ onLocationSelect, selectedLocation }: UseLeaflet
           onLocationSelect(lat, lng);
         }
       });
+
+      // Add actual location marker if provided and enabled
+      if (actualLocation && showActualLocationMarker) {
+        // Use a different colored marker for actual location
+        const actualMarker = L.marker([actualLocation.lat, actualLocation.lng], {
+          icon: L.divIcon({
+            className: 'actual-location-marker',
+            html: `<div style="
+              background-color: #ff4444;
+              width: 20px;
+              height: 20px;
+              border-radius: 50%;
+              border: 3px solid white;
+              box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+              transform: translate(-50%, -50%);
+            "></div>`,
+            iconSize: [20, 20],
+            iconAnchor: [0, 0],
+          })
+        }).addTo(mapInstance);
+        
+        actualMarkerRef.current = actualMarker;
+      }
       
       mapRef.current = mapInstance;
       setMapLoaded(true);
@@ -110,8 +146,7 @@ export const useLeafletMap = ({ onLocationSelect, selectedLocation }: UseLeaflet
     const loadLeaflet = async () => {
       try {
         // This will check if Leaflet is already loaded
-        const L = window.L;
-        if (!L) {
+        if (!(window as any).L) {
           // If Leaflet isn't loaded yet, add it to the document
           const cssLink = document.createElement('link');
           cssLink.rel = 'stylesheet';
@@ -149,7 +184,7 @@ export const useLeafletMap = ({ onLocationSelect, selectedLocation }: UseLeaflet
   useEffect(() => {
     if (!mapRef.current || !leafletLoadedRef.current) return;
     
-    const L = window.L;
+    const L = (window as any).L;
     if (!L) return;
     
     // Clear existing marker
@@ -178,8 +213,14 @@ export const useLeafletMap = ({ onLocationSelect, selectedLocation }: UseLeaflet
       }).addTo(mapRef.current);
       
       markerRef.current = marker;
+      
+      // Hide instructions when marker is present
+      setShowInstructions(false);
+    } else {
+      // Show instructions when no marker is present
+      setShowInstructions(true);
     }
-  }, [selectedLocation, mapRef.current]);
+  }, [selectedLocation]);
 
   return {
     mapContainerRef,

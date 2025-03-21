@@ -1,7 +1,7 @@
 
-import { MapPin } from 'lucide-react';
+import { MousePointer } from 'lucide-react';
 
-interface MapInstructionsProps {
+export interface MapInstructionsProps {
   showInstructions: boolean;
 }
 
@@ -9,12 +9,11 @@ const MapInstructions = ({ showInstructions }: MapInstructionsProps) => {
   if (!showInstructions) return null;
   
   return (
-    <div className="absolute bottom-4 left-4 right-4 z-10 bg-white/80 backdrop-blur-sm p-3 rounded-lg shadow text-xs text-center flex flex-col gap-2">
-      <div className="flex items-center justify-center mb-1">
-        <MapPin className="h-4 w-4 mr-1 text-primary" />
-        <span className="font-medium">Click on the map to place your guess</span>
+    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-background/80 backdrop-blur-sm rounded-lg p-3 shadow-lg z-20 pointer-events-none animate-fade-in">
+      <div className="flex items-center gap-2 text-sm">
+        <MousePointer className="h-4 w-4 text-primary" />
+        <span>Click anywhere on the map to place a pin</span>
       </div>
-      <p className="text-muted-foreground">Drag to move around and zoom in/out with the controls</p>
     </div>
   );
 };

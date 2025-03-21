@@ -56,11 +56,11 @@ const ResultVisualization = ({ actualLocation, guessedLocation, isVisible }: Res
           })
         }).addTo(leafletMapRef.current);
 
-        // Draw a line between the two points
+        // Draw a line between the two points - FIX: Convert to proper LatLngExpression type
         const latlngs = [
           [actualLocation.lat, actualLocation.lng],
           [guessedLocation.lat, guessedLocation.lng]
-        ];
+        ] as L.LatLngExpression[];
         
         const polyline = L.polyline(latlngs, {
           color: 'red',
@@ -70,10 +70,10 @@ const ResultVisualization = ({ actualLocation, guessedLocation, isVisible }: Res
         }).addTo(leafletMapRef.current);
 
         // Fit map to show both markers
-        const bounds = L.latLngBounds([
-          [actualLocation.lat, actualLocation.lng],
-          [guessedLocation.lat, guessedLocation.lng]
-        ]);
+        const bounds = L.latLngBounds(
+          L.latLng(actualLocation.lat, actualLocation.lng),
+          L.latLng(guessedLocation.lat, guessedLocation.lng)
+        );
         leafletMapRef.current.fitBounds(bounds, { padding: [50, 50] });
 
         // Add tooltips

@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Map, Image } from 'lucide-react';
+import { Map, Image as ImageIcon } from 'lucide-react';
 import MapComponent from '../MapComponent';
 
 interface ViewToggleProps {
@@ -15,7 +15,7 @@ const ViewToggle = ({ activeView, onToggle, imageSrc }: ViewToggleProps) => {
   // Preload the image for the preview
   useEffect(() => {
     if (imageSrc) {
-      const img = new Image();
+      const img = new window.Image();
       img.onload = () => setPreviewImage(imageSrc);
       img.src = imageSrc;
     }
@@ -48,11 +48,11 @@ const ViewToggle = ({ activeView, onToggle, imageSrc }: ViewToggleProps) => {
               />
             ) : (
               <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                <Image className="h-8 w-8 text-gray-400" />
+                <ImageIcon className="h-8 w-8 text-gray-400" />
               </div>
             )}
             <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-              <Image className="h-8 w-8 text-white" />
+              <ImageIcon className="h-8 w-8 text-white" />
             </div>
           </div>
         )}

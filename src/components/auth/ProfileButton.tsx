@@ -1,104 +1,81 @@
 
 import { useState } from 'react';
+import { UserCircle, ChevronDown, LogOut } from 'lucide-react';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
 import { Link } from 'react-router-dom';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from '@/services/auth';
-import { Home, LogOut, Settings, User } from 'lucide-react';
+import AuthModal from './AuthModal';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const ProfileButton = () => {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
-  const [showAuthModal, setShowAuthModal] = useState(false);
-
-  const handleLogout = () => {
-    logout();
-  };
-
-  // Get user initials from username instead of name
-  const userInitials = user?.username 
-    ? `${user.username.charAt(0)}${user.username.split(' ')[1]?.charAt(0) || ''}` 
-    : 'GU';
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   return (
     <>
       {isAuthenticated ? (
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={user?.avatarUrl} alt={user?.username || "User"} />
-                <AvatarFallback>{userInitials}</AvatarFallback>
-              </Avatar>
-            </Button>
+          <DropdownMenuTrigger className="flex items-center space-x-2 focus:outline-none">
+            <Avatar className="h-8 w-8">
+              {user?.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.username} />}
+              <AvatarFallback className="bg-primary/10">
+                {user?.username ? user.username.charAt(0).toUpperCase() : "U"}
+              </AvatarFallback>
+            </Avatar>
+            <span className="hidden md:inline-block text-sm font-medium">
+              {user?.username || "User"}
+            </span>
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="end" forceMount>
-            <DropdownMenuLabel className="font-normal">
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{user?.username || "Guest User"}</p>
-                <p className="text-xs leading-none text-muted-foreground">
-                  {user?.email || "guest@example.com"}
-                </p>
+                <p className="text-sm font-medium leading-none">{user?.username || "User"}</p>
+                <p className="text-xs text-muted-foreground">{user?.email || "Guest"}</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link to="/" className="cursor-pointer flex w-full items-center">
-                <Home className="mr-2 h-4 w-4" />
-                <span>Home</span>
-              </Link>
+              <Link to="/">Home</Link>
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              <span>Profile</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
+            <DropdownMenuItem asChild>
+              <Link to="/leaderboard">Leaderboard</Link>
             </DropdownMenuItem>
             {isAdmin && (
               <DropdownMenuItem asChild>
-                <Link to="/admin" className="cursor-pointer flex w-full items-center">
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Admin Panel</span>
-                </Link>
+                <Link to="/admin">Admin Panel</Link>
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout}>
+            <DropdownMenuItem 
+              className="text-red-500 focus:text-red-500" 
+              onClick={logout}
+            >
               <LogOut className="mr-2 h-4 w-4" />
               <span>Log out</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ) : (
-        <Button onClick={() => setShowAuthModal(true)} variant="default" size="sm">
-          Sign In
-        </Button>
-      )}
-
-      {/* This import would be done at the component level in a real app */}
-      {showAuthModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={() => setShowAuthModal(false)}
-        >
-          <div
-            className="bg-background rounded-lg p-6 w-full max-w-md"
-            onClick={(e) => e.stopPropagation()}
+        <>
+          <button
+            onClick={() => setIsAuthModalOpen(true)}
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
           >
-            <h2 className="text-xl font-bold mb-4">Sign In</h2>
-            <p className="mb-4">Authentication modal would go here.</p>
-            <Button onClick={() => setShowAuthModal(false)}>Close</Button>
-          </div>
-        </div>
+            Sign In
+          </button>
+          <AuthModal
+            isOpen={isAuthModalOpen}
+            onClose={() => setIsAuthModalOpen(false)}
+          />
+        </>
       )}
     </>
   );

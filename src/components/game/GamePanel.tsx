@@ -1,10 +1,10 @@
 
 import { useState } from 'react';
-import { Map, Clock } from 'lucide-react';
+import { Image, Map } from 'lucide-react';
 import MapComponent from '../MapComponent';
 import HistoricalImage from '../HistoricalImage';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import HintDisplay from '../HintDisplay';
+import { Button } from '@/components/ui/button';
+import { Toggle } from '@/components/ui/toggle';
 
 interface GamePanelProps {
   currentImage: {
@@ -41,6 +41,8 @@ const GamePanel = ({
   locationHintUsed,
   yearHintUsed
 }: GamePanelProps) => {
+  const [activeView, setActiveView] = useState<'image' | 'map'>('image');
+  
   // For location hint, we'll show the country name or location name if available
   const getLocationHint = () => {
     if (currentImage.locationName) {
@@ -65,79 +67,52 @@ const GamePanel = ({
   };
 
   return (
-    <div className="glass-card rounded-2xl overflow-hidden h-full">
+    <div className="glass-card rounded-2xl overflow-hidden h-full relative">
       <div className="h-[500px] relative">
-        {/* Game score and round info in the top bar */}
-        <div className="absolute top-0 left-0 right-0 z-20 bg-black/40 backdrop-blur-sm py-2 px-4 flex justify-between items-center">
-          <div className="text-white text-sm font-medium">
-            Round {gameRound} of {maxRounds}
+        {/* Image view */}
+        {activeView === 'image' && (
+          <div className="absolute inset-0">
+            <HistoricalImage src={currentImage.src} alt={currentImage.description} />
           </div>
-          <div className="text-white text-sm font-medium">
-            Score: {totalScore}
+        )}
+        
+        {/* Map view */}
+        {activeView === 'map' && (
+          <div className="absolute inset-0">
+            <MapComponent 
+              onLocationSelect={onLocationSelect} 
+              selectedLocation={selectedLocation}
+            />
           </div>
-        </div>
-
-        <Tabs defaultValue="image" className="w-full h-full">
-          {/* Tab buttons */}
-          <div className="absolute top-16 left-0 right-0 z-10 flex justify-center">
-            <TabsList className="bg-black/30 backdrop-blur-md rounded-full">
-              <TabsTrigger value="image" className="rounded-full data-[state=active]:bg-white data-[state=active]:text-black text-white/90">
-                <span className="flex items-center">
-                  <Clock className="h-4 w-4 mr-1.5" />
-                  Image
-                </span>
-              </TabsTrigger>
-              
-              <TabsTrigger value="map" className="rounded-full data-[state=active]:bg-white data-[state=active]:text-black text-white/90">
-                <span className="flex items-center">
-                  <Map className="h-4 w-4 mr-1.5" />
-                  Map
-                </span>
-              </TabsTrigger>
-            </TabsList>
-          </div>
-          
-          {/* Image view */}
-          <TabsContent value="image" className="m-0 h-full">
-            <div className="absolute inset-0">
-              <HistoricalImage src={currentImage.src} alt={currentImage.description} />
-            </div>
-          </TabsContent>
-          
-          {/* Map view */}
-          <TabsContent value="map" className="m-0 h-full">
-            <div className="absolute inset-0">
-              <MapComponent 
-                onLocationSelect={onLocationSelect} 
-                selectedLocation={selectedLocation}
-              />
-            </div>
-          </TabsContent>
-        </Tabs>
+        )}
         
         {/* Display location hint if used */}
         {locationHintUsed && (
-          <div className="absolute top-20 right-4 z-10 bg-background/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
+          <div className="absolute top-4 right-4 z-10 bg-background/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
             <span className="font-medium">Location:</span> {getLocationHint()}
           </div>
         )}
         
         {/* Display year hint if used */}
         {yearHintUsed && (
-          <div className="absolute top-32 right-4 z-10 bg-background/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
+          <div className="absolute top-16 right-4 z-10 bg-background/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
             <span className="font-medium">Year:</span> {getYearHint()}
           </div>
         )}
         
-        {/* Hints controls */}
-        <div className="absolute right-4 top-20 z-10">
-          <HintDisplay 
-            availableHints={hintCoins} 
-            onUseLocationHint={onUseLocationHint}
-            onUseYearHint={onUseYearHint}
-            locationHintUsed={locationHintUsed}
-            yearHintUsed={yearHintUsed}
-          />
+        {/* Toggle button for image/map view */}
+        <div className="absolute bottom-4 right-4 z-10">
+          <Toggle 
+            pressed={activeView === 'map'} 
+            onPressedChange={(pressed) => setActiveView(pressed ? 'map' : 'image')}
+            className="bg-background/80 backdrop-blur-sm shadow-lg border"
+          >
+            {activeView === 'image' ? (
+              <Map className="h-5 w-5" />
+            ) : (
+              <Image className="h-5 w-5" />
+            )}
+          </Toggle>
         </div>
       </div>
     </div>

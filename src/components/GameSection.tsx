@@ -5,6 +5,7 @@ import GameControls from './game/GameControls';
 import GameResultsModal from './game/GameResultsModal';
 import GameComplete from './game/GameComplete';
 import { useGameState } from '@/hooks/useGameState';
+import Navbar from './Navbar';
 
 const MAX_ROUNDS = 5; // Default to 5 rounds for a game
 
@@ -42,6 +43,7 @@ const GameSection = () => {
   if (gameComplete) {
     return (
       <section id="game" className="h-full flex flex-col">
+        <Navbar />
         <GameComplete 
           totalScore={totalScore}
           maxRounds={MAX_ROUNDS}
@@ -53,8 +55,15 @@ const GameSection = () => {
     );
   }
 
+  const roundInfo = {
+    currentRound,
+    maxRounds: MAX_ROUNDS,
+    totalScore
+  };
+
   return (
     <section id="game" className="h-full flex flex-col">
+      <Navbar roundInfo={roundInfo} />
       <div className="relative flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-hidden">
           <GamePanel 

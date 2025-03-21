@@ -56,7 +56,7 @@ const EventsTable = ({
               <TableRow className="bg-muted">
                 <TableHead className="w-12 text-center">
                   <Checkbox 
-                    checked={isAllSelected} 
+                    checked={isAllSelected && events.length > 0} 
                     onCheckedChange={onToggleSelectAll}
                     aria-label="Select all events"
                   />
@@ -77,6 +77,7 @@ const EventsTable = ({
                       checked={selectedEvents.has(event.id)}
                       onCheckedChange={() => onToggleSelectEvent(event.id)}
                       aria-label={`Select event ${event.id}`}
+                      id={`select-event-${event.id}`} // Add unique ID to fix selection issue
                     />
                   </TableCell>
                   <TableCell>{event.id}</TableCell>
@@ -98,8 +99,14 @@ const EventsTable = ({
                       </div>
                     )}
                   </TableCell>
-                  <TableCell className="max-w-[300px] truncate">{event.description}</TableCell>
-                  <TableCell className="max-w-[120px] truncate">{event.location ? `${event.location.lat.toFixed(2)}, ${event.location.lng.toFixed(2)}` : '-'}</TableCell>
+                  <TableCell className="max-w-[300px] truncate">
+                    {event.title ? <strong>{event.title}</strong> : null}
+                    {event.title && event.description ? <br /> : null}
+                    {event.description}
+                  </TableCell>
+                  <TableCell className="max-w-[120px] truncate">
+                    {event.locationName || (event.location ? `${event.location.lat.toFixed(2)}, ${event.location.lng.toFixed(2)}` : '-')}
+                  </TableCell>
                   <TableCell className="text-center">{event.year}</TableCell>
                   <TableCell>
                     <div className="flex justify-center gap-2">

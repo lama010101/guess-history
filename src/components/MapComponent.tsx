@@ -1,41 +1,64 @@
 
+import { useRef, useEffect, useState } from 'react';
+import { Map as LeafletMap, LatLng, Marker, TileLayer } from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { useLeafletMap } from '@/hooks/useLeafletMap';
-import LoadingIndicator from './map/LoadingIndicator';
 import MapInstructions from './map/MapInstructions';
+import LoadingIndicator from './map/LoadingIndicator';
 import ClearPinButton from './map/ClearPinButton';
 
 interface MapComponentProps {
-  onLocationSelect?: (lat: number, lng: number) => void;
-  selectedLocation?: { lat: number; lng: number } | null;
+  onLocationSelect: (lat: number, lng: number) => void;
+  selectedLocation: { lat: number; lng: number } | null;
+  initialLocation?: { lat: number; lng: number };
+  actualLocation?: { lat: number; lng: number };
+  showActualLocationMarker?: boolean;
+  hideInstructions?: boolean;
 }
 
-const MapComponent = ({ onLocationSelect, selectedLocation }: MapComponentProps) => {
+const MapComponent = ({
+  onLocationSelect,
+  selectedLocation,
+  initialLocation = { lat: 0, lng: 0 },
+  actualLocation,
+  showActualLocationMarker = false,
+  hideInstructions = false
+}: MapComponentProps) => {
+  // Use the custom hook for map functionality
   const {
-    mapContainerRef,
-    mapLoaded,
-    showInstructions,
-    clearMarker,
-    markerRef
-  } = useLeafletMap({ onLocationSelect, selectedLocation });
+    mapContainer,
+    map,
+    marker,
+    isLoading,
+    handleMapClick,
+    handleClearMarker
+  } = useLeafletMap({
+    onLocationSelect,
+    selectedLocation,
+    initialLocation,
+    actualLocation,
+    showActualLocationMarker
+  });
 
   return (
-    <div className="w-full h-full min-h-[300px] rounded-xl overflow-hidden shadow-lg">
-      <LoadingIndicator isLoading={!mapLoaded} />
-      <div ref={mapContainerRef} className="w-full h-full min-h-[300px]"></div>
-      <MapInstructions showInstructions={showInstructions} />
-      <ClearPinButton 
-        isVisible={!!markerRef.current} 
-        onClear={clearMarker} 
-      />
+    <div className="h-full w-full relative">
+      {/* Map Container */}
+      <div ref={mapContainer} className="h-full w-full z-10" />
+      
+      {/* Loading Indicator */}
+      {isLoading && <LoadingIndicator />}
+      
+      {/* Only show instructions if not hidden and no marker */}
+      {!hideInstructions && !selectedLocation && !isLoading && (
+        <MapInstructions />
+      )}
+      
+      {/* Clear Pin Button */}
+      {selectedLocation && !isLoading && (
+        <ClearPinButton onClick={handleClearMarker} />
+      )}
     </div>
   );
 };
-
-// Add type definition for window to include Leaflet
-declare global {
-  interface Window {
-    L: any;
-  }
-}
 
 export default MapComponent;

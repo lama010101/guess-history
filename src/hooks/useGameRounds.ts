@@ -45,7 +45,12 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
     
     // Move to next round
     setCurrentRound(prevRound => prevRound + 1);
-    setCurrentImageIndex(prevIndex => (prevIndex + 1) % (images.length || defaultImages.length));
+    
+    // Important fix: Use a function to ensure we get the latest state
+    setCurrentImageIndex(prevIndex => {
+      // Move to the next image with modulo to stay within bounds
+      return (prevIndex + 1) % (images.length || defaultImages.length);
+    });
   };
   
   // Reset the game

@@ -82,6 +82,7 @@ const GamePanel = ({
             <MapComponent 
               onLocationSelect={onLocationSelect} 
               selectedLocation={selectedLocation}
+              hideInstructions={true}
             />
           </div>
         )}

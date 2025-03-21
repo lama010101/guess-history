@@ -22,11 +22,11 @@ const ViewToggle = ({ activeView, onToggle, imageSrc }: ViewToggleProps) => {
   }, [imageSrc]);
 
   return (
-    <div className="absolute top-4 right-4 z-10">
+    <div className="absolute top-2 right-2 z-10">
       <button 
         onClick={onToggle}
-        className="bg-background/80 backdrop-blur-sm shadow-lg border p-1 rounded-md flex items-center justify-center w-25 h-25 overflow-hidden transition-all hover:opacity-90"
-        style={{ width: '125px', height: '125px' }}
+        className="bg-background/80 backdrop-blur-sm shadow-lg border p-1 rounded-md flex items-center justify-center overflow-hidden transition-all hover:opacity-90"
+        style={{ width: '106px', height: '106px' }}
       >
         {activeView === 'image' ? (
           <div className="w-full h-full">
@@ -51,9 +51,6 @@ const ViewToggle = ({ activeView, onToggle, imageSrc }: ViewToggleProps) => {
                 <ImageIcon className="h-8 w-8 text-gray-400" />
               </div>
             )}
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-              <ImageIcon className="h-8 w-8 text-white" />
-            </div>
           </div>
         )}
       </button>

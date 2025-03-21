@@ -2,12 +2,22 @@
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, FileSpreadsheet, Save, RefreshCw } from "lucide-react";
+import { Plus, FileSpreadsheet, Save, RefreshCw, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { HistoricalImage } from "@/types/game";
 import EventsTable from "./EventsTable";
 import EventEditor from "./EventEditor";
 import ExcelImporter from "./ExcelImporter";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const mockEvents: HistoricalImage[] = [
   {
@@ -50,6 +60,7 @@ const AdminEventsManager = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [selectedEvents, setSelectedEvents] = useState<Set<number>>(new Set());
   const [isAllSelected, setIsAllSelected] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
     const savedEventsJson = localStorage.getItem('savedEvents');
@@ -86,6 +97,23 @@ const AdminEventsManager = () => {
     toast({
       title: "Event Deleted",
       description: `Event #${id} has been removed.`,
+    });
+  };
+
+  const handleDeleteSelected = () => {
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDeleteSelected = () => {
+    const remainingEvents = events.filter(event => !selectedEvents.has(event.id));
+    setEvents(remainingEvents);
+    setSelectedEvents(new Set());
+    setIsAllSelected(false);
+    setShowDeleteDialog(false);
+    
+    toast({
+      title: "Events Deleted",
+      description: `${selectedEvents.size} events have been removed.`,
     });
   };
 
@@ -253,6 +281,14 @@ const AdminEventsManager = () => {
                   Add Event
                 </Button>
                 <Button 
+                  onClick={handleDeleteSelected} 
+                  disabled={selectedEvents.size === 0}
+                  variant="destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Selected
+                </Button>
+                <Button 
                   onClick={handleSaveSelectedToDB} 
                   disabled={isSaving || selectedEvents.size === 0}
                   variant="default"
@@ -299,6 +335,23 @@ const AdminEventsManager = () => {
           onFileUpload={handleFileUpload}
         />
       </div>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to delete {selectedEvents.size} selected events. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteSelected} className="bg-destructive text-destructive-foreground">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

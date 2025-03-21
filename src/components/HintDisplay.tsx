@@ -10,37 +10,20 @@ import {
   DialogTitle,
   DialogClose,
 } from "@/components/ui/dialog";
+import { useGameState } from '@/hooks/useGameState';
 
 interface HintDisplayProps {
   availableHints: number;
-  onUseLocationHint?: () => void;
-  onUseYearHint?: () => void;
-  locationHintUsed?: boolean;
-  yearHintUsed?: boolean;
 }
 
-const HintDisplay = ({ 
-  availableHints, 
-  onUseLocationHint, 
-  onUseYearHint,
-  locationHintUsed,
-  yearHintUsed
-}: HintDisplayProps) => {
+const HintDisplay = ({ availableHints }: HintDisplayProps) => {
   const [isHintDialogOpen, setIsHintDialogOpen] = useState(false);
-
-  const handleUseLocationHint = () => {
-    if (onUseLocationHint) {
-      onUseLocationHint();
-      // Don't close dialog after using hint
-    }
-  };
-
-  const handleUseYearHint = () => {
-    if (onUseYearHint) {
-      onUseYearHint();
-      // Don't close dialog after using hint
-    }
-  };
+  const { 
+    handleUseLocationHint, 
+    handleUseYearHint,
+    locationHintUsed,
+    yearHintUsed
+  } = useGameState();
 
   return (
     <div className="flex items-center space-x-2">

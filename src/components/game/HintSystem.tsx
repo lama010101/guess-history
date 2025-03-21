@@ -20,6 +20,7 @@ interface HintSystemProps {
     year: number;
     location: { lat: number; lng: number };
     description: string;
+    locationName?: string;
   };
 }
 
@@ -71,12 +72,13 @@ const HintSystem = ({
     }
   };
   
-  // For location hint, we'll just show the country name
-  // In a real app, this would use a reverse geocoding service 
-  // to get the country based on coordinates
+  // For location hint, we'll show the country or location name if available
   const getCountryHint = () => {
-    // This is a simplified implementation
-    // In a real app, you would use a geocoding service
+    if (currentImage.locationName) {
+      return currentImage.locationName;
+    }
+    
+    // Simplified implementation - in a real app, you would use a geocoding service
     const locations: Record<string, string> = {
       "48.8584,2.2945": "France",
       "40.7484,-73.9857": "United States",
@@ -123,7 +125,7 @@ const HintSystem = ({
                 </Button>
                 {locationHintUsed && (
                   <div className="text-xs mt-1 text-center text-muted-foreground">
-                    Country: {getCountryHint()}
+                    {getCountryHint()}
                   </div>
                 )}
               </div>
@@ -150,7 +152,7 @@ const HintSystem = ({
                 </Button>
                 {yearHintUsed && (
                   <div className="text-xs mt-1 text-center text-muted-foreground">
-                    Year: {getYearHint()}
+                    {getYearHint()}
                   </div>
                 )}
               </div>

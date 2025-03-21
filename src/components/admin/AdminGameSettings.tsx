@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -32,6 +32,22 @@ const AdminGameSettings = () => {
     perfectScoreBonus: 500
   });
 
+  // Load settings from localStorage on mount
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('gameSettings');
+    if (savedSettings) {
+      try {
+        const parsedSettings = JSON.parse(savedSettings);
+        setSettings(prevSettings => ({
+          ...prevSettings,
+          ...parsedSettings
+        }));
+      } catch (error) {
+        console.error('Error loading game settings:', error);
+      }
+    }
+  }, []);
+
   const handleInputChange = (key: keyof GameSettings, value: string) => {
     setSettings({
       ...settings,
@@ -40,7 +56,9 @@ const AdminGameSettings = () => {
   };
 
   const handleSaveSettings = () => {
-    // In a real application, this would update the settings in a database
+    // Save settings to localStorage
+    localStorage.setItem('gameSettings', JSON.stringify(settings));
+    
     toast({
       title: "Settings Saved",
       description: "Game settings have been updated successfully",

@@ -5,6 +5,7 @@ import MapComponent from '../MapComponent';
 import HistoricalImage from '../HistoricalImage';
 import { Button } from '@/components/ui/button';
 import ViewToggle from './ViewToggle';
+import HintSystem from './HintSystem';
 
 interface GamePanelProps {
   currentImage: {
@@ -41,30 +42,8 @@ const GamePanel = ({
   locationHintUsed,
   yearHintUsed
 }: GamePanelProps) => {
+  // Start with image view by default
   const [activeView, setActiveView] = useState<'image' | 'map'>('image');
-  
-  // For location hint, we'll show the country name or location name if available
-  const getLocationHint = () => {
-    if (currentImage.locationName) {
-      return currentImage.locationName;
-    }
-    
-    // Simplified implementation - in a real app, you would use a geocoding service
-    const locations: Record<string, string> = {
-      "48.8584,2.2945": "France",
-      "40.7484,-73.9857": "United States",
-      "37.8199,-122.4783": "United States",
-    };
-    
-    const coordKey = `${currentImage.location.lat},${currentImage.location.lng}`;
-    return locations[coordKey] || "Unknown Country";
-  };
-  
-  // For year hint, we'll show the year with the last digit hidden
-  const getYearHint = () => {
-    const yearString = currentImage.year.toString();
-    return yearString.slice(0, -1) + "X";
-  };
 
   return (
     <div className="glass-card rounded-2xl overflow-hidden h-full relative">
@@ -89,15 +68,15 @@ const GamePanel = ({
         
         {/* Display location hint if used */}
         {locationHintUsed && (
-          <div className="absolute top-4 right-4 z-10 bg-background/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
-            <span className="font-medium">Location:</span> {getLocationHint()}
+          <div className="absolute top-4 left-4 z-10 bg-background/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
+            <span className="font-medium">Location:</span> {currentImage.locationName || "Unknown Location"}
           </div>
         )}
         
         {/* Display year hint if used */}
         {yearHintUsed && (
-          <div className="absolute top-16 right-4 z-10 bg-background/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
-            <span className="font-medium">Year:</span> {getYearHint()}
+          <div className="absolute top-16 left-4 z-10 bg-background/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
+            <span className="font-medium">Year:</span> {currentImage.year.toString().slice(0, -1) + "X"}
           </div>
         )}
         
@@ -107,6 +86,18 @@ const GamePanel = ({
           onToggle={() => setActiveView(activeView === 'image' ? 'map' : 'image')}
           imageSrc={currentImage.src}
         />
+        
+        {/* Hint System */}
+        <div className="absolute bottom-4 right-4 z-10 w-64">
+          <HintSystem
+            hintCoins={hintCoins}
+            onUseLocationHint={onUseLocationHint}
+            onUseYearHint={onUseYearHint}
+            locationHintUsed={locationHintUsed}
+            yearHintUsed={yearHintUsed}
+            currentImage={currentImage}
+          />
+        </div>
       </div>
     </div>
   );

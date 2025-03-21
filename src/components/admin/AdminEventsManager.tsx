@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -118,13 +117,10 @@ const AdminEventsManager = () => {
   };
 
   const processImageUrl = (url: string): string => {
-    // Process Wikimedia Commons URLs
     if (url.includes('wikimedia.org/wiki/File:')) {
-      // Extract file name
       const fileNameMatch = url.match(/File:([^/]+)$/);
       if (fileNameMatch && fileNameMatch[1]) {
         const fileName = fileNameMatch[1];
-        // Convert to direct image URL using Wikimedia thumbnail API
         return `https://commons.wikimedia.org/wiki/Special:FilePath/${fileName}?width=800`;
       }
     }
@@ -132,7 +128,6 @@ const AdminEventsManager = () => {
   };
 
   const handleSaveEvent = (eventData: Partial<HistoricalImage>) => {
-    // Process image URL if it's from Wikimedia Commons
     if (eventData.src) {
       eventData.src = processImageUrl(eventData.src);
     }
@@ -211,7 +206,6 @@ const AdminEventsManager = () => {
     
     const eventsToSave = events.filter(event => selectedEvents.has(event.id));
     
-    // Process any Wikimedia URLs
     const processedEvents = eventsToSave.map(event => ({
       ...event,
       src: event.src ? processImageUrl(event.src) : event.src
@@ -232,7 +226,6 @@ const AdminEventsManager = () => {
   const handleImportExcelData = (newEventsData: HistoricalImage[]) => {
     console.log("Importing new events from Excel:", newEventsData);
     
-    // Process any Wikimedia URLs in imported events
     const processedNewEvents = newEventsData.map(event => ({
       ...event,
       id: events.length > 0 ? Math.max(...events.map(e => e.id)) + 1 + newEventsData.indexOf(event) : 1 + newEventsData.indexOf(event),

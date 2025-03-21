@@ -77,7 +77,7 @@ const EventsTable = ({
                       checked={selectedEvents.has(event.id)}
                       onCheckedChange={() => onToggleSelectEvent(event.id)}
                       aria-label={`Select event ${event.id}`}
-                      id={`select-event-${event.id}`} // Add unique ID to fix selection issue
+                      id={`select-event-${event.id}`}
                     />
                   </TableCell>
                   <TableCell>{event.id}</TableCell>
@@ -89,7 +89,7 @@ const EventsTable = ({
                           alt={event.description || 'Event image'} 
                           className="w-full h-full object-cover"
                           onError={(e) => {
-                            e.currentTarget.src = "https://via.placeholder.com/60?text=No+Image";
+                            (e.target as HTMLImageElement).src = "https://via.placeholder.com/60?text=No+Image";
                           }}
                         />
                       </div>

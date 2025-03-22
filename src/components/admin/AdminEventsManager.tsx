@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -165,42 +166,6 @@ const AdminEventsManager = () => {
     setIsAddingEvent(false);
   };
 
-  const handleImageUpload = () => {
-    toast({
-      title: "Image Upload",
-      description: "Image upload functionality would be implemented here.",
-    });
-  };
-
-  const handleFileUpload = () => {
-    toast({
-      title: "File Upload",
-      description: "File upload functionality would be implemented here.",
-    });
-  };
-
-  const toggleSelectAll = () => {
-    if (isAllSelected) {
-      setSelectedEvents(new Set());
-    } else {
-      const allIds = filteredEvents.map(event => event.id);
-      setSelectedEvents(new Set(allIds));
-    }
-    setIsAllSelected(!isAllSelected);
-  };
-
-  const toggleSelectEvent = (id: number) => {
-    setSelectedEvents(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
-
   const handleSaveSelectedToDB = () => {
     setIsSaving(true);
     
@@ -324,8 +289,6 @@ const AdminEventsManager = () => {
           isAddingEvent={isAddingEvent}
           onSave={handleSaveEvent}
           onCancel={handleCancelEdit}
-          onImageUpload={handleImageUpload}
-          onFileUpload={handleFileUpload}
         />
       </div>
 

@@ -10,15 +10,15 @@ const Index = () => {
     totalScore
   } = useGameState();
 
-  const roundInfo = {
-    currentRound,
-    maxRounds,
-    totalScore
-  };
-
   return (
     <div className="h-[100dvh] w-full overflow-hidden bg-background flex flex-col">
-      <Navbar roundInfo={roundInfo} />
+      <Navbar 
+        roundInfo={{
+          currentRound,
+          maxRounds,
+          totalScore
+        }} 
+      />
       <main className="flex-1 overflow-hidden">
         <GameSection />
       </main>

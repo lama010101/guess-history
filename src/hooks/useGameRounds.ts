@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { HistoricalImage } from '@/types/game';
 
 interface UseGameRoundsOptions {
@@ -12,6 +12,7 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [gameComplete, setGameComplete] = useState(false);
   const [images, setImages] = useState<HistoricalImage[]>(defaultImages);
+  const configuredMaxRounds = useRef(maxRounds);
   
   // Load max rounds from localStorage if available
   useEffect(() => {
@@ -20,7 +21,7 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
       try {
         const settings = JSON.parse(savedSettings);
         if (settings && typeof settings.maxRoundsPerGame === 'number') {
-          maxRounds = settings.maxRoundsPerGame;
+          configuredMaxRounds.current = settings.maxRoundsPerGame;
         }
       } catch (error) {
         console.error('Error loading game settings:', error);
@@ -52,7 +53,7 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
   // Move to the next round
   const nextRound = () => {
     // Check if game is complete
-    if (currentRound >= maxRounds) {
+    if (currentRound >= configuredMaxRounds.current) {
       // Game complete
       setGameComplete(true);
       return;
@@ -86,7 +87,7 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
     currentRound,
     currentImage,
     currentImageIndex,
-    maxRounds,
+    maxRounds: configuredMaxRounds.current,
     gameComplete,
     nextRound,
     resetGame,

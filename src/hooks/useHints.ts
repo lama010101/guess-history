@@ -2,8 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
-export const useHints = (initialCoins = 10) => {
-  const [hintCoins, setHintCoins] = useState(initialCoins);
+export const useHints = () => {
+  const [hintCoins, setHintCoins] = useState(0);
   const [locationHintUsed, setLocationHintUsed] = useState(false);
   const [yearHintUsed, setYearHintUsed] = useState(false);
   const { toast } = useToast();

@@ -43,6 +43,15 @@ const GamePanel = ({
   // Start with image view by default
   const [activeView, setActiveView] = useState<'image' | 'map'>('image');
 
+  // Helper to extract just the country from location name
+  const getCountryOnly = (locationName?: string): string => {
+    if (!locationName) return "Unknown";
+    
+    // Split by comma and get the last part which is usually the country
+    const parts = locationName.split(',');
+    return parts.length > 1 ? parts[parts.length - 1].trim() : "Unknown";
+  };
+
   return (
     <div className="glass-card rounded-2xl overflow-hidden h-full relative">
       <div className="h-[500px] relative">
@@ -68,7 +77,7 @@ const GamePanel = ({
         {/* Display location hint if used */}
         {locationHintUsed && (
           <div className="absolute top-4 left-4 z-10 bg-background/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
-            <span className="font-medium">Location:</span> {currentImage.locationName?.split(',')[0] || "Unknown Location"}
+            <span className="font-medium">Location:</span> {getCountryOnly(currentImage.locationName)}
           </div>
         )}
         

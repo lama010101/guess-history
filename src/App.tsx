@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Leaderboard from "./pages/Leaderboard";
 import AdminPanel from "./pages/AdminPanel";
+import Home from "./pages/Home";
 import { useAuth } from "./services/auth";
 import { Navigate } from "react-router-dom";
 
@@ -32,6 +33,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/home" element={<Home />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/admin" element={
             <ProtectedAdminRoute>

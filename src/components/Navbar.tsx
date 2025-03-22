@@ -3,6 +3,9 @@ import { Link, useLocation } from 'react-router-dom';
 import ProfileButton from './auth/ProfileButton';
 import HintDisplay from './HintDisplay';
 import { useGameState } from '@/hooks/useGameState';
+import { Lightbulb } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 
 interface NavbarProps {
   roundInfo?: {
@@ -15,6 +18,7 @@ interface NavbarProps {
 const Navbar = ({ roundInfo }: NavbarProps) => {
   const location = useLocation();
   const { hintCoins } = useGameState();
+  const [isHintOpen, setIsHintOpen] = useState(false);
   
   return (
     <header className="sticky top-0 z-50 w-full backdrop-blur-lg bg-background/80 border-b border-border">
@@ -35,7 +39,18 @@ const Navbar = ({ roundInfo }: NavbarProps) => {
 
         {/* Hint button in center */}
         <div className="flex-1 flex items-center justify-center">
-          <HintDisplay availableHints={hintCoins} />
+          <Button 
+            variant="ghost" 
+            size="sm"
+            className="flex items-center gap-1"
+            onClick={() => setIsHintOpen(true)}
+          >
+            <Lightbulb className="h-4 w-4 text-yellow-500" />
+            <span className="text-sm font-medium mr-1">Hints:</span>
+            <span className="text-sm font-bold">{hintCoins}</span>
+          </Button>
+          
+          {isHintOpen && <HintDisplay availableHints={hintCoins} onClose={() => setIsHintOpen(false)} />}
         </div>
         
         {/* Profile button on the right */}

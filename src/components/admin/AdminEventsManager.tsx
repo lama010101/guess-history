@@ -31,7 +31,8 @@ const AdminEventsManager = () => {
     setSearchTerm,
     setShowDeleteDialog,
     handleImageUpload,
-    handleFileUpload
+    handleFileUpload,
+    setIsUploading
   } = useEvents();
 
   return (

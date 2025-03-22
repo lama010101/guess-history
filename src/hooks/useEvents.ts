@@ -262,6 +262,7 @@ export function useEvents() {
     setSearchTerm,
     setShowDeleteDialog,
     handleImageUpload,
-    handleFileUpload
+    handleFileUpload,
+    setIsUploading  // Added this line to export setIsUploading
   };
 }

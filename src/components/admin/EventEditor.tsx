@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,20 @@ const EventEditor = ({
       locationName: ""
     }
   );
+
+  // Reset form when selectedEvent changes
+  useEffect(() => {
+    setEventData(
+      selectedEvent || {
+        description: "",
+        title: "",
+        year: 2000,
+        location: { lat: 0, lng: 0 },
+        src: "",
+        locationName: ""
+      }
+    );
+  }, [selectedEvent]);
 
   const handleChange = (field: string, value: any) => {
     if (field === "lat" || field === "lng") {
@@ -165,6 +179,9 @@ const EventEditor = ({
                   src={eventData.src}
                   alt={eventData.description}
                   className="w-full h-40 object-cover rounded-md border"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "https://via.placeholder.com/500?text=Image+Error";
+                  }}
                 />
               </div>
             )}

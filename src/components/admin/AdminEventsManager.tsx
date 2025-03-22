@@ -1,5 +1,5 @@
 
-import React, { useEffect } from "react";
+import React from "react";
 import { useEvents } from "@/hooks/useEvents";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
@@ -32,17 +32,21 @@ const AdminEventsManager = () => {
     toggleSelectEvent,
     toggleSelectAll,
     setSearchTerm,
-    setShowDeleteDialog
+    setShowDeleteDialog,
+    handleImageUpload,
+    handleFileUpload
   } = useEvents();
 
   // Show a form to add/edit event when selected or adding
   if (selectedEvent || isAddingEvent) {
     return (
       <EventEditor
-        event={selectedEvent}
+        selectedEvent={selectedEvent}
+        isAddingEvent={isAddingEvent}
         onSave={handleSaveEvent}
         onCancel={handleCancelEdit}
-        isNewEvent={!selectedEvent}
+        onImageUpload={handleImageUpload}
+        onFileUpload={handleFileUpload}
       />
     );
   }
@@ -79,19 +83,21 @@ const AdminEventsManager = () => {
           events={events}
           selectedEvents={selectedEvents}
           isAllSelected={isAllSelected}
-          onEditEvent={handleEditEvent}
-          onDeleteEvent={handleDeleteEvent}
-          onToggleSelect={toggleSelectEvent}
+          onEdit={handleEditEvent}
+          onDelete={handleDeleteEvent}
+          onToggleSelectEvent={toggleSelectEvent}
           onToggleSelectAll={toggleSelectAll}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
         />
       </div>
 
       {/* Delete confirmation dialog */}
       <DeleteEventsDialog
         open={showDeleteDialog}
-        onClose={() => setShowDeleteDialog(false)}
+        onOpenChange={setShowDeleteDialog}
+        selectedCount={selectedEvents.size}
         onConfirm={confirmDeleteSelected}
-        count={selectedEvents.size}
       />
     </div>
   );

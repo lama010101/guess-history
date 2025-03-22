@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { HistoricalImage } from "@/types/game";
 import { useToast } from "@/hooks/use-toast";

@@ -27,17 +27,13 @@ const HintDisplay = ({ availableHints }: HintDisplayProps) => {
   } = useGameState();
 
   const useLocationHint = () => {
-    const success = handleUseLocationHint();
-    if (success) {
-      setIsHintDialogOpen(false);
-    }
+    handleUseLocationHint();
+    setIsHintDialogOpen(false);
   };
 
   const useYearHint = () => {
-    const success = handleUseYearHint();
-    if (success) {
-      setIsHintDialogOpen(false);
-    }
+    handleUseYearHint();
+    setIsHintDialogOpen(false);
   };
 
   return (

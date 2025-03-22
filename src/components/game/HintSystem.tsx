@@ -1,5 +1,4 @@
 
-import { useState } from 'react';
 import { Lightbulb, MapPin, Calendar, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -8,7 +7,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useToast } from '@/hooks/use-toast';
 
 interface HintSystemProps {
   hintCoins: number;
@@ -32,50 +30,12 @@ const HintSystem = ({
   yearHintUsed,
   currentImage
 }: HintSystemProps) => {
-  const { toast } = useToast();
-  
-  const handleUseLocationHint = () => {
-    if (hintCoins <= 0) {
-      toast({
-        title: "No hint coins left",
-        description: "You don't have enough hint coins to use this hint.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (!locationHintUsed) {
-      onUseLocationHint();
-      toast({
-        title: "Location hint used",
-        description: "You've used a location hint. This will reduce your maximum score for this round.",
-      });
-    }
-  };
-  
-  const handleUseYearHint = () => {
-    if (hintCoins <= 0) {
-      toast({
-        title: "No hint coins left",
-        description: "You don't have enough hint coins to use this hint.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (!yearHintUsed) {
-      onUseYearHint();
-      toast({
-        title: "Year hint used",
-        description: "You've used a year hint. This will reduce your maximum score for this round.",
-      });
-    }
-  };
-  
-  // For location hint, we'll show the country or location name if available
+  // For location hint, we'll show the country only if available
   const getCountryHint = () => {
     if (currentImage.locationName) {
-      return currentImage.locationName;
+      // Split by comma and get the last part which is usually the country
+      const parts = currentImage.locationName.split(',');
+      return parts.length > 1 ? parts[parts.length - 1].trim() : parts[0].trim();
     }
     
     // Simplified implementation - in a real app, you would use a geocoding service
@@ -117,7 +77,7 @@ const HintSystem = ({
                   variant={locationHintUsed ? "outline" : "secondary"} 
                   size="sm" 
                   className="w-full flex items-center justify-center"
-                  onClick={handleUseLocationHint}
+                  onClick={onUseLocationHint}
                   disabled={locationHintUsed || hintCoins <= 0}
                 >
                   <MapPin className="h-4 w-4 mr-1.5" />
@@ -144,7 +104,7 @@ const HintSystem = ({
                   variant={yearHintUsed ? "outline" : "secondary"} 
                   size="sm" 
                   className="w-full flex items-center justify-center"
-                  onClick={handleUseYearHint}
+                  onClick={onUseYearHint}
                   disabled={yearHintUsed || hintCoins <= 0}
                 >
                   <Calendar className="h-4 w-4 mr-1.5" />

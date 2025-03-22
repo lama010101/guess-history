@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { RoundScore } from '@/types/game';
 import { getDistanceFromLatLonInKm } from '@/utils/scoreCalculations';
 
@@ -12,16 +12,40 @@ interface ScoringParams {
   hintPenalty?: number;
 }
 
-export const useGameScoring = ({
-  maxLocationScore = 5000,
-  maxYearScore = 5000,
-  locationScalingFactor = 1,
-  yearScalingFactor = 100,
-  perfectScoreBonus = 500,
-  hintPenalty = 500
-}: ScoringParams = {}) => {
+export const useGameScoring = (defaultParams: ScoringParams = {}) => {
+  const [params, setParams] = useState({
+    maxLocationScore: defaultParams.maxLocationScore || 5000,
+    maxYearScore: defaultParams.maxYearScore || 5000,
+    locationScalingFactor: defaultParams.locationScalingFactor || 1,
+    yearScalingFactor: defaultParams.yearScalingFactor || 100,
+    perfectScoreBonus: defaultParams.perfectScoreBonus || 500,
+    hintPenalty: defaultParams.hintPenalty || 500
+  });
+  
   const [totalScore, setTotalScore] = useState(0);
   const [roundScores, setRoundScores] = useState<RoundScore[]>([]);
+  
+  // Load scoring parameters from localStorage if available
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('gameSettings');
+    if (savedSettings) {
+      try {
+        const settings = JSON.parse(savedSettings);
+        if (settings) {
+          setParams({
+            maxLocationScore: settings.maxLocationScore || params.maxLocationScore,
+            maxYearScore: settings.maxYearScore || params.maxYearScore,
+            locationScalingFactor: settings.locationScalingFactor || params.locationScalingFactor,
+            yearScalingFactor: settings.yearScalingFactor || params.yearScalingFactor,
+            perfectScoreBonus: settings.perfectScoreBonus || params.perfectScoreBonus,
+            hintPenalty: settings.hintPenalty || params.hintPenalty
+          });
+        }
+      } catch (error) {
+        console.error('Error loading game settings:', error);
+      }
+    }
+  }, []);
   
   // Calculate location score
   const calculateLocationScore = (
@@ -37,7 +61,7 @@ export const useGameScoring = ({
     );
     
     // Calculate location score (max points, decreasing by distance)
-    return Math.max(0, maxLocationScore - Math.round(distance * locationScalingFactor));
+    return Math.max(0, params.maxLocationScore - Math.round(distance * params.locationScalingFactor));
   };
   
   // Calculate year score
@@ -46,7 +70,7 @@ export const useGameScoring = ({
     const yearDiff = Math.abs(guessedYear - actualYear);
     
     // Calculate year score (max points, losing points per year off)
-    return Math.max(0, maxYearScore - yearDiff * yearScalingFactor);
+    return Math.max(0, params.maxYearScore - yearDiff * params.yearScalingFactor);
   };
   
   // Calculate a complete score for a round
@@ -81,12 +105,12 @@ export const useGameScoring = ({
     const yearScore = calculateYearScore(guessedYear, actualYear);
     
     // Calculate hint penalty
-    const totalHintPenalty = (locationHintUsed ? hintPenalty : 0) + (yearHintUsed ? hintPenalty : 0);
+    const totalHintPenalty = (locationHintUsed ? params.hintPenalty : 0) + (yearHintUsed ? params.hintPenalty : 0);
     
     // Calculate perfect score bonus (if both location and year are perfect)
     const isPerfectLocation = distance < 0.1; // Less than 100 meters
     const isPerfectYear = yearDiff === 0;
-    const bonus = isPerfectLocation && isPerfectYear ? perfectScoreBonus : 0;
+    const bonus = isPerfectLocation && isPerfectYear ? params.perfectScoreBonus : 0;
     
     // Calculate total round score
     const totalRoundScore = locationScore + yearScore + bonus - totalHintPenalty;

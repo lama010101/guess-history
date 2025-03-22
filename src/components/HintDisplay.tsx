@@ -22,8 +22,23 @@ const HintDisplay = ({ availableHints }: HintDisplayProps) => {
     handleUseLocationHint, 
     handleUseYearHint,
     locationHintUsed,
-    yearHintUsed
+    yearHintUsed,
+    hintCoins
   } = useGameState();
+
+  const useLocationHint = () => {
+    const success = handleUseLocationHint();
+    if (success) {
+      setIsHintDialogOpen(false);
+    }
+  };
+
+  const useYearHint = () => {
+    const success = handleUseYearHint();
+    if (success) {
+      setIsHintDialogOpen(false);
+    }
+  };
 
   return (
     <div className="flex items-center space-x-2">
@@ -36,7 +51,7 @@ const HintDisplay = ({ availableHints }: HintDisplayProps) => {
       >
         <Lightbulb className="h-4 w-4 text-yellow-500" />
         <span className="text-sm font-medium mr-1">Hints:</span>
-        <span className="text-sm font-bold">{availableHints}</span>
+        <span className="text-sm font-bold">{hintCoins}</span>
       </Button>
 
       {/* Full-width hint dialog */}
@@ -48,15 +63,15 @@ const HintDisplay = ({ availableHints }: HintDisplayProps) => {
               Available Hints
             </DialogTitle>
             <DialogDescription>
-              You have <span className="font-bold">{availableHints}</span> hints available to use.
+              You have <span className="font-bold">{hintCoins}</span> hints available to use.
               Using hints reduces your round score.
             </DialogDescription>
           </DialogHeader>
           
           <div className="grid grid-cols-2 gap-4 py-4">
             <Button 
-              onClick={handleUseLocationHint}
-              disabled={locationHintUsed || availableHints <= 0}
+              onClick={useLocationHint}
+              disabled={locationHintUsed || hintCoins <= 0}
               variant={locationHintUsed ? "outline" : "secondary"}
               className="w-full"
             >
@@ -65,8 +80,8 @@ const HintDisplay = ({ availableHints }: HintDisplayProps) => {
             </Button>
             
             <Button 
-              onClick={handleUseYearHint}
-              disabled={yearHintUsed || availableHints <= 0}
+              onClick={useYearHint}
+              disabled={yearHintUsed || hintCoins <= 0}
               variant={yearHintUsed ? "outline" : "secondary"}
               className="w-full"
             >

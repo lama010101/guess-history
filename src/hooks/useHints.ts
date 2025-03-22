@@ -1,10 +1,12 @@
 
 import { useState, useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 export const useHints = (initialCoins = 10) => {
   const [hintCoins, setHintCoins] = useState(initialCoins);
   const [locationHintUsed, setLocationHintUsed] = useState(false);
   const [yearHintUsed, setYearHintUsed] = useState(false);
+  const { toast } = useToast();
   
   // Load initial coins from localStorage if available
   useEffect(() => {
@@ -32,7 +34,18 @@ export const useHints = (initialCoins = 10) => {
     if (hintCoins > 0 && !locationHintUsed) {
       setLocationHintUsed(true);
       setHintCoins(prev => prev - 1);
+      toast({
+        title: "Location hint used",
+        description: "You've used a location hint. This will reduce your maximum score for this round.",
+      });
       return true;
+    }
+    if (hintCoins <= 0) {
+      toast({
+        title: "No hint coins left",
+        description: "You don't have enough hint coins to use this hint.",
+        variant: "destructive"
+      });
     }
     return false;
   };
@@ -41,7 +54,18 @@ export const useHints = (initialCoins = 10) => {
     if (hintCoins > 0 && !yearHintUsed) {
       setYearHintUsed(true);
       setHintCoins(prev => prev - 1);
+      toast({
+        title: "Year hint used",
+        description: "You've used a year hint. This will reduce your maximum score for this round.",
+      });
       return true;
+    }
+    if (hintCoins <= 0) {
+      toast({
+        title: "No hint coins left",
+        description: "You don't have enough hint coins to use this hint.",
+        variant: "destructive"
+      });
     }
     return false;
   };

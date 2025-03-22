@@ -17,7 +17,7 @@ interface MapComponentProps {
 const MapComponent = ({
   onLocationSelect,
   selectedLocation,
-  initialLocation = { lat: 0, lng: 0 },
+  initialLocation = { lat: 50, lng: 10 }, // Center on Europe by default
   actualLocation,
   showActualLocationMarker = false,
   hideInstructions = false

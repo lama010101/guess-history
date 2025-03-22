@@ -2,6 +2,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import ProfileButton from './auth/ProfileButton';
 import HintDisplay from './HintDisplay';
+import { useGameState } from '@/hooks/useGameState';
 
 interface NavbarProps {
   roundInfo?: {
@@ -13,6 +14,7 @@ interface NavbarProps {
 
 const Navbar = ({ roundInfo }: NavbarProps) => {
   const location = useLocation();
+  const { hintCoins } = useGameState();
   
   return (
     <header className="sticky top-0 z-50 w-full backdrop-blur-lg bg-background/80 border-b border-border">
@@ -33,7 +35,7 @@ const Navbar = ({ roundInfo }: NavbarProps) => {
 
         {/* Hint button in center */}
         <div className="flex-1 flex items-center justify-center">
-          <HintDisplay availableHints={10} />
+          <HintDisplay availableHints={hintCoins} />
         </div>
         
         {/* Profile button on the right */}

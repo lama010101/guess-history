@@ -31,6 +31,8 @@ const AdminGameSettings = () => {
     hintPenalty: 500,
     perfectScoreBonus: 500
   });
+  
+  const [saved, setSaved] = useState(false);
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -53,16 +55,24 @@ const AdminGameSettings = () => {
       ...settings,
       [key]: Number(value)
     });
+    // Reset saved state when changes are made
+    setSaved(false);
   };
 
   const handleSaveSettings = () => {
     // Save settings to localStorage
     localStorage.setItem('gameSettings', JSON.stringify(settings));
     
+    // Show saved confirmation
+    setSaved(true);
+    
     toast({
       title: "Settings Saved",
-      description: "Game settings have been updated successfully",
+      description: "Game settings have been updated successfully. Refresh to apply changes.",
     });
+    
+    // Reset saved state after a delay
+    setTimeout(() => setSaved(false), 3000);
   };
 
   return (
@@ -201,8 +211,17 @@ const AdminGameSettings = () => {
         </CardContent>
         <CardFooter>
           <Button className="ml-auto" onClick={handleSaveSettings}>
-            <Save className="mr-2 h-4 w-4" />
-            Save Settings
+            {saved ? (
+              <>
+                <Check className="mr-2 h-4 w-4 text-green-500" />
+                Saved!
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Save Settings
+              </>
+            )}
           </Button>
         </CardFooter>
       </Card>

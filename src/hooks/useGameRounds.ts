@@ -13,6 +13,21 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
   const [gameComplete, setGameComplete] = useState(false);
   const [images, setImages] = useState<HistoricalImage[]>(defaultImages);
   
+  // Load max rounds from localStorage if available
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('gameSettings');
+    if (savedSettings) {
+      try {
+        const settings = JSON.parse(savedSettings);
+        if (settings && typeof settings.maxRoundsPerGame === 'number') {
+          maxRounds = settings.maxRoundsPerGame;
+        }
+      } catch (error) {
+        console.error('Error loading game settings:', error);
+      }
+    }
+  }, []);
+  
   // Load images from localStorage if available
   useEffect(() => {
     const savedEventsJson = localStorage.getItem('savedEvents');
@@ -46,8 +61,18 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
     // Move to next round
     setCurrentRound(prevRound => prevRound + 1);
     
-    // Move to the next image - FIX: Use a new index that's different from the current one
-    setCurrentImageIndex(prevIndex => (prevIndex + 1) % (images.length || defaultImages.length));
+    // Move to the next image
+    setCurrentImageIndex(prevIndex => {
+      // Make sure we don't repeat images if we have enough
+      const nextIndex = prevIndex + 1;
+      const totalImages = images.length || defaultImages.length;
+      
+      // If we're about to overflow, start from a random point
+      if (nextIndex >= totalImages) {
+        return Math.floor(Math.random() * totalImages);
+      }
+      return nextIndex;
+    });
   };
   
   // Reset the game

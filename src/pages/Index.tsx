@@ -1,12 +1,19 @@
 
 import GameSection from '@/components/GameSection';
 import Navbar from '@/components/Navbar';
+import { useGameState } from '@/hooks/useGameState';
 
 const Index = () => {
+  const {
+    currentRound,
+    maxRounds,
+    totalScore
+  } = useGameState();
+
   const roundInfo = {
-    currentRound: 1,
-    maxRounds: 5,
-    totalScore: 0
+    currentRound,
+    maxRounds,
+    totalScore
   };
 
   return (

@@ -1,9 +1,7 @@
 
 import { useState } from 'react';
-import { Map, MapPin } from 'lucide-react';
 import MapComponent from '../MapComponent';
 import HistoricalImage from '../HistoricalImage';
-import { Button } from '@/components/ui/button';
 import ViewToggle from './ViewToggle';
 import HintSystem from './HintSystem';
 
@@ -62,6 +60,7 @@ const GamePanel = ({
               onLocationSelect={onLocationSelect} 
               selectedLocation={selectedLocation}
               hideInstructions={true}
+              initialLocation={{ lat: 50, lng: 10 }} // Center on Europe
             />
           </div>
         )}
@@ -69,7 +68,7 @@ const GamePanel = ({
         {/* Display location hint if used */}
         {locationHintUsed && (
           <div className="absolute top-4 left-4 z-10 bg-background/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
-            <span className="font-medium">Location:</span> {currentImage.locationName || "Unknown Location"}
+            <span className="font-medium">Location:</span> {currentImage.locationName?.split(',')[0] || "Unknown Location"}
           </div>
         )}
         

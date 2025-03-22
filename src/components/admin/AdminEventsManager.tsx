@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -214,6 +213,39 @@ const AdminEventsManager = () => {
     setIsUploading(false);
   };
 
+  const toggleSelectEvent = (id: number) => {
+    setSelectedEvents(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedEvents(new Set());
+    } else {
+      const allIds = events.map(event => event.id);
+      setSelectedEvents(new Set(allIds));
+    }
+    setIsAllSelected(!isAllSelected);
+  };
+
+  const handleImageUpload = () => {
+    toast({
+      title: "Image Upload",
+      description: "This feature is not yet implemented.",
+    });
+  };
+
+  const handleFileUpload = () => {
+    setIsUploading(true);
+  };
+
   const filteredEvents = events.filter(event => 
     (event.description && event.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (event.title && event.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -289,6 +321,8 @@ const AdminEventsManager = () => {
           isAddingEvent={isAddingEvent}
           onSave={handleSaveEvent}
           onCancel={handleCancelEdit}
+          onImageUpload={handleImageUpload}
+          onFileUpload={handleFileUpload}
         />
       </div>
 

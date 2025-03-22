@@ -3,10 +3,12 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Home } from "lucide-react";
 import HintDisplay from "../HintDisplay";
+import { useState } from "react";
 
 const AdminHeader = () => {
   // Mock data - in a real app, this would come from your state management
   const availableHints = 15;
+  const [isHintOpen, setIsHintOpen] = useState(false);
 
   return (
     <header className="w-full border-b bg-background p-4">
@@ -21,7 +23,12 @@ const AdminHeader = () => {
         </div>
         
         <div className="flex items-center gap-2">
-          <HintDisplay availableHints={availableHints} />
+          {isHintOpen && (
+            <HintDisplay 
+              availableHints={availableHints} 
+              onClose={() => setIsHintOpen(false)} 
+            />
+          )}
         </div>
         
         <div>

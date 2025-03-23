@@ -1,235 +1,300 @@
-
-import { useState, useEffect } from 'react';
-import { Globe, Clock, Lightbulb, Users, Share2, Copy, Check } from 'lucide-react';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { useNavigate } from 'react-router-dom';
-import Navbar from '@/components/Navbar';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/services/auth';
+import { Slider } from '@/components/ui/slider';
+import Hero from '@/components/Hero';
+import { Calendar, Clock, Globe, MapPin, Trophy, Users } from 'lucide-react';
+import FriendsModal from '@/components/friends/FriendsModal';
 
 const Home = () => {
-  const [activeTab, setActiveTab] = useState<'compete' | 'play'>('compete');
-  const [timerEnabled, setTimerEnabled] = useState<boolean>(true);
-  const [timerMinutes, setTimerMinutes] = useState<number>(5);
-  const [hintsEnabled, setHintsEnabled] = useState<boolean>(true);
-  const [hintsCount, setHintsCount] = useState<number>(2);
-  const [linkCopied, setLinkCopied] = useState(false);
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const { isAuthenticated } = useAuth();
-  
-  const [dailyPlayed, setDailyPlayed] = useState(false);
-  
-  // Check if daily challenge was played today
-  useEffect(() => {
-    const lastPlayed = localStorage.getItem('lastDailyPlayed');
-    if (lastPlayed) {
-      const lastPlayedDate = new Date(lastPlayed).toDateString();
-      const today = new Date().toDateString();
-      setDailyPlayed(lastPlayedDate === today);
+  const [timerEnabled, setTimerEnabled] = useState(() => {
+    const savedSettings = localStorage.getItem('gameSettings');
+    if (savedSettings) {
+      try {
+        const settings = JSON.parse(savedSettings);
+        return settings?.timerEnabled ?? false;
+      } catch (error) {
+        return false;
+      }
     }
-  }, []);
-
-  const handleStartGame = () => {
-    // Save game settings to localStorage
-    const gameSettings = {
-      timerEnabled,
-      timerMinutes: timerMinutes,
-      hintsEnabled,
-      initialHintCoins: hintsEnabled ? hintsCount : 0,
-    };
-    
-    localStorage.setItem('gameSettings', JSON.stringify(gameSettings));
-    
-    // If starting daily challenge, mark it as played today
-    if (activeTab === 'compete') {
-      localStorage.setItem('lastDailyPlayed', new Date().toISOString());
+    return false;
+  });
+  
+  const [timerSeconds, setTimerSeconds] = useState(() => {
+    const savedSettings = localStorage.getItem('gameSettings');
+    if (savedSettings) {
+      try {
+        const settings = JSON.parse(savedSettings);
+        return settings?.timerSeconds ?? 120;
+      } catch (error) {
+        return 120;
+      }
     }
-    
-    // Navigate to the game page
-    navigate('/play');
+    return 120;
+  });
+  
+  const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false);
+  
+  // Get today's date
+  const today = new Date();
+  const dateString = today.toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+  
+  // Check if daily challenge was completed today
+  const getDailyStatus = () => {
+    const dailyGameScore = localStorage.getItem('dailyGameScore');
+    if (dailyGameScore) {
+      try {
+        const { date, score } = JSON.parse(dailyGameScore);
+        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        
+        if (date === today) {
+          return { completed: true, score };
+        }
+      } catch (error) {
+        console.error('Error checking daily game status:', error);
+      }
+    }
+    return { completed: false, score: 0 };
   };
   
-  const generateGameLink = () => {
-    const gameId = Math.random().toString(36).substring(2, 8);
-    return `${window.location.origin}/play?mode=friends&id=${gameId}`;
+  const dailyStatus = getDailyStatus();
+  
+  // Save timer settings
+  const handleTimerChange = (value: boolean) => {
+    setTimerEnabled(value);
+    
+    // Save to localStorage
+    const savedSettings = localStorage.getItem('gameSettings') || '{}';
+    try {
+      const settings = JSON.parse(savedSettings);
+      localStorage.setItem('gameSettings', JSON.stringify({
+        ...settings,
+        timerEnabled: value,
+        timerSeconds
+      }));
+    } catch (error) {
+      console.error('Error saving timer settings:', error);
+    }
   };
   
-  const copyGameLink = () => {
-    const link = generateGameLink();
-    navigator.clipboard.writeText(link);
-    setLinkCopied(true);
+  const handleTimerSecondsChange = (value: number[]) => {
+    const seconds = value[0];
+    setTimerSeconds(seconds);
     
-    toast({
-      title: "Link copied!",
-      description: "Game link has been copied to clipboard"
-    });
-    
-    setTimeout(() => {
-      setLinkCopied(false);
-    }, 2000);
+    // Save to localStorage
+    const savedSettings = localStorage.getItem('gameSettings') || '{}';
+    try {
+      const settings = JSON.parse(savedSettings);
+      localStorage.setItem('gameSettings', JSON.stringify({
+        ...settings,
+        timerEnabled,
+        timerSeconds: seconds
+      }));
+    } catch (error) {
+      console.error('Error saving timer settings:', error);
+    }
   };
   
-  const inviteFriend = () => {
-    // This would normally open a friends selection modal
-    toast({
-      title: "Invite sent!",
-      description: "Your friend has been invited to play"
-    });
-  };
-
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-gray-900 text-black dark:text-white flex flex-col">
-      <Navbar />
-      <main className="flex-1 container max-w-6xl mx-auto px-4 py-8">
-        <Tabs defaultValue="compete" value={activeTab} onValueChange={(v) => setActiveTab(v as 'compete' | 'play')} className="mb-8">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
-            <TabsTrigger value="compete">Compete</TabsTrigger>
-            <TabsTrigger value="play">Play</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="compete" className="mt-6">
-            <div className="space-y-8">
-              <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-6">
-                <h3 className="text-xl font-medium mb-2">Daily Challenge</h3>
-                <p className="text-neutral-500 dark:text-neutral-400 mb-4">Play today's challenge. Same 5 images as everyone else.</p>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">One attempt per day</p>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Timer: 5 minutes</p>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <Hero title="Test your knowledge of history" />
+      
+      <div className="container mx-auto py-12 px-4 md:px-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Game Modes Section */}
+          <div className="md:col-span-2">
+            <h2 className="text-2xl font-bold mb-6 text-center md:text-left">Game Modes</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Compete Mode Card */}
+              <Card className="shadow-lg hover:shadow-xl transition-shadow">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xl flex items-center">
+                      <Trophy className="h-5 w-5 mr-2 text-yellow-500" />
+                      Compete
+                    </CardTitle>
                   </div>
-                  <Button 
-                    onClick={() => {
-                      if (isAuthenticated) {
-                        handleStartGame();
-                      } else {
-                        toast({
-                          title: "Login required",
-                          description: "You need to be logged in to play the daily challenge"
-                        });
-                      }
-                    }}
-                    disabled={dailyPlayed}
-                  >
-                    {dailyPlayed ? "Already Played Today" : "Start Daily Challenge"}
+                  <CardDescription>
+                    Play against the leaderboard
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="text-sm pb-2">
+                  <p>Challenge yourself with random historical events and compete for the highest score.</p>
+                </CardContent>
+                <CardFooter>
+                  <Button className="w-full" asChild>
+                    <Link to="/play">Start Game</Link>
                   </Button>
-                </div>
-              </div>
+                </CardFooter>
+              </Card>
               
-              <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-6">
-                <h3 className="text-xl font-medium mb-2">Friends Mode</h3>
-                <p className="text-neutral-500 dark:text-neutral-400 mb-4">Challenge your friends with a custom game link.</p>
-                <div className="flex flex-col sm:flex-row gap-4">
+              {/* Daily Challenge Card */}
+              <Card className="shadow-lg hover:shadow-xl transition-shadow">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xl flex items-center">
+                      <Calendar className="h-5 w-5 mr-2 text-blue-500" />
+                      Daily Challenge
+                    </CardTitle>
+                  </div>
+                  <CardDescription>
+                    {dateString}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="text-sm pb-2">
+                  {dailyStatus.completed ? (
+                    <div className="space-y-2">
+                      <p>Today's challenge completed!</p>
+                      <div className="flex items-center justify-between px-3 py-2 bg-green-50 dark:bg-green-900/20 rounded-md">
+                        <span>Your Score:</span>
+                        <span className="font-bold">{dailyStatus.score.toLocaleString()} pts</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p>Every day a new set of historical events. Can you identify them all?</p>
+                  )}
+                </CardContent>
+                <CardFooter>
+                  <Button 
+                    className="w-full" 
+                    disabled={dailyStatus.completed}
+                    asChild
+                  >
+                    {dailyStatus.completed ? (
+                      <span>Completed for Today</span>
+                    ) : (
+                      <Link to="/play?mode=daily">Play Today's Challenge</Link>
+                    )}
+                  </Button>
+                </CardFooter>
+              </Card>
+              
+              {/* Play with Friends Card */}
+              <Card className="shadow-lg hover:shadow-xl transition-shadow">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xl flex items-center">
+                      <Users className="h-5 w-5 mr-2 text-indigo-500" />
+                      Play with Friends
+                    </CardTitle>
+                  </div>
+                  <CardDescription>
+                    Compete with your friends
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="text-sm pb-2">
+                  <p>Invite friends to a private game and see who knows history best.</p>
+                </CardContent>
+                <CardFooter className="flex gap-2">
                   <Button 
                     variant="outline" 
-                    className="flex-1 flex items-center gap-2"
-                    onClick={copyGameLink}
+                    className="flex-1"
+                    onClick={() => setIsFriendsModalOpen(true)}
                   >
-                    {linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    {linkCopied ? "Copied!" : "Copy Game Link"}
-                  </Button>
-                  <Button 
-                    className="flex-1 flex items-center gap-2"
-                    onClick={inviteFriend}
-                  >
-                    <Users className="h-4 w-4" />
                     Invite Friends
                   </Button>
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="play" className="mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
-              <Card>
-                <CardHeader className="pb-2">
-                  <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-full inline-flex">
-                    <Clock className="h-6 w-6" />
-                  </div>
-                  <CardTitle className="text-xl mt-2">Timer</CardTitle>
-                  <CardDescription>Race against the clock.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="timer-toggle">Enable Timer</Label>
-                      <Switch 
-                        id="timer-toggle" 
-                        checked={timerEnabled} 
-                        onCheckedChange={setTimerEnabled} 
-                      />
-                    </div>
-                    
-                    {timerEnabled && (
-                      <div>
-                        <div className="flex justify-between mb-2">
-                          <Label>Time Limit: {timerMinutes} minutes</Label>
-                        </div>
-                        <Slider 
-                          value={[timerMinutes]} 
-                          min={1} 
-                          max={10} 
-                          step={1} 
-                          onValueChange={(value) => setTimerMinutes(value[0])}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
+                  <Button className="flex-1" asChild>
+                    <Link to="/play?mode=friends">Start Game</Link>
+                  </Button>
+                </CardFooter>
               </Card>
               
-              <Card>
+              {/* Explore Mode Card */}
+              <Card className="shadow-lg hover:shadow-xl transition-shadow">
                 <CardHeader className="pb-2">
-                  <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-full inline-flex">
-                    <Lightbulb className="h-6 w-6" />
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xl flex items-center">
+                      <Globe className="h-5 w-5 mr-2 text-green-500" />
+                      World Regions
+                    </CardTitle>
                   </div>
-                  <CardTitle className="text-xl mt-2">Hints</CardTitle>
-                  <CardDescription>Enable hints to get help during the game.</CardDescription>
+                  <CardDescription>
+                    Focus on specific areas
+                  </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="hints-toggle">Enable Hints</Label>
-                      <Switch 
-                        id="hints-toggle" 
-                        checked={hintsEnabled} 
-                        onCheckedChange={setHintsEnabled} 
-                      />
-                    </div>
-                    
-                    {hintsEnabled && (
-                      <div>
-                        <div className="flex justify-between mb-2">
-                          <Label>Hints per game: {hintsCount}</Label>
-                        </div>
-                        <Slider 
-                          value={[hintsCount]} 
-                          min={1} 
-                          max={10} 
-                          step={1} 
-                          onValueChange={(value) => setHintsCount(value[0])}
-                        />
-                      </div>
-                    )}
-                  </div>
+                <CardContent className="text-sm pb-2">
+                  <p>Challenge yourself with events from specific regions or time periods.</p>
                 </CardContent>
+                <CardFooter>
+                  <Button variant="outline" className="w-full" disabled>
+                    Coming Soon
+                  </Button>
+                </CardFooter>
               </Card>
             </div>
+          </div>
+          
+          {/* Settings Section */}
+          <div>
+            <h2 className="text-2xl font-bold mb-6 text-center md:text-left">Game Settings</h2>
             
-            <div className="mt-8 flex justify-center">
-              <Button size="lg" onClick={handleStartGame} className="w-full max-w-md">
-                Start Game
-              </Button>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </main>
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-xl">Gameplay Options</CardTitle>
+                <CardDescription>
+                  Customize your game experience
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Timer Settings */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Enable Timer</span>
+                    </div>
+                    <Switch
+                      checked={timerEnabled}
+                      onCheckedChange={handleTimerChange}
+                    />
+                  </div>
+                  
+                  {timerEnabled && (
+                    <div className="pt-2 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Time per round</span>
+                        <span className="text-sm font-medium">{timerSeconds} seconds</span>
+                      </div>
+                      <Slider
+                        value={[timerSeconds]}
+                        min={30}
+                        max={300}
+                        step={30}
+                        onValueChange={handleTimerSecondsChange}
+                      />
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>30s</span>
+                        <span>300s</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Other settings could go here */}
+              </CardContent>
+              <CardFooter>
+                <Button className="w-full" asChild>
+                  <Link to="/play">Start Game</Link>
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        </div>
+      </div>
+      
+      {/* Friends Invite Modal */}
+      <FriendsModal 
+        open={isFriendsModalOpen} 
+        onOpenChange={setIsFriendsModalOpen} 
+      />
     </div>
   );
 };

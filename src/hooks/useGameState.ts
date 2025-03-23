@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/services/auth';
 import { sampleImages } from '@/data/sampleImages';
@@ -8,9 +8,12 @@ import { useGameRounds } from './useGameRounds';
 import { useGameScoring } from './useGameScoring';
 import { GameStateReturn } from '@/types/gameState';
 
+export type GameMode = 'regular' | 'daily' | 'friends';
+
 export const useGameState = (maxRounds = 5): GameStateReturn => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [gameMode, setGameMode] = useState<GameMode>('regular');
   
   // Use our new hooks
   const { 
@@ -44,6 +47,38 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(1960);
   const [showResults, setShowResults] = useState(false);
+  
+  // Check if daily game was already played today
+  useEffect(() => {
+    // Check if we're in daily mode
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+    
+    if (mode === 'daily') {
+      setGameMode('daily');
+      
+      // Check if daily game was already played today
+      const dailyGameScore = localStorage.getItem('dailyGameScore');
+      if (dailyGameScore) {
+        try {
+          const { date } = JSON.parse(dailyGameScore);
+          const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+          
+          if (date === today) {
+            // Daily game already played today, show alert
+            toast({
+              title: "Daily challenge already completed",
+              description: "You've already played today's daily challenge. Come back tomorrow!",
+            });
+          }
+        } catch (error) {
+          console.error('Error checking daily game status:', error);
+        }
+      }
+    } else if (mode === 'friends') {
+      setGameMode('friends');
+    }
+  }, [toast]);
   
   // Handle submitting a guess
   const handleSubmit = () => {
@@ -142,6 +177,9 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     
     // Images data
     sampleImages,
+    
+    // Game mode
+    gameMode,
     
     // Handlers
     setSelectedLocation,

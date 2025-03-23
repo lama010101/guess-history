@@ -5,6 +5,7 @@ import GameControls from './game/GameControls';
 import GameResultsModal from './game/GameResultsModal';
 import GameComplete from './game/GameComplete';
 import { useGameState } from '@/hooks/useGameState';
+import { useGameTimer } from '@/hooks/useGameTimer';
 
 const MAX_ROUNDS = 5; // Default to 5 rounds for a game
 
@@ -30,14 +31,34 @@ const GameSection = () => {
     handleNewGame,
     handleUseLocationHint,
     handleUseYearHint,
-    maxRounds
+    maxRounds,
+    gameMode
   } = useGameState(MAX_ROUNDS);
+  
+  const { 
+    resetTimer, 
+    startTimer, 
+    pauseTimer, 
+    isActive: timerActive 
+  } = useGameTimer();
 
   // Create an adapter function to handle the different parameter types
   const handleLocationSelect = (lat: number, lng: number) => {
     updateSelectedLocation({ lat, lng });
   };
-
+  
+  // Start timer for each round and pause when showing results
+  useEffect(() => {
+    if (timerActive) {
+      if (showResults) {
+        pauseTimer();
+      } else if (!gameComplete) {
+        resetTimer();
+        startTimer();
+      }
+    }
+  }, [currentRound, showResults, gameComplete, timerActive, resetTimer, startTimer, pauseTimer]);
+  
   // Show game over screen if all rounds are completed
   if (gameComplete) {
     return (
@@ -48,6 +69,7 @@ const GameSection = () => {
           roundScores={roundScores}
           images={sampleImages}
           onPlayAgain={handleNewGame}
+          gameMode={gameMode}
         />
       </section>
     );

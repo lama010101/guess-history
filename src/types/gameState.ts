@@ -1,6 +1,8 @@
 
 import { HistoricalImage, RoundScore } from './game';
 
+export type GameMode = 'regular' | 'daily' | 'friends';
+
 export interface GameState {
   selectedLocation: { lat: number; lng: number } | null;
   selectedYear: number;
@@ -13,6 +15,7 @@ export interface GameState {
   hintCoins: number;
   locationHintUsed: boolean;
   yearHintUsed: boolean;
+  gameMode: GameMode;
 }
 
 export interface GameStateActions {

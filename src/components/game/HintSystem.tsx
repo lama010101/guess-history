@@ -1,5 +1,5 @@
 
-import { Lightbulb, MapPin, Calendar, Coins } from 'lucide-react';
+import { Lightbulb, MapPin, Calendar, Coins, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface HintSystemProps {
@@ -8,6 +8,7 @@ interface HintSystemProps {
   onUseYearHint: () => void;
   locationHintUsed: boolean;
   yearHintUsed: boolean;
+  onClose: () => void;
   currentImage: {
     year: number;
     location: { lat: number; lng: number };
@@ -22,6 +23,7 @@ const HintSystem = ({
   onUseYearHint,
   locationHintUsed,
   yearHintUsed,
+  onClose,
   currentImage
 }: HintSystemProps) => {
   // For location hint, we'll show the country only
@@ -41,23 +43,31 @@ const HintSystem = ({
   };
   
   return (
-    <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-lg p-3 shadow-md w-[110%]">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold flex items-center">
-          <Lightbulb className="h-4 w-4 mr-1.5 text-yellow-500" />
+    <div className="bg-white dark:bg-gray-900 rounded-lg p-5 shadow-md w-[350px]">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-base font-semibold flex items-center">
+          <Lightbulb className="h-5 w-5 mr-2 text-yellow-500" />
           Available Hints
         </h3>
-        <div className="flex items-center text-sm font-medium">
-          <Coins className="h-4 w-4 mr-1.5 text-yellow-500" />
-          {hintCoins} coins
-        </div>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="h-8 w-8 p-0" 
+          onClick={onClose}
+        >
+          <X className="h-5 w-5" />
+        </Button>
       </div>
       
-      <div className="grid grid-cols-2 gap-2">
-        <div>
+      <div className="flex items-center mb-3">
+        <Coins className="h-4 w-4 mr-1.5 text-yellow-500" />
+        <span className="text-sm font-medium">{hintCoins} hint coins available</span>
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4 py-2">
+        <div className="flex flex-col">
           <Button 
             variant={locationHintUsed ? "outline" : "default"} 
-            size="sm" 
             className="w-full flex items-center justify-center"
             onClick={onUseLocationHint}
             disabled={locationHintUsed || hintCoins <= 0}
@@ -66,19 +76,13 @@ const HintSystem = ({
             Country
           </Button>
           <div className="text-xs mt-1 text-center text-neutral-500 dark:text-neutral-400">
-            Cost: -500 points
+            -500 points
           </div>
-          {locationHintUsed && (
-            <div className="text-xs mt-1 text-center text-neutral-500 dark:text-neutral-400">
-              {getCountryHint()}
-            </div>
-          )}
         </div>
           
-        <div>
+        <div className="flex flex-col">
           <Button 
-            variant={yearHintUsed ? "outline" : "default"} 
-            size="sm" 
+            variant={yearHintUsed ? "outline" : "default"}
             className="w-full flex items-center justify-center"
             onClick={onUseYearHint}
             disabled={yearHintUsed || hintCoins <= 0}
@@ -87,13 +91,8 @@ const HintSystem = ({
             Decade
           </Button>
           <div className="text-xs mt-1 text-center text-neutral-500 dark:text-neutral-400">
-            Cost: -500 points
+            -500 points
           </div>
-          {yearHintUsed && (
-            <div className="text-xs mt-1 text-center text-neutral-500 dark:text-neutral-400">
-              {getYearHint()}
-            </div>
-          )}
         </div>
       </div>
     </div>

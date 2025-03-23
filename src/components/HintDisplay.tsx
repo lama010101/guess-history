@@ -47,7 +47,10 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
         <div className="grid grid-cols-2 gap-4 py-2">
           <div className="flex flex-col items-center">
             <Button 
-              onClick={handleUseLocationHint}
+              onClick={() => {
+                handleUseLocationHint();
+                // Don't close popup to see the hint
+              }}
               disabled={locationHintUsed || availableHints <= 0}
               variant={locationHintUsed ? "outline" : "default"}
               className="w-full"
@@ -56,11 +59,20 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
               <span className="text-xs">Country</span>
             </Button>
             <span className="text-xs text-muted-foreground mt-1">-500 pts</span>
+            
+            {locationHintUsed && currentImage && (
+              <span className="text-xs font-medium mt-2">
+                {getCountryOnly(currentImage.locationName)}
+              </span>
+            )}
           </div>
           
           <div className="flex flex-col items-center">
             <Button 
-              onClick={handleUseYearHint}
+              onClick={() => {
+                handleUseYearHint();
+                // Don't close popup to see the hint
+              }}
               disabled={yearHintUsed || availableHints <= 0}
               variant={yearHintUsed ? "outline" : "default"}
               className="w-full"
@@ -69,11 +81,13 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
               <span className="text-xs">Decade</span>
             </Button>
             <span className="text-xs text-muted-foreground mt-1">-500 pts</span>
+            
+            {yearHintUsed && currentImage && (
+              <span className="text-xs font-medium mt-2">
+                {currentImage.year.toString().slice(0, -1) + "X"}
+              </span>
+            )}
           </div>
-        </div>
-        
-        <div className="mt-2 pt-2 border-t">
-          <h4 className="text-xs font-medium mb-1">Hint coins available: {availableHints}</h4>
         </div>
       </div>
     </div>

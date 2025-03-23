@@ -3,130 +3,163 @@ import { useEffect, useRef } from 'react';
 
 interface ResultVisualizationProps {
   actualLocation: { lat: number; lng: number };
-  guessedLocation?: { lat: number; lng: number };
+  guessedLocation: { lat: number; lng: number };
   isVisible: boolean;
-  accuracyRadius?: number; // In meters, default is 1000
+  circleRadius?: number; // radius in meters
 }
 
 const ResultVisualization = ({ 
   actualLocation, 
   guessedLocation, 
-  isVisible,
-  accuracyRadius = 1000 
+  isVisible, 
+  circleRadius = 1000 
 }: ResultVisualizationProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const leafletMapRef = useRef<any>(null);
 
   useEffect(() => {
-    if (!isVisible || !mapRef.current || !guessedLocation) return;
+    if (!isVisible || !mapRef.current) return;
 
-    const initMap = async () => {
-      try {
-        const L = window.L;
-        if (!L) return;
+    // Function to dynamically load and initialize Leaflet
+    const initializeMap = async () => {
+      // Check if Leaflet is already loaded
+      if (!(window as any).L) {
+        // Load Leaflet CSS
+        const linkEl = document.createElement('link');
+        linkEl.rel = 'stylesheet';
+        linkEl.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(linkEl);
 
-        // Create map if it doesn't exist
-        if (!leafletMapRef.current) {
-          // Create the map without the gestureHandling option
-          leafletMapRef.current = L.map(mapRef.current).setView([
-            (actualLocation.lat + guessedLocation.lat) / 2,
-            (actualLocation.lng + guessedLocation.lng) / 2
-          ], 2);
+        // Load Leaflet JS
+        const scriptEl = document.createElement('script');
+        scriptEl.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        document.head.appendChild(scriptEl);
 
-          // Add tile layer
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-          }).addTo(leafletMapRef.current);
-          
-          // Add custom handler for two-finger panning on touch devices
-          // Use Leaflet's built-in touch handling instead
-          if (L.Browser.touch) {
-            leafletMapRef.current.dragging.enable();
-            leafletMapRef.current.touchZoom.enable();
-          }
-        }
+        // Wait for script to load
+        await new Promise((resolve) => {
+          scriptEl.onload = resolve;
+        });
+      }
 
-        // Add accuracy circle around the actual location
-        const accuracyCircle = L.circle([actualLocation.lat, actualLocation.lng], {
-          radius: accuracyRadius,
-          color: '#22c55e',
-          fillColor: '#22c55e',
-          fillOpacity: 0.2,
-          weight: 2
-        }).addTo(leafletMapRef.current);
+      const L = (window as any).L;
 
-        // Add markers for actual location
-        const actualMarker = L.marker([actualLocation.lat, actualLocation.lng], {
-          icon: L.divIcon({
-            className: 'actual-location-marker',
-            html: `<div class="p-1 rounded-full bg-green-500 border-2 border-white shadow-lg">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                  </div>`,
-            iconSize: [28, 28],
-            iconAnchor: [14, 14],
-          })
-        }).addTo(leafletMapRef.current);
+      // Calculate the midpoint between the actual and guessed locations
+      const midLat = (actualLocation.lat + guessedLocation.lat) / 2;
+      const midLng = (actualLocation.lng + guessedLocation.lng) / 2;
 
-        // Add user profile image marker for guessed location
-        const guessedMarker = L.marker([guessedLocation.lat, guessedLocation.lng], {
-          icon: L.divIcon({
-            className: 'guessed-location-marker',
-            html: `<div class="w-8 h-8 rounded-full overflow-hidden border-2 border-white shadow-lg">
-                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=You" class="w-full h-full" />
-                  </div>`,
-            iconSize: [32, 32],
-            iconAnchor: [16, 16],
-          })
-        }).addTo(leafletMapRef.current);
+      // Calculate distance to determine zoom level
+      const distance = L.latLng(actualLocation.lat, actualLocation.lng)
+        .distanceTo(L.latLng(guessedLocation.lat, guessedLocation.lng));
+      
+      // Get appropriate zoom level based on distance
+      const zoomLevel = distance > 5000000 ? 1 :
+                         distance > 1000000 ? 2 :
+                         distance > 500000 ? 3 :
+                         distance > 100000 ? 4 :
+                         distance > 50000 ? 5 :
+                         distance > 10000 ? 7 :
+                         distance > 5000 ? 8 :
+                         distance > 1000 ? 10 :
+                         distance > 500 ? 12 : 13;
 
-        // Draw a line between the two points
-        const latlngs = [
+      // Initialize map
+      const map = L.map(mapRef.current, {
+        center: [midLat, midLng],
+        zoom: zoomLevel,
+        touchZoom: true,
+        scrollWheelZoom: false,
+        boxZoom: false,
+        tap: false,
+        dragging: true,
+        // Handle gestures for mobile with two fingers
+        dragging: L.Browser.mobile,
+        tap: L.Browser.mobile,
+        tapTolerance: 15,
+      });
+
+      // Add tile layer (OpenStreetMap)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      }).addTo(map);
+
+      // Create a circle around the actual location with the specified radius
+      L.circle([actualLocation.lat, actualLocation.lng], {
+        radius: circleRadius,
+        color: '#4CAF50',
+        fillColor: '#4CAF50',
+        fillOpacity: 0.2,
+        weight: 2
+      }).addTo(map);
+
+      // Add actual location marker
+      L.marker([actualLocation.lat, actualLocation.lng], {
+        icon: L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div style="
+            background-color: #4CAF50;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transform: translate(-50%, -50%);
+          "></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [0, 0],
+        })
+      }).addTo(map);
+
+      // Add guessed location marker with user profile image
+      L.marker([guessedLocation.lat, guessedLocation.lng], {
+        icon: L.divIcon({
+          className: 'custom-avatar-icon',
+          html: `<div style="
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transform: translate(-50%, -50%);
+            overflow: hidden;
+            background-color: #2196F3;
+          ">
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=You" style="width: 100%; height: 100%;">
+          </div>`,
+          iconSize: [32, 32],
+          iconAnchor: [0, 0],
+        })
+      }).addTo(map);
+
+      // Add line between actual and guessed locations
+      L.polyline(
+        [
           [actualLocation.lat, actualLocation.lng],
           [guessedLocation.lat, guessedLocation.lng]
-        ] as L.LatLngExpression[];
-        
-        const polyline = L.polyline(latlngs, {
-          color: 'red',
+        ],
+        { 
+          color: '#FF5722',
           weight: 2,
           opacity: 0.7,
-          dashArray: '5, 10'
-        }).addTo(leafletMapRef.current);
+          dashArray: '5, 5'
+        }
+      ).addTo(map);
 
-        // Fit map to show both markers with padding
-        const bounds = L.latLngBounds(
-          L.latLng(actualLocation.lat, actualLocation.lng),
-          L.latLng(guessedLocation.lat, guessedLocation.lng)
-        );
-        leafletMapRef.current.fitBounds(bounds, { padding: [50, 50] });
-
-        // Add tooltips
-        actualMarker.bindTooltip("Actual Location").openTooltip();
-        guessedMarker.bindTooltip("Your Guess").openTooltip();
-      } catch (error) {
-        console.error("Error initializing result visualization map:", error);
-      }
+      // Cleanup function
+      return () => {
+        map.remove();
+      };
     };
 
     // Initialize the map
-    initMap();
+    const cleanup = initializeMap();
 
-    // Clean up function
+    // Clean up on unmount
     return () => {
-      if (leafletMapRef.current) {
-        leafletMapRef.current.remove();
-        leafletMapRef.current = null;
-      }
+      cleanup.then(cleanupFn => cleanupFn && cleanupFn());
     };
-  }, [isVisible, actualLocation, guessedLocation, accuracyRadius]);
-
-  if (!isVisible || !guessedLocation) return null;
+  }, [actualLocation, guessedLocation, isVisible, circleRadius]);
 
   return (
-    <div className="mt-4 rounded-lg overflow-hidden border border-border shadow-md">
-      <div ref={mapRef} className="h-[200px] w-full"></div>
-    </div>
+    <div ref={mapRef} className="w-full h-[200px] rounded-md overflow-hidden"></div>
   );
 };
 

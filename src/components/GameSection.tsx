@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import GamePanel from './game/GamePanel';
 import GameControls from './game/GameControls';
 import GameResultsModal from './game/GameResultsModal';
@@ -40,14 +40,18 @@ const GameSection = () => {
     maxRounds
   } = useGameState(MAX_ROUNDS);
 
-  // Ensure the Navbar updates when game state changes
+  // Create a unique key for forcing Navbar to re-render when state changes
   const [navbarKey, setNavbarKey] = useState(0);
   
-  useEffect(() => {
-    // Update the navbar key whenever relevant state changes
+  // Force update the navbar when relevant game state changes
+  const forceNavbarUpdate = useCallback(() => {
     setNavbarKey(prev => prev + 1);
-  }, [currentRound, totalScore, showResults]);
-
+  }, []);
+  
+  useEffect(() => {
+    forceNavbarUpdate();
+  }, [currentRound, totalScore, showResults, forceNavbarUpdate]);
+  
   // Create an adapter function to handle the different parameter types
   const handleLocationSelect = (lat: number, lng: number) => {
     updateSelectedLocation({ lat, lng });
@@ -55,6 +59,13 @@ const GameSection = () => {
 
   // Show game over screen if all rounds are completed
   if (gameComplete) {
+    // Save daily score to localStorage
+    useEffect(() => {
+      if (isDaily) {
+        localStorage.setItem('lastDailyScore', totalScore.toString());
+      }
+    }, [isDaily, totalScore]);
+    
     return (
       <section id="game" className="h-full flex flex-col">
         <Navbar key={navbarKey} />
@@ -69,6 +80,12 @@ const GameSection = () => {
       </section>
     );
   }
+
+  // Handler for next round that also forces a navbar update
+  const handleNextRoundWithUpdate = () => {
+    handleNextRound();
+    forceNavbarUpdate();
+  };
 
   return (
     <section id="game" className="h-full flex flex-col">
@@ -117,7 +134,7 @@ const GameSection = () => {
           selectedYear={selectedYear}
           distanceKm={currentScores.distanceKm}
           yearDifference={currentScores.yearDifference}
-          onNextRound={handleNextRound}
+          onNextRound={handleNextRoundWithUpdate}
           currentRound={currentRound}
           maxRounds={MAX_ROUNDS}
           locationHintUsed={locationHintUsed}

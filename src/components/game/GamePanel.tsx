@@ -3,9 +3,7 @@ import { useState } from 'react';
 import MapComponent from '../MapComponent';
 import HistoricalImage from '../HistoricalImage';
 import ViewToggle from './ViewToggle';
-import HintSystem from './HintSystem';
-import { Lightbulb, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Lightbulb } from 'lucide-react';
 
 interface GamePanelProps {
   currentImage: {
@@ -33,18 +31,11 @@ const GamePanel = ({
   currentImage, 
   onLocationSelect, 
   selectedLocation,
-  gameRound,
-  maxRounds,
-  totalScore,
-  hintCoins,
-  onUseLocationHint,
-  onUseYearHint,
   locationHintUsed,
   yearHintUsed
 }: GamePanelProps) => {
   // Start with image view by default
   const [activeView, setActiveView] = useState<'image' | 'map'>('image');
-  const [showHintSystem, setShowHintSystem] = useState(false);
 
   // Helper to extract just the country from location name
   const getCountryOnly = (locationName?: string): string => {
@@ -96,50 +87,8 @@ const GamePanel = ({
           activeView={activeView} 
           onToggle={() => setActiveView(activeView === 'image' ? 'map' : 'image')}
           imageSrc={currentImage.src}
+          showClose={false}
         />
-        
-        {/* Hint Button */}
-        <div className="absolute top-4 left-4 z-10">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm"
-            onClick={() => setShowHintSystem(!showHintSystem)}
-          >
-            <Lightbulb className="h-4 w-4 text-yellow-500 mr-1.5" />
-            Hints
-          </Button>
-        </div>
-        
-        {/* Hint System Modal */}
-        {showHintSystem && (
-          <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/20 backdrop-blur-sm">
-            <div className="relative w-[350px]">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute -top-2 -right-2 h-7 w-7 rounded-full bg-white dark:bg-gray-800 z-10"
-                onClick={() => setShowHintSystem(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-              <HintSystem
-                hintCoins={hintCoins}
-                onUseLocationHint={() => {
-                  onUseLocationHint();
-                  setShowHintSystem(false);
-                }}
-                onUseYearHint={() => {
-                  onUseYearHint();
-                  setShowHintSystem(false);
-                }}
-                locationHintUsed={locationHintUsed}
-                yearHintUsed={yearHintUsed}
-                currentImage={currentImage}
-              />
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

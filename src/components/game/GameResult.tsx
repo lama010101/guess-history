@@ -1,9 +1,7 @@
 
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { MapPin, Calendar, Lightbulb, Home, ChevronRight } from 'lucide-react';
+import { MapPin, Calendar, Lightbulb } from 'lucide-react';
 import ResultVisualization from './ResultVisualization';
-import { Link } from 'react-router-dom';
 
 interface GameResultProps {
   isVisible: boolean;
@@ -37,8 +35,6 @@ const GameResult = ({
   distanceKm,
   yearDifference,
   onNextRound,
-  currentRound,
-  maxRounds,
   locationHintUsed,
   yearHintUsed,
   hintPenalty,
@@ -48,7 +44,6 @@ const GameResult = ({
 }: GameResultProps) => {
   if (!isVisible) return null;
   
-  const isLastRound = currentRound >= maxRounds;
   const totalScore = locationScore + yearScore - hintPenalty;
   
   // Helper to extract just the country name
@@ -61,7 +56,7 @@ const GameResult = ({
   };
   
   return (
-    <Card className="glass-card p-4 rounded-lg max-w-md w-full overflow-y-auto max-h-[90vh]">
+    <div className="glass-card p-4 rounded-lg max-w-md w-full">
       <div className="text-center mb-4">
         <h3 className="text-2xl font-bold mb-1">Round Score</h3>
       </div>
@@ -86,16 +81,15 @@ const GameResult = ({
           <span className="font-semibold">{locationScore.toLocaleString()} pts</span>
         </div>
         <div className="p-3">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-2 font-medium">
-            {distanceKm < 1
-              ? 'Perfect! You were spot on!'
-              : `You were ${Math.round(distanceKm)} km away from the actual location.`}
+          <p className="text-sm font-medium">
+            {Math.round(distanceKm)} km
           </p>
           {guessedLocation && (
             <ResultVisualization
               actualLocation={actualLocation}
               guessedLocation={guessedLocation}
               isVisible={isVisible}
+              circleRadius={1000} // Default 1000m radius
             />
           )}
         </div>
@@ -117,12 +111,8 @@ const GameResult = ({
           <span className="font-semibold">{yearScore.toLocaleString()} pts</span>
         </div>
         <div className="p-3">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 font-medium">
-            {yearDifference === 0
-              ? 'Perfect! You guessed the exact year!'
-              : `You were ${yearDifference} year${yearDifference !== 1 ? 's' : ''} ${
-                  guessedYear > actualYear ? 'later' : 'earlier'
-                } than the actual year (${actualYear}).`}
+          <p className="text-sm font-medium">
+            {yearDifference} years {guessedYear > actualYear ? 'later' : 'earlier'}
           </p>
         </div>
         {yearHintUsed && (
@@ -140,7 +130,14 @@ const GameResult = ({
           <span className="text-lg font-bold">{totalScore.toLocaleString()} pts</span>
         </div>
       </div>
-    </Card>
+      
+      <Button
+        onClick={onNextRound}
+        className="w-full bg-primary text-primary-foreground"
+      >
+        Next Round
+      </Button>
+    </div>
   );
 };
 

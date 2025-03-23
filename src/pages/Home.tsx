@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/services/auth';
+import FriendsInviteDialog from '@/components/friends/FriendsInviteDialog';
 
 const Home = () => {
   const [activeTab, setActiveTab] = useState<'compete' | 'play'>('compete');
@@ -19,19 +20,48 @@ const Home = () => {
   const [hintsEnabled, setHintsEnabled] = useState<boolean>(true);
   const [hintsCount, setHintsCount] = useState<number>(2);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [useMiles, setUseMiles] = useState<boolean>(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isAuthenticated } = useAuth();
   
   const [dailyPlayed, setDailyPlayed] = useState(false);
+  const [dailyScore, setDailyScore] = useState(0);
+  const [dailyDate, setDailyDate] = useState("");
   
   // Check if daily challenge was played today
   useEffect(() => {
     const lastPlayed = localStorage.getItem('lastDailyPlayed');
+    const savedScore = localStorage.getItem('lastDailyScore');
+    
     if (lastPlayed) {
-      const lastPlayedDate = new Date(lastPlayed).toDateString();
-      const today = new Date().toDateString();
-      setDailyPlayed(lastPlayedDate === today);
+      const lastPlayedDate = new Date(lastPlayed);
+      const today = new Date();
+      
+      // Format date as "Mon, Jan 1, 2023"
+      setDailyDate(lastPlayedDate.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }));
+      
+      // Check if same day
+      setDailyPlayed(
+        lastPlayedDate.getDate() === today.getDate() &&
+        lastPlayedDate.getMonth() === today.getMonth() &&
+        lastPlayedDate.getFullYear() === today.getFullYear()
+      );
+      
+      if (savedScore) {
+        setDailyScore(parseInt(savedScore, 10));
+      }
+    }
+    
+    // Load distance preference
+    const distancePref = localStorage.getItem('distanceFormat');
+    if (distancePref) {
+      setUseMiles(distancePref === 'miles');
     }
   }, []);
 
@@ -42,6 +72,7 @@ const Home = () => {
       timerMinutes: timerMinutes,
       hintsEnabled,
       initialHintCoins: hintsEnabled ? hintsCount : 0,
+      distanceFormat: useMiles ? 'miles' : 'km',
     };
     
     localStorage.setItem('gameSettings', JSON.stringify(gameSettings));
@@ -75,11 +106,14 @@ const Home = () => {
     }, 2000);
   };
   
-  const inviteFriend = () => {
-    // This would normally open a friends selection modal
+  const toggleDistanceFormat = () => {
+    const newValue = !useMiles;
+    setUseMiles(newValue);
+    localStorage.setItem('distanceFormat', newValue ? 'miles' : 'km');
+    
     toast({
-      title: "Invite sent!",
-      description: "Your friend has been invited to play"
+      title: `Distance format changed to ${newValue ? 'Miles' : 'Kilometers'}`,
+      description: `Distances will now be displayed in ${newValue ? 'miles' : 'kilometers'}.`
     });
   };
 
@@ -102,6 +136,13 @@ const Home = () => {
                   <div>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">One attempt per day</p>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Timer: 5 minutes</p>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Hints available: 2</p>
+                    {dailyPlayed && dailyScore > 0 && (
+                      <div className="mt-2 text-sm">
+                        <p className="font-medium">Today's score: {dailyScore}</p>
+                        <p className="text-neutral-500">{dailyDate}</p>
+                      </div>
+                    )}
                   </div>
                   <Button 
                     onClick={() => {
@@ -123,7 +164,37 @@ const Home = () => {
               
               <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-6">
                 <h3 className="text-xl font-medium mb-2">Friends Mode</h3>
-                <p className="text-neutral-500 dark:text-neutral-400 mb-4">Challenge your friends with a custom game link.</p>
+                <p className="text-neutral-500 dark:text-neutral-400 mb-4">Invite your registered friends here or share the link.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="friends-timer-toggle">Enable Timer</Label>
+                    <div className="flex items-center space-x-2">
+                      <Switch 
+                        id="friends-timer-toggle" 
+                        checked={timerEnabled} 
+                        onCheckedChange={setTimerEnabled} 
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {timerEnabled ? "On" : "Off"}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="friends-hints-toggle">Enable Hints</Label>
+                    <div className="flex items-center space-x-2">
+                      <Switch 
+                        id="friends-hints-toggle" 
+                        checked={hintsEnabled} 
+                        onCheckedChange={setHintsEnabled} 
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {hintsEnabled ? "On" : "Off"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Button 
                     variant="outline" 
@@ -133,13 +204,32 @@ const Home = () => {
                     {linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     {linkCopied ? "Copied!" : "Copy Game Link"}
                   </Button>
-                  <Button 
-                    className="flex-1 flex items-center gap-2"
-                    onClick={inviteFriend}
-                  >
-                    <Users className="h-4 w-4" />
-                    Invite Friends
-                  </Button>
+                  <FriendsInviteDialog 
+                    trigger={
+                      <Button className="flex-1 flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Invite Friends
+                      </Button>
+                    }
+                  />
+                </div>
+              </div>
+              
+              <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-6">
+                <h3 className="text-xl font-medium mb-2">Settings</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="distance-toggle">Distance Format</Label>
+                    <div className="flex items-center space-x-2">
+                      <span className={!useMiles ? "font-medium" : "text-muted-foreground"}>Km</span>
+                      <Switch 
+                        id="distance-toggle" 
+                        checked={useMiles} 
+                        onCheckedChange={toggleDistanceFormat} 
+                      />
+                      <span className={useMiles ? "font-medium" : "text-muted-foreground"}>Miles</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

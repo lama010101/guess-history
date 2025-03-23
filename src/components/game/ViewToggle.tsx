@@ -1,57 +1,51 @@
 
-import { useState, useEffect } from 'react';
-import { Map, Image as ImageIcon } from 'lucide-react';
+import { useState } from 'react';
+import { Map, Image } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ViewToggleProps {
-  activeView: 'image' | 'map';
+  activeView: 'map' | 'image';
   onToggle: () => void;
-  imageSrc: string;
+  imageSrc?: string;
+  showClose?: boolean;
 }
 
-const ViewToggle = ({ activeView, onToggle, imageSrc }: ViewToggleProps) => {
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+const ViewToggle = ({ activeView, onToggle, imageSrc, showClose = false }: ViewToggleProps) => {
+  // Static map preview for map mode
+  const staticMapUrl = "https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/0,0,1,0/400x400?access_token=pk.sample";
   
-  // Preload the image for the preview
-  useEffect(() => {
-    if (imageSrc) {
-      const img = new window.Image();
-      img.onload = () => setPreviewImage(imageSrc);
-      img.src = imageSrc;
-    }
-  }, [imageSrc]);
-
-  // Use a static map image centered on Europe with a more neutral grey style
-  const mapPreviewImage = 'https://api.mapbox.com/styles/v1/mapbox/light-v11/static/10,45,3,0,0/75x75?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ.-g_vE53SD2WrJ6tFX7QHmA';
-
   return (
-    <div className="absolute top-4 right-4 z-10">
-      <button 
+    <div className="absolute right-4 top-4 z-10">
+      <Button 
+        variant="outline" 
+        size="sm" 
         onClick={onToggle}
-        className="bg-background/80 backdrop-blur-sm shadow-lg border p-1 rounded-md flex items-center justify-center overflow-hidden transition-all hover:opacity-90"
-        style={{ width: '75px', height: '75px' }}
+        className="h-10 flex items-center gap-1.5 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm"
       >
         {activeView === 'image' ? (
-          <img 
-            src={mapPreviewImage}
-            alt="Map Preview" 
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full relative">
-            {previewImage ? (
-              <img 
-                src={previewImage} 
-                alt="Preview" 
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                <ImageIcon className="h-8 w-8 text-gray-400" />
-              </div>
+          <>
+            <Map className="h-4 w-4 mr-1" />
+            <span className="font-medium">Map</span>
+            {showClose && (
+              <span className="ml-1 h-4 w-4 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
+                <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+              </span>
             )}
-          </div>
+          </>
+        ) : (
+          <>
+            <Image className="h-4 w-4 mr-1" />
+            <span className="font-medium">Photo</span>
+            <span className="ml-1 h-5 w-5 rounded overflow-hidden border border-gray-300 dark:border-gray-600">
+              <img 
+                src={imageSrc} 
+                alt="Thumbnail" 
+                className="w-full h-full object-cover" 
+              />
+            </span>
+          </>
         )}
-      </button>
+      </Button>
     </div>
   );
 };

@@ -1,7 +1,6 @@
 
 import { RoundScore, HistoricalImage } from '@/types/game';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { MapPin, Calendar, ChevronRight, Lightbulb, Home, Trophy, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,8 +36,6 @@ const globalLeaderboard = [
 ];
 
 const GameComplete = ({ totalScore, maxRounds, roundScores, images, onPlayAgain, isDaily }: GameCompleteProps) => {
-  const maxPossibleScore = maxRounds * 10000;
-  
   const renderLeaderboard = (data: typeof friendsLeaderboard, title: string) => (
     <div className="space-y-2">
       <h3 className="text-lg font-semibold">{title}</h3>
@@ -74,92 +71,97 @@ const GameComplete = ({ totalScore, maxRounds, roundScores, images, onPlayAgain,
   
   return (
     <div className="relative flex-1 flex flex-col items-center justify-center p-4 max-h-full h-full">
-      <Card className="glass-card p-6 rounded-xl max-w-md w-full h-[80vh] overflow-y-auto">
+      <div className="glass-card p-6 rounded-xl max-w-md w-full h-[80vh] overflow-y-auto">
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold mb-1">Final Score</h2>
-          <p className="text-center mt-2">
-            Your final score: <span className="font-bold text-primary">{totalScore}</span> out of {maxPossibleScore}
-          </p>
+          <h2 className="text-2xl font-bold mb-2">Final Score</h2>
+          <div className="text-4xl font-bold text-primary">{totalScore.toLocaleString()}</div>
         </div>
         
-        <h3 className="text-lg font-semibold mb-3">Round Scores:</h3>
-        <div className="space-y-3 mb-6">
-          {roundScores.map((score, index) => {
-            const roundTotal = score.locationScore + score.yearScore - score.hintPenalty;
-            const currentImage = images[score.image];
-            return (
-              <div key={index} className="bg-secondary/50 rounded-lg p-3">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-medium">Round {index + 1}</span>
-                  <span className="font-bold">{roundTotal} pts</span>
-                </div>
-                <p className="text-sm text-muted-foreground mb-2 line-clamp-1">
-                  {currentImage?.title || currentImage?.description || "Historical Event"}
-                </p>
-                
-                {/* Show event image */}
-                {currentImage?.src && (
-                  <div className="w-full h-20 overflow-hidden rounded-md mb-2">
-                    <img 
-                      src={currentImage.src} 
-                      alt={currentImage.title || "Event"} 
-                      className="w-full h-full object-cover"
-                    />
+        <Tabs defaultValue="rounds" className="mt-6">
+          <TabsList className="w-full grid grid-cols-2">
+            <TabsTrigger value="rounds">Round Scores</TabsTrigger>
+            <TabsTrigger value="leaderboard">Leaderboards</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="rounds" className="pt-4">
+            <div className="space-y-3">
+              {roundScores.map((score, index) => {
+                const roundTotal = score.locationScore + score.yearScore - score.hintPenalty;
+                const currentImage = images[score.image];
+                return (
+                  <div key={index} className="bg-secondary/50 rounded-lg p-3">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-medium">Round {index + 1}</span>
+                      <span className="font-bold">{roundTotal} pts</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-2 line-clamp-1">
+                      {currentImage?.title || currentImage?.description || "Historical Event"}
+                    </p>
+                    
+                    {/* Show event image */}
+                    {currentImage?.src && (
+                      <div className="w-full h-20 overflow-hidden rounded-md mb-2">
+                        <img 
+                          src={currentImage.src} 
+                          alt={currentImage.title || "Event"} 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="flex items-center">
+                        <MapPin className="h-3 w-3 mr-1 text-primary" />
+                        <span>{score.locationScore} pts</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Calendar className="h-3 w-3 mr-1 text-primary" />
+                        <span>{score.yearScore} pts</span>
+                      </div>
+                    </div>
+                    {(score.locationHintUsed || score.yearHintUsed) && (
+                      <div className="flex items-center mt-1 text-xs text-amber-500">
+                        <Lightbulb className="h-3 w-3 mr-1" />
+                        <span>
+                          {score.locationHintUsed && score.yearHintUsed 
+                            ? "Used both hints" 
+                            : score.locationHintUsed 
+                            ? "Used country hint" 
+                            : "Used decade hint"}
+                          {" (-"}
+                          {score.hintPenalty}
+                          {" pts)"}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                )}
-                
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="flex items-center">
-                    <MapPin className="h-3 w-3 mr-1 text-primary" />
-                    <span>{score.locationScore} pts</span>
-                  </div>
-                  <div className="flex items-center">
-                    <Calendar className="h-3 w-3 mr-1 text-primary" />
-                    <span>{score.yearScore} pts</span>
-                  </div>
-                </div>
-                {(score.locationHintUsed || score.yearHintUsed) && (
-                  <div className="flex items-center mt-1 text-xs text-amber-500">
-                    <Lightbulb className="h-3 w-3 mr-1" />
-                    <span>
-                      {score.locationHintUsed && score.yearHintUsed 
-                        ? "Used both hints" 
-                        : score.locationHintUsed 
-                        ? "Used country hint" 
-                        : "Used decade hint"}
-                      {" (-"}
-                      {score.hintPenalty}
-                      {" pts)"}
-                    </span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        
-        {/* Leaderboard tabs */}
-        <div className="mb-6">
-          <Tabs defaultValue={isDaily ? "daily" : "friends"}>
-            <TabsList className="w-full grid grid-cols-3">
-              <TabsTrigger value="friends">Friends</TabsTrigger>
-              <TabsTrigger value="daily">Daily</TabsTrigger>
-              <TabsTrigger value="global">Global</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="friends" className="pt-4">
-              {renderLeaderboard(friendsLeaderboard, "Friends Leaderboard")}
-            </TabsContent>
-            
-            <TabsContent value="daily" className="pt-4">
-              {renderLeaderboard(dailyLeaderboard, "Daily Leaderboard")}
-            </TabsContent>
-            
-            <TabsContent value="global" className="pt-4">
-              {renderLeaderboard(globalLeaderboard, "Global Leaderboard")}
-            </TabsContent>
-          </Tabs>
-        </div>
+                );
+              })}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="leaderboard" className="pt-4">
+            <Tabs defaultValue={isDaily ? "daily" : "friends"}>
+              <TabsList className="w-full grid grid-cols-3">
+                <TabsTrigger value="friends">Friends</TabsTrigger>
+                <TabsTrigger value="daily">Daily</TabsTrigger>
+                <TabsTrigger value="global">Global</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="friends" className="pt-4">
+                {renderLeaderboard(friendsLeaderboard, "Friends Leaderboard")}
+              </TabsContent>
+              
+              <TabsContent value="daily" className="pt-4">
+                {renderLeaderboard(dailyLeaderboard, "Daily Leaderboard")}
+              </TabsContent>
+              
+              <TabsContent value="global" className="pt-4">
+                {renderLeaderboard(globalLeaderboard, "Global Leaderboard")}
+              </TabsContent>
+            </Tabs>
+          </TabsContent>
+        </Tabs>
         
         <div className="flex gap-2 mt-6">
           <Button
@@ -173,7 +175,7 @@ const GameComplete = ({ totalScore, maxRounds, roundScores, images, onPlayAgain,
             </Link>
           </Button>
           
-          {onPlayAgain && (
+          {onPlayAgain && !isDaily && (
             <Button
               onClick={onPlayAgain}
               className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center"
@@ -183,7 +185,7 @@ const GameComplete = ({ totalScore, maxRounds, roundScores, images, onPlayAgain,
             </Button>
           )}
         </div>
-      </Card>
+      </div>
     </div>
   );
 };

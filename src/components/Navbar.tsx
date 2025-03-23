@@ -88,7 +88,7 @@ const Navbar = ({ roundInfo, showTimer = false, timerDuration = 60 }: NavbarProp
       
       {/* Display active hints at top center */}
       {isGamePage && (locationHintUsed || yearHintUsed) && (
-        <div className="top-center-hint">
+        <div className="absolute left-1/2 transform -translate-x-1/2 top-16 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm px-4 py-2 rounded-md border border-border shadow-md">
           {locationHintUsed && (
             <div className="text-sm font-medium mb-1">
               <span className="font-bold">Country:</span> {yearHintUsed ? ' ' : 'Hint active'}

@@ -16,7 +16,7 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
     if (isOpen) {
       onClose();
     }
-  }, [location.pathname]);
+  }, [location.pathname, isOpen, onClose]);
 
   return (
     <LoginForm isOpen={isOpen} onClose={onClose} />

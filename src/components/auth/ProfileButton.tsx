@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useAuth } from '@/services/auth';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { LogIn, LogOut, User, ChevronDown, Settings, HelpCircle } from 'lucide-react';
+import { LogIn, LogOut, User, ChevronDown, Settings, HelpCircle, Home, Share2 } from 'lucide-react';
 import AuthModal from './AuthModal';
 import {
   DropdownMenu,
@@ -13,15 +13,33 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useToast } from '@/hooks/use-toast';
 
 const ProfileButton = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleLogout = () => {
     logout();
     navigate('/');
+  };
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: 'GuessEvents Game',
+        text: 'Check out this awesome historical event guessing game!',
+        url: window.location.origin,
+      }).catch(err => console.error('Error sharing:', err));
+    } else {
+      navigator.clipboard.writeText(window.location.origin);
+      toast({
+        title: "Link copied!",
+        description: "Game link has been copied to clipboard"
+      });
+    }
   };
 
   if (!isAuthenticated) {
@@ -70,6 +88,16 @@ const ProfileButton = () => {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>My Account</DropdownMenuLabel>
+        <DropdownMenuItem asChild>
+          <Link to="/" className="cursor-pointer">
+            <Home className="mr-2 h-4 w-4" />
+            Home
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleShare} className="cursor-pointer">
+          <Share2 className="mr-2 h-4 w-4" />
+          Share
+        </DropdownMenuItem>
         {!user?.isGuest && (
           <>
             <DropdownMenuItem asChild>

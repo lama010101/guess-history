@@ -30,23 +30,14 @@ const HintSystem = ({
   yearHintUsed,
   currentImage
 }: HintSystemProps) => {
-  // For location hint, we'll show the country only if available
+  // For location hint, we'll show the country only
   const getCountryHint = () => {
     if (currentImage.locationName) {
       // Split by comma and get the last part which is usually the country
       const parts = currentImage.locationName.split(',');
       return parts.length > 1 ? parts[parts.length - 1].trim() : parts[0].trim();
     }
-    
-    // Simplified implementation - in a real app, you would use a geocoding service
-    const locations: Record<string, string> = {
-      "48.8584,2.2945": "France",
-      "40.7484,-73.9857": "United States",
-      "37.8199,-122.4783": "United States",
-    };
-    
-    const coordKey = `${currentImage.location.lat},${currentImage.location.lng}`;
-    return locations[coordKey] || "Unknown Country";
+    return "Unknown Country";
   };
   
   // For year hint, we'll show the year with the last digit hidden
@@ -56,7 +47,7 @@ const HintSystem = ({
   };
   
   return (
-    <div className="bg-background/80 backdrop-blur-sm rounded-lg p-3 shadow-md">
+    <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-lg p-3 shadow-md">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold flex items-center">
           <Lightbulb className="h-4 w-4 mr-1.5 text-yellow-500" />
@@ -84,7 +75,7 @@ const HintSystem = ({
                   Location
                 </Button>
                 {locationHintUsed && (
-                  <div className="text-xs mt-1 text-center text-muted-foreground">
+                  <div className="text-xs mt-1 text-center text-neutral-500 dark:text-neutral-400">
                     {getCountryHint()}
                   </div>
                 )}
@@ -111,7 +102,7 @@ const HintSystem = ({
                   Year
                 </Button>
                 {yearHintUsed && (
-                  <div className="text-xs mt-1 text-center text-muted-foreground">
+                  <div className="text-xs mt-1 text-center text-neutral-500 dark:text-neutral-400">
                     {getYearHint()}
                   </div>
                 )}

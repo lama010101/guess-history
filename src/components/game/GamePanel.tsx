@@ -49,7 +49,7 @@ const GamePanel = ({
     
     // Split by comma and get the last part which is usually the country
     const parts = locationName.split(',');
-    return parts.length > 1 ? parts[parts.length - 1].trim() : "Unknown";
+    return parts.length > 1 ? parts[parts.length - 1].trim() : parts[0].trim();
   };
 
   return (
@@ -76,14 +76,14 @@ const GamePanel = ({
         
         {/* Display location hint if used */}
         {locationHintUsed && (
-          <div className="absolute top-4 left-4 z-10 bg-background/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
+          <div className="absolute top-4 left-4 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
             <span className="font-medium">Location:</span> {getCountryOnly(currentImage.locationName)}
           </div>
         )}
         
         {/* Display year hint if used */}
         {yearHintUsed && (
-          <div className="absolute top-16 left-4 z-10 bg-background/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
+          <div className="absolute top-16 left-4 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
             <span className="font-medium">Year:</span> {currentImage.year.toString().slice(0, -1) + "X"}
           </div>
         )}

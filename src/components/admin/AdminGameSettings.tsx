@@ -36,25 +36,36 @@ const AdminGameSettings = () => {
 
   // Load settings from localStorage on mount
   useEffect(() => {
-    const savedSettings = localStorage.getItem('gameSettings');
-    if (savedSettings) {
-      try {
-        const parsedSettings = JSON.parse(savedSettings);
-        setSettings(prevSettings => ({
-          ...prevSettings,
-          ...parsedSettings
-        }));
-      } catch (error) {
-        console.error('Error loading game settings:', error);
+    const loadSavedSettings = () => {
+      const savedSettings = localStorage.getItem('gameSettings');
+      if (savedSettings) {
+        try {
+          const parsedSettings = JSON.parse(savedSettings);
+          setSettings(prevSettings => ({
+            ...prevSettings,
+            ...parsedSettings
+          }));
+        } catch (error) {
+          console.error('Error loading game settings:', error);
+        }
       }
-    }
+    };
+
+    loadSavedSettings();
+
+    // Add event listener for storage changes
+    window.addEventListener('storage', loadSavedSettings);
+    
+    return () => {
+      window.removeEventListener('storage', loadSavedSettings);
+    };
   }, []);
 
   const handleInputChange = (key: keyof GameSettings, value: string) => {
-    setSettings({
-      ...settings,
+    setSettings(prevSettings => ({
+      ...prevSettings,
       [key]: Number(value)
-    });
+    }));
     // Reset saved state when changes are made
     setSaved(false);
   };
@@ -63,12 +74,15 @@ const AdminGameSettings = () => {
     // Save settings to localStorage
     localStorage.setItem('gameSettings', JSON.stringify(settings));
     
+    // Trigger storage event to update other components
+    window.dispatchEvent(new Event('storage'));
+    
     // Show saved confirmation
     setSaved(true);
     
     toast({
       title: "Settings Saved",
-      description: "Game settings have been updated successfully. Refresh to apply changes.",
+      description: "Game settings have been updated successfully.",
     });
     
     // Reset saved state after a delay
@@ -98,7 +112,7 @@ const AdminGameSettings = () => {
                   value={settings.maxLocationScore}
                   onChange={(e) => handleInputChange("maxLocationScore", e.target.value)}
                 />
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">
                   Maximum points for a perfect location guess
                 </p>
               </div>
@@ -112,7 +126,7 @@ const AdminGameSettings = () => {
                   value={settings.locationScalingFactor}
                   onChange={(e) => handleInputChange("locationScalingFactor", e.target.value)}
                 />
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">
                   Points deducted per kilometer of distance error
                 </p>
               </div>
@@ -130,7 +144,7 @@ const AdminGameSettings = () => {
                   value={settings.maxYearScore}
                   onChange={(e) => handleInputChange("maxYearScore", e.target.value)}
                 />
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">
                   Maximum points for guessing the exact year
                 </p>
               </div>
@@ -143,7 +157,7 @@ const AdminGameSettings = () => {
                   value={settings.yearScalingFactor}
                   onChange={(e) => handleInputChange("yearScalingFactor", e.target.value)}
                 />
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">
                   Points deducted per year of difference
                 </p>
               </div>
@@ -202,7 +216,7 @@ const AdminGameSettings = () => {
                   value={settings.perfectScoreBonus}
                   onChange={(e) => handleInputChange("perfectScoreBonus", e.target.value)}
                 />
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">
                   Bonus points for a perfect location & year guess
                 </p>
               </div>

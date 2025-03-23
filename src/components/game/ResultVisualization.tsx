@@ -61,20 +61,20 @@ const ResultVisualization = ({
                          distance > 1000 ? 10 :
                          distance > 500 ? 12 : 13;
 
-      // Initialize map
-      const map = L.map(mapRef.current, {
+      // Initialize map with proper options for mobile
+      const mapOptions = {
         center: [midLat, midLng],
         zoom: zoomLevel,
         touchZoom: true,
         scrollWheelZoom: false,
         boxZoom: false,
         tap: false,
-        dragging: true,
-        // Handle gestures for mobile with two fingers
         dragging: L.Browser.mobile,
-        tap: L.Browser.mobile,
-        tapTolerance: 15,
-      });
+        tapTolerance: 15
+      };
+
+      // Initialize map
+      const map = L.map(mapRef.current, mapOptions);
 
       // Add tile layer (OpenStreetMap)
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

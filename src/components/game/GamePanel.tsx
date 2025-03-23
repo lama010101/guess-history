@@ -4,6 +4,8 @@ import MapComponent from '../MapComponent';
 import HistoricalImage from '../HistoricalImage';
 import ViewToggle from './ViewToggle';
 import HintSystem from './HintSystem';
+import { Lightbulb, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface GamePanelProps {
   currentImage: {
@@ -42,6 +44,7 @@ const GamePanel = ({
 }: GamePanelProps) => {
   // Start with image view by default
   const [activeView, setActiveView] = useState<'image' | 'map'>('image');
+  const [showHintSystem, setShowHintSystem] = useState(false);
 
   // Helper to extract just the country from location name
   const getCountryOnly = (locationName?: string): string => {
@@ -76,15 +79,15 @@ const GamePanel = ({
         
         {/* Display location hint if used - country only */}
         {locationHintUsed && (
-          <div className="absolute top-4 left-4 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
-            <span className="font-medium">Location:</span> {getCountryOnly(currentImage.locationName)}
+          <div className="absolute bottom-4 left-4 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
+            <span className="font-medium">Country:</span> {getCountryOnly(currentImage.locationName)}
           </div>
         )}
         
         {/* Display year hint if used */}
         {yearHintUsed && (
-          <div className="absolute top-16 left-4 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
-            <span className="font-medium">Year:</span> {currentImage.year.toString().slice(0, -1) + "X"}
+          <div className="absolute bottom-16 left-4 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
+            <span className="font-medium">Decade:</span> {currentImage.year.toString().slice(0, -1) + "X"}
           </div>
         )}
         
@@ -95,17 +98,48 @@ const GamePanel = ({
           imageSrc={currentImage.src}
         />
         
-        {/* Hint System */}
-        <div className="absolute bottom-4 right-4 z-10 w-64">
-          <HintSystem
-            hintCoins={hintCoins}
-            onUseLocationHint={onUseLocationHint}
-            onUseYearHint={onUseYearHint}
-            locationHintUsed={locationHintUsed}
-            yearHintUsed={yearHintUsed}
-            currentImage={currentImage}
-          />
+        {/* Hint Button */}
+        <div className="absolute top-4 left-4 z-10">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm"
+            onClick={() => setShowHintSystem(!showHintSystem)}
+          >
+            <Lightbulb className="h-4 w-4 text-yellow-500 mr-1.5" />
+            Hints
+          </Button>
         </div>
+        
+        {/* Hint System Modal */}
+        {showHintSystem && (
+          <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/20 backdrop-blur-sm">
+            <div className="relative w-[350px]">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute -top-2 -right-2 h-7 w-7 rounded-full bg-white dark:bg-gray-800 z-10"
+                onClick={() => setShowHintSystem(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              <HintSystem
+                hintCoins={hintCoins}
+                onUseLocationHint={() => {
+                  onUseLocationHint();
+                  setShowHintSystem(false);
+                }}
+                onUseYearHint={() => {
+                  onUseYearHint();
+                  setShowHintSystem(false);
+                }}
+                locationHintUsed={locationHintUsed}
+                yearHintUsed={yearHintUsed}
+                currentImage={currentImage}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

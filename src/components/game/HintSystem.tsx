@@ -41,7 +41,7 @@ const HintSystem = ({
   };
   
   return (
-    <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-lg p-3 shadow-md">
+    <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-lg p-3 shadow-md w-[110%]">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold flex items-center">
           <Lightbulb className="h-4 w-4 mr-1.5 text-yellow-500" />
@@ -63,9 +63,11 @@ const HintSystem = ({
             disabled={locationHintUsed || hintCoins <= 0}
           >
             <MapPin className="h-4 w-4 mr-1.5" />
-            Location
-            <span className="ml-1 text-xs">(-500)</span>
+            Country
           </Button>
+          <div className="text-xs mt-1 text-center text-neutral-500 dark:text-neutral-400">
+            Cost: -500 points
+          </div>
           {locationHintUsed && (
             <div className="text-xs mt-1 text-center text-neutral-500 dark:text-neutral-400">
               {getCountryHint()}
@@ -82,9 +84,11 @@ const HintSystem = ({
             disabled={yearHintUsed || hintCoins <= 0}
           >
             <Calendar className="h-4 w-4 mr-1.5" />
-            Year
-            <span className="ml-1 text-xs">(-500)</span>
+            Decade
           </Button>
+          <div className="text-xs mt-1 text-center text-neutral-500 dark:text-neutral-400">
+            Cost: -500 points
+          </div>
           {yearHintUsed && (
             <div className="text-xs mt-1 text-center text-neutral-500 dark:text-neutral-400">
               {getYearHint()}

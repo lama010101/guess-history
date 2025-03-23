@@ -1,6 +1,6 @@
 
-import { useState } from 'react';
-import { Globe, Clock, Lightbulb, Users } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Globe, Clock, Lightbulb, Users, Share2, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,8 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/services/auth';
 
 const Home = () => {
   const [activeTab, setActiveTab] = useState<'compete' | 'play'>('compete');
@@ -16,11 +18,69 @@ const Home = () => {
   const [timerMinutes, setTimerMinutes] = useState<number>(5);
   const [hintsEnabled, setHintsEnabled] = useState<boolean>(true);
   const [hintsCount, setHintsCount] = useState<number>(2);
+  const [linkCopied, setLinkCopied] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
+  
+  const [dailyPlayed, setDailyPlayed] = useState(false);
+  
+  // Check if daily challenge was played today
+  useEffect(() => {
+    const lastPlayed = localStorage.getItem('lastDailyPlayed');
+    if (lastPlayed) {
+      const lastPlayedDate = new Date(lastPlayed).toDateString();
+      const today = new Date().toDateString();
+      setDailyPlayed(lastPlayedDate === today);
+    }
+  }, []);
 
   const handleStartGame = () => {
+    // Save game settings to localStorage
+    const gameSettings = {
+      timerEnabled,
+      timerMinutes: timerMinutes,
+      hintsEnabled,
+      initialHintCoins: hintsEnabled ? hintsCount : 0,
+    };
+    
+    localStorage.setItem('gameSettings', JSON.stringify(gameSettings));
+    
+    // If starting daily challenge, mark it as played today
+    if (activeTab === 'compete') {
+      localStorage.setItem('lastDailyPlayed', new Date().toISOString());
+    }
+    
     // Navigate to the game page
     navigate('/play');
+  };
+  
+  const generateGameLink = () => {
+    const gameId = Math.random().toString(36).substring(2, 8);
+    return `${window.location.origin}/play?mode=friends&id=${gameId}`;
+  };
+  
+  const copyGameLink = () => {
+    const link = generateGameLink();
+    navigator.clipboard.writeText(link);
+    setLinkCopied(true);
+    
+    toast({
+      title: "Link copied!",
+      description: "Game link has been copied to clipboard"
+    });
+    
+    setTimeout(() => {
+      setLinkCopied(false);
+    }, 2000);
+  };
+  
+  const inviteFriend = () => {
+    // This would normally open a friends selection modal
+    toast({
+      title: "Invite sent!",
+      description: "Your friend has been invited to play"
+    });
   };
 
   return (
@@ -43,7 +103,21 @@ const Home = () => {
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">One attempt per day</p>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Timer: 5 minutes</p>
                   </div>
-                  <Button onClick={() => navigate('/play')}>Start Daily Challenge</Button>
+                  <Button 
+                    onClick={() => {
+                      if (isAuthenticated) {
+                        handleStartGame();
+                      } else {
+                        toast({
+                          title: "Login required",
+                          description: "You need to be logged in to play the daily challenge"
+                        });
+                      }
+                    }}
+                    disabled={dailyPlayed}
+                  >
+                    {dailyPlayed ? "Already Played Today" : "Start Daily Challenge"}
+                  </Button>
                 </div>
               </div>
               
@@ -51,11 +125,18 @@ const Home = () => {
                 <h3 className="text-xl font-medium mb-2">Friends Mode</h3>
                 <p className="text-neutral-500 dark:text-neutral-400 mb-4">Challenge your friends with a custom game link.</p>
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <Button variant="outline" className="flex-1 flex items-center gap-2">
-                    <Globe className="h-4 w-4" />
-                    Copy Game Link
+                  <Button 
+                    variant="outline" 
+                    className="flex-1 flex items-center gap-2"
+                    onClick={copyGameLink}
+                  >
+                    {linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {linkCopied ? "Copied!" : "Copy Game Link"}
                   </Button>
-                  <Button className="flex-1 flex items-center gap-2">
+                  <Button 
+                    className="flex-1 flex items-center gap-2"
+                    onClick={inviteFriend}
+                  >
                     <Users className="h-4 w-4" />
                     Invite Friends
                   </Button>

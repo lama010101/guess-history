@@ -104,7 +104,7 @@ const Home = () => {
   
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Hero />
+      <Hero title="Test your knowledge of history" />
       
       <div className="container mx-auto py-12 px-4 md:px-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -108,7 +108,7 @@ const Profile = () => {
               <div className="relative mb-4">
                 <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-primary/20">
                   <img 
-                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name || 'User'}`} 
+                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username || 'User'}`} 
                     alt="Profile" 
                     className="w-full h-full object-cover"
                   />
@@ -131,7 +131,7 @@ const Profile = () => {
                     <input 
                       type="text" 
                       className="w-full p-2 border rounded-md mt-1"
-                      defaultValue={user.name || 'User'}
+                      defaultValue={user.username || 'User'}
                     />
                   </div>
                   <div>
@@ -161,7 +161,7 @@ const Profile = () => {
                 </div>
               ) : (
                 <>
-                  <h3 className="text-xl font-bold">{user.name || 'User'}</h3>
+                  <h3 className="text-xl font-bold">{user.username || 'User'}</h3>
                   <p className="text-muted-foreground">{user.email || 'user@example.com'}</p>
                   <div className="mt-4 grid grid-cols-2 gap-4 w-full">
                     <div className="bg-secondary rounded-lg p-3 text-center">

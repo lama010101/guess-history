@@ -54,7 +54,7 @@ const ProfileButton = () => {
                 aria-label="User profile picture"
               >
                 <img 
-                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name || 'Guest'}`} 
+                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username || 'Guest'}`} 
                   alt="" 
                   className="h-full w-full object-cover" 
                 />
@@ -63,7 +63,7 @@ const ProfileButton = () => {
                 <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-orange-500 border border-white"></span>
               )}
             </div>
-            <span className="hidden md:inline-block font-medium">{user?.name || 'Guest'}</span>
+            <span className="hidden md:inline-block font-medium">{user?.username || 'Guest'}</span>
             <ChevronDown className="h-4 w-4 opacity-50" />
           </div>
         </Button>

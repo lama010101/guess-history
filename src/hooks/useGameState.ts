@@ -45,6 +45,16 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
   const [selectedYear, setSelectedYear] = useState<number>(1960);
   const [showResults, setShowResults] = useState(false);
   
+  // Timer settings
+  const [timerEnabled, setTimerEnabled] = useState(true);
+  const [timerDuration, setTimerDuration] = useState(60); // 60 seconds default
+
+  // Daily challenge settings
+  const [isDaily, setIsDaily] = useState(false);
+  const [dailyCompleted, setDailyCompleted] = useState(false);
+  const [dailyScore, setDailyScore] = useState(0);
+  const [dailyDate, setDailyDate] = useState("");
+  
   // Handle submitting a guess
   const handleSubmit = () => {
     if (!selectedLocation) {
@@ -136,6 +146,16 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     locationHintUsed,
     yearHintUsed,
     
+    // Timer state
+    timerEnabled,
+    timerDuration,
+    
+    // Daily challenge state
+    isDaily,
+    dailyCompleted,
+    dailyScore,
+    dailyDate,
+    
     // Current data
     currentImage,
     currentScores,
@@ -151,6 +171,8 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     handleNewGame,
     handleUseLocationHint,
     handleUseYearHint,
+    setTimerEnabled,
+    setTimerDuration,
     
     // Game constants
     maxRounds

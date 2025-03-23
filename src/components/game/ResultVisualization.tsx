@@ -1,6 +1,5 @@
 
 import { useEffect, useRef } from 'react';
-import { Check } from 'lucide-react';
 
 interface ResultVisualizationProps {
   actualLocation: { lat: number; lng: number };
@@ -28,9 +27,8 @@ const ResultVisualization = ({
 
         // Create map if it doesn't exist
         if (!leafletMapRef.current) {
-          leafletMapRef.current = L.map(mapRef.current, {
-            gestureHandling: true // Enable two-finger pan for touch devices
-          }).setView([
+          // Create the map without the gestureHandling option
+          leafletMapRef.current = L.map(mapRef.current).setView([
             (actualLocation.lat + guessedLocation.lat) / 2,
             (actualLocation.lng + guessedLocation.lng) / 2
           ], 2);
@@ -39,9 +37,13 @@ const ResultVisualization = ({
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
           }).addTo(leafletMapRef.current);
-
+          
           // Add custom handler for two-finger panning on touch devices
-          leafletMapRef.current.gestureHandling.enable();
+          // Use Leaflet's built-in touch handling instead
+          if (L.Browser.touch) {
+            leafletMapRef.current.dragging.enable();
+            leafletMapRef.current.touchZoom.enable();
+          }
         }
 
         // Add accuracy circle around the actual location

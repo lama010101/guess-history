@@ -48,7 +48,7 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
           <Button 
             onClick={handleUseLocationHint}
             disabled={locationHintUsed || availableHints <= 0}
-            variant={locationHintUsed ? "outline" : "primary"}
+            variant={locationHintUsed ? "outline" : "default"}
             className="w-full"
           >
             <MapPin className="h-4 w-4 mr-1" />
@@ -59,7 +59,7 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
           <Button 
             onClick={handleUseYearHint}
             disabled={yearHintUsed || availableHints <= 0}
-            variant={yearHintUsed ? "outline" : "primary"}
+            variant={yearHintUsed ? "outline" : "default"}
             className="w-full"
           >
             <Calendar className="h-4 w-4 mr-1" />

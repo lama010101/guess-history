@@ -4,22 +4,22 @@ import { useLocation } from "react-router-dom";
 import LoginForm from "./LoginForm";
 
 interface AuthModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
+const AuthModal = ({ open, onOpenChange }: AuthModalProps) => {
   const location = useLocation();
 
   // Reset state when location changes to prevent stale modal state
   useEffect(() => {
-    if (isOpen) {
-      onClose();
+    if (open) {
+      onOpenChange(false);
     }
   }, [location.pathname]);
 
   return (
-    <LoginForm isOpen={isOpen} onClose={onClose} />
+    <LoginForm isOpen={open} onClose={() => onOpenChange(false)} />
   );
 };
 

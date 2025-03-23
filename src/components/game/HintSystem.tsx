@@ -56,7 +56,7 @@ const HintSystem = ({
       <div className="grid grid-cols-2 gap-2">
         <div>
           <Button 
-            variant={locationHintUsed ? "outline" : "primary"} 
+            variant={locationHintUsed ? "outline" : "default"} 
             size="sm" 
             className="w-full flex items-center justify-center"
             onClick={onUseLocationHint}
@@ -75,7 +75,7 @@ const HintSystem = ({
           
         <div>
           <Button 
-            variant={yearHintUsed ? "outline" : "primary"} 
+            variant={yearHintUsed ? "outline" : "default"} 
             size="sm" 
             className="w-full flex items-center justify-center"
             onClick={onUseYearHint}

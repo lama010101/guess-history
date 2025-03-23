@@ -57,15 +57,14 @@ const GameSection = () => {
     updateSelectedLocation({ lat, lng });
   };
 
+  // Handler for next round that also forces a navbar update
+  const handleNextRoundWithUpdate = () => {
+    handleNextRound();
+    forceNavbarUpdate();
+  };
+
   // Show game over screen if all rounds are completed
   if (gameComplete) {
-    // Save daily score to localStorage
-    useEffect(() => {
-      if (isDaily) {
-        localStorage.setItem('lastDailyScore', totalScore.toString());
-      }
-    }, [isDaily, totalScore]);
-    
     return (
       <section id="game" className="h-full flex flex-col">
         <Navbar key={navbarKey} />
@@ -80,12 +79,6 @@ const GameSection = () => {
       </section>
     );
   }
-
-  // Handler for next round that also forces a navbar update
-  const handleNextRoundWithUpdate = () => {
-    handleNextRound();
-    forceNavbarUpdate();
-  };
 
   return (
     <section id="game" className="h-full flex flex-col">

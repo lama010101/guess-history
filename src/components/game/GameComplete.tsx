@@ -11,7 +11,6 @@ interface GameCompleteProps {
   roundScores: RoundScore[];
   images: HistoricalImage[];
   onPlayAgain: () => void;
-  gameMode?: 'daily' | 'regular' | 'friends';
 }
 
 // Mock friends leaderboard data - in a real app this would come from the backend
@@ -21,17 +20,8 @@ const friendsLeaderboard = [
   { username: 'SarahConnor', score: 32400, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah' },
 ];
 
-const GameComplete = ({ totalScore, maxRounds, roundScores, images, onPlayAgain, gameMode = 'regular' }: GameCompleteProps) => {
+const GameComplete = ({ totalScore, maxRounds, roundScores, images, onPlayAgain }: GameCompleteProps) => {
   const maxPossibleScore = maxRounds * 10000;
-  
-  // For daily mode, save the score and date to localStorage
-  if (gameMode === 'daily') {
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    localStorage.setItem('dailyGameScore', JSON.stringify({
-      date: today,
-      score: totalScore
-    }));
-  }
   
   return (
     <div className="relative flex-1 flex flex-col items-center justify-center p-4 max-h-full h-full">
@@ -74,8 +64,8 @@ const GameComplete = ({ totalScore, maxRounds, roundScores, images, onPlayAgain,
                       {score.locationHintUsed && score.yearHintUsed 
                         ? "Used both hints" 
                         : score.locationHintUsed 
-                        ? "Used country hint" 
-                        : "Used decade hint"}
+                        ? "Used location hint" 
+                        : "Used year hint"}
                       {" (-"}
                       {score.hintPenalty}
                       {" pts)"}
@@ -137,17 +127,13 @@ const GameComplete = ({ totalScore, maxRounds, roundScores, images, onPlayAgain,
               Home
             </Link>
           </Button>
-          
-          {/* Only show Play Again button for regular mode */}
-          {gameMode !== 'daily' && (
-            <Button
-              onClick={onPlayAgain}
-              className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center"
-            >
-              Play Again
-              <ChevronRight className="ml-1.5 h-4 w-4" />
-            </Button>
-          )}
+          <Button
+            onClick={onPlayAgain}
+            className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center"
+          >
+            Play Again
+            <ChevronRight className="ml-1.5 h-4 w-4" />
+          </Button>
         </div>
       </Card>
     </div>

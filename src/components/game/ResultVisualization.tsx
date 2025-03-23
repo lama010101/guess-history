@@ -19,6 +19,9 @@ const ResultVisualization = ({
   useEffect(() => {
     if (!isVisible || !mapRef.current) return;
 
+    // Create a flag to track component mount state
+    let isMounted = true;
+
     // Function to dynamically load and initialize Leaflet
     const initializeMap = async () => {
       // Check if Leaflet is already loaded
@@ -39,6 +42,9 @@ const ResultVisualization = ({
           scriptEl.onload = resolve;
         });
       }
+
+      // After async operations, check if component is still mounted
+      if (!isMounted) return null;
 
       const L = (window as any).L;
 
@@ -68,8 +74,8 @@ const ResultVisualization = ({
         touchZoom: true,
         scrollWheelZoom: false,
         boxZoom: false,
-        tap: false,
         dragging: L.Browser.mobile,
+        tap: false,
         tapTolerance: 15
       };
 
@@ -143,18 +149,29 @@ const ResultVisualization = ({
         }
       ).addTo(map);
 
-      // Cleanup function
+      // Return cleanup function
       return () => {
-        map.remove();
+        if (map) map.remove();
       };
     };
 
-    // Initialize the map
-    const cleanup = initializeMap();
+    // Initialize the map and store the cleanup function
+    let cleanupFn: (() => void) | null = null;
+    
+    initializeMap().then(cleanup => {
+      // Only assign cleanup if component is still mounted
+      if (isMounted) {
+        cleanupFn = cleanup;
+      } else if (cleanup) {
+        // If component unmounted during async initialization, run cleanup immediately
+        cleanup();
+      }
+    });
 
-    // Clean up on unmount
+    // Clean up on unmount or when dependencies change
     return () => {
-      cleanup.then(cleanupFn => cleanupFn && cleanupFn());
+      isMounted = false;
+      if (cleanupFn) cleanupFn();
     };
   }, [actualLocation, guessedLocation, isVisible, circleRadius]);
 

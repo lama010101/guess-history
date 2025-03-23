@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import Leaderboard from "./pages/Leaderboard";
 import AdminPanel from "./pages/AdminPanel";
 import Home from "./pages/Home";
+import Profile from "./pages/Profile";
 import { useAuth } from "./services/auth";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/play" element={<Index />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/admin" element={
             <ProtectedAdminRoute>

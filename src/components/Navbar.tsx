@@ -6,6 +6,7 @@ import { useGameState } from '@/hooks/useGameState';
 import { Lightbulb, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
+import GameTimer from './game/GameTimer';
 
 interface NavbarProps {
   roundInfo?: {
@@ -13,12 +14,15 @@ interface NavbarProps {
     maxRounds: number;
     totalScore: number;
   };
+  showTimer?: boolean;
+  timerDuration?: number; // seconds
 }
 
-const Navbar = ({ roundInfo }: NavbarProps) => {
+const Navbar = ({ roundInfo, showTimer = false, timerDuration = 60 }: NavbarProps) => {
   const location = useLocation();
   const { hintCoins, handleUseLocationHint, handleUseYearHint, locationHintUsed, yearHintUsed } = useGameState();
   const [isHintOpen, setIsHintOpen] = useState(false);
+  const isGamePage = location.pathname === '/play';
   
   // Force update when roundInfo changes
   const [, forceUpdate] = useState({});
@@ -29,7 +33,7 @@ const Navbar = ({ roundInfo }: NavbarProps) => {
   }, [roundInfo?.currentRound, roundInfo?.totalScore]);
   
   return (
-    <header className="sticky top-0 z-50 w-full backdrop-blur-lg bg-background/80 border-b border-border">
+    <header className="sticky top-0 z-50 w-full backdrop-blur-lg bg-background/80 border-b border-border relative">
       <div className="container flex h-16 items-center px-4">
         {/* Game info on the left */}
         <div className="mr-4 flex flex-shrink-0">
@@ -47,7 +51,7 @@ const Navbar = ({ roundInfo }: NavbarProps) => {
 
         {/* Hint button in center */}
         <div className="flex-1 flex items-center justify-center">
-          {location.pathname === '/play' && (
+          {isGamePage && (
             <Button 
               variant="ghost" 
               size="sm"
@@ -67,10 +71,34 @@ const Navbar = ({ roundInfo }: NavbarProps) => {
         </div>
       </div>
       
-      {/* Hint Display */}
-      {isHintOpen && location.pathname === '/play' && (
-        <div className="absolute right-4 top-20 z-50">
-          <HintDisplay availableHints={hintCoins} onClose={() => setIsHintOpen(false)} />
+      {/* Game Timer */}
+      {showTimer && isGamePage && (
+        <GameTimer duration={timerDuration} paused={isHintOpen} />
+      )}
+      
+      {/* Hints popup - centered horizontally */}
+      {isHintOpen && isGamePage && (
+        <div className="absolute left-1/2 transform -translate-x-1/2 top-16 z-50">
+          <HintDisplay 
+            availableHints={hintCoins} 
+            onClose={() => setIsHintOpen(false)} 
+          />
+        </div>
+      )}
+      
+      {/* Display active hints at top center */}
+      {isGamePage && (locationHintUsed || yearHintUsed) && (
+        <div className="top-center-hint">
+          {locationHintUsed && (
+            <div className="text-sm font-medium mb-1">
+              <span className="font-bold">Country:</span> {yearHintUsed ? ' ' : 'Hint active'}
+            </div>
+          )}
+          {yearHintUsed && (
+            <div className="text-sm font-medium">
+              <span className="font-bold">Decade:</span> {locationHintUsed ? ' ' : 'Hint active'}
+            </div>
+          )}
         </div>
       )}
     </header>

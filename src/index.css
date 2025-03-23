@@ -14,7 +14,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
 
-    --primary: 210 100% 50%;
+    --primary: 210 0% 20%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 96%;
@@ -31,7 +31,7 @@
 
     --border: 0 0% 90%;
     --input: 0 0% 90%;
-    --ring: 210 100% 50%;
+    --ring: 210 0% 20%;
 
     --radius: 0.5rem;
   }
@@ -46,8 +46,8 @@
     --popover: 0 0% 7%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 210 100% 50%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 210 0% 70%;
+    --primary-foreground: 0 0% 10%;
 
     --secondary: 0 0% 15%;
     --secondary-foreground: 0 0% 98%;
@@ -63,7 +63,7 @@
 
     --border: 0 0% 15%;
     --input: 0 0% 15%;
-    --ring: 213 27% 84%;
+    --ring: 213 0% 84%;
   }
 }
 
@@ -173,4 +173,42 @@
 /* Dark mode styles for the year slider */
 .dark .year-slider {
   background: #374151;
+}
+
+/* Timer styling */
+.game-timer {
+  height: 6px;
+  width: 100%;
+  background-color: #F2FCE2;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  transition: width 1s linear;
+}
+
+.game-timer.warning {
+  background-color: #F97316;
+}
+
+.game-timer.danger {
+  background-color: #ea384c;
+}
+
+/* Hint tooltip shown at top center */
+.top-center-hint {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  padding: 8px 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-width: 90%;
+  text-align: center;
+}
+
+.dark .top-center-hint {
+  background-color: rgba(30, 30, 30, 0.9);
 }

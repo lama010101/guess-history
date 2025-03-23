@@ -6,9 +6,15 @@ interface ResultVisualizationProps {
   actualLocation: { lat: number; lng: number };
   guessedLocation?: { lat: number; lng: number };
   isVisible: boolean;
+  accuracyRadius?: number; // In meters, default is 1000
 }
 
-const ResultVisualization = ({ actualLocation, guessedLocation, isVisible }: ResultVisualizationProps) => {
+const ResultVisualization = ({ 
+  actualLocation, 
+  guessedLocation, 
+  isVisible,
+  accuracyRadius = 1000 
+}: ResultVisualizationProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<any>(null);
 
@@ -22,7 +28,9 @@ const ResultVisualization = ({ actualLocation, guessedLocation, isVisible }: Res
 
         // Create map if it doesn't exist
         if (!leafletMapRef.current) {
-          leafletMapRef.current = L.map(mapRef.current).setView([
+          leafletMapRef.current = L.map(mapRef.current, {
+            gestureHandling: true // Enable two-finger pan for touch devices
+          }).setView([
             (actualLocation.lat + guessedLocation.lat) / 2,
             (actualLocation.lng + guessedLocation.lng) / 2
           ], 2);
@@ -31,9 +39,21 @@ const ResultVisualization = ({ actualLocation, guessedLocation, isVisible }: Res
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
           }).addTo(leafletMapRef.current);
+
+          // Add custom handler for two-finger panning on touch devices
+          leafletMapRef.current.gestureHandling.enable();
         }
 
-        // Add markers for actual and guessed locations
+        // Add accuracy circle around the actual location
+        const accuracyCircle = L.circle([actualLocation.lat, actualLocation.lng], {
+          radius: accuracyRadius,
+          color: '#22c55e',
+          fillColor: '#22c55e',
+          fillOpacity: 0.2,
+          weight: 2
+        }).addTo(leafletMapRef.current);
+
+        // Add markers for actual location
         const actualMarker = L.marker([actualLocation.lat, actualLocation.lng], {
           icon: L.divIcon({
             className: 'actual-location-marker',
@@ -47,16 +67,19 @@ const ResultVisualization = ({ actualLocation, guessedLocation, isVisible }: Res
           })
         }).addTo(leafletMapRef.current);
 
+        // Add user profile image marker for guessed location
         const guessedMarker = L.marker([guessedLocation.lat, guessedLocation.lng], {
           icon: L.divIcon({
             className: 'guessed-location-marker',
-            html: `<div class="w-6 h-6 rounded-full bg-blue-500 border-2 border-white shadow-lg"></div>`,
-            iconSize: [24, 24],
-            iconAnchor: [12, 12],
+            html: `<div class="w-8 h-8 rounded-full overflow-hidden border-2 border-white shadow-lg">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=You" class="w-full h-full" />
+                  </div>`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
           })
         }).addTo(leafletMapRef.current);
 
-        // Draw a line between the two points - FIX: Convert to proper LatLngExpression type
+        // Draw a line between the two points
         const latlngs = [
           [actualLocation.lat, actualLocation.lng],
           [guessedLocation.lat, guessedLocation.lng]
@@ -69,7 +92,7 @@ const ResultVisualization = ({ actualLocation, guessedLocation, isVisible }: Res
           dashArray: '5, 10'
         }).addTo(leafletMapRef.current);
 
-        // Fit map to show both markers
+        // Fit map to show both markers with padding
         const bounds = L.latLngBounds(
           L.latLng(actualLocation.lat, actualLocation.lng),
           L.latLng(guessedLocation.lat, guessedLocation.lng)
@@ -94,7 +117,7 @@ const ResultVisualization = ({ actualLocation, guessedLocation, isVisible }: Res
         leafletMapRef.current = null;
       }
     };
-  }, [isVisible, actualLocation, guessedLocation]);
+  }, [isVisible, actualLocation, guessedLocation, accuracyRadius]);
 
   if (!isVisible || !guessedLocation) return null;
 

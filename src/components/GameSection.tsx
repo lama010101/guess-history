@@ -5,6 +5,7 @@ import GameControls from './game/GameControls';
 import GameResultsModal from './game/GameResultsModal';
 import GameComplete from './game/GameComplete';
 import { useGameState } from '@/hooks/useGameState';
+import Navbar from './Navbar';
 
 const MAX_ROUNDS = 5; // Default to 5 rounds for a game
 
@@ -20,6 +21,9 @@ const GameSection = () => {
     hintCoins,
     locationHintUsed,
     yearHintUsed,
+    timerEnabled,
+    timerDuration,
+    isDaily,
     currentImage,
     currentScores,
     sampleImages,
@@ -33,6 +37,14 @@ const GameSection = () => {
     maxRounds
   } = useGameState(MAX_ROUNDS);
 
+  // Ensure the Navbar updates when game state changes
+  const [navbarKey, setNavbarKey] = useState(0);
+  
+  useEffect(() => {
+    // Update the navbar key whenever relevant state changes
+    setNavbarKey(prev => prev + 1);
+  }, [currentRound, totalScore, showResults]);
+
   // Create an adapter function to handle the different parameter types
   const handleLocationSelect = (lat: number, lng: number) => {
     updateSelectedLocation({ lat, lng });
@@ -42,12 +54,14 @@ const GameSection = () => {
   if (gameComplete) {
     return (
       <section id="game" className="h-full flex flex-col">
+        <Navbar key={navbarKey} />
         <GameComplete 
           totalScore={totalScore}
           maxRounds={MAX_ROUNDS}
           roundScores={roundScores}
           images={sampleImages}
-          onPlayAgain={handleNewGame}
+          onPlayAgain={isDaily ? undefined : handleNewGame}
+          isDaily={isDaily}
         />
       </section>
     );
@@ -55,6 +69,16 @@ const GameSection = () => {
 
   return (
     <section id="game" className="h-full flex flex-col">
+      <Navbar 
+        key={navbarKey}
+        roundInfo={{
+          currentRound,
+          maxRounds,
+          totalScore
+        }}
+        showTimer={timerEnabled}
+        timerDuration={timerDuration}
+      />
       <div className="relative flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-hidden">
           <GamePanel 

@@ -1,26 +1,21 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import GameSection from '@/components/GameSection';
-import Navbar from '@/components/Navbar';
 import { useGameState } from '@/hooks/useGameState';
 
 const Index = () => {
   const {
     currentRound,
     maxRounds,
-    totalScore
+    totalScore,
+    timerEnabled,
+    timerDuration,
   } = useGameState();
   
-  // Force the navbar to update when game state changes
+  // Note: The Navbar is now rendered inside GameSection for better state management
+  
   return (
     <div className="h-[100dvh] w-full overflow-hidden bg-white dark:bg-gray-900 text-black dark:text-white flex flex-col">
-      <Navbar 
-        roundInfo={{
-          currentRound,
-          maxRounds,
-          totalScore
-        }} 
-      />
       <main className="flex-1 overflow-hidden">
         <GameSection />
       </main>

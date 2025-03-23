@@ -13,6 +13,12 @@ export interface GameState {
   hintCoins: number;
   locationHintUsed: boolean;
   yearHintUsed: boolean;
+  timerEnabled: boolean;
+  timerDuration: number;
+  isDaily: boolean;
+  dailyCompleted: boolean;
+  dailyScore: number;
+  dailyDate: string;
 }
 
 export interface GameStateActions {
@@ -23,6 +29,8 @@ export interface GameStateActions {
   handleNewGame: () => void;
   handleUseLocationHint: () => void;
   handleUseYearHint: () => void;
+  setTimerEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  setTimerDuration: React.Dispatch<React.SetStateAction<number>>;
 }
 
 export interface GameStateReturn extends GameState, GameStateActions {

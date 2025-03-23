@@ -27,7 +27,7 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
   };
 
   return (
-    <div className="w-64 bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg rounded-lg border border-border shadow-lg">
+    <div className="w-[290px] bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg rounded-lg border border-border shadow-lg">
       <div className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -45,45 +45,32 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
         </div>
         
         <div className="grid grid-cols-2 gap-4 py-2">
-          <Button 
-            onClick={handleUseLocationHint}
-            disabled={locationHintUsed || availableHints <= 0}
-            variant={locationHintUsed ? "outline" : "default"}
-            className="w-full"
-          >
-            <MapPin className="h-4 w-4 mr-1" />
-            <span className="text-xs">Location</span>
-            <span className="ml-1 text-xs">(-500 pts)</span>
-          </Button>
-          
-          <Button 
-            onClick={handleUseYearHint}
-            disabled={yearHintUsed || availableHints <= 0}
-            variant={yearHintUsed ? "outline" : "default"}
-            className="w-full"
-          >
-            <Calendar className="h-4 w-4 mr-1" />
-            <span className="text-xs">Year</span>
-            <span className="ml-1 text-xs">(-500 pts)</span>
-          </Button>
-        </div>
-        
-        {/* Hint results if used */}
-        {(locationHintUsed || yearHintUsed) && (
-          <div className="mt-2 border-t pt-2">
-            <h4 className="font-medium text-xs mb-1">Active Hints:</h4>
-            {locationHintUsed && currentImage && (
-              <p className="text-xs bg-amber-100 dark:bg-amber-900/30 p-1 rounded mb-1">
-                <span className="font-medium">Location:</span> {getCountryOnly(currentImage.locationName)}
-              </p>
-            )}
-            {yearHintUsed && currentImage && (
-              <p className="text-xs bg-amber-100 dark:bg-amber-900/30 p-1 rounded">
-                <span className="font-medium">Year:</span> {currentImage.year.toString().slice(0, -1) + "X"}
-              </p>
-            )}
+          <div className="flex flex-col items-center">
+            <Button 
+              onClick={handleUseLocationHint}
+              disabled={locationHintUsed || availableHints <= 0}
+              variant={locationHintUsed ? "outline" : "default"}
+              className="w-full"
+            >
+              <MapPin className="h-4 w-4 mr-1" />
+              <span className="text-xs">Country</span>
+            </Button>
+            <span className="text-xs text-muted-foreground mt-1">-500 pts</span>
           </div>
-        )}
+          
+          <div className="flex flex-col items-center">
+            <Button 
+              onClick={handleUseYearHint}
+              disabled={yearHintUsed || availableHints <= 0}
+              variant={yearHintUsed ? "outline" : "default"}
+              className="w-full"
+            >
+              <Calendar className="h-4 w-4 mr-1" />
+              <span className="text-xs">Decade</span>
+            </Button>
+            <span className="text-xs text-muted-foreground mt-1">-500 pts</span>
+          </div>
+        </div>
         
         <div className="mt-2 pt-2 border-t">
           <h4 className="text-xs font-medium mb-1">Hint coins available: {availableHints}</h4>

@@ -1,112 +1,74 @@
-
 import { useState } from 'react';
-import { useAuth } from '@/services/auth';
 import { Button } from '@/components/ui/button';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
+import { useAuth } from '@/services/auth';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { User, Settings, LogOut, Share } from 'lucide-react';
+import { User, LogOut, Settings, HomeIcon } from 'lucide-react';
+import AuthModal from './AuthModal';
 import { Link } from 'react-router-dom';
-import { useToast } from '@/hooks/use-toast';
 
 const ProfileButton = () => {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
-  const { toast } = useToast();
-  const [openDropdown, setOpenDropdown] = useState(false);
-
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  
+  // Handle user logout
   const handleLogout = () => {
     logout();
-    setOpenDropdown(false);
-  };
-
-  const handleShare = () => {
-    const shareUrl = window.location.href;
-    
-    if (navigator.share) {
-      navigator.share({
-        title: 'GUESSEVENTS',
-        text: 'Test your knowledge of historical events!',
-        url: shareUrl,
-      }).catch((error) => console.log('Error sharing', error));
-    } else {
-      navigator.clipboard.writeText(shareUrl).then(() => {
-        toast({
-          title: "Link copied!",
-          description: "Share this link with your friends to play together.",
-        });
-      });
-    }
-    
-    setOpenDropdown(false);
   };
   
-  return (
-    <DropdownMenu open={openDropdown} onOpenChange={setOpenDropdown}>
-      <DropdownMenuTrigger asChild>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="rounded-full border border-border"
-          aria-label="User menu"
-        >
-          <User className="h-5 w-5" />
+  // Show login button if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <>
+        <Button variant="default" onClick={() => setAuthModalOpen(true)}>
+          Sign In
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>
-          {isAuthenticated ? (
-            <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">{user?.username || 'User'}</p>
-              <p className="text-xs text-muted-foreground">{user?.email || ''}</p>
-            </div>
-          ) : (
-            'Account'
-          )}
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        
-        <DropdownMenuItem onClick={handleShare}>
-          <Share className="mr-2 h-4 w-4" />
-          <span>Share</span>
-        </DropdownMenuItem>
-        
-        {isAuthenticated ? (
-          <>
+        <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} />
+      </>
+    );
+  }
+  
+  // Otherwise, show profile menu
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="rounded-full">
+            <User className="h-5 w-5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>
+            {user?.name || 'Guest User'}
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link to="/" className="flex w-full cursor-pointer items-center">
+              <HomeIcon className="mr-2 h-4 w-4" />
+              Home
+            </Link>
+          </DropdownMenuItem>
+          {isAdmin && (
             <DropdownMenuItem asChild>
-              <Link to="/settings">
+              <Link to="/admin" className="flex w-full cursor-pointer items-center">
                 <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
+                Admin
               </Link>
             </DropdownMenuItem>
-            
-            {isAdmin && (
-              <DropdownMenuItem asChild>
-                <Link to="/admin">
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Admin Panel</span>
-                </Link>
-              </DropdownMenuItem>
-            )}
-            
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={handleLogout}>
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Sign Out</span>
-            </DropdownMenuItem>
-          </>
-        ) : (
-          <DropdownMenuItem onSelect={() => setOpenDropdown(false)}>
-            <User className="mr-2 h-4 w-4" />
-            <span>Sign In</span>
+          )}
+          <DropdownMenuItem onClick={handleLogout}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign out
           </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   );
 };
 

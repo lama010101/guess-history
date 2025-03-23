@@ -1,12 +1,6 @@
 
 import { Lightbulb, MapPin, Calendar, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 
 interface HintSystemProps {
   hintCoins: number;
@@ -60,59 +54,43 @@ const HintSystem = ({
       </div>
       
       <div className="grid grid-cols-2 gap-2">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div>
-                <Button 
-                  variant={locationHintUsed ? "outline" : "secondary"} 
-                  size="sm" 
-                  className="w-full flex items-center justify-center"
-                  onClick={onUseLocationHint}
-                  disabled={locationHintUsed || hintCoins <= 0}
-                >
-                  <MapPin className="h-4 w-4 mr-1.5" />
-                  Location
-                </Button>
-                {locationHintUsed && (
-                  <div className="text-xs mt-1 text-center text-neutral-500 dark:text-neutral-400">
-                    {getCountryHint()}
-                  </div>
-                )}
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Reveals the country where this photo was taken</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div>
-                <Button 
-                  variant={yearHintUsed ? "outline" : "secondary"} 
-                  size="sm" 
-                  className="w-full flex items-center justify-center"
-                  onClick={onUseYearHint}
-                  disabled={yearHintUsed || hintCoins <= 0}
-                >
-                  <Calendar className="h-4 w-4 mr-1.5" />
-                  Year
-                </Button>
-                {yearHintUsed && (
-                  <div className="text-xs mt-1 text-center text-neutral-500 dark:text-neutral-400">
-                    {getYearHint()}
-                  </div>
-                )}
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Shows the year with last digit hidden</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <div>
+          <Button 
+            variant={locationHintUsed ? "outline" : "primary"} 
+            size="sm" 
+            className="w-full flex items-center justify-center"
+            onClick={onUseLocationHint}
+            disabled={locationHintUsed || hintCoins <= 0}
+          >
+            <MapPin className="h-4 w-4 mr-1.5" />
+            Location
+            <span className="ml-1 text-xs">(-500)</span>
+          </Button>
+          {locationHintUsed && (
+            <div className="text-xs mt-1 text-center text-neutral-500 dark:text-neutral-400">
+              {getCountryHint()}
+            </div>
+          )}
+        </div>
+          
+        <div>
+          <Button 
+            variant={yearHintUsed ? "outline" : "primary"} 
+            size="sm" 
+            className="w-full flex items-center justify-center"
+            onClick={onUseYearHint}
+            disabled={yearHintUsed || hintCoins <= 0}
+          >
+            <Calendar className="h-4 w-4 mr-1.5" />
+            Year
+            <span className="ml-1 text-xs">(-500)</span>
+          </Button>
+          {yearHintUsed && (
+            <div className="text-xs mt-1 text-center text-neutral-500 dark:text-neutral-400">
+              {getYearHint()}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

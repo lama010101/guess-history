@@ -21,7 +21,7 @@ const ViewToggle = ({ activeView, onToggle, imageSrc }: ViewToggleProps) => {
   }, [imageSrc]);
 
   // Use a static map image centered on Europe (latitude 50, longitude 10)
-  const mapPreviewImage = 'https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/10,50,3,0,0/75x75?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ.-g_vE53SD2WrJ6tFX7QHmA';
+  const mapPreviewImage = 'https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/10,45,3,0,0/75x75?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ.-g_vE53SD2WrJ6tFX7QHmA';
 
   return (
     <div className="absolute top-4 right-4 z-10">

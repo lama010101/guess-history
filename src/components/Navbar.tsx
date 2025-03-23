@@ -39,7 +39,7 @@ const Navbar = ({ roundInfo }: NavbarProps) => {
               <span className="ml-4">Score: {roundInfo.totalScore}</span>
             </div>
           ) : (
-            <Link to="/" className="font-bold text-lg tracking-tight text-gray-900">
+            <Link to="/" className="font-bold text-lg tracking-tight text-gray-900 dark:text-white">
               GUESSEVENTS
             </Link>
           )}
@@ -66,6 +66,13 @@ const Navbar = ({ roundInfo }: NavbarProps) => {
           <ProfileButton />
         </div>
       </div>
+      
+      {/* Hint Display */}
+      {isHintOpen && location.pathname === '/play' && (
+        <div className="absolute right-4 top-20 z-50">
+          <HintDisplay availableHints={hintCoins} onClose={() => setIsHintOpen(false)} />
+        </div>
+      )}
     </header>
   );
 };

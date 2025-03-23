@@ -1,6 +1,5 @@
 
-import { useState, useEffect } from 'react';
-import { Lightbulb, X } from 'lucide-react';
+import { X, Lightbulb, MapPin, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useGameState } from '@/hooks/useGameState';
 
@@ -15,17 +14,8 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
     handleUseYearHint,
     locationHintUsed,
     yearHintUsed,
-    hintCoins,
     currentImage
   } = useGameState();
-
-  const useLocationHint = () => {
-    handleUseLocationHint();
-  };
-
-  const useYearHint = () => {
-    handleUseYearHint();
-  };
 
   // Function to extract just the country from location name
   const getCountryOnly = (locationName?: string): string => {
@@ -37,7 +27,7 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-64 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-lg border border-border shadow-lg">
+    <div className="w-64 bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg rounded-lg border border-border shadow-lg">
       <div className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -56,22 +46,24 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
         
         <div className="grid grid-cols-2 gap-4 py-2">
           <Button 
-            onClick={useLocationHint}
-            disabled={locationHintUsed || hintCoins <= 0}
-            variant={locationHintUsed ? "outline" : "secondary"}
+            onClick={handleUseLocationHint}
+            disabled={locationHintUsed || availableHints <= 0}
+            variant={locationHintUsed ? "outline" : "primary"}
             className="w-full"
           >
-            {locationHintUsed ? "Location Hint Used" : "Use Location Hint"}
+            <MapPin className="h-4 w-4 mr-1" />
+            <span className="text-xs">Location</span>
             <span className="ml-1 text-xs">(-500 pts)</span>
           </Button>
           
           <Button 
-            onClick={useYearHint}
-            disabled={yearHintUsed || hintCoins <= 0}
-            variant={yearHintUsed ? "outline" : "secondary"}
+            onClick={handleUseYearHint}
+            disabled={yearHintUsed || availableHints <= 0}
+            variant={yearHintUsed ? "outline" : "primary"}
             className="w-full"
           >
-            {yearHintUsed ? "Year Hint Used" : "Use Year Hint"}
+            <Calendar className="h-4 w-4 mr-1" />
+            <span className="text-xs">Year</span>
             <span className="ml-1 text-xs">(-500 pts)</span>
           </Button>
         </div>
@@ -94,12 +86,7 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
         )}
         
         <div className="mt-2 pt-2 border-t">
-          <h4 className="text-xs font-medium mb-1">How to earn hint coins:</h4>
-          <ul className="text-xs text-muted-foreground space-y-1">
-            <li>• Play daily challenges (+2 coins)</li>
-            <li>• Achieve perfect scores (+1 coin)</li>
-            <li>• Log in consecutive days (+1 coin)</li>
-          </ul>
+          <h4 className="text-xs font-medium mb-1">Hint coins available: {availableHints}</h4>
         </div>
       </div>
     </div>

@@ -11,11 +11,11 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 
 const Home = () => {
-  const [activeTab, setActiveTab] = useState<'play' | 'compete'>('play');
+  const [activeTab, setActiveTab] = useState<'compete' | 'play'>('compete');
+  const [timerEnabled, setTimerEnabled] = useState<boolean>(true);
   const [timerMinutes, setTimerMinutes] = useState<number>(5);
   const [hintsEnabled, setHintsEnabled] = useState<boolean>(true);
   const [hintsCount, setHintsCount] = useState<number>(2);
-  const [selectedMode, setSelectedMode] = useState<'timer' | 'hints'>('timer');
   const navigate = useNavigate();
 
   const handleStartGame = () => {
@@ -23,130 +23,15 @@ const Home = () => {
     navigate('/play');
   };
 
-  const GameModeCard = ({ 
-    id, 
-    title, 
-    description, 
-    icon, 
-    isSelected, 
-    onClick,
-    children
-  }: { 
-    id: 'timer' | 'hints', 
-    title: string, 
-    description: string, 
-    icon: React.ReactNode, 
-    isSelected: boolean, 
-    onClick: () => void,
-    children?: React.ReactNode
-  }) => (
-    <Card 
-      className={`cursor-pointer transition-all ${isSelected ? 'border-primary ring-2 ring-primary/20' : 'hover:border-primary/50'}`}
-      onClick={onClick}
-    >
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-full">{icon}</div>
-          {isSelected && <div className="w-3 h-3 rounded-full bg-primary"></div>}
-        </div>
-        <CardTitle className="text-xl mt-2">{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {children}
-      </CardContent>
-      <CardFooter>
-        <Button className="w-full" onClick={handleStartGame}>
-          Start Game
-        </Button>
-      </CardFooter>
-    </Card>
-  );
-
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-gray-900 text-black dark:text-white flex flex-col">
       <Navbar />
       <main className="flex-1 container max-w-6xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8 text-center">EventGuesser</h1>
-        
-        <Tabs defaultValue="play" value={activeTab} onValueChange={(v) => setActiveTab(v as 'play' | 'compete')} className="mb-8">
+        <Tabs defaultValue="compete" value={activeTab} onValueChange={(v) => setActiveTab(v as 'compete' | 'play')} className="mb-8">
           <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
+            <TabsTrigger value="compete">Compete</TabsTrigger>
             <TabsTrigger value="play">Play</TabsTrigger>
-            <TabsTrigger value="compete">Compete (Login Required)</TabsTrigger>
           </TabsList>
-          
-          <TabsContent value="play" className="mt-6">
-            <div className="text-center mb-6">
-              <h2 className="text-xl font-medium">Play as a Guest</h2>
-              <p className="text-neutral-500 dark:text-neutral-400">No login required. Your scores won't be saved.</p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-              <GameModeCard
-                id="timer"
-                title="Timer"
-                description="Race against the clock."
-                icon={<Clock className="h-6 w-6" />}
-                isSelected={selectedMode === 'timer'}
-                onClick={() => setSelectedMode('timer')}
-              >
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between mb-2">
-                      <Label>Time Limit: {timerMinutes} minutes</Label>
-                    </div>
-                    <Slider 
-                      value={[timerMinutes]} 
-                      min={1} 
-                      max={10} 
-                      step={1} 
-                      onValueChange={(value) => setTimerMinutes(value[0])}
-                      disabled={activeTab === 'compete'}
-                    />
-                  </div>
-                </div>
-              </GameModeCard>
-              
-              <GameModeCard
-                id="hints"
-                title="Hints"
-                description="Enable hints to get help during the game."
-                icon={<Lightbulb className="h-6 w-6" />}
-                isSelected={selectedMode === 'hints'}
-                onClick={() => setSelectedMode('hints')}
-              >
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="hints-toggle">Enable Hints</Label>
-                    <Switch 
-                      id="hints-toggle" 
-                      checked={hintsEnabled} 
-                      onCheckedChange={setHintsEnabled} 
-                    />
-                  </div>
-                  
-                  {hintsEnabled && (
-                    <div>
-                      <div className="flex justify-between mb-2">
-                        <Label>Hints per game: {hintsCount}</Label>
-                      </div>
-                      <Slider 
-                        value={[hintsCount]} 
-                        min={1} 
-                        max={10} 
-                        step={1} 
-                        onValueChange={(value) => setHintsCount(value[0])}
-                      />
-                    </div>
-                  )}
-                  
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                    Using hints will reduce your score but can help you get unstuck.
-                  </p>
-                </div>
-              </GameModeCard>
-            </div>
-          </TabsContent>
           
           <TabsContent value="compete" className="mt-6">
             <div className="space-y-8">
@@ -176,6 +61,90 @@ const Home = () => {
                   </Button>
                 </div>
               </div>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="play" className="mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
+              <Card>
+                <CardHeader className="pb-2">
+                  <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-full inline-flex">
+                    <Clock className="h-6 w-6" />
+                  </div>
+                  <CardTitle className="text-xl mt-2">Timer</CardTitle>
+                  <CardDescription>Race against the clock.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="timer-toggle">Enable Timer</Label>
+                      <Switch 
+                        id="timer-toggle" 
+                        checked={timerEnabled} 
+                        onCheckedChange={setTimerEnabled} 
+                      />
+                    </div>
+                    
+                    {timerEnabled && (
+                      <div>
+                        <div className="flex justify-between mb-2">
+                          <Label>Time Limit: {timerMinutes} minutes</Label>
+                        </div>
+                        <Slider 
+                          value={[timerMinutes]} 
+                          min={1} 
+                          max={10} 
+                          step={1} 
+                          onValueChange={(value) => setTimerMinutes(value[0])}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-full inline-flex">
+                    <Lightbulb className="h-6 w-6" />
+                  </div>
+                  <CardTitle className="text-xl mt-2">Hints</CardTitle>
+                  <CardDescription>Enable hints to get help during the game.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="hints-toggle">Enable Hints</Label>
+                      <Switch 
+                        id="hints-toggle" 
+                        checked={hintsEnabled} 
+                        onCheckedChange={setHintsEnabled} 
+                      />
+                    </div>
+                    
+                    {hintsEnabled && (
+                      <div>
+                        <div className="flex justify-between mb-2">
+                          <Label>Hints per game: {hintsCount}</Label>
+                        </div>
+                        <Slider 
+                          value={[hintsCount]} 
+                          min={1} 
+                          max={10} 
+                          step={1} 
+                          onValueChange={(value) => setHintsCount(value[0])}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            <div className="mt-8 flex justify-center">
+              <Button size="lg" onClick={handleStartGame} className="w-full max-w-md">
+                Start Game
+              </Button>
             </div>
           </TabsContent>
         </Tabs>

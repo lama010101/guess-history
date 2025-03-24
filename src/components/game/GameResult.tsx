@@ -1,5 +1,5 @@
+
 import { MapPin, Calendar, Lightbulb } from 'lucide-react';
-import ResultVisualization from './ResultVisualization';
 
 interface GameResultProps {
   isVisible: boolean;
@@ -81,15 +81,6 @@ const GameResult = ({
           <p className="text-sm font-medium">
             You were {Math.round(distanceKm)} km away
           </p>
-          {guessedLocation && (
-            <ResultVisualization
-              actualLocation={actualLocation}
-              guessedLocation={guessedLocation}
-              isVisible={isVisible}
-              circleRadius={1000} // Default 1000m radius
-              showConnectionLine={true}
-            />
-          )}
         </div>
         {locationHintUsed && (
           <div className="bg-amber-500/10 px-3 py-2 flex items-center text-xs text-amber-600">
@@ -99,7 +90,7 @@ const GameResult = ({
         )}
       </div>
       
-      {/* Year Section */}
+      {/* Year Section - Updated to show "You guessed X so Y years earlier/later" */}
       <div className="border border-border rounded-lg mb-4 overflow-hidden">
         <div className="bg-neutral-100 dark:bg-neutral-800 px-4 py-2 flex justify-between items-center">
           <div className="flex items-center">

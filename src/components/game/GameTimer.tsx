@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useGameState } from '@/hooks/useGameState';
 
@@ -5,9 +6,10 @@ interface GameTimerProps {
   duration: number; // in seconds
   paused?: boolean;
   onTimeUp?: () => void;
+  hintsOpen?: boolean; // Added prop for when hints are open
 }
 
-const GameTimer = ({ duration, paused = false, onTimeUp }: GameTimerProps) => {
+const GameTimer = ({ duration, paused = false, onTimeUp, hintsOpen = false }: GameTimerProps) => {
   const [timeLeft, setTimeLeft] = useState(duration);
   const [isRunning, setIsRunning] = useState(true);
   const { handleSubmit, showResults } = useGameState();
@@ -19,12 +21,13 @@ const GameTimer = ({ duration, paused = false, onTimeUp }: GameTimerProps) => {
   }, [duration]);
 
   useEffect(() => {
-    if (paused || showResults) {
+    // Stop timer when paused, hints are open, or results are showing
+    if (paused || hintsOpen || showResults) {
       setIsRunning(false);
     } else {
       setIsRunning(true);
     }
-  }, [paused, showResults]);
+  }, [paused, hintsOpen, showResults]);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -35,6 +38,7 @@ const GameTimer = ({ duration, paused = false, onTimeUp }: GameTimerProps) => {
           if (timerRef.current) {
             clearInterval(timerRef.current);
           }
+          // Call handleSubmit to end the round when timer reaches zero
           handleSubmit();
           onTimeUp?.();
           return 0;

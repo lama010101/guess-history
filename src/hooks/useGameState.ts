@@ -48,6 +48,7 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
   // Timer settings
   const [timerEnabled, setTimerEnabled] = useState(false);
   const [timerDuration, setTimerDuration] = useState(60); // 60 seconds default
+  const [timerPaused, setTimerPaused] = useState(false);
 
   // Daily challenge settings
   const [isDaily, setIsDaily] = useState(false);
@@ -60,6 +61,9 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     if (!selectedLocation) {
       return;
     }
+    
+    // Pause timer when submitting guess
+    setTimerPaused(true);
     
     const scores = calculateRoundScore(
       selectedLocation,
@@ -88,6 +92,9 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     // Hide the results modal first
     setShowResults(false);
     
+    // Unpause timer for next round
+    setTimerPaused(false);
+    
     // Move to next round
     nextRound();
     
@@ -105,6 +112,7 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     setSelectedLocation(null);
     setSelectedYear(1960);
     setShowResults(false);
+    setTimerPaused(false);
     resetGame();
     resetScores();
     resetHints();
@@ -149,6 +157,7 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     // Timer state
     timerEnabled,
     timerDuration,
+    timerPaused,
     
     // Daily challenge state
     isDaily,
@@ -173,6 +182,7 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     handleUseYearHint,
     setTimerEnabled,
     setTimerDuration,
+    setTimerPaused,
     
     // Game constants
     maxRounds

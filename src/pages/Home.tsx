@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Globe, Clock, Lightbulb, Users, Share2, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -121,14 +122,15 @@ const Home = () => {
     handleStartGame();
   };
 
-  useEffect(() => {
-    if (!showSettingsDialog) {
-      const timer = setTimeout(() => {
-        window.location.reload();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [showSettingsDialog]);
+  // Remove the effect that causes infinite refreshes
+  // useEffect(() => {
+  //   if (!showSettingsDialog) {
+  //     const timer = setTimeout(() => {
+  //       window.location.reload();
+  //     }, 100);
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [showSettingsDialog]);
 
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-gray-900 text-black dark:text-white flex flex-col">
@@ -205,6 +207,7 @@ const Home = () => {
                         />
                       </div>
                     )}
+                    <p className="text-xs text-muted-foreground">Race against the clock</p>
                   </div>
                   
                   <div className="space-y-2">
@@ -231,9 +234,9 @@ const Home = () => {
                           step={1} 
                           onValueChange={(value) => setHintsCount(value[0])}
                         />
-                        <p className="text-xs text-muted-foreground mt-1">Using a hint will deduct 500 points</p>
                       </div>
                     )}
+                    <p className="text-xs text-muted-foreground mt-1">Using a hint will deduct 500 points</p>
                   </div>
                 </div>
                 
@@ -276,31 +279,31 @@ const Home = () => {
                   <CardDescription>Race against the clock.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="timer-toggle">Timer</Label>
-                      <Switch 
-                        id="timer-toggle" 
-                        checked={timerEnabled} 
-                        onCheckedChange={setTimerEnabled} 
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Timer</span>
+                    </div>
+                    <Switch 
+                      checked={timerEnabled}
+                      onCheckedChange={setTimerEnabled}
+                    />
+                  </div>
+                  
+                  {timerEnabled && (
+                    <div className="mt-4">
+                      <div className="flex justify-between mb-2">
+                        <Label>Time Limit: {timerMinutes} minutes</Label>
+                      </div>
+                      <Slider 
+                        value={[timerMinutes]} 
+                        min={1} 
+                        max={10} 
+                        step={1} 
+                        onValueChange={(value) => setTimerMinutes(value[0])}
                       />
                     </div>
-                    
-                    {timerEnabled && (
-                      <div>
-                        <div className="flex justify-between mb-2">
-                          <Label>Time Limit: {timerMinutes} minutes</Label>
-                        </div>
-                        <Slider 
-                          value={[timerMinutes]} 
-                          min={1} 
-                          max={10} 
-                          step={1} 
-                          onValueChange={(value) => setTimerMinutes(value[0])}
-                        />
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </CardContent>
               </Card>
               
@@ -316,31 +319,31 @@ const Home = () => {
                   <CardDescription>Using a hint will deduct 500 points.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="hints-toggle">Hints</Label>
-                      <Switch 
-                        id="hints-toggle" 
-                        checked={hintsEnabled} 
-                        onCheckedChange={setHintsEnabled} 
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Lightbulb className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Hints</span>
+                    </div>
+                    <Switch 
+                      checked={hintsEnabled}
+                      onCheckedChange={setHintsEnabled}
+                    />
+                  </div>
+                  
+                  {hintsEnabled && (
+                    <div className="mt-4">
+                      <div className="flex justify-between mb-2">
+                        <Label>Hints per game: {hintsCount}</Label>
+                      </div>
+                      <Slider 
+                        value={[hintsCount]} 
+                        min={1} 
+                        max={10} 
+                        step={1} 
+                        onValueChange={(value) => setHintsCount(value[0])}
                       />
                     </div>
-                    
-                    {hintsEnabled && (
-                      <div>
-                        <div className="flex justify-between mb-2">
-                          <Label>Hints per game: {hintsCount}</Label>
-                        </div>
-                        <Slider 
-                          value={[hintsCount]} 
-                          min={1} 
-                          max={10} 
-                          step={1} 
-                          onValueChange={(value) => setHintsCount(value[0])}
-                        />
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             </div>

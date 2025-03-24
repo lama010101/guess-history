@@ -10,10 +10,13 @@ import { Button } from '@/components/ui/button';
 import { Clock, Lightbulb } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import GameTimer from './game/GameTimer';
 
 const MAX_ROUNDS = 5; // Default to 5 rounds for a game
 
 const GameSection = () => {
+  const [hintsOpen, setHintsOpen] = useState(false);
+
   const {
     selectedLocation,
     selectedYear,
@@ -122,6 +125,7 @@ const GameSection = () => {
               onUseYearHint={handleUseYearHint}
               locationHintUsed={locationHintUsed}
               yearHintUsed={yearHintUsed}
+              setHintsOpen={setHintsOpen}
             />
           </div>
           

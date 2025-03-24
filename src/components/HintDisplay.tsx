@@ -23,11 +23,13 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
   const [localLocationHintUsed, setLocalLocationHintUsed] = useState(locationHintUsed);
   const [localYearHintUsed, setLocalYearHintUsed] = useState(yearHintUsed);
   const [localHintValue, setLocalHintValue] = useState<{country?: string, decade?: string}>({});
+  const [remainingHints, setRemainingHints] = useState(availableHints);
   
-  // Update local state when global state changes
+  // Update local state when global state changes or when component mounts
   useEffect(() => {
     setLocalLocationHintUsed(locationHintUsed);
     setLocalYearHintUsed(yearHintUsed);
+    setRemainingHints(hintCoins);
     
     // Set hint values when hints are used
     if (locationHintUsed && currentImage) {
@@ -43,7 +45,7 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
         decade: currentImage.year.toString().slice(0, -1) + "X"
       }));
     }
-  }, [locationHintUsed, yearHintUsed, currentImage]);
+  }, [locationHintUsed, yearHintUsed, currentImage, hintCoins]);
 
   // Function to extract just the country from location name
   const getCountryOnly = (locationName?: string): string => {
@@ -56,12 +58,12 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
   
   // Handle using location hint
   const onUseLocationHint = () => {
-    // Call the handler function without checking its return value
     handleUseLocationHint();
     
     // Only update local state if hint coin is available and hint not already used
-    if (hintCoins > 0 && !localLocationHintUsed && currentImage) {
+    if (remainingHints > 0 && !localLocationHintUsed && currentImage) {
       setLocalLocationHintUsed(true);
+      setRemainingHints(prev => prev - 1);
       setLocalHintValue(prev => ({
         ...prev,
         country: getCountryOnly(currentImage.locationName)
@@ -71,12 +73,12 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
   
   // Handle using year hint
   const onUseYearHint = () => {
-    // Call the handler function without checking its return value
     handleUseYearHint();
     
     // Only update local state if hint coin is available and hint not already used
-    if (hintCoins > 0 && !localYearHintUsed && currentImage) {
+    if (remainingHints > 0 && !localYearHintUsed && currentImage) {
       setLocalYearHintUsed(true);
+      setRemainingHints(prev => prev - 1);
       setLocalHintValue(prev => ({
         ...prev,
         decade: currentImage.year.toString().slice(0, -1) + "X"
@@ -106,7 +108,7 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
           <div className="flex flex-col items-center">
             <Button 
               onClick={onUseLocationHint}
-              disabled={localLocationHintUsed || hintCoins <= 0}
+              disabled={localLocationHintUsed || remainingHints <= 0}
               variant={localLocationHintUsed ? "outline" : "default"}
               className="w-full"
             >
@@ -125,7 +127,7 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
           <div className="flex flex-col items-center">
             <Button 
               onClick={onUseYearHint}
-              disabled={localYearHintUsed || hintCoins <= 0}
+              disabled={localYearHintUsed || remainingHints <= 0}
               variant={localYearHintUsed ? "outline" : "default"}
               className="w-full"
             >
@@ -140,6 +142,10 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
               </span>
             )}
           </div>
+        </div>
+        
+        <div className="mt-2 text-center text-xs font-medium">
+          Remaining hints: {remainingHints}
         </div>
       </div>
     </div>

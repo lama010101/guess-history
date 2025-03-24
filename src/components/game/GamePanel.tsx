@@ -4,6 +4,7 @@ import MapComponent from '../MapComponent';
 import HistoricalImage from '../HistoricalImage';
 import ViewToggle from './ViewToggle';
 import { Lightbulb } from 'lucide-react';
+import HintDisplay from '../HintDisplay';
 
 interface GamePanelProps {
   currentImage: {
@@ -25,6 +26,7 @@ interface GamePanelProps {
   onUseYearHint: () => void;
   locationHintUsed: boolean;
   yearHintUsed: boolean;
+  setHintsOpen?: (open: boolean) => void; // Added prop to handle hints popup state
 }
 
 const GamePanel = ({ 
@@ -32,10 +34,15 @@ const GamePanel = ({
   onLocationSelect, 
   selectedLocation,
   locationHintUsed,
-  yearHintUsed
+  yearHintUsed,
+  hintCoins,
+  onUseLocationHint,
+  onUseYearHint,
+  setHintsOpen
 }: GamePanelProps) => {
   // Start with image view by default
   const [activeView, setActiveView] = useState<'image' | 'map'>('image');
+  const [showHints, setShowHints] = useState(false);
 
   // Helper to extract just the country from location name
   const getCountryOnly = (locationName?: string): string => {
@@ -44,6 +51,14 @@ const GamePanel = ({
     // Split by comma and get the last part which is usually the country
     const parts = locationName.split(',');
     return parts.length > 1 ? parts[parts.length - 1].trim() : parts[0].trim();
+  };
+
+  const toggleHints = () => {
+    const newState = !showHints;
+    setShowHints(newState);
+    if (setHintsOpen) {
+      setHintsOpen(newState);
+    }
   };
 
   return (
@@ -79,6 +94,24 @@ const GamePanel = ({
         {yearHintUsed && (
           <div className="absolute bottom-16 left-4 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
             <span className="font-medium">Decade:</span> {currentImage.year.toString().slice(0, -1) + "X"}
+          </div>
+        )}
+        
+        {/* Hints Button */}
+        <button
+          onClick={toggleHints}
+          className="absolute top-4 left-4 z-10 p-2 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-full shadow-md"
+        >
+          <Lightbulb className="h-5 w-5 text-amber-500" />
+        </button>
+
+        {/* Hints Popup */}
+        {showHints && (
+          <div className="absolute top-16 left-4 z-20">
+            <HintDisplay 
+              availableHints={hintCoins} 
+              onClose={toggleHints} 
+            />
           </div>
         )}
         

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Globe, Clock, Lightbulb, Users, Share2, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -130,6 +129,16 @@ const Home = () => {
     handleStartGame();
   };
 
+    // Force update when dialog closes
+    useEffect(() => {
+      if (!showSettingsDialog) {
+        const timer = setTimeout(() => {
+          window.location.reload();
+        }, 100);
+        return () => clearTimeout(timer);
+      }
+    }, [showSettingsDialog]);
+
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-gray-900 text-black dark:text-white flex flex-col">
       <Navbar />
@@ -144,17 +153,16 @@ const Home = () => {
             <div className="space-y-8">
               <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-6">
                 <h3 className="text-xl font-medium mb-2">Daily Challenge</h3>
-                <p className="text-neutral-500 dark:text-neutral-400 mb-4">Play today's challenge. Same 5 images as everyone else.</p>
+                <p className="text-neutral-500 dark:text-neutral-400 mb-4">Same 5 images as everyone else.</p>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">One attempt per day</p>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Timer: 5 minutes</p>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Hints available: 2</p>
                     {dailyPlayed && dailyScore > 0 && (
-                      <div className="mt-2 text-sm">
+                      <div className="mt-2">
                         <p className="font-medium">Today's score: {dailyScore}</p>
-                        <p className="text-neutral-500">{dailyDate}</p>
-                        <p className="text-neutral-500">Next challenge in: {timeUntilNextDaily}</p>
+                        <p className="text-sm text-neutral-500">Next challenge in: {timeUntilNextDaily}</p>
                       </div>
                     )}
                   </div>

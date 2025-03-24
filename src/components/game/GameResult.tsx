@@ -1,4 +1,3 @@
-
 import { MapPin, Calendar, Lightbulb } from 'lucide-react';
 import ResultVisualization from './ResultVisualization';
 
@@ -105,13 +104,13 @@ const GameResult = ({
         <div className="bg-neutral-100 dark:bg-neutral-800 px-4 py-2 flex justify-between items-center">
           <div className="flex items-center">
             <Calendar className="h-4 w-4 mr-2 text-primary" />
-            <span className="text-sm font-medium">Year</span>
+            <span className="text-sm font-medium">Year: {actualYear}</span>
           </div>
           <span className="font-semibold">{yearScore.toLocaleString()} pts</span>
         </div>
         <div className="p-3">
           <p className="text-sm font-medium">
-            {actualYear} - You guessed {yearDifference} years {guessedYear > actualYear ? 'later' : 'earlier'}
+            You guessed {guessedYear} ({yearDifference} years {guessedYear > actualYear ? 'later' : 'earlier'})
           </p>
         </div>
         {yearHintUsed && (

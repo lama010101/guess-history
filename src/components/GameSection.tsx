@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import GamePanel from './game/GamePanel';
 import GameControls from './game/GameControls';
@@ -131,11 +130,11 @@ const GameSection = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-medium">Timer</span>
                     </div>
-                    <Switch
+                    <Switch 
                       checked={timerEnabled}
                       onCheckedChange={setTimerEnabled}
                     />
@@ -145,7 +144,7 @@ const GameSection = () => {
                 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
                       <Lightbulb className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-medium">Hints</span>
                     </div>
@@ -158,7 +157,7 @@ const GameSection = () => {
                   <p className="text-xs text-muted-foreground">Using a hint will deduct 500 points</p>
                 </div>
               </div>
-
+              
               <div className="mt-3">
                 <Button 
                   variant="outline" 

@@ -15,6 +15,7 @@ export interface GameState {
   yearHintUsed: boolean;
   timerEnabled: boolean;
   timerDuration: number;
+  timerPaused: boolean;
   isDaily: boolean;
   dailyCompleted: boolean;
   dailyScore: number;
@@ -31,6 +32,7 @@ export interface GameStateActions {
   handleUseYearHint: () => void;
   setTimerEnabled: React.Dispatch<React.SetStateAction<boolean>>;
   setTimerDuration: React.Dispatch<React.SetStateAction<number>>;
+  setTimerPaused: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export interface GameStateReturn extends GameState, GameStateActions {

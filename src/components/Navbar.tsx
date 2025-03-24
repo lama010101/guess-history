@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/services/auth';
@@ -30,7 +31,7 @@ interface NavbarProps {
 }
 
 const Navbar = ({ roundInfo, showTimer, timerDuration, hintsOpen }: NavbarProps) => {
-  const { user, signOut } = useAuth();
+  const { user, logout } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
   const [showHints, setShowHints] = useState(false);
@@ -70,23 +71,18 @@ const Navbar = ({ roundInfo, showTimer, timerDuration, hintsOpen }: NavbarProps)
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 p-0 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.picture} alt={user.name} />
-                    <AvatarFallback>{user.name?.charAt(0).toUpperCase()}</AvatarFallback>
+                    <AvatarImage src={user.avatarUrl} alt={user.username} />
+                    <AvatarFallback>{user.username?.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
+                <DropdownMenuLabel>{user.username}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link to="/profile">Profile</Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => signOut(() => {
-                  toast({
-                    title: "Signed out",
-                    description: "You have been signed out successfully"
-                  });
-                })}>
+                <DropdownMenuItem onClick={() => logout()}>
                   Sign out
                 </DropdownMenuItem>
               </DropdownMenuContent>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import GamePanel from './game/GamePanel';
 import GameControls from './game/GameControls';
@@ -48,6 +47,13 @@ const GameSection = () => {
     setNavbarKey(prev => prev + 1);
   }, []);
   
+  // Save daily score to localStorage when playing in daily mode
+  useEffect(() => {
+    if (isDaily && gameComplete) {
+      localStorage.setItem('lastDailyScore', totalScore.toString());
+    }
+  }, [isDaily, totalScore, gameComplete]);
+  
   useEffect(() => {
     forceNavbarUpdate();
   }, [currentRound, totalScore, showResults, forceNavbarUpdate]);
@@ -63,80 +69,86 @@ const GameSection = () => {
     forceNavbarUpdate();
   };
 
-  // Show game over screen if all rounds are completed
-  if (gameComplete) {
+  // Prepare content based on game state
+  const renderContent = () => {
+    // Show game over screen if all rounds are completed
+    if (gameComplete) {
+      return (
+        <section id="game" className="h-full flex flex-col">
+          <Navbar key={navbarKey} />
+          <GameComplete 
+            totalScore={totalScore}
+            maxRounds={MAX_ROUNDS}
+            roundScores={roundScores}
+            images={sampleImages}
+            onPlayAgain={isDaily ? undefined : handleNewGame}
+            isDaily={isDaily}
+          />
+        </section>
+      );
+    }
+
+    // Otherwise show the game interface
     return (
       <section id="game" className="h-full flex flex-col">
-        <Navbar key={navbarKey} />
-        <GameComplete 
-          totalScore={totalScore}
-          maxRounds={MAX_ROUNDS}
-          roundScores={roundScores}
-          images={sampleImages}
-          onPlayAgain={isDaily ? undefined : handleNewGame}
-          isDaily={isDaily}
+        <Navbar 
+          key={navbarKey}
+          roundInfo={{
+            currentRound,
+            maxRounds,
+            totalScore
+          }}
+          showTimer={timerEnabled}
+          timerDuration={timerDuration}
         />
-      </section>
-    );
-  }
-
-  return (
-    <section id="game" className="h-full flex flex-col">
-      <Navbar 
-        key={navbarKey}
-        roundInfo={{
-          currentRound,
-          maxRounds,
-          totalScore
-        }}
-        showTimer={timerEnabled}
-        timerDuration={timerDuration}
-      />
-      <div className="relative flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-hidden">
-          <GamePanel 
-            currentImage={currentImage} 
-            onLocationSelect={handleLocationSelect}
-            selectedLocation={selectedLocation}
-            gameRound={currentRound}
-            maxRounds={MAX_ROUNDS}
-            totalScore={totalScore}
-            hintCoins={hintCoins}
-            onUseLocationHint={handleUseLocationHint}
-            onUseYearHint={handleUseYearHint}
-            locationHintUsed={locationHintUsed}
-            yearHintUsed={yearHintUsed}
-          />
-        </div>
-        
-        <div className="bg-background border-t border-border shadow-lg">
-          <GameControls 
+        <div className="relative flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-hidden">
+            <GamePanel 
+              currentImage={currentImage} 
+              onLocationSelect={handleLocationSelect}
+              selectedLocation={selectedLocation}
+              gameRound={currentRound}
+              maxRounds={MAX_ROUNDS}
+              totalScore={totalScore}
+              hintCoins={hintCoins}
+              onUseLocationHint={handleUseLocationHint}
+              onUseYearHint={handleUseYearHint}
+              locationHintUsed={locationHintUsed}
+              yearHintUsed={yearHintUsed}
+            />
+          </div>
+          
+          <div className="bg-background border-t border-border shadow-lg">
+            <GameControls 
+              selectedLocation={selectedLocation}
+              selectedYear={selectedYear}
+              onYearChange={setSelectedYear}
+              onSubmit={handleSubmit}
+            />
+          </div>
+          
+          <GameResultsModal 
+            showResults={showResults}
+            locationScore={currentScores.locationScore}
+            yearScore={currentScores.yearScore}
+            currentImage={currentImage}
             selectedLocation={selectedLocation}
             selectedYear={selectedYear}
-            onYearChange={setSelectedYear}
-            onSubmit={handleSubmit}
+            distanceKm={currentScores.distanceKm}
+            yearDifference={currentScores.yearDifference}
+            onNextRound={handleNextRoundWithUpdate}
+            currentRound={currentRound}
+            maxRounds={MAX_ROUNDS}
+            locationHintUsed={locationHintUsed}
+            yearHintUsed={yearHintUsed}
+            hintPenalty={currentScores.hintPenalty}
           />
         </div>
-        
-        <GameResultsModal 
-          showResults={showResults}
-          locationScore={currentScores.locationScore}
-          yearScore={currentScores.yearScore}
-          currentImage={currentImage}
-          selectedLocation={selectedLocation}
-          selectedYear={selectedYear}
-          distanceKm={currentScores.distanceKm}
-          yearDifference={currentScores.yearDifference}
-          onNextRound={handleNextRoundWithUpdate}
-          currentRound={currentRound}
-          maxRounds={MAX_ROUNDS}
-          locationHintUsed={locationHintUsed}
-          yearHintUsed={yearHintUsed}
-          hintPenalty={currentScores.hintPenalty}
-        />
-      </div>
-    </section>
-  );
+      </section>
+    );
+  };
+
+  return renderContent();
 };
 
 export default GameSection;

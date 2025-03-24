@@ -1,51 +1,40 @@
 
 import { useState } from 'react';
-import { Map, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface ViewToggleProps {
-  activeView: 'map' | 'image';
+  activeView: 'image' | 'map';
   onToggle: () => void;
   imageSrc?: string;
   showClose?: boolean;
 }
 
-const ViewToggle = ({ activeView, onToggle, imageSrc, showClose = false }: ViewToggleProps) => {
-  // Static map preview for map mode
-  const staticMapUrl = "https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/0,0,1,0/400x400?access_token=pk.sample";
+const ViewToggle = ({ activeView, onToggle, showClose = true }: ViewToggleProps) => {
+  const [hovered, setHovered] = useState(false);
   
   return (
-    <div className="absolute right-4 top-4 z-10">
-      <Button 
-        variant="outline" 
-        size="sm" 
+    <div 
+      className="absolute top-4 right-4 z-20"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <Button
+        variant="secondary"
+        className="h-16 px-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm font-medium"
         onClick={onToggle}
-        className="h-10 flex items-center gap-1.5 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm"
       >
-        {activeView === 'image' ? (
-          <>
-            <Map className="h-4 w-4 mr-1" />
-            <span className="font-medium">Map</span>
-            {showClose && (
-              <span className="ml-1 h-4 w-4 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
-                <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
-              </span>
-            )}
-          </>
-        ) : (
-          <>
-            <Image className="h-4 w-4 mr-1" />
-            <span className="font-medium">Photo</span>
-            <span className="ml-1 h-5 w-5 rounded overflow-hidden border border-gray-300 dark:border-gray-600">
-              <img 
-                src={imageSrc} 
-                alt="Thumbnail" 
-                className="w-full h-full object-cover" 
-              />
-            </span>
-          </>
-        )}
+        {activeView === 'image' ? 'Map' : 'Image'}
       </Button>
+      
+      {activeView === 'map' && (
+        <div className="absolute bottom-0 right-0 translate-y-full mt-2 p-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded text-xs">
+          <img 
+            src="https://upload.wikimedia.org/wikipedia/commons/b/b0/Openstreetmap_logo.svg" 
+            alt="OpenStreetMap" 
+            className="h-5" 
+          />
+        </div>
+      )}
     </div>
   );
 };

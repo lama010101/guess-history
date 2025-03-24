@@ -1,5 +1,4 @@
 
-import { Button } from '@/components/ui/button';
 import { MapPin, Calendar, Lightbulb } from 'lucide-react';
 import ResultVisualization from './ResultVisualization';
 
@@ -34,7 +33,6 @@ const GameResult = ({
   guessedYear,
   distanceKm,
   yearDifference,
-  onNextRound,
   locationHintUsed,
   yearHintUsed,
   hintPenalty,
@@ -56,9 +54,9 @@ const GameResult = ({
   };
   
   return (
-    <div className="glass-card p-4 rounded-lg max-w-md w-full">
+    <div className="glass-card p-4 rounded-lg max-w-md w-full bg-white/90 dark:bg-gray-900/90">
       <div className="text-center mb-4">
-        <h3 className="text-2xl font-bold mb-1">Round Score</h3>
+        <h3 className="text-2xl font-bold mb-1">Image Score</h3>
       </div>
       
       {/* Event Title and Description */}
@@ -82,7 +80,7 @@ const GameResult = ({
         </div>
         <div className="p-3">
           <p className="text-sm font-medium">
-            {Math.round(distanceKm)} km
+            You were {Math.round(distanceKm)} km away
           </p>
           {guessedLocation && (
             <ResultVisualization
@@ -90,6 +88,7 @@ const GameResult = ({
               guessedLocation={guessedLocation}
               isVisible={isVisible}
               circleRadius={1000} // Default 1000m radius
+              showConnectionLine={true}
             />
           )}
         </div>
@@ -112,7 +111,7 @@ const GameResult = ({
         </div>
         <div className="p-3">
           <p className="text-sm font-medium">
-            {yearDifference} years {guessedYear > actualYear ? 'later' : 'earlier'}
+            {actualYear} - You guessed {yearDifference} years {guessedYear > actualYear ? 'later' : 'earlier'}
           </p>
         </div>
         {yearHintUsed && (
@@ -124,19 +123,12 @@ const GameResult = ({
       </div>
       
       {/* Total Score */}
-      <div className="bg-primary/5 p-3 rounded-lg mb-4">
+      <div className="bg-primary/5 p-3 rounded-lg">
         <div className="flex justify-between items-center">
           <span className="text-sm font-medium">Total Score</span>
           <span className="text-lg font-bold">{totalScore.toLocaleString()} pts</span>
         </div>
       </div>
-      
-      <Button
-        onClick={onNextRound}
-        className="w-full bg-primary text-primary-foreground"
-      >
-        Next Round
-      </Button>
     </div>
   );
 };

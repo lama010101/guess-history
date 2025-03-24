@@ -15,9 +15,9 @@ import FriendsInviteDialog from '@/components/friends/FriendsInviteDialog';
 
 const Home = () => {
   const [activeTab, setActiveTab] = useState<'compete' | 'play'>('compete');
-  const [timerEnabled, setTimerEnabled] = useState<boolean>(true);
+  const [timerEnabled, setTimerEnabled] = useState<boolean>(false);
   const [timerMinutes, setTimerMinutes] = useState<number>(5);
-  const [hintsEnabled, setHintsEnabled] = useState<boolean>(true);
+  const [hintsEnabled, setHintsEnabled] = useState<boolean>(false);
   const [hintsCount, setHintsCount] = useState<number>(2);
   const [linkCopied, setLinkCopied] = useState(false);
   const [useMiles, setUseMiles] = useState<boolean>(false);
@@ -28,6 +28,7 @@ const Home = () => {
   const [dailyPlayed, setDailyPlayed] = useState(false);
   const [dailyScore, setDailyScore] = useState(0);
   const [dailyDate, setDailyDate] = useState("");
+  const [timeUntilNextDaily, setTimeUntilNextDaily] = useState("");
   
   // Check if daily challenge was played today
   useEffect(() => {
@@ -47,11 +48,24 @@ const Home = () => {
       }));
       
       // Check if same day
-      setDailyPlayed(
+      const isSameDay = 
         lastPlayedDate.getDate() === today.getDate() &&
         lastPlayedDate.getMonth() === today.getMonth() &&
-        lastPlayedDate.getFullYear() === today.getFullYear()
-      );
+        lastPlayedDate.getFullYear() === today.getFullYear();
+      
+      setDailyPlayed(isSameDay);
+      
+      if (isSameDay) {
+        // Calculate time until midnight
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+        
+        const hoursLeft = Math.floor((tomorrow.getTime() - today.getTime()) / (1000 * 60 * 60));
+        const minutesLeft = Math.floor(((tomorrow.getTime() - today.getTime()) % (1000 * 60 * 60)) / (1000 * 60));
+        
+        setTimeUntilNextDaily(`${hoursLeft}h ${minutesLeft}m`);
+      }
       
       if (savedScore) {
         setDailyScore(parseInt(savedScore, 10));
@@ -106,15 +120,14 @@ const Home = () => {
     }, 2000);
   };
   
-  const toggleDistanceFormat = () => {
-    const newValue = !useMiles;
-    setUseMiles(newValue);
-    localStorage.setItem('distanceFormat', newValue ? 'miles' : 'km');
-    
+  const handleInviteFriendsAndStart = () => {
     toast({
-      title: `Distance format changed to ${newValue ? 'Miles' : 'Kilometers'}`,
-      description: `Distances will now be displayed in ${newValue ? 'miles' : 'kilometers'}.`
+      title: "Invitations sent!",
+      description: "Your friends have been invited to join the game"
     });
+    
+    // Start the game after sending invitations
+    handleStartGame();
   };
 
   return (
@@ -141,6 +154,7 @@ const Home = () => {
                       <div className="mt-2 text-sm">
                         <p className="font-medium">Today's score: {dailyScore}</p>
                         <p className="text-neutral-500">{dailyDate}</p>
+                        <p className="text-neutral-500">Next challenge in: {timeUntilNextDaily}</p>
                       </div>
                     )}
                   </div>
@@ -167,31 +181,60 @@ const Home = () => {
                 <p className="text-neutral-500 dark:text-neutral-400 mb-4">Invite your registered friends here or share the link.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                   <div className="space-y-2">
-                    <Label htmlFor="friends-timer-toggle">Enable Timer</Label>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="flex items-center gap-2" htmlFor="friends-timer-toggle">
+                        <Clock className="h-4 w-4" />
+                        Timer
+                      </Label>
                       <Switch 
                         id="friends-timer-toggle" 
                         checked={timerEnabled} 
                         onCheckedChange={setTimerEnabled} 
                       />
-                      <span className="text-sm text-muted-foreground">
-                        {timerEnabled ? "On" : "Off"}
-                      </span>
                     </div>
+                    {timerEnabled && (
+                      <div>
+                        <div className="flex justify-between mb-2">
+                          <Label>Time Limit: {timerMinutes} minutes</Label>
+                        </div>
+                        <Slider 
+                          value={[timerMinutes]} 
+                          min={1} 
+                          max={10} 
+                          step={1} 
+                          onValueChange={(value) => setTimerMinutes(value[0])}
+                        />
+                      </div>
+                    )}
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="friends-hints-toggle">Enable Hints</Label>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="flex items-center gap-2" htmlFor="friends-hints-toggle">
+                        <Lightbulb className="h-4 w-4" />
+                        Hints
+                      </Label>
                       <Switch 
                         id="friends-hints-toggle" 
                         checked={hintsEnabled} 
                         onCheckedChange={setHintsEnabled} 
                       />
-                      <span className="text-sm text-muted-foreground">
-                        {hintsEnabled ? "On" : "Off"}
-                      </span>
                     </div>
+                    {hintsEnabled && (
+                      <div>
+                        <div className="flex justify-between mb-2">
+                          <Label>Hints per game: {hintsCount}</Label>
+                        </div>
+                        <Slider 
+                          value={[hintsCount]} 
+                          min={1} 
+                          max={10} 
+                          step={1} 
+                          onValueChange={(value) => setHintsCount(value[0])}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">Using a hint will deduct 500 points</p>
+                      </div>
+                    )}
                   </div>
                 </div>
                 
@@ -206,30 +249,15 @@ const Home = () => {
                   </Button>
                   <FriendsInviteDialog 
                     trigger={
-                      <Button className="flex-1 flex items-center gap-2">
+                      <Button 
+                        className="flex-1 flex items-center gap-2" 
+                        onClick={handleInviteFriendsAndStart}
+                      >
                         <Users className="h-4 w-4" />
-                        Invite Friends
+                        Invite Friends and Start Game
                       </Button>
                     }
                   />
-                </div>
-              </div>
-              
-              <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-6">
-                <h3 className="text-xl font-medium mb-2">Settings</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="distance-toggle">Distance Format</Label>
-                    <div className="flex items-center space-x-2">
-                      <span className={!useMiles ? "font-medium" : "text-muted-foreground"}>Km</span>
-                      <Switch 
-                        id="distance-toggle" 
-                        checked={useMiles} 
-                        onCheckedChange={toggleDistanceFormat} 
-                      />
-                      <span className={useMiles ? "font-medium" : "text-muted-foreground"}>Miles</span>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -242,13 +270,16 @@ const Home = () => {
                   <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-full inline-flex">
                     <Clock className="h-6 w-6" />
                   </div>
-                  <CardTitle className="text-xl mt-2">Timer</CardTitle>
+                  <CardTitle className="text-xl mt-2 flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    Timer
+                  </CardTitle>
                   <CardDescription>Race against the clock.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="timer-toggle">Enable Timer</Label>
+                      <Label htmlFor="timer-toggle">Timer</Label>
                       <Switch 
                         id="timer-toggle" 
                         checked={timerEnabled} 
@@ -279,13 +310,16 @@ const Home = () => {
                   <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-full inline-flex">
                     <Lightbulb className="h-6 w-6" />
                   </div>
-                  <CardTitle className="text-xl mt-2">Hints</CardTitle>
-                  <CardDescription>Enable hints to get help during the game.</CardDescription>
+                  <CardTitle className="text-xl mt-2 flex items-center gap-2">
+                    <Lightbulb className="h-5 w-5" />
+                    Hints
+                  </CardTitle>
+                  <CardDescription>Using a hint will deduct 500 points.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="hints-toggle">Enable Hints</Label>
+                      <Label htmlFor="hints-toggle">Hints</Label>
                       <Switch 
                         id="hints-toggle" 
                         checked={hintsEnabled} 

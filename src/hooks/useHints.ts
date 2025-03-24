@@ -6,6 +6,10 @@ export const useHints = () => {
   const [hintCoins, setHintCoins] = useState(0);
   const [locationHintUsed, setLocationHintUsed] = useState(false);
   const [yearHintUsed, setYearHintUsed] = useState(false);
+  const [persistentHints, setPersistentHints] = useState({
+    location: { used: false, data: null },
+    year: { used: false, data: null }
+  });
   const { toast } = useToast();
   
   // Load initial coins from localStorage if available
@@ -27,6 +31,10 @@ export const useHints = () => {
   const resetHints = () => {
     setLocationHintUsed(false);
     setYearHintUsed(false);
+    setPersistentHints({
+      location: { used: false, data: null },
+      year: { used: false, data: null }
+    });
   };
   
   // Hint handlers
@@ -34,10 +42,13 @@ export const useHints = () => {
     if (hintCoins > 0 && !locationHintUsed) {
       setLocationHintUsed(true);
       setHintCoins(prev => prev - 1);
-      toast({
-        title: "Location hint used",
-        description: "You've used a location hint. This will reduce your maximum score for this round.",
-      });
+      
+      // Save the hint state persistently
+      setPersistentHints(prev => ({
+        ...prev,
+        location: { used: true, data: null }
+      }));
+      
       return true;
     }
     if (hintCoins <= 0) {
@@ -54,10 +65,13 @@ export const useHints = () => {
     if (hintCoins > 0 && !yearHintUsed) {
       setYearHintUsed(true);
       setHintCoins(prev => prev - 1);
-      toast({
-        title: "Year hint used",
-        description: "You've used a year hint. This will reduce your maximum score for this round.",
-      });
+      
+      // Save the hint state persistently
+      setPersistentHints(prev => ({
+        ...prev,
+        year: { used: true, data: null }
+      }));
+      
       return true;
     }
     if (hintCoins <= 0) {
@@ -78,6 +92,7 @@ export const useHints = () => {
     hintCoins,
     locationHintUsed,
     yearHintUsed,
+    persistentHints,
     resetHints,
     handleUseLocationHint,
     handleUseYearHint,

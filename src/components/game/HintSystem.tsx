@@ -45,7 +45,7 @@ const HintSystem = ({
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold flex items-center">
           <Lightbulb className="h-4 w-4 mr-1.5 text-yellow-500" />
-          Available Hints
+          Hints
         </h3>
         <div className="flex items-center text-sm font-medium">
           <Coins className="h-4 w-4 mr-1.5 text-yellow-500" />
@@ -69,7 +69,7 @@ const HintSystem = ({
             Cost: -500 points
           </div>
           {locationHintUsed && (
-            <div className="text-xs mt-1 text-center text-neutral-500 dark:text-neutral-400">
+            <div className="text-xs mt-1 text-center font-medium">
               {getCountryHint()}
             </div>
           )}
@@ -90,7 +90,7 @@ const HintSystem = ({
             Cost: -500 points
           </div>
           {yearHintUsed && (
-            <div className="text-xs mt-1 text-center text-neutral-500 dark:text-neutral-400">
+            <div className="text-xs mt-1 text-center font-medium">
               {getYearHint()}
             </div>
           )}

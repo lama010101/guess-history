@@ -1,182 +1,139 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import L from 'leaflet';
 
 interface ResultVisualizationProps {
   actualLocation: { lat: number; lng: number };
   guessedLocation: { lat: number; lng: number };
   isVisible: boolean;
-  circleRadius?: number; // radius in meters
+  circleRadius?: number;
+  showConnectionLine?: boolean;
 }
 
-const ResultVisualization = ({ 
-  actualLocation, 
-  guessedLocation, 
-  isVisible, 
-  circleRadius = 1000 
+const ResultVisualization = ({
+  actualLocation,
+  guessedLocation,
+  isVisible,
+  circleRadius = 1000,
+  showConnectionLine = false
 }: ResultVisualizationProps) => {
-  const mapRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    if (!isVisible || !mapRef.current) return;
-
-    // Create a flag to track component mount state
-    let isMounted = true;
-
-    // Function to dynamically load and initialize Leaflet
-    const initializeMap = async () => {
-      // Check if Leaflet is already loaded
-      if (!(window as any).L) {
-        // Load Leaflet CSS
-        const linkEl = document.createElement('link');
-        linkEl.rel = 'stylesheet';
-        linkEl.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-        document.head.appendChild(linkEl);
-
-        // Load Leaflet JS
-        const scriptEl = document.createElement('script');
-        scriptEl.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-        document.head.appendChild(scriptEl);
-
-        // Wait for script to load
-        await new Promise((resolve) => {
-          scriptEl.onload = resolve;
-        });
-      }
-
-      // After async operations, check if component is still mounted
-      if (!isMounted) return null;
-
-      const L = (window as any).L;
-
-      // Calculate the midpoint between the actual and guessed locations
-      const midLat = (actualLocation.lat + guessedLocation.lat) / 2;
-      const midLng = (actualLocation.lng + guessedLocation.lng) / 2;
-
-      // Calculate distance to determine zoom level
-      const distance = L.latLng(actualLocation.lat, actualLocation.lng)
-        .distanceTo(L.latLng(guessedLocation.lat, guessedLocation.lng));
-      
-      // Get appropriate zoom level based on distance
-      const zoomLevel = distance > 5000000 ? 1 :
-                         distance > 1000000 ? 2 :
-                         distance > 500000 ? 3 :
-                         distance > 100000 ? 4 :
-                         distance > 50000 ? 5 :
-                         distance > 10000 ? 7 :
-                         distance > 5000 ? 8 :
-                         distance > 1000 ? 10 :
-                         distance > 500 ? 12 : 13;
-
-      // Initialize map with proper options for mobile
-      const mapOptions = {
-        center: [midLat, midLng],
-        zoom: zoomLevel,
-        touchZoom: true,
-        scrollWheelZoom: false,
-        boxZoom: false,
-        dragging: L.Browser.mobile,
-        tap: false,
-        tapTolerance: 15
-      };
-
-      // Initialize map
-      const map = L.map(mapRef.current, mapOptions);
-
-      // Add tile layer (OpenStreetMap)
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-      }).addTo(map);
-
-      // Create a circle around the actual location with the specified radius
-      L.circle([actualLocation.lat, actualLocation.lng], {
-        radius: circleRadius,
-        color: '#4CAF50',
-        fillColor: '#4CAF50',
-        fillOpacity: 0.2,
-        weight: 2
-      }).addTo(map);
-
-      // Add actual location marker
-      L.marker([actualLocation.lat, actualLocation.lng], {
-        icon: L.divIcon({
-          className: 'custom-div-icon',
-          html: `<div style="
-            background-color: #4CAF50;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            border: 2px solid white;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            transform: translate(-50%, -50%);
-          "></div>`,
-          iconSize: [16, 16],
-          iconAnchor: [0, 0],
-        })
-      }).addTo(map);
-
-      // Add guessed location marker with user profile image
-      L.marker([guessedLocation.lat, guessedLocation.lng], {
-        icon: L.divIcon({
-          className: 'custom-avatar-icon',
-          html: `<div style="
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            border: 2px solid white;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            transform: translate(-50%, -50%);
-            overflow: hidden;
-            background-color: #2196F3;
-          ">
-            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=You" style="width: 100%; height: 100%;">
-          </div>`,
-          iconSize: [32, 32],
-          iconAnchor: [0, 0],
-        })
-      }).addTo(map);
-
-      // Add line between actual and guessed locations
-      L.polyline(
-        [
-          [actualLocation.lat, actualLocation.lng],
-          [guessedLocation.lat, guessedLocation.lng]
-        ],
-        { 
-          color: '#FF5722',
-          weight: 2,
-          opacity: 0.7,
-          dashArray: '5, 5'
-        }
-      ).addTo(map);
-
-      // Return cleanup function
-      return () => {
-        if (map) map.remove();
-      };
-    };
-
-    // Initialize the map and store the cleanup function
-    let cleanupFn: (() => void) | null = null;
+    setIsMounted(true);
     
-    initializeMap().then(cleanup => {
-      // Only assign cleanup if component is still mounted
-      if (isMounted) {
-        cleanupFn = cleanup;
-      } else if (cleanup) {
-        // If component unmounted during async initialization, run cleanup immediately
-        cleanup();
+    return () => {
+      setIsMounted(false);
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    // Check if component is mounted
+    if (!isMounted || !isVisible || !mapRef.current) return;
+    
+    // Clear previous map if it exists
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.remove();
+      mapInstanceRef.current = null;
+    }
+
+    // Initialize map after a short delay to ensure DOM is ready
+    const initMapPromise = new Promise<void>((resolve) => {
+      setTimeout(() => {
+        if (!isMounted || !mapRef.current) return;
+        
+        try {
+          // Prepare map options
+          const mapOptions = {
+            center: guessedLocation,
+            zoom: 3,
+            zoomControl: false,
+            attributionControl: true,
+            scrollWheelZoom: false,
+          };
+
+          // Initialize map
+          const map = L.map(mapRef.current, mapOptions);
+          mapInstanceRef.current = map;
+
+          // Add tile layer
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          }).addTo(map);
+
+          // Add markers
+          const actualIcon = L.divIcon({
+            className: 'actual-location-icon',
+            html: `<div class="w-4 h-4 rounded-full bg-green-500 border-2 border-white"></div>`,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+          });
+
+          const guessIcon = L.divIcon({
+            className: 'guess-location-icon',
+            html: `<div class="w-4 h-4 rounded-full bg-blue-500 border-2 border-white"></div>`,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+          });
+
+          // Add markers to map
+          const actualMarker = L.marker(actualLocation, { icon: actualIcon }).addTo(map);
+          const guessMarker = L.marker(guessedLocation, { icon: guessIcon }).addTo(map);
+          
+          // Create circle around actual location
+          const circle = L.circle(actualLocation, {
+            radius: circleRadius,
+            color: 'green',
+            fillColor: '#3f6212',
+            fillOpacity: 0.1,
+            weight: 2
+          }).addTo(map);
+
+          // Add connection line if requested
+          if (showConnectionLine) {
+            const polyline = L.polyline([guessedLocation, actualLocation], {
+              color: '#6366f1',
+              weight: 2,
+              opacity: 0.7,
+              dashArray: '5, 5'
+            }).addTo(map);
+          }
+
+          // Fit bounds to show both markers
+          const bounds = L.latLngBounds([actualLocation, guessedLocation]);
+          map.fitBounds(bounds, { padding: [50, 50] });
+
+          resolve();
+        } catch (error) {
+          console.error("Error initializing map:", error);
+        }
+      }, 100);
     });
 
-    // Clean up on unmount or when dependencies change
     return () => {
-      isMounted = false;
-      if (cleanupFn) cleanupFn();
+      // Cancel the promise by checking isMounted in the next tick
+      Promise.resolve().then(() => {
+        if (!isMounted && mapInstanceRef.current) {
+          mapInstanceRef.current.remove();
+          mapInstanceRef.current = null;
+        }
+      });
     };
-  }, [actualLocation, guessedLocation, isVisible, circleRadius]);
+  }, [actualLocation, guessedLocation, circleRadius, isVisible, isMounted, showConnectionLine]);
 
   return (
-    <div ref={mapRef} className="w-full h-[200px] rounded-md overflow-hidden"></div>
+    <div 
+      ref={mapRef} 
+      className="w-full h-36 sm:h-48 rounded-lg overflow-hidden mt-2" 
+      aria-label="Map showing your guess and the actual location"
+    />
   );
 };
 

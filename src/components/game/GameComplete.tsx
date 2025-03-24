@@ -36,9 +36,10 @@ const globalLeaderboard = [
 ];
 
 const GameComplete = ({ totalScore, maxRounds, roundScores, images, onPlayAgain, isDaily }: GameCompleteProps) => {
-  const renderLeaderboard = (data: typeof friendsLeaderboard, title: string) => (
+  const renderLeaderboard = (data: typeof friendsLeaderboard, title: string, subtitle?: string) => (
     <div className="space-y-2">
       <h3 className="text-lg font-semibold">{title}</h3>
+      {subtitle && <p className="text-sm text-muted-foreground mb-3">{subtitle}</p>}
       {data.map((player, index) => (
         <div key={index} className="flex items-center justify-between bg-secondary/30 p-3 rounded-lg">
           <div className="flex items-center">
@@ -79,7 +80,7 @@ const GameComplete = ({ totalScore, maxRounds, roundScores, images, onPlayAgain,
         
         <Tabs defaultValue="rounds" className="mt-6">
           <TabsList className="w-full grid grid-cols-2">
-            <TabsTrigger value="rounds">Round Scores</TabsTrigger>
+            <TabsTrigger value="rounds">Image Scores</TabsTrigger>
             <TabsTrigger value="leaderboard">Leaderboards</TabsTrigger>
           </TabsList>
           
@@ -91,7 +92,7 @@ const GameComplete = ({ totalScore, maxRounds, roundScores, images, onPlayAgain,
                 return (
                   <div key={index} className="bg-secondary/50 rounded-lg p-3">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="font-medium">Round {index + 1}</span>
+                      <span className="font-medium">Image {index + 1}</span>
                       <span className="font-bold">{roundTotal} pts</span>
                     </div>
                     <p className="text-sm text-muted-foreground mb-2 line-clamp-1">
@@ -141,23 +142,36 @@ const GameComplete = ({ totalScore, maxRounds, roundScores, images, onPlayAgain,
           </TabsContent>
           
           <TabsContent value="leaderboard" className="pt-4">
-            <Tabs defaultValue={isDaily ? "daily" : "friends"}>
+            <Tabs defaultValue={isDaily ? "today" : "today"}>
               <TabsList className="w-full grid grid-cols-3">
+                <TabsTrigger value="today">Today</TabsTrigger>
+                <TabsTrigger value="alltime">All-Time</TabsTrigger>
                 <TabsTrigger value="friends">Friends</TabsTrigger>
-                <TabsTrigger value="daily">Daily</TabsTrigger>
-                <TabsTrigger value="global">Global</TabsTrigger>
               </TabsList>
               
+              <TabsContent value="today" className="pt-4">
+                {renderLeaderboard(dailyLeaderboard, "Today's Leaderboard", "Scores earned in the last 24 hours")}
+              </TabsContent>
+              
+              <TabsContent value="alltime" className="pt-4">
+                {renderLeaderboard(globalLeaderboard, "All-Time Leaderboard", "Total cumulative scores from all Daily games")}
+              </TabsContent>
+              
               <TabsContent value="friends" className="pt-4">
-                {renderLeaderboard(friendsLeaderboard, "Friends Leaderboard")}
-              </TabsContent>
-              
-              <TabsContent value="daily" className="pt-4">
-                {renderLeaderboard(dailyLeaderboard, "Daily Leaderboard")}
-              </TabsContent>
-              
-              <TabsContent value="global" className="pt-4">
-                {renderLeaderboard(globalLeaderboard, "Global Leaderboard")}
+                <Tabs defaultValue="today">
+                  <TabsList className="w-full grid grid-cols-2 mb-4">
+                    <TabsTrigger value="today">Today</TabsTrigger>
+                    <TabsTrigger value="alltime">All-Time</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="today">
+                    {renderLeaderboard(friendsLeaderboard, "Friends' Daily Scores", "Friends' scores from today's challenge")}
+                  </TabsContent>
+                  
+                  <TabsContent value="alltime">
+                    {renderLeaderboard(friendsLeaderboard, "Friends' All-Time Scores", "Total scores from all Daily challenges")}
+                  </TabsContent>
+                </Tabs>
               </TabsContent>
             </Tabs>
           </TabsContent>

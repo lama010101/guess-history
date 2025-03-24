@@ -1,9 +1,10 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Check, Search, User, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 
 interface User {
   id: string;
@@ -24,12 +25,6 @@ const mockUsers: User[] = [
   { id: "7", name: "Casey Martinez", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Casey", status: "offline" },
 ];
 
-const mockFriends: User[] = [
-  { id: "8", name: "Jane Smith", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jane", status: "online", isFriend: true },
-  { id: "9", name: "John Doe", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John", status: "offline", isFriend: true },
-  { id: "10", name: "Sarah Wilson", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah", status: "online", isFriend: true },
-];
-
 interface FriendsInviteDialogProps {
   trigger?: React.ReactNode;
 }
@@ -38,6 +33,12 @@ const FriendsInviteDialog = ({ trigger }: FriendsInviteDialogProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [tab, setTab] = useState<"friends" | "search">("friends");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [friends, setFriends] = useState<User[]>([
+    { id: "8", name: "Jane Smith", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jane", status: "online", isFriend: true },
+    { id: "9", name: "John Doe", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John", status: "offline", isFriend: true },
+    { id: "10", name: "Sarah Wilson", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah", status: "online", isFriend: true },
+  ]);
+  const { toast } = useToast();
   
   // Toggle selection of a user
   const toggleSelect = (userId: string) => {
@@ -50,14 +51,58 @@ const FriendsInviteDialog = ({ trigger }: FriendsInviteDialogProps) => {
   
   // Filter users based on search query
   const filteredUsers = mockUsers.filter(user =>
-    user.name.toLowerCase().includes(searchQuery.toLowerCase())
+    user.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+    !friends.some(friend => friend.id === user.id)
   );
   
-  // Handle inviting selected friends
-  const handleInvite = () => {
-    console.log("Inviting friends:", selectedUsers);
-    // In a real app, this would send invites to the selected users
+  // Handle adding selected users as friends
+  const handleAddAsFriends = () => {
+    const newFriends = selectedUsers.map(id => {
+      const user = mockUsers.find(user => user.id === id);
+      if (user) {
+        return {
+          ...user,
+          isFriend: true
+        };
+      }
+      return null;
+    }).filter(Boolean) as User[];
+    
+    setFriends(prev => [...prev, ...newFriends]);
     setSelectedUsers([]);
+    
+    toast({
+      title: "Friends added!",
+      description: `${newFriends.length} user${newFriends.length !== 1 ? 's' : ''} added to your friends list.`
+    });
+  };
+  
+  // Handle inviting selected friends
+  const handleInviteFriends = () => {
+    const invitedFriends = selectedUsers.map(id => 
+      friends.find(friend => friend.id === id)?.name
+    ).filter(Boolean);
+    
+    toast({
+      title: "Invitation sent!",
+      description: `Invited ${invitedFriends.join(", ")} to play the game.`
+    });
+    
+    setSelectedUsers([]);
+  };
+  
+  // Determines if the button should say "Add as Friends" or "Invite to Game" based on active tab
+  const getPrimaryButtonText = () => {
+    if (tab === "search") return "Add as Friends";
+    return "Invite to Game";
+  };
+  
+  const handlePrimaryAction = () => {
+    if (tab === "search") {
+      handleAddAsFriends();
+    } else {
+      handleInviteFriends();
+    }
   };
   
   return (
@@ -106,8 +151,8 @@ const FriendsInviteDialog = ({ trigger }: FriendsInviteDialogProps) => {
         
         <div className="max-h-[300px] overflow-y-auto space-y-2 my-2">
           {tab === "friends" ? (
-            mockFriends.length > 0 ? (
-              mockFriends.map((friend) => (
+            friends.length > 0 ? (
+              friends.map((friend) => (
                 <UserItem
                   key={friend.id}
                   user={friend}
@@ -149,10 +194,10 @@ const FriendsInviteDialog = ({ trigger }: FriendsInviteDialogProps) => {
           </p>
           <Button 
             variant="default" 
-            onClick={handleInvite}
+            onClick={handlePrimaryAction}
             disabled={selectedUsers.length === 0}
           >
-            {tab === "friends" ? "Invite to Game" : "Add as Friends"}
+            {getPrimaryButtonText()}
           </Button>
         </div>
       </DialogContent>

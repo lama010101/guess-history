@@ -85,7 +85,7 @@ const GameResultsModal = ({
           onClick={onNextRound} 
           className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center"
         >
-          {isLastRound ? "See Final Results" : "Next Round"}
+          {isLastRound ? "See Final Results" : "Next Image"}
           <ChevronRight className="ml-1.5 h-4 w-4" />
         </Button>
       </div>

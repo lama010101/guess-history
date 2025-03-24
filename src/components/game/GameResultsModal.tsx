@@ -4,6 +4,7 @@ import { HistoricalImage } from '@/types/game';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, Home } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useGameState } from '@/hooks/useGameState';
 
 interface GameResultsModalProps {
   showResults: boolean;
@@ -38,6 +39,8 @@ const GameResultsModal = ({
   yearHintUsed,
   hintPenalty
 }: GameResultsModalProps) => {
+  const { isDaily } = useGameState();
+  
   if (!showResults) return null;
   
   const isLastRound = currentRound >= maxRounds;
@@ -69,7 +72,7 @@ const GameResultsModal = ({
       
       {/* Fixed bottom bar with buttons */}
       <div className="w-full max-w-md bg-background p-4 border-t rounded-b-lg mt-4 flex gap-2">
-        {isLastRound && (
+        {isLastRound && !isDaily && (
           <Button 
             variant="outline" 
             className="flex-1 flex items-center justify-center"

@@ -9,20 +9,11 @@ import { useState, useEffect } from 'react';
 import GameTimer from './game/GameTimer';
 import { useToast } from '@/hooks/use-toast';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -57,23 +48,6 @@ const Navbar = ({ roundInfo, showTimer = false, timerDuration = 60 }: NavbarProp
     }
   }, []);
   
-  // Share the app URL
-  const handleShare = () => {
-    const url = window.location.origin;
-    
-    if (navigator.share) {
-      navigator.share({
-        title: 'GuessEvents - Test your knowledge of historical events',
-        url: url
-      }).catch(err => {
-        console.error('Error sharing:', err);
-        copyToClipboard(url);
-      });
-    } else {
-      copyToClipboard(url);
-    }
-  };
-  
   // Toggle distance format
   const toggleDistanceFormat = (value: boolean) => {
     setUseMiles(value);
@@ -82,23 +56,6 @@ const Navbar = ({ roundInfo, showTimer = false, timerDuration = 60 }: NavbarProp
     toast({
       title: `Distance format changed to ${value ? 'Miles' : 'Kilometers'}`,
       description: `Distances will now be displayed in ${value ? 'miles' : 'kilometers'}.`
-    });
-  };
-  
-  // Copy URL to clipboard
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      toast({
-        title: "Link copied!",
-        description: "App link has been copied to clipboard"
-      });
-    }).catch(err => {
-      console.error('Failed to copy: ', err);
-      toast({
-        title: "Failed to copy",
-        description: "Please copy the URL manually",
-        variant: "destructive"
-      });
     });
   };
   
@@ -145,37 +102,8 @@ const Navbar = ({ roundInfo, showTimer = false, timerDuration = 60 }: NavbarProp
           )}
         </div>
         
-        {/* Menu and Profile button on the right */}
+        {/* Single Profile button on the right */}
         <div className="flex items-center justify-end gap-2 flex-shrink-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Menu</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/')}>
-                <Home className="h-4 w-4 mr-2" />
-                Home
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleShare}>
-                <Share2 className="h-4 w-4 mr-2" />
-                Share
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setShowSettingsDialog(true)}>
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
-              </DropdownMenuItem>
-              {isAdmin && (
-                <DropdownMenuItem onClick={() => navigate('/admin')}>
-                  <Settings className="h-4 w-4 mr-2" />
-                  Admin Panel
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
           <ProfileButton />
         </div>
       </div>
@@ -212,7 +140,13 @@ const Navbar = ({ roundInfo, showTimer = false, timerDuration = 60 }: NavbarProp
       )}
       
       {/* Settings Dialog */}
-      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+      <Dialog open={showSettingsDialog} onOpenChange={(open) => {
+        setShowSettingsDialog(open);
+        // Force refresh to avoid unresponsive UI after closing dialog
+        if (!open) {
+          setTimeout(() => forceUpdate({}), 100);
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Settings</DialogTitle>

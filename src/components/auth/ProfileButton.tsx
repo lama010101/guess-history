@@ -14,10 +14,22 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 const ProfileButton = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [useMiles, setUseMiles] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -32,15 +44,55 @@ const ProfileButton = () => {
         title: 'GuessEvents Game',
         text: 'Check out this awesome historical event guessing game!',
         url: window.location.origin,
-      }).catch(err => console.error('Error sharing:', err));
+      }).catch(err => {
+        console.error('Error sharing:', err);
+        copyToClipboard(window.location.origin);
+      });
     } else {
-      navigator.clipboard.writeText(window.location.origin);
+      copyToClipboard(window.location.origin);
       toast({
         title: "Link copied!",
         description: "Game link has been copied to clipboard"
       });
     }
   };
+  
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast({
+        title: "Link copied!",
+        description: "App link has been copied to clipboard"
+      });
+    }).catch(err => {
+      console.error('Failed to copy: ', err);
+      toast({
+        title: "Failed to copy",
+        description: "Please copy the URL manually",
+        variant: "destructive"
+      });
+    });
+  };
+  
+  // Toggle distance format
+  const toggleDistanceFormat = (value: boolean) => {
+    setUseMiles(value);
+    localStorage.setItem('distanceFormat', value ? 'miles' : 'km');
+    
+    toast({
+      title: `Distance format changed to ${value ? 'Miles' : 'Kilometers'}`,
+      description: `Distances will now be displayed in ${value ? 'miles' : 'kilometers'}.`
+    });
+  };
+
+  // Load distance format preference
+  useState(() => {
+    const distancePref = localStorage.getItem('distanceFormat');
+    if (distancePref) {
+      setUseMiles(distancePref === 'miles');
+    }
+  });
+
+  const isAdmin = user?.email === 'lama010101@gmail.com';
 
   if (!isAuthenticated) {
     return (
@@ -62,74 +114,113 @@ const ProfileButton = () => {
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 flex items-center gap-2">
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <div 
-                className="h-8 w-8 rounded-full overflow-hidden"
-                aria-label="User profile picture"
-              >
-                <img 
-                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username || 'Guest'}`} 
-                  alt="" 
-                  className="h-full w-full object-cover" 
-                />
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="relative h-8 flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage 
+                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username || 'Guest'}`} 
+                    alt={user?.username || 'Guest'} 
+                  />
+                  <AvatarFallback>{user?.username?.charAt(0) || 'G'}</AvatarFallback>
+                </Avatar>
+                {user?.isGuest && (
+                  <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-orange-500 border border-white"></span>
+                )}
               </div>
-              {user?.isGuest && (
-                <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-orange-500 border border-white"></span>
-              )}
+              <span className="hidden md:inline-block font-medium">{user?.username || 'Guest'}</span>
+              <ChevronDown className="h-4 w-4 opacity-50" />
             </div>
-            <span className="hidden md:inline-block font-medium">{user?.username || 'Guest'}</span>
-            <ChevronDown className="h-4 w-4 opacity-50" />
-          </div>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>My Account</DropdownMenuLabel>
-        <DropdownMenuItem asChild>
-          <Link to="/" className="cursor-pointer">
-            <Home className="mr-2 h-4 w-4" />
-            Home
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleShare} className="cursor-pointer">
-          <Share2 className="mr-2 h-4 w-4" />
-          Share
-        </DropdownMenuItem>
-        {!user?.isGuest && (
-          <>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>Menu</DropdownMenuLabel>
+          <DropdownMenuItem asChild>
+            <Link to="/" className="cursor-pointer">
+              <Home className="mr-2 h-4 w-4" />
+              Home
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleShare} className="cursor-pointer">
+            <Share2 className="mr-2 h-4 w-4" />
+            Share
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setShowSettingsDialog(true)} className="cursor-pointer">
+            <Settings className="mr-2 h-4 w-4" />
+            Settings
+          </DropdownMenuItem>
+          {isAdmin && (
+            <DropdownMenuItem asChild className="cursor-pointer">
+              <Link to="/admin">
+                <Settings className="mr-2 h-4 w-4" />
+                Admin Panel
+              </Link>
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>Account</DropdownMenuLabel>
+          {!user?.isGuest && (
             <DropdownMenuItem asChild>
               <Link to="/profile" className="cursor-pointer">
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/profile" className="cursor-pointer">
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
-              </Link>
-            </DropdownMenuItem>
-          </>
-        )}
-        <DropdownMenuItem asChild>
-          <Link to="/help" className="cursor-pointer">
-            <HelpCircle className="mr-2 h-4 w-4" />
-            Help
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem 
-          onClick={handleLogout}
-          className="text-red-500 focus:text-red-500 cursor-pointer"
-        >
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          )}
+          <DropdownMenuItem asChild>
+            <Link to="/help" className="cursor-pointer">
+              <HelpCircle className="mr-2 h-4 w-4" />
+              Help
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem 
+            onClick={handleLogout}
+            className="text-red-500 focus:text-red-500 cursor-pointer"
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Log out</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      
+      {/* Settings Dialog */}
+      <Dialog open={showSettingsDialog} onOpenChange={(open) => {
+        setShowSettingsDialog(open);
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Settings</DialogTitle>
+            <DialogDescription>
+              Customize your game experience
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="distance-format">Distance Format</Label>
+                <p className="text-sm text-muted-foreground">
+                  Choose how distances are displayed
+                </p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className={!useMiles ? "font-medium" : "text-muted-foreground"}>Km</span>
+                <Switch 
+                  id="distance-format" 
+                  checked={useMiles} 
+                  onCheckedChange={toggleDistanceFormat} 
+                />
+                <span className={useMiles ? "font-medium" : "text-muted-foreground"}>Miles</span>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

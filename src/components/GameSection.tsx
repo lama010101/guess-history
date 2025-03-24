@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import GamePanel from './game/GamePanel';
 import GameControls from './game/GameControls';
@@ -5,6 +6,11 @@ import GameResultsModal from './game/GameResultsModal';
 import GameComplete from './game/GameComplete';
 import { useGameState } from '@/hooks/useGameState';
 import Navbar from './Navbar';
+import FriendsInviteDialog from './friends/FriendsInviteDialog';
+import { Button } from '@/components/ui/button';
+import { Clock, Lightbulb } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 
 const MAX_ROUNDS = 5; // Default to 5 rounds for a game
 
@@ -36,6 +42,8 @@ const GameSection = () => {
     handleNewGame,
     handleUseLocationHint,
     handleUseYearHint,
+    setTimerEnabled,
+    setTimerDuration,
     maxRounds
   } = useGameState(MAX_ROUNDS);
 
@@ -119,6 +127,51 @@ const GameSection = () => {
           </div>
           
           <div className="bg-background border-t border-border shadow-lg">
+            <div className="container py-2 px-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Timer</span>
+                    </div>
+                    <Switch
+                      checked={timerEnabled}
+                      onCheckedChange={setTimerEnabled}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Race against the clock</p>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Lightbulb className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Hints</span>
+                    </div>
+                    <Switch
+                      checked={hintCoins > 0}
+                      disabled={hintCoins <= 0}
+                      onCheckedChange={() => {}}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Using a hint will deduct 500 points</p>
+                </div>
+              </div>
+
+              <div className="mt-3">
+                <Button 
+                  variant="outline" 
+                  className="w-full" 
+                  asChild
+                >
+                  <FriendsInviteDialog 
+                    trigger={<div className="w-full text-center">Invite Friends</div>}
+                  />
+                </Button>
+              </div>
+            </div>
+            
             <GameControls 
               selectedLocation={selectedLocation}
               selectedYear={selectedYear}

@@ -9,7 +9,7 @@ interface ViewToggleProps {
   showClose?: boolean;
 }
 
-const ViewToggle = ({ activeView, onToggle, showClose = true }: ViewToggleProps) => {
+const ViewToggle = ({ activeView, onToggle, imageSrc, showClose = true }: ViewToggleProps) => {
   const [hovered, setHovered] = useState(false);
   
   return (
@@ -20,10 +20,32 @@ const ViewToggle = ({ activeView, onToggle, showClose = true }: ViewToggleProps)
     >
       <Button
         variant="secondary"
-        className="h-16 px-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm font-medium"
+        className="h-32 px-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm font-medium flex flex-col items-center gap-2"
         onClick={onToggle}
       >
-        {activeView === 'image' ? 'Map' : 'Image'}
+        {activeView === 'image' ? (
+          <>
+            <span>Map</span>
+            <img 
+              src="https://upload.wikimedia.org/wikipedia/commons/b/b0/Openstreetmap_logo.svg" 
+              alt="OpenStreetMap" 
+              className="h-16 w-16 object-contain" 
+            />
+          </>
+        ) : (
+          <>
+            <span>Image</span>
+            {imageSrc && (
+              <div className="h-16 w-16 rounded overflow-hidden">
+                <img 
+                  src={imageSrc} 
+                  alt="Historical image" 
+                  className="h-full w-full object-cover" 
+                />
+              </div>
+            )}
+          </>
+        )}
       </Button>
       
       {activeView === 'map' && (

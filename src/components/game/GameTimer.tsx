@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useGameState } from '@/hooks/useGameState';
 
 interface GameTimerProps {
@@ -11,7 +11,8 @@ interface GameTimerProps {
 const GameTimer = ({ duration, paused = false, onTimeUp }: GameTimerProps) => {
   const [timeLeft, setTimeLeft] = useState(duration);
   const [isRunning, setIsRunning] = useState(true);
-  const { handleSubmit } = useGameState();
+  const { handleSubmit, showResults } = useGameState();
+  const timerRef = useRef<number | null>(null);
   
   useEffect(() => {
     // Reset timer when duration changes
@@ -20,20 +21,23 @@ const GameTimer = ({ duration, paused = false, onTimeUp }: GameTimerProps) => {
   }, [duration]);
   
   useEffect(() => {
-    if (paused) {
+    // Pause timer when paused prop changes or when showing results
+    if (paused || showResults) {
       setIsRunning(false);
-      return;
+    } else {
+      setIsRunning(true);
     }
-    setIsRunning(true);
-  }, [paused]);
+  }, [paused, showResults]);
   
   useEffect(() => {
     if (!isRunning) return;
     
-    const timer = setInterval(() => {
+    timerRef.current = window.setInterval(() => {
       setTimeLeft((prevTime) => {
         if (prevTime <= 1) {
-          clearInterval(timer);
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+          }
           // Auto-submit when time is up
           handleSubmit();
           onTimeUp?.();
@@ -43,7 +47,12 @@ const GameTimer = ({ duration, paused = false, onTimeUp }: GameTimerProps) => {
       });
     }, 1000);
     
-    return () => clearInterval(timer);
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
   }, [isRunning, onTimeUp, handleSubmit]);
   
   // Calculate percentage of time left

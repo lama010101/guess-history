@@ -46,7 +46,7 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
   const [showResults, setShowResults] = useState(false);
   
   // Timer settings
-  const [timerEnabled, setTimerEnabled] = useState(true);
+  const [timerEnabled, setTimerEnabled] = useState(false);
   const [timerDuration, setTimerDuration] = useState(60); // 60 seconds default
 
   // Daily challenge settings

@@ -20,6 +20,7 @@ const Home = () => {
   const [hintsCount, setHintsCount] = useState<number>(2);
   const [linkCopied, setLinkCopied] = useState(false);
   const [useMiles, setUseMiles] = useState<boolean>(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isAuthenticated } = useAuth();
@@ -29,7 +30,6 @@ const Home = () => {
   const [dailyDate, setDailyDate] = useState("");
   const [timeUntilNextDaily, setTimeUntilNextDaily] = useState("");
   
-  // Check if daily challenge was played today
   useEffect(() => {
     const lastPlayed = localStorage.getItem('lastDailyPlayed');
     const savedScore = localStorage.getItem('lastDailyScore');
@@ -38,7 +38,6 @@ const Home = () => {
       const lastPlayedDate = new Date(lastPlayed);
       const today = new Date();
       
-      // Format date as "Mon, Jan 1, 2023"
       setDailyDate(lastPlayedDate.toLocaleDateString('en-US', {
         weekday: 'short',
         month: 'short',
@@ -46,7 +45,6 @@ const Home = () => {
         year: 'numeric'
       }));
       
-      // Check if same day
       const isSameDay = 
         lastPlayedDate.getDate() === today.getDate() &&
         lastPlayedDate.getMonth() === today.getMonth() &&
@@ -55,7 +53,6 @@ const Home = () => {
       setDailyPlayed(isSameDay);
       
       if (isSameDay) {
-        // Calculate time until midnight
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
         tomorrow.setHours(0, 0, 0, 0);
@@ -71,7 +68,6 @@ const Home = () => {
       }
     }
     
-    // Load distance preference
     const distancePref = localStorage.getItem('distanceFormat');
     if (distancePref) {
       setUseMiles(distancePref === 'miles');
@@ -79,7 +75,6 @@ const Home = () => {
   }, []);
 
   const handleStartGame = () => {
-    // Save game settings to localStorage
     const gameSettings = {
       timerEnabled,
       timerMinutes: timerMinutes,
@@ -90,12 +85,10 @@ const Home = () => {
     
     localStorage.setItem('gameSettings', JSON.stringify(gameSettings));
     
-    // If starting daily challenge, mark it as played today
     if (activeTab === 'compete') {
       localStorage.setItem('lastDailyPlayed', new Date().toISOString());
     }
     
-    // Navigate to the game page
     navigate('/play');
   };
   
@@ -125,19 +118,17 @@ const Home = () => {
       description: "Your friends have been invited to join the game"
     });
     
-    // Start the game after sending invitations
     handleStartGame();
   };
 
-    // Force update when dialog closes
-    useEffect(() => {
-      if (!showSettingsDialog) {
-        const timer = setTimeout(() => {
-          window.location.reload();
-        }, 100);
-        return () => clearTimeout(timer);
-      }
-    }, [showSettingsDialog]);
+  useEffect(() => {
+    if (!showSettingsDialog) {
+      const timer = setTimeout(() => {
+        window.location.reload();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [showSettingsDialog]);
 
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-gray-900 text-black dark:text-white flex flex-col">

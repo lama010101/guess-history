@@ -56,10 +56,11 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
   
   // Handle using location hint
   const onUseLocationHint = () => {
+    // Call the handler function without checking its return value
     handleUseLocationHint();
     
-    // Update local state if not already used and if we have a current image
-    if (!localLocationHintUsed && currentImage) {
+    // Only update local state if hint coin is available and hint not already used
+    if (hintCoins > 0 && !localLocationHintUsed && currentImage) {
       setLocalLocationHintUsed(true);
       setLocalHintValue(prev => ({
         ...prev,
@@ -70,10 +71,11 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
   
   // Handle using year hint
   const onUseYearHint = () => {
+    // Call the handler function without checking its return value
     handleUseYearHint();
     
-    // Update local state if not already used and if we have a current image
-    if (!localYearHintUsed && currentImage) {
+    // Only update local state if hint coin is available and hint not already used
+    if (hintCoins > 0 && !localYearHintUsed && currentImage) {
       setLocalYearHintUsed(true);
       setLocalHintValue(prev => ({
         ...prev,

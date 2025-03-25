@@ -12,7 +12,8 @@ import {
   Clock, 
   Users as UsersIcon,
   Edit3,
-  Camera
+  Camera,
+  Search
 } from 'lucide-react';
 import {
   Tabs,
@@ -20,10 +21,12 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { Input } from '@/components/ui/input';
 
 const Profile = () => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
   const stats = {
     gamesPlayed: 87,
@@ -62,6 +65,19 @@ const Profile = () => {
     { name: "Mike Johnson", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Mike", status: "offline" },
     { name: "Emily Davis", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Emily", status: "online" },
   ];
+  
+  // Mock users to add as friends
+  const allUsers = [
+    { name: "Alex Thompson", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Alex", status: "online" },
+    { name: "Olivia Brown", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Olivia", status: "offline" },
+    { name: "William Chen", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=William", status: "online" },
+    { name: "Sophia Rodriguez", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sophia", status: "online" },
+    { name: "James Kim", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=James", status: "offline" },
+  ];
+  
+  const filteredUsers = allUsers.filter(user => 
+    user.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
   
   if (!user) {
     return (
@@ -190,30 +206,14 @@ const Profile = () => {
                     <span className="font-semibold">{stats.averageScore.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm">Total Score</span>
+                    <span className="text-sm">All-time Daily Score</span>
                     <span className="font-semibold">{stats.totalScore.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm">Daily Streak</span>
                     <span className="font-semibold">{stats.dailyStreak} days</span>
+                    <span className="text-xs text-muted-foreground">(consecutive days played)</span>
                   </div>
-                </div>
-              </div>
-              
-              <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-2">Achievements</h4>
-                <div className="space-y-2">
-                  {achievements.slice(0, 3).map((achievement, i) => (
-                    <div key={i} className="flex items-center text-sm">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center mr-2 text-primary">
-                        {achievement.icon}
-                      </div>
-                      <div>
-                        <p className="font-medium">{achievement.name}</p>
-                        <p className="text-xs text-muted-foreground">{achievement.description}</p>
-                      </div>
-                    </div>
-                  ))}
                 </div>
               </div>
             </div>
@@ -221,12 +221,32 @@ const Profile = () => {
           
           {/* Activity Section */}
           <Card className="col-span-1 lg:col-span-2 p-6">
-            <Tabs defaultValue="history">
+            <Tabs defaultValue="achievements">
               <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="achievements">Achievements</TabsTrigger>
                 <TabsTrigger value="history">Game History</TabsTrigger>
                 <TabsTrigger value="friends">Friends</TabsTrigger>
-                <TabsTrigger value="achievements">Achievements</TabsTrigger>
               </TabsList>
+              
+              <TabsContent value="achievements" className="pt-4">
+                <h3 className="text-lg font-bold mb-4">Your Achievements</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {achievements.map((achievement, i) => (
+                    <div key={i} className="p-4 border rounded-lg">
+                      <div className="flex items-center mb-2">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mr-3 text-primary">
+                          {achievement.icon}
+                        </div>
+                        <div>
+                          <p className="font-semibold">{achievement.name}</p>
+                          <p className="text-xs text-muted-foreground">Earned on {achievement.date}</p>
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{achievement.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </TabsContent>
               
               <TabsContent value="history" className="pt-4">
                 <h3 className="text-lg font-bold mb-4">Recent Games</h3>
@@ -256,58 +276,72 @@ const Profile = () => {
               </TabsContent>
               
               <TabsContent value="friends" className="pt-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-bold">Friends</h3>
-                  <Button>
-                    <UsersIcon className="h-4 w-4 mr-1.5" />
-                    Invite Friends
-                  </Button>
-                </div>
-                
-                <div className="space-y-2">
-                  {friends.map((friend, i) => (
-                    <div key={i} className="p-3 border rounded-lg flex justify-between items-center">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 rounded-full overflow-hidden mr-3">
-                          <img 
-                            src={friend.avatar} 
-                            alt={friend.name} 
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div>
-                          <p className="font-medium">{friend.name}</p>
-                          <div className="flex items-center text-xs">
-                            <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${
-                              friend.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
-                            }`}></span>
-                            <span className="text-muted-foreground capitalize">{friend.status}</span>
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold mb-3">Find Users</h3>
+                  <div className="relative mb-4">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      placeholder="Search for users..." 
+                      className="pl-10"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {filteredUsers.map((user, i) => (
+                      <div key={i} className="p-3 border rounded-lg flex justify-between items-center">
+                        <div className="flex items-center">
+                          <div className="h-10 w-10 rounded-full overflow-hidden mr-3">
+                            <img 
+                              src={user.avatar} 
+                              alt={user.name} 
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div>
+                            <p className="font-medium">{user.name}</p>
+                            <div className="flex items-center text-xs">
+                              <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${
+                                user.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
+                              }`}></span>
+                              <span className="text-muted-foreground capitalize">{user.status}</span>
+                            </div>
                           </div>
                         </div>
+                        <Button variant="outline" size="sm">Invite</Button>
                       </div>
-                      <Button variant="outline" size="sm">Challenge</Button>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </TabsContent>
-              
-              <TabsContent value="achievements" className="pt-4">
-                <h3 className="text-lg font-bold mb-4">Your Achievements</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {achievements.map((achievement, i) => (
-                    <div key={i} className="p-4 border rounded-lg">
-                      <div className="flex items-center mb-2">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mr-3 text-primary">
-                          {achievement.icon}
+                
+                <div>
+                  <h3 className="text-lg font-bold mb-4">My Friends</h3>
+                  <div className="space-y-2">
+                    {friends.map((friend, i) => (
+                      <div key={i} className="p-3 border rounded-lg flex justify-between items-center">
+                        <div className="flex items-center">
+                          <div className="h-10 w-10 rounded-full overflow-hidden mr-3">
+                            <img 
+                              src={friend.avatar} 
+                              alt={friend.name} 
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div>
+                            <p className="font-medium">{friend.name}</p>
+                            <div className="flex items-center text-xs">
+                              <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${
+                                friend.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
+                              }`}></span>
+                              <span className="text-muted-foreground capitalize">{friend.status}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-semibold">{achievement.name}</p>
-                          <p className="text-xs text-muted-foreground">Earned on {achievement.date}</p>
-                        </div>
+                        <Button variant="outline" size="sm">Accept</Button>
                       </div>
-                      <p className="text-sm text-muted-foreground">{achievement.description}</p>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </TabsContent>
             </Tabs>

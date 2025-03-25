@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import GamePanel from './game/GamePanel';
 import GameControls from './game/GameControls';
@@ -30,6 +31,7 @@ const GameSection = () => {
     yearHintUsed,
     timerEnabled,
     timerDuration,
+    timerPaused,
     isDaily,
     dailyCompleted,
     dailyScore,
@@ -46,6 +48,7 @@ const GameSection = () => {
     handleUseYearHint,
     setTimerEnabled,
     setTimerDuration,
+    setTimerPaused,
     maxRounds
   } = useGameState(MAX_ROUNDS);
 
@@ -85,7 +88,7 @@ const GameSection = () => {
     if (gameComplete) {
       return (
         <section id="game" className="h-full flex flex-col">
-          <Navbar key={navbarKey} />
+          <Navbar key={navbarKey} hintCoins={hintCoins} />
           <GameComplete 
             totalScore={totalScore}
             maxRounds={MAX_ROUNDS}
@@ -110,8 +113,17 @@ const GameSection = () => {
           }}
           showTimer={timerEnabled}
           timerDuration={timerDuration}
+          hintCoins={hintCoins}
         />
         <div className="relative flex-1 flex flex-col overflow-hidden">
+          {timerEnabled && (
+            <GameTimer 
+              duration={timerDuration} 
+              paused={timerPaused || showResults} 
+              hintsOpen={hintsOpen}
+            />
+          )}
+          
           <div className="flex-1 overflow-hidden">
             <GamePanel 
               currentImage={currentImage} 
@@ -154,7 +166,7 @@ const GameSection = () => {
                     </div>
                     <Switch
                       checked={hintCoins > 0}
-                      disabled={hintCoins <= 0}
+                      disabled={true}
                       onCheckedChange={() => {}}
                     />
                   </div>

@@ -113,9 +113,9 @@ const ScoreDisplay = ({
             <p className="text-xs text-muted-foreground">
               {yearDifference === 0
                 ? 'Perfect! You guessed the exact year!'
-                : `You were ${yearDifference} year${yearDifference !== 1 ? 's' : ''} ${
+                : `Correct year: ${actualYear}. You guessed ${guessedYear}, so ${yearDifference} year${yearDifference !== 1 ? 's' : ''} ${
                     guessedYear && actualYear && guessedYear > actualYear ? 'later' : 'earlier'
-                  } than the actual year.`}
+                  }.`}
             </p>
           </div>
         </div>
@@ -149,7 +149,7 @@ const ScoreDisplay = ({
         )}
       </div>
       
-      <button className="w-full mt-6 px-4 py-3 rounded-lg bg-primary text-primary-foreground font-medium btn-transition hover:shadow-md hover:brightness-110">
+      <button className="w-full mt-0 px-4 py-3 rounded-lg bg-primary text-primary-foreground font-medium btn-transition hover:shadow-md hover:brightness-110">
         Next Round
       </button>
     </div>

@@ -37,7 +37,7 @@ const AdminGameSettings = () => {
   // Load settings from localStorage on mount
   useEffect(() => {
     const loadSavedSettings = () => {
-      const savedSettings = localStorage.getItem('gameSettings');
+      const savedSettings = localStorage.getItem('adminGameSettings');
       if (savedSettings) {
         try {
           const parsedSettings = JSON.parse(savedSettings);
@@ -71,8 +71,15 @@ const AdminGameSettings = () => {
   };
 
   const handleSaveSettings = () => {
-    // Save settings to localStorage
-    localStorage.setItem('gameSettings', JSON.stringify(settings));
+    // Save settings to localStorage with a different key to avoid conflicts
+    localStorage.setItem('adminGameSettings', JSON.stringify(settings));
+    
+    // Also save to the regular gameSettings to apply to the actual game
+    localStorage.setItem('gameSettings', JSON.stringify({
+      ...JSON.parse(localStorage.getItem('gameSettings') || '{}'),
+      hintPenalty: settings.hintPenalty,
+      initialHintCoins: settings.initialHintCoins
+    }));
     
     // Trigger storage event to update other components
     window.dispatchEvent(new Event('storage'));

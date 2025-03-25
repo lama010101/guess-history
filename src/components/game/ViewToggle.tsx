@@ -19,8 +19,8 @@ const ViewToggle = ({ activeView, onToggle, imageSrc, showClose = true }: ViewTo
       onMouseLeave={() => setHovered(false)}
     >
       <Button
-        variant="secondary"
-        className="h-32 px-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm font-medium flex flex-col items-center gap-2"
+        variant="ghost"
+        className="h-32 px-4 font-medium flex flex-col items-center gap-2"
         onClick={onToggle}
       >
         {activeView === 'image' ? (
@@ -49,7 +49,7 @@ const ViewToggle = ({ activeView, onToggle, imageSrc, showClose = true }: ViewTo
       </Button>
       
       {activeView === 'map' && (
-        <div className="absolute bottom-0 right-0 translate-y-full mt-2 p-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded text-xs">
+        <div className="absolute bottom-0 right-0 translate-y-full mt-2 p-1 rounded text-xs">
           <img 
             src="https://upload.wikimedia.org/wikipedia/commons/b/b0/Openstreetmap_logo.svg" 
             alt="OpenStreetMap" 

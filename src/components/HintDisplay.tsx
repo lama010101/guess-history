@@ -19,35 +19,35 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
     hintCoins
   } = useGameState();
   
-  // Local state to track used hints for UI persistence
+  // Persist hint usage states locally
   const [localLocationHintUsed, setLocalLocationHintUsed] = useState(locationHintUsed);
   const [localYearHintUsed, setLocalYearHintUsed] = useState(yearHintUsed);
-  const [localHintValue, setLocalHintValue] = useState<{country?: string, decade?: string}>({});
+  const [localHintValues, setLocalHintValues] = useState<{country?: string, decade?: string}>({});
   const [remainingHints, setRemainingHints] = useState(availableHints);
   
-  // Update local state when global state changes or when component mounts
+  // Update local state when global state changes
   useEffect(() => {
     setLocalLocationHintUsed(locationHintUsed);
     setLocalYearHintUsed(yearHintUsed);
     setRemainingHints(hintCoins);
     
-    // Set hint values when hints are used
-    if (locationHintUsed && currentImage) {
-      setLocalHintValue(prev => ({
-        ...prev,
-        country: getCountryOnly(currentImage.locationName)
-      }));
-    }
-    
-    if (yearHintUsed && currentImage) {
-      setLocalHintValue(prev => ({
-        ...prev,
-        decade: currentImage.year.toString().slice(0, -1) + "X"
-      }));
+    // Set hint values when hints are used and current image is available
+    if (currentImage) {
+      const updatedHintValues = { ...localHintValues };
+      
+      if (locationHintUsed && currentImage.locationName) {
+        updatedHintValues.country = getCountryOnly(currentImage.locationName);
+      }
+      
+      if (yearHintUsed) {
+        updatedHintValues.decade = currentImage.year.toString().slice(0, -1) + "X";
+      }
+      
+      setLocalHintValues(updatedHintValues);
     }
   }, [locationHintUsed, yearHintUsed, currentImage, hintCoins]);
 
-  // Function to extract just the country from location name
+  // Helper to extract just the country from location name
   const getCountryOnly = (locationName?: string): string => {
     if (!locationName) return "Unknown";
     
@@ -58,13 +58,12 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
   
   // Handle using location hint
   const onUseLocationHint = () => {
-    handleUseLocationHint();
+    const success = handleUseLocationHint();
     
-    // Only update local state if hint coin is available and hint not already used
-    if (remainingHints > 0 && !localLocationHintUsed && currentImage) {
+    if (success && currentImage && currentImage.locationName) {
       setLocalLocationHintUsed(true);
       setRemainingHints(prev => prev - 1);
-      setLocalHintValue(prev => ({
+      setLocalHintValues(prev => ({
         ...prev,
         country: getCountryOnly(currentImage.locationName)
       }));
@@ -73,13 +72,12 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
   
   // Handle using year hint
   const onUseYearHint = () => {
-    handleUseYearHint();
+    const success = handleUseYearHint();
     
-    // Only update local state if hint coin is available and hint not already used
-    if (remainingHints > 0 && !localYearHintUsed && currentImage) {
+    if (success && currentImage) {
       setLocalYearHintUsed(true);
       setRemainingHints(prev => prev - 1);
-      setLocalHintValue(prev => ({
+      setLocalHintValues(prev => ({
         ...prev,
         decade: currentImage.year.toString().slice(0, -1) + "X"
       }));
@@ -117,9 +115,9 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
             </Button>
             <span className="text-xs text-muted-foreground mt-1">-500 pts</span>
             
-            {localLocationHintUsed && localHintValue.country && (
+            {localLocationHintUsed && localHintValues.country && (
               <span className="text-xs font-medium mt-2">
-                {localHintValue.country}
+                {localHintValues.country}
               </span>
             )}
           </div>
@@ -136,9 +134,9 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
             </Button>
             <span className="text-xs text-muted-foreground mt-1">-500 pts</span>
             
-            {localYearHintUsed && localHintValue.decade && (
+            {localYearHintUsed && localHintValues.decade && (
               <span className="text-xs font-medium mt-2">
-                {localHintValue.decade}
+                {localHintValues.decade}
               </span>
             )}
           </div>

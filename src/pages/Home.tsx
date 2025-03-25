@@ -122,16 +122,6 @@ const Home = () => {
     handleStartGame();
   };
 
-  // Remove the effect that causes infinite refreshes
-  // useEffect(() => {
-  //   if (!showSettingsDialog) {
-  //     const timer = setTimeout(() => {
-  //       window.location.reload();
-  //     }, 100);
-  //     return () => clearTimeout(timer);
-  //   }
-  // }, [showSettingsDialog]);
-
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-gray-900 text-black dark:text-white flex flex-col">
       <Navbar />
@@ -236,7 +226,7 @@ const Home = () => {
                         />
                       </div>
                     )}
-                    <p className="text-xs text-muted-foreground mt-1">Using a hint will deduct 500 points</p>
+                    <p className="text-xs text-muted-foreground">Using a hint will deduct 500 points</p>
                   </div>
                 </div>
                 
@@ -252,11 +242,10 @@ const Home = () => {
                   <FriendsInviteDialog 
                     trigger={
                       <Button 
-                        className="flex-1 flex items-center gap-2" 
-                        onClick={handleInviteFriendsAndStart}
+                        className="flex-1 flex items-center gap-2"
                       >
                         <Users className="h-4 w-4" />
-                        Invite Friends and Start Game
+                        Invite and Start Game
                       </Button>
                     }
                   />
@@ -273,17 +262,12 @@ const Home = () => {
                     <Clock className="h-6 w-6" />
                   </div>
                   <CardTitle className="text-xl mt-2 flex items-center gap-2">
-                    <Clock className="h-5 w-5" />
                     Timer
                   </CardTitle>
                   <CardDescription>Race against the clock.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">Timer</span>
-                    </div>
                     <Switch 
                       checked={timerEnabled}
                       onCheckedChange={setTimerEnabled}
@@ -313,17 +297,12 @@ const Home = () => {
                     <Lightbulb className="h-6 w-6" />
                   </div>
                   <CardTitle className="text-xl mt-2 flex items-center gap-2">
-                    <Lightbulb className="h-5 w-5" />
                     Hints
                   </CardTitle>
                   <CardDescription>Using a hint will deduct 500 points.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Lightbulb className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">Hints</span>
-                    </div>
                     <Switch 
                       checked={hintsEnabled}
                       onCheckedChange={setHintsEnabled}

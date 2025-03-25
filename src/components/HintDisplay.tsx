@@ -58,9 +58,10 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
   
   // Handle using location hint
   const onUseLocationHint = () => {
-    const success = handleUseLocationHint();
+    handleUseLocationHint();
     
-    if (success && currentImage && currentImage.locationName) {
+    // Check if the global state has been updated
+    if (!localLocationHintUsed && currentImage && currentImage.locationName) {
       setLocalLocationHintUsed(true);
       setRemainingHints(prev => prev - 1);
       setLocalHintValues(prev => ({
@@ -72,9 +73,10 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
   
   // Handle using year hint
   const onUseYearHint = () => {
-    const success = handleUseYearHint();
+    handleUseYearHint();
     
-    if (success && currentImage) {
+    // Check if the global state has been updated
+    if (!localYearHintUsed && currentImage) {
       setLocalYearHintUsed(true);
       setRemainingHints(prev => prev - 1);
       setLocalHintValues(prev => ({

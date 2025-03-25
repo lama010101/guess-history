@@ -14,14 +14,15 @@ const GameTimer = ({ duration, paused = false, onTimeUp, hintsOpen = false }: Ga
   const [isRunning, setIsRunning] = useState(true);
   const { handleSubmit, showResults } = useGameState();
   const timerRef = useRef<number | null>(null);
-
+  
+  // Reset timer when duration changes
   useEffect(() => {
     setTimeLeft(duration);
     setIsRunning(true);
   }, [duration]);
 
+  // Stop timer when paused, hints are open, or results are showing
   useEffect(() => {
-    // Stop timer when paused, hints are open, or results are showing
     if (paused || hintsOpen || showResults) {
       setIsRunning(false);
     } else {
@@ -29,6 +30,7 @@ const GameTimer = ({ duration, paused = false, onTimeUp, hintsOpen = false }: Ga
     }
   }, [paused, hintsOpen, showResults]);
 
+  // Timer countdown logic
   useEffect(() => {
     if (!isRunning) return;
     

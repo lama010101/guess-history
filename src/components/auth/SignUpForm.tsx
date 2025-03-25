@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Eye, EyeOff, UserPlus } from "lucide-react";
 import { useAuth } from "@/services/auth";
@@ -39,7 +38,7 @@ const SignUpForm = ({ isOpen, onClose, switchToLogin }: SignUpFormProps) => {
       await signUp(email, password, username);
       toast({
         title: "Account created!",
-        description: "You've successfully signed up for EventGuesser.",
+        description: "You've successfully signed up and logged in to EventGuesser.",
       });
       onClose();
     } catch (error) {

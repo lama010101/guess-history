@@ -43,8 +43,29 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
     }
   };
   
-  // Load images and select random set on initial mount
+  // Load game state from localStorage on initial mount
   useEffect(() => {
+    // First try to load saved game state if it exists
+    const savedGameState = localStorage.getItem('currentGameState');
+    if (savedGameState) {
+      try {
+        const gameState = JSON.parse(savedGameState);
+        
+        // Check if the saved state has valid data
+        if (gameState && gameState.images && gameState.images.length > 0) {
+          setCurrentRound(gameState.currentRound || 1);
+          setCurrentImageIndex(gameState.currentImageIndex || 0);
+          setGameComplete(gameState.gameComplete || false);
+          setImages(gameState.images);
+          console.log('Loaded saved game state:', gameState);
+          return; // Exit early as we've loaded the saved state
+        }
+      } catch (error) {
+        console.error('Error loading game state:', error);
+      }
+    }
+    
+    // If no valid saved state, then load images and select random ones
     const savedEventsJson = localStorage.getItem('savedEvents');
     let availableImages: HistoricalImage[] = [];
     
@@ -65,53 +86,39 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
       availableImages = defaultImages;
     }
     
-    // Select random images
+    // Select random images and initialize new game state
     if (availableImages.length > 0) {
       const selectedImages = availableImages.length > configuredMaxRounds.current
         ? [...availableImages].sort(() => Math.random() - 0.5).slice(0, configuredMaxRounds.current)
         : availableImages;
       
       setImages(selectedImages);
+      
+      // Initialize new game state
+      const newGameState = {
+        currentRound: 1,
+        currentImageIndex: 0,
+        gameComplete: false,
+        images: selectedImages
+      };
+      
+      // Save to localStorage
+      localStorage.setItem('currentGameState', JSON.stringify(newGameState));
     }
-    
-    // Persist current game state to localStorage for refreshing
-    const currentGameState = {
-      currentRound,
-      currentImageIndex,
-      gameComplete,
-      images: availableImages.length > 0 ? availableImages : defaultImages
-    };
-    localStorage.setItem('currentGameState', JSON.stringify(currentGameState));
-    
   }, [defaultImages]);
-  
-  // Check for saved game state on page refresh
-  useEffect(() => {
-    const savedGameState = localStorage.getItem('currentGameState');
-    if (savedGameState) {
-      try {
-        const gameState = JSON.parse(savedGameState);
-        setCurrentRound(gameState.currentRound || 1);
-        setCurrentImageIndex(gameState.currentImageIndex || 0);
-        setGameComplete(gameState.gameComplete || false);
-        if (gameState.images && gameState.images.length > 0) {
-          setImages(gameState.images);
-        }
-      } catch (error) {
-        console.error('Error loading game state:', error);
-      }
-    }
-  }, []);
   
   // Save game state whenever it changes
   useEffect(() => {
-    const currentGameState = {
-      currentRound,
-      currentImageIndex,
-      gameComplete,
-      images
-    };
-    localStorage.setItem('currentGameState', JSON.stringify(currentGameState));
+    if (images.length > 0) {
+      const currentGameState = {
+        currentRound,
+        currentImageIndex,
+        gameComplete,
+        images
+      };
+      localStorage.setItem('currentGameState', JSON.stringify(currentGameState));
+      console.log('Saved game state:', currentGameState);
+    }
   }, [currentRound, currentImageIndex, gameComplete, images]);
   
   // Current image based on the current image index

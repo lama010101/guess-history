@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import GameTimer from './game/GameTimer';
+import { SettingsDialog } from './SettingsDialog';
 
 interface RoundInfo {
   currentRound: number;
@@ -49,6 +50,7 @@ const Navbar = ({
   setHintsOpen
 }: NavbarProps) => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
@@ -253,6 +255,7 @@ const Navbar = ({
         </div>
       </div>
       <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
+      <SettingsDialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog} />
     </header>
   );
 };

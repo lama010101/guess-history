@@ -13,7 +13,8 @@ import {
   Users as UsersIcon,
   Edit3,
   Camera,
-  Search
+  Search,
+  ChevronDown
 } from 'lucide-react';
 import {
   Tabs,
@@ -25,7 +26,9 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 
 const Profile = () => {
-  const { user, updateUserProfile } = useAuth();
+  // The error is here - useAuth() doesn't have updateUserProfile in the AuthState type
+  // Let's destructure what we need from the auth hook
+  const { user } = useAuth();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -77,11 +80,20 @@ const Profile = () => {
   );
 
   const handleSaveProfile = () => {
-    if (updateUserProfile) {
-      updateUserProfile({
-        username,
-        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`
-      });
+    // Since updateUserProfile doesn't exist in the type, we need an alternative approach
+    // We'll update the localStorage directly for the demo
+    if (user) {
+      // Update user in localStorage
+      const currentUser = localStorage.getItem('user');
+      if (currentUser) {
+        const parsedUser = JSON.parse(currentUser);
+        parsedUser.username = username;
+        parsedUser.avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`;
+        localStorage.setItem('user', JSON.stringify(parsedUser));
+        
+        // Force a page reload to reflect changes
+        window.location.reload();
+      }
       
       toast({
         title: "Profile updated",

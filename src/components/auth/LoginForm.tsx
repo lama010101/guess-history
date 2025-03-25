@@ -66,7 +66,9 @@ const LoginForm = ({ isOpen, onClose, switchToSignUp }: LoginFormProps) => {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen && !isLoading} onOpenChange={(open) => {
+      if (!open && !isLoading) onClose();
+    }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl">Login to EventGuesser</DialogTitle>

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Eye, EyeOff, UserPlus } from "lucide-react";
 import { useAuth } from "@/services/auth";
@@ -51,7 +52,9 @@ const SignUpForm = ({ isOpen, onClose, switchToLogin }: SignUpFormProps) => {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen && !isLoading} onOpenChange={(open) => {
+      if (!open && !isLoading) onClose();
+    }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl">Create your account</DialogTitle>

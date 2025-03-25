@@ -28,6 +28,9 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
   const switchToLogin = () => setShowLogin(true);
   const switchToSignUp = () => setShowLogin(false);
 
+  // This fixes the issue where the modal disappears immediately
+  if (!isOpen) return null;
+
   return (
     <>
       {showLogin ? (

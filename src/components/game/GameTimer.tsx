@@ -65,14 +65,18 @@ const GameTimer = ({ duration, paused = false, onTimeUp, hintsOpen = false }: Ga
   };
 
   return (
-    <div className="relative w-full h-2">
-      <div 
-        className={`absolute left-0 top-0 h-2 transition-all ${getTimerColor()}`}
-        style={{ width: `${percentLeft}%` }}
-        aria-label={`${timeLeft} seconds remaining`}
-      />
-      <div className="absolute top-2 right-1 text-xs font-medium">
-        {timeLeft} sec
+    <div className="relative w-full">
+      <div className="flex justify-between items-center mb-1">
+        <div className="absolute right-0 top-0 text-xs font-medium">
+          {timeLeft} sec
+        </div>
+      </div>
+      <div className="relative w-full h-2">
+        <div 
+          className={`absolute left-0 top-0 h-2 transition-all ${getTimerColor()}`}
+          style={{ width: `${percentLeft}%` }}
+          aria-label={`${timeLeft} seconds remaining`}
+        />
       </div>
     </div>
   );

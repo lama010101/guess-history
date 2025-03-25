@@ -13,6 +13,7 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
   const [gameComplete, setGameComplete] = useState(false);
   const [images, setImages] = useState<HistoricalImage[]>([]);
   const configuredMaxRounds = useRef(maxRounds);
+  const hasInitialized = useRef(false);
   
   // Load max rounds from localStorage if available
   useEffect(() => {
@@ -45,6 +46,10 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
   
   // Load game state from localStorage on initial mount
   useEffect(() => {
+    // Only run this effect once
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+    
     // First try to load saved game state if it exists
     const savedGameState = localStorage.getItem('currentGameState');
     if (savedGameState) {

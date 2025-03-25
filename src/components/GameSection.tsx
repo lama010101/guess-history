@@ -48,6 +48,12 @@ const GameSection = () => {
     maxRounds
   } = useGameState(MAX_ROUNDS);
 
+  // Enable timer by default
+  useEffect(() => {
+    setTimerEnabled(true);
+    setTimerDuration(60); // 60 seconds by default
+  }, [setTimerEnabled, setTimerDuration]);
+
   // Create a unique key for forcing Navbar to re-render when state changes
   const [navbarKey, setNavbarKey] = useState(0);
   
@@ -122,12 +128,19 @@ const GameSection = () => {
         />
         <div className="relative flex-1 flex flex-col overflow-hidden">
           {timerEnabled && (
-            <GameTimer 
-              duration={timerDuration} 
-              paused={timerPaused || showResults} 
-              hintsOpen={hintsOpen}
-              onTimeUp={handleSubmit}
-            />
+            <div className="w-full bg-gray-100 dark:bg-gray-800 px-4 py-2">
+              <div className="flex justify-between items-center mb-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-sm">Timer</span>
+                </div>
+              </div>
+              <GameTimer 
+                duration={timerDuration} 
+                paused={timerPaused || showResults || hintsOpen} 
+                hintsOpen={hintsOpen}
+                onTimeUp={handleSubmit}
+              />
+            </div>
           )}
           
           <div className="flex-1 overflow-hidden">

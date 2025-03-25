@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import GamePanel from './game/GamePanel';
 import GameControls from './game/GameControls';
@@ -6,6 +7,7 @@ import GameComplete from './game/GameComplete';
 import { useGameState } from '@/hooks/useGameState';
 import Navbar from './Navbar';
 import GameTimer from './game/GameTimer';
+import NavigationConfirmation from './NavigationConfirmation';
 
 const MAX_ROUNDS = 5; // Default to 5 rounds for a game
 
@@ -76,6 +78,13 @@ const GameSection = () => {
     forceNavbarUpdate();
   };
 
+  // Stop timer when results are shown
+  useEffect(() => {
+    if (showResults) {
+      setTimerPaused(true);
+    }
+  }, [showResults, setTimerPaused]);
+
   // Prepare content based on game state
   const renderContent = () => {
     // Show game over screen if all rounds are completed
@@ -117,6 +126,7 @@ const GameSection = () => {
               duration={timerDuration} 
               paused={timerPaused || showResults} 
               hintsOpen={hintsOpen}
+              onTimeUp={handleSubmit}
             />
           )}
           
@@ -161,6 +171,9 @@ const GameSection = () => {
             hintPenalty={currentScores.hintPenalty}
           />
         </div>
+        
+        {/* Add navigation confirmation for game */}
+        <NavigationConfirmation isInGame={true} />
       </section>
     );
   };

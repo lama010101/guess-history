@@ -3,6 +3,7 @@ import { X, Lightbulb, MapPin, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useGameState } from '@/hooks/useGameState';
 import { useEffect, useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 interface HintDisplayProps {
   availableHints: number;
@@ -18,6 +19,8 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
     currentImage,
     hintCoins
   } = useGameState();
+  
+  const { toast } = useToast();
   
   // Persist hint usage states locally
   const [localLocationHintUsed, setLocalLocationHintUsed] = useState(locationHintUsed);
@@ -58,32 +61,45 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
   
   // Handle using location hint
   const onUseLocationHint = () => {
-    handleUseLocationHint();
-    
-    // Check if the location hint isn't already used
-    if (!localLocationHintUsed && currentImage && currentImage.locationName) {
+    if (!localLocationHintUsed && remainingHints > 0) {
+      handleUseLocationHint();
       setLocalLocationHintUsed(true);
       setRemainingHints(prev => prev - 1);
-      setLocalHintValues(prev => ({
-        ...prev,
-        country: getCountryOnly(currentImage.locationName)
-      }));
+      
+      if (currentImage && currentImage.locationName) {
+        setLocalHintValues(prev => ({
+          ...prev,
+          country: getCountryOnly(currentImage.locationName)
+        }));
+      }
     }
   };
   
   // Handle using year hint
   const onUseYearHint = () => {
-    handleUseYearHint();
-    
-    // Check if the year hint isn't already used
-    if (!localYearHintUsed && currentImage) {
+    if (!localYearHintUsed && remainingHints > 0) {
+      handleUseYearHint();
       setLocalYearHintUsed(true);
       setRemainingHints(prev => prev - 1);
-      setLocalHintValues(prev => ({
-        ...prev,
-        decade: currentImage.year.toString().slice(0, -1) + "X"
-      }));
+      
+      if (currentImage) {
+        setLocalHintValues(prev => ({
+          ...prev,
+          decade: currentImage.year.toString().slice(0, -1) + "X"
+        }));
+      }
     }
+  };
+  
+  // Handle watching an ad for more hints
+  const handleWatchAd = () => {
+    // Simulate watching an ad - just give 2 more hints
+    setRemainingHints(prev => prev + 2);
+    
+    toast({
+      title: "Hints added!",
+      description: "You've earned 2 hints by watching the ad."
+    });
   };
 
   return (
@@ -147,6 +163,20 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
         <div className="mt-2 text-center text-xs font-medium">
           Remaining hints: {remainingHints}
         </div>
+        
+        {/* Ad for more hints when none are available */}
+        {remainingHints <= 0 && (
+          <div className="mt-3 pt-3 border-t border-border">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full text-xs"
+              onClick={handleWatchAd}
+            >
+              <span>Watch Ad for 2 Free Hints</span>
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

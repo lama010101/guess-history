@@ -137,33 +137,37 @@ const Home = () => {
               <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-6">
                 <h3 className="text-xl font-medium mb-2">Daily Challenge</h3>
                 <p className="text-neutral-500 dark:text-neutral-400 mb-4">Same 5 images as everyone else.</p>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">One attempt per day</p>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Timer: 5 minutes</p>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Hints available: 2</p>
-                    {dailyPlayed && dailyScore > 0 && (
-                      <div className="mt-2">
+                    
+                    {/* Daily score and countdown always visible when played */}
+                    {dailyPlayed && (
+                      <div className="mt-2 p-2 bg-primary/10 rounded-md">
                         <p className="font-medium">Today's score: {dailyScore}</p>
                         <p className="text-sm text-neutral-500">Next challenge in: {timeUntilNextDaily}</p>
                       </div>
                     )}
                   </div>
-                  <Button 
-                    onClick={() => {
-                      if (isAuthenticated) {
-                        handleStartGame();
-                      } else {
-                        toast({
-                          title: "Login required",
-                          description: "You need to be logged in to play the daily challenge"
-                        });
-                      }
-                    }}
-                    disabled={dailyPlayed}
-                  >
-                    {dailyPlayed ? "Already Played Today" : "Start Daily Challenge"}
-                  </Button>
+                  <div className="mt-4 md:mt-0">
+                    <Button 
+                      onClick={() => {
+                        if (isAuthenticated) {
+                          handleStartGame();
+                        } else {
+                          toast({
+                            title: "Login required",
+                            description: "You need to be logged in to play the daily challenge"
+                          });
+                        }
+                      }}
+                      disabled={dailyPlayed}
+                    >
+                      {dailyPlayed ? "Already Played Today" : "Start Daily Challenge"}
+                    </Button>
+                  </div>
                 </div>
               </div>
               
@@ -239,12 +243,12 @@ const Home = () => {
                     trigger={
                       <Button 
                         className="flex-1 flex items-center gap-2"
-                        onClick={handleInviteFriendsAndStart}
                       >
                         <Users className="h-4 w-4" />
                         Invite and Start Game
                       </Button>
                     }
+                    onInviteAndStart={handleInviteFriendsAndStart}
                   />
                 </div>
               </div>
@@ -258,13 +262,15 @@ const Home = () => {
                   <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-full inline-flex">
                     <Clock className="h-6 w-6" />
                   </div>
-                  <CardTitle className="text-xl mt-2 flex items-center gap-2">
-                    Timer
+                  <div className="flex items-center justify-between mt-2">
+                    <CardTitle className="text-xl flex items-center gap-2">
+                      Timer
+                    </CardTitle>
                     <Switch 
                       checked={timerEnabled}
                       onCheckedChange={setTimerEnabled}
                     />
-                  </CardTitle>
+                  </div>
                   <CardDescription>Race against the clock.</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -290,13 +296,15 @@ const Home = () => {
                   <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-full inline-flex">
                     <Lightbulb className="h-6 w-6" />
                   </div>
-                  <CardTitle className="text-xl mt-2 flex items-center gap-2">
-                    Hints
+                  <div className="flex items-center justify-between mt-2">
+                    <CardTitle className="text-xl flex items-center gap-2">
+                      Hints
+                    </CardTitle>
                     <Switch 
                       checked={hintsEnabled}
                       onCheckedChange={setHintsEnabled}
                     />
-                  </CardTitle>
+                  </div>
                   <CardDescription>Using a hint will deduct 500 points.</CardDescription>
                 </CardHeader>
                 <CardContent>

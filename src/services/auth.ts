@@ -23,6 +23,7 @@ interface AuthState {
   logout: () => void;
   continueAsGuest: () => void;
   googleLogin: () => Promise<void>;
+  updateUserProfile: (userData: Partial<User>) => void;
 }
 
 // For now, we'll implement a mock auth system
@@ -82,7 +83,7 @@ export const useAuth = create<AuthState>()(
               username,
               email,
               isGuest: false,
-              avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + email,
+              avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + username,
             },
             isAuthenticated: true,
             isLoading: false,
@@ -105,7 +106,7 @@ export const useAuth = create<AuthState>()(
       },
       
       continueAsGuest: () => {
-        const guestId = 'guest-' + Math.random().toString(36).substr(2, 9);
+        const guestId = 'guest-' + Math.random().toString(36).substring(2, 9);
         set({
           user: {
             id: guestId,
@@ -151,6 +152,17 @@ export const useAuth = create<AuthState>()(
             isLoading: false 
           });
         }
+      },
+
+      updateUserProfile: (userData: Partial<User>) => {
+        const currentUser = get().user;
+        if (!currentUser) return;
+        
+        const updatedUser = { ...currentUser, ...userData };
+        
+        set({
+          user: updatedUser
+        });
       },
     }),
     {

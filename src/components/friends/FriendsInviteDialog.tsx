@@ -1,276 +1,159 @@
 
-import { useState, useEffect } from "react";
-import { Check, Search, User, X } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
-
-interface User {
-  id: string;
-  name: string;
-  avatar: string;
-  status?: 'online' | 'offline';
-  isFriend?: boolean;
-}
-
-// Mock data - In a real app, this would come from an API
-const mockUsers: User[] = [
-  { id: "1", name: "Alex Johnson", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Alex", status: "online" },
-  { id: "2", name: "Sam Wilson", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sam", status: "offline" },
-  { id: "3", name: "Jamie Smith", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jamie", status: "online" },
-  { id: "4", name: "Taylor Brown", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Taylor", status: "offline" },
-  { id: "5", name: "Robin Lee", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Robin", status: "online" },
-  { id: "6", name: "Jordan Clark", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jordan", status: "online" },
-  { id: "7", name: "Casey Martinez", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Casey", status: "offline" },
-];
+import { useState } from 'react';
+import { Users, Check, Search } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 
 interface FriendsInviteDialogProps {
-  trigger?: React.ReactNode;
+  trigger: React.ReactNode;
+  onInviteAndStart?: () => void;
 }
 
-const FriendsInviteDialog = ({ trigger }: FriendsInviteDialogProps) => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [tab, setTab] = useState<"friends" | "search">("friends");
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  const [friends, setFriends] = useState<User[]>([
-    { id: "8", name: "Jane Smith", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jane", status: "online", isFriend: true },
-    { id: "9", name: "John Doe", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John", status: "offline", isFriend: true },
-    { id: "10", name: "Sarah Wilson", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah", status: "online", isFriend: true },
-  ]);
+const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogProps) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
   const { toast } = useToast();
-  
-  // Toggle selection of a user
-  const toggleSelect = (userId: string) => {
-    setSelectedUsers(prev => 
-      prev.includes(userId) 
-        ? prev.filter(id => id !== userId)
-        : [...prev, userId]
-    );
-  };
-  
-  // Filter users based on search query
-  const filteredUsers = mockUsers.filter(user =>
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-    !friends.some(friend => friend.id === user.id)
+
+  // Mock friends data
+  const friends = [
+    { id: '1', name: 'Jane Smith', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jane', status: 'online' },
+    { id: '2', name: 'John Doe', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John', status: 'offline' },
+    { id: '3', name: 'Sarah Wilson', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah', status: 'online' },
+    { id: '4', name: 'Mike Johnson', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mike', status: 'offline' },
+    { id: '5', name: 'Emily Davis', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Emily', status: 'online' },
+  ];
+
+  const filteredFriends = friends.filter(friend => 
+    friend.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  
-  // Handle adding selected users as friends
-  const handleAddAsFriends = () => {
-    const newFriends = selectedUsers.map(id => {
-      const user = mockUsers.find(user => user.id === id);
-      if (user) {
-        return {
-          ...user,
-          isFriend: true
-        };
+
+  const toggleFriendSelection = (friendId: string) => {
+    setSelectedFriends(prev => {
+      if (prev.includes(friendId)) {
+        return prev.filter(id => id !== friendId);
+      } else {
+        return [...prev, friendId];
       }
-      return null;
-    }).filter(Boolean) as User[];
-    
-    setFriends(prev => [...prev, ...newFriends]);
-    setSelectedUsers([]);
-    
-    toast({
-      title: "Friends added!",
-      description: `${newFriends.length} user${newFriends.length !== 1 ? 's' : ''} added to your friends list.`
     });
   };
-  
-  // Handle inviting selected friends
-  const handleInviteFriends = () => {
-    const invitedFriends = selectedUsers.map(id => 
-      friends.find(friend => friend.id === id)?.name
-    ).filter(Boolean);
+
+  const handleInviteAndStart = () => {
+    if (selectedFriends.length === 0) {
+      toast({
+        title: "No friends selected",
+        description: "Please select at least one friend to invite",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Close the dialog
+    setIsOpen(false);
     
-    toast({
-      title: "Invitation sent!",
-      description: `Invited ${invitedFriends.join(", ")} to play the game.`
-    });
-    
-    setSelectedUsers([]);
-  };
-  
-  // Determines if the button should say "Add as Friends" or "Invite to Game" based on active tab
-  const getPrimaryButtonText = () => {
-    if (tab === "search") return "Add as Friends";
-    return "Invite to Game";
-  };
-  
-  const handlePrimaryAction = () => {
-    if (tab === "search") {
-      handleAddAsFriends();
-    } else {
-      handleInviteFriends();
+    // Notify the parent component
+    if (onInviteAndStart) {
+      onInviteAndStart();
     }
   };
-  
+
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        {trigger || <Button>Invite Friends</Button>}
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild onClick={() => setIsOpen(true)}>
+        {trigger}
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Invite Friends</DialogTitle>
           <DialogDescription>
-            Invite friends to play with you or add new friends.
+            Select friends to invite to your game.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="flex border-b border-border">
-          <button
-            className={`flex-1 py-2 px-4 text-sm font-medium ${
-              tab === "friends" ? "border-b-2 border-primary" : ""
-            }`}
-            onClick={() => setTab("friends")}
-          >
-            My Friends
-          </button>
-          <button
-            className={`flex-1 py-2 px-4 text-sm font-medium ${
-              tab === "search" ? "border-b-2 border-primary" : ""
-            }`}
-            onClick={() => setTab("search")}
-          >
-            Find Users
-          </button>
+        <div className="relative my-2">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            placeholder="Search friends" 
+            className="pl-10"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
         
-        {tab === "search" && (
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search users..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-        )}
-        
-        <div className="max-h-[300px] overflow-y-auto space-y-2 my-2">
-          {tab === "friends" ? (
-            friends.length > 0 ? (
-              friends.map((friend) => (
-                <UserItem
-                  key={friend.id}
-                  user={friend}
-                  isSelected={selectedUsers.includes(friend.id)}
-                  onSelect={() => toggleSelect(friend.id)}
-                />
-              ))
-            ) : (
-              <div className="text-center py-8">
-                <User className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                <p className="text-sm text-muted-foreground">No friends yet</p>
-                <p className="text-xs text-muted-foreground">
-                  Search for users to add them as friends
-                </p>
-              </div>
-            )
+        <div className="max-h-[300px] overflow-y-auto">
+          {filteredFriends.length > 0 ? (
+            <div className="space-y-2">
+              {filteredFriends.map(friend => (
+                <div 
+                  key={friend.id} 
+                  className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
+                  onClick={() => toggleFriendSelection(friend.id)}
+                >
+                  <Checkbox 
+                    id={`friend-${friend.id}`} 
+                    checked={selectedFriends.includes(friend.id)}
+                    onCheckedChange={() => toggleFriendSelection(friend.id)}
+                  />
+                  <div className="h-10 w-10 rounded-full overflow-hidden">
+                    <img 
+                      src={friend.avatarUrl} 
+                      alt={friend.name} 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Label htmlFor={`friend-${friend.id}`} className="font-medium cursor-pointer">
+                      {friend.name}
+                    </Label>
+                    <div className="flex items-center text-xs">
+                      <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${
+                        friend.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
+                      }`}></span>
+                      <span className="text-muted-foreground capitalize">{friend.status}</span>
+                    </div>
+                  </div>
+                  {selectedFriends.includes(friend.id) && (
+                    <Check className="h-4 w-4 text-primary" />
+                  )}
+                </div>
+              ))}
+            </div>
           ) : (
-            filteredUsers.length > 0 ? (
-              filteredUsers.map((user) => (
-                <UserItem
-                  key={user.id}
-                  user={user}
-                  isSelected={selectedUsers.includes(user.id)}
-                  onSelect={() => toggleSelect(user.id)}
-                  showAddButton={!user.isFriend}
-                />
-              ))
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-sm text-muted-foreground">No users found</p>
-              </div>
-            )
+            <div className="text-center py-4 text-muted-foreground">
+              No friends found with that name
+            </div>
           )}
         </div>
         
-        <div className="flex justify-between items-center pt-2 border-t border-border">
-          <p className="text-sm text-muted-foreground">
-            {selectedUsers.length} users selected
-          </p>
+        <DialogFooter>
           <Button 
-            variant="default" 
-            onClick={handlePrimaryAction}
-            disabled={selectedUsers.length === 0}
+            variant="outline" 
+            onClick={() => setIsOpen(false)}
           >
-            {getPrimaryButtonText()}
+            Cancel
           </Button>
-        </div>
+          <Button 
+            onClick={handleInviteAndStart}
+            className="flex items-center gap-2"
+          >
+            <Users className="h-4 w-4" />
+            Invite and Start Game
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-};
-
-interface UserItemProps {
-  user: User;
-  isSelected: boolean;
-  onSelect: () => void;
-  showAddButton?: boolean;
-}
-
-const UserItem = ({ user, isSelected, onSelect, showAddButton }: UserItemProps) => {
-  return (
-    <div 
-      className={`p-2 rounded-lg flex justify-between items-center transition-colors ${
-        isSelected ? "bg-primary/10" : "hover:bg-secondary"
-      }`}
-    >
-      <div className="flex items-center">
-        <div className="h-10 w-10 rounded-full overflow-hidden mr-3 relative">
-          <img 
-            src={user.avatar} 
-            alt={user.name} 
-            className="w-full h-full object-cover"
-          />
-          {user.status && (
-            <span 
-              className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${
-                user.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
-              }`}
-            ></span>
-          )}
-        </div>
-        <div>
-          <p className="font-medium">{user.name}</p>
-          {user.isFriend && (
-            <p className="text-xs text-muted-foreground">Friend</p>
-          )}
-        </div>
-      </div>
-      <div>
-        {showAddButton ? (
-          <Button 
-            variant="ghost" 
-            size="icon"
-            className="h-8 w-8" 
-            onClick={onSelect}
-          >
-            {isSelected ? (
-              <X className="h-4 w-4" />
-            ) : (
-              <User className="h-4 w-4" />
-            )}
-          </Button>
-        ) : (
-          <Button 
-            variant="ghost" 
-            size="icon"
-            className="h-8 w-8" 
-            onClick={onSelect}
-          >
-            {isSelected ? (
-              <Check className="h-4 w-4" />
-            ) : (
-              <div className="h-4 w-4 rounded-sm border border-gray-400" />
-            )}
-          </Button>
-        )}
-      </div>
-    </div>
   );
 };
 

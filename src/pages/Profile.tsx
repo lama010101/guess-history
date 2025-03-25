@@ -26,9 +26,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 
 const Profile = () => {
-  // The error is here - useAuth() doesn't have updateUserProfile in the AuthState type
-  // Let's destructure what we need from the auth hook
-  const { user } = useAuth();
+  const { user, updateUserProfile } = useAuth();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -80,20 +78,11 @@ const Profile = () => {
   );
 
   const handleSaveProfile = () => {
-    // Since updateUserProfile doesn't exist in the type, we need an alternative approach
-    // We'll update the localStorage directly for the demo
     if (user) {
-      // Update user in localStorage
-      const currentUser = localStorage.getItem('user');
-      if (currentUser) {
-        const parsedUser = JSON.parse(currentUser);
-        parsedUser.username = username;
-        parsedUser.avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`;
-        localStorage.setItem('user', JSON.stringify(parsedUser));
-        
-        // Force a page reload to reflect changes
-        window.location.reload();
-      }
+      updateUserProfile({
+        username,
+        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`
+      });
       
       toast({
         title: "Profile updated",
@@ -250,13 +239,13 @@ const Profile = () => {
             </div>
           </Card>
           
-          {/* Activity Section */}
+          {/* Activity Section - Reordered tabs */}
           <Card className="col-span-1 lg:col-span-2 p-6">
-            <Tabs defaultValue="achievements">
+            <Tabs defaultValue="friends">
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="achievements">Achievements</TabsTrigger>
                 <TabsTrigger value="friends">Friends</TabsTrigger>
                 <TabsTrigger value="history">Game History</TabsTrigger>
+                <TabsTrigger value="achievements">Achievements</TabsTrigger>
               </TabsList>
               
               <TabsContent value="achievements" className="pt-4">

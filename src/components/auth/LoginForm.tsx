@@ -32,6 +32,7 @@ const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
           title: "Account created!",
           description: "You've successfully signed up for EventGuesser.",
         });
+        onClose();
       } else {
         try {
           // Try login first
@@ -40,6 +41,7 @@ const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
             title: "Welcome back!",
             description: "You have successfully logged in.",
           });
+          onClose();
         } catch (loginError) {
           // If login fails, show username field for signup
           setShowUsernameField(true);
@@ -50,7 +52,6 @@ const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
           return; // Don't close modal, wait for user to complete signup
         }
       }
-      onClose();
     } catch (error) {
       toast({
         title: showUsernameField ? "Sign up failed" : "Login failed",
@@ -161,7 +162,7 @@ const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
               className="w-full"
               disabled={isLoading}
             >
-              {isLoading ? (showUsernameField ? "Creating account..." : "Logging in...") : "Login"}
+              {isLoading ? (showUsernameField ? "Creating account..." : "Logging in...") : (showUsernameField ? "Sign Up" : "Login")}
               <LogIn className="ml-2 h-4 w-4" />
             </Button>
             

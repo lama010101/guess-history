@@ -29,7 +29,21 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
     }
   }, []);
   
-  // Load images and select random set
+  // Always pick random images when the component mounts or game is reset
+  const selectRandomImages = () => {
+    const availableImages = [...defaultImages];
+    
+    if (availableImages.length > configuredMaxRounds.current) {
+      // Shuffle array and pick first n elements
+      const shuffledImages = availableImages.sort(() => Math.random() - 0.5);
+      return shuffledImages.slice(0, configuredMaxRounds.current);
+    } else {
+      // Not enough images, use all available ones
+      return availableImages;
+    }
+  };
+  
+  // Load images and select random set on initial mount
   useEffect(() => {
     const savedEventsJson = localStorage.getItem('savedEvents');
     let availableImages: HistoricalImage[] = [];
@@ -51,16 +65,54 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
       availableImages = defaultImages;
     }
     
-    // Select random images for this game session
-    if (availableImages.length > configuredMaxRounds.current) {
-      // Shuffle array and pick first n elements
-      const shuffledImages = [...availableImages].sort(() => Math.random() - 0.5);
-      setImages(shuffledImages.slice(0, configuredMaxRounds.current));
-    } else {
-      // Not enough images, use all available ones
-      setImages(availableImages);
+    // Select random images
+    if (availableImages.length > 0) {
+      const selectedImages = availableImages.length > configuredMaxRounds.current
+        ? [...availableImages].sort(() => Math.random() - 0.5).slice(0, configuredMaxRounds.current)
+        : availableImages;
+      
+      setImages(selectedImages);
     }
+    
+    // Persist current game state to localStorage for refreshing
+    const currentGameState = {
+      currentRound,
+      currentImageIndex,
+      gameComplete,
+      images: availableImages.length > 0 ? availableImages : defaultImages
+    };
+    localStorage.setItem('currentGameState', JSON.stringify(currentGameState));
+    
   }, [defaultImages]);
+  
+  // Check for saved game state on page refresh
+  useEffect(() => {
+    const savedGameState = localStorage.getItem('currentGameState');
+    if (savedGameState) {
+      try {
+        const gameState = JSON.parse(savedGameState);
+        setCurrentRound(gameState.currentRound || 1);
+        setCurrentImageIndex(gameState.currentImageIndex || 0);
+        setGameComplete(gameState.gameComplete || false);
+        if (gameState.images && gameState.images.length > 0) {
+          setImages(gameState.images);
+        }
+      } catch (error) {
+        console.error('Error loading game state:', error);
+      }
+    }
+  }, []);
+  
+  // Save game state whenever it changes
+  useEffect(() => {
+    const currentGameState = {
+      currentRound,
+      currentImageIndex,
+      gameComplete,
+      images
+    };
+    localStorage.setItem('currentGameState', JSON.stringify(currentGameState));
+  }, [currentRound, currentImageIndex, gameComplete, images]);
   
   // Current image based on the current image index
   const currentImage = images.length > 0 
@@ -89,11 +141,18 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
     setCurrentImageIndex(0);
     setGameComplete(false);
     
-    // Regenerate random set of images
-    if (defaultImages.length > configuredMaxRounds.current) {
-      const shuffledImages = [...defaultImages].sort(() => Math.random() - 0.5);
-      setImages(shuffledImages.slice(0, configuredMaxRounds.current));
-    }
+    // Select new random images for the game
+    const newImages = selectRandomImages();
+    setImages(newImages);
+    
+    // Update localStorage with the new game state
+    const newGameState = {
+      currentRound: 1,
+      currentImageIndex: 0,
+      gameComplete: false,
+      images: newImages
+    };
+    localStorage.setItem('currentGameState', JSON.stringify(newGameState));
   };
   
   return {

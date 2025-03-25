@@ -1,57 +1,53 @@
 
-import { useState } from 'react';
+import { Map, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface ViewToggleProps {
   activeView: 'image' | 'map';
   onToggle: () => void;
-  imageSrc?: string;
+  imageSrc: string;
   showClose?: boolean;
 }
 
-const ViewToggle = ({ activeView, onToggle, imageSrc, showClose = true }: ViewToggleProps) => {
-  const [hovered, setHovered] = useState(false);
-  
+const ViewToggle = ({ 
+  activeView, 
+  onToggle, 
+  imageSrc,
+  showClose = true
+}: ViewToggleProps) => {
   return (
-    <div 
-      className="absolute top-4 right-4 z-20"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
+    <div className="absolute top-4 right-4 z-10 flex">
       <Button
-        variant="ghost"
-        className="h-32 px-4 font-medium flex flex-col items-center gap-2"
-        onClick={onToggle}
-        aria-label={activeView === 'image' ? "Switch to map view" : "Switch to image view"}
+        variant="outline"
+        size="icon"
+        className={`rounded-l-md rounded-r-none h-10 w-10 bg-background/80 backdrop-blur-sm ${
+          activeView === 'image' ? 'bg-primary/10 border-primary' : ''
+        }`}
+        onClick={activeView === 'map' ? onToggle : undefined}
       >
         {activeView === 'image' ? (
-          <img 
-            src="https://upload.wikimedia.org/wikipedia/commons/b/b0/Openstreetmap_logo.svg" 
-            alt="OpenStreetMap" 
-            className="h-16 w-16 object-contain" 
-          />
+          <Image className="h-5 w-5" />
         ) : (
-          imageSrc && (
-            <div className="h-16 w-16 rounded overflow-hidden">
-              <img 
-                src={imageSrc} 
-                alt="Historical image" 
-                className="h-full w-full object-cover" 
-              />
-            </div>
-          )
+          <div className="h-8 w-8 rounded overflow-hidden">
+            <img 
+              src={imageSrc} 
+              alt="View image" 
+              className="h-full w-full object-cover"
+            />
+          </div>
         )}
       </Button>
-      
-      {activeView === 'map' && (
-        <div className="absolute bottom-0 right-0 translate-y-full mt-2 p-1 rounded text-xs">
-          <img 
-            src="https://upload.wikimedia.org/wikipedia/commons/b/b0/Openstreetmap_logo.svg" 
-            alt="OpenStreetMap" 
-            className="h-5" 
-          />
-        </div>
-      )}
+
+      <Button
+        variant="outline"
+        size="icon"
+        className={`rounded-r-md rounded-l-none h-10 w-10 bg-background/80 backdrop-blur-sm ${
+          activeView === 'map' ? 'bg-primary/10 border-primary' : ''
+        }`}
+        onClick={activeView === 'image' ? onToggle : undefined}
+      >
+        <Map className="h-5 w-5" />
+      </Button>
     </div>
   );
 };

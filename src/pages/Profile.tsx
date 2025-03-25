@@ -22,11 +22,15 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user, updateUserProfile } = useAuth();
+  const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [username, setUsername] = useState(user?.username || 'User');
+  const [avatarSeed, setAvatarSeed] = useState(user?.username || 'User');
   
   const stats = {
     gamesPlayed: 87,
@@ -36,13 +40,6 @@ const Profile = () => {
     dailyStreak: 12,
     friendsCount: 23,
   };
-  
-  const achievements = [
-    { name: "Perfect Score", description: "Score 10,000 points in a round", date: "2023-10-15", icon: <Trophy className="w-4 h-4" /> },
-    { name: "History Buff", description: "Complete 50 games", date: "2023-09-22", icon: <Calendar className="w-4 h-4" /> },
-    { name: "Speed Demon", description: "Complete a game in under 3 minutes", date: "2023-11-03", icon: <Clock className="w-4 h-4" /> },
-    { name: "Social Butterfly", description: "Add 10 friends", date: "2023-08-12", icon: <UsersIcon className="w-4 h-4" /> },
-  ];
   
   // Mock game history data
   const gameHistory = [
@@ -78,6 +75,26 @@ const Profile = () => {
   const filteredUsers = allUsers.filter(user => 
     user.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleSaveProfile = () => {
+    if (updateUserProfile) {
+      updateUserProfile({
+        username,
+        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`
+      });
+      
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully"
+      });
+    }
+    setIsEditing(false);
+  };
+  
+  const handleRandomAvatar = () => {
+    const newSeed = Math.random().toString(36).substring(2, 8);
+    setAvatarSeed(newSeed);
+  };
   
   if (!user) {
     return (
@@ -124,7 +141,7 @@ const Profile = () => {
               <div className="relative mb-4">
                 <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-primary/20">
                   <img 
-                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username || 'User'}`} 
+                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${isEditing ? avatarSeed : (user.username || 'User')}`} 
                     alt="Profile" 
                     className="w-full h-full object-cover"
                   />
@@ -134,6 +151,7 @@ const Profile = () => {
                     variant="secondary" 
                     size="sm" 
                     className="absolute bottom-0 right-0 rounded-full h-8 w-8 p-0"
+                    onClick={handleRandomAvatar}
                   >
                     <Camera className="h-4 w-4" />
                   </Button>
@@ -147,7 +165,8 @@ const Profile = () => {
                     <input 
                       type="text" 
                       className="w-full p-2 border rounded-md mt-1"
-                      defaultValue={user.username || 'User'}
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
                     />
                   </div>
                   <div>
@@ -169,7 +188,7 @@ const Profile = () => {
                     </Button>
                     <Button 
                       className="flex-1"
-                      onClick={() => setIsEditing(false)}
+                      onClick={handleSaveProfile}
                     >
                       Save
                     </Button>
@@ -224,64 +243,24 @@ const Profile = () => {
             <Tabs defaultValue="achievements">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="achievements">Achievements</TabsTrigger>
-                <TabsTrigger value="history">Game History</TabsTrigger>
                 <TabsTrigger value="friends">Friends</TabsTrigger>
+                <TabsTrigger value="history">Game History</TabsTrigger>
               </TabsList>
               
               <TabsContent value="achievements" className="pt-4">
                 <h3 className="text-lg font-bold mb-4">Your Achievements</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {achievements.map((achievement, i) => (
-                    <div key={i} className="p-4 border rounded-lg">
-                      <div className="flex items-center mb-2">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mr-3 text-primary">
-                          {achievement.icon}
-                        </div>
-                        <div>
-                          <p className="font-semibold">{achievement.name}</p>
-                          <p className="text-xs text-muted-foreground">Earned on {achievement.date}</p>
-                        </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{achievement.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="history" className="pt-4">
-                <h3 className="text-lg font-bold mb-4">Recent Games</h3>
-                <div className="space-y-2">
-                  {gameHistory.map((game, i) => (
-                    <div key={i} className="p-3 border rounded-lg flex justify-between items-center">
-                      <div>
-                        <div className="flex items-center">
-                          <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
-                            game.type === 'Daily' ? 'bg-blue-500' : 'bg-green-500'
-                          }`}></span>
-                          <span className="font-medium">{game.type}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">{game.date}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold">{game.score.toLocaleString()} pts</p>
-                        {game.position && (
-                          <p className="text-xs text-muted-foreground">
-                            Position: {game.position}{getOrdinalSuffix(game.position)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                <div className="text-center p-8 text-muted-foreground">
+                  <p>Achievements coming soon!</p>
                 </div>
               </TabsContent>
               
               <TabsContent value="friends" className="pt-4">
                 <div className="mb-6">
-                  <h3 className="text-lg font-bold mb-3">Find Users</h3>
+                  <h3 className="text-lg font-bold mb-3">Add Friends</h3>
                   <div className="relative mb-4">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
-                      placeholder="Search for users..." 
+                      placeholder="Search for registered players" 
                       className="pl-10"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
@@ -309,7 +288,7 @@ const Profile = () => {
                             </div>
                           </div>
                         </div>
-                        <Button variant="outline" size="sm">Invite</Button>
+                        <Button variant="outline" size="sm">Add Friend</Button>
                       </div>
                     ))}
                   </div>
@@ -338,10 +317,37 @@ const Profile = () => {
                             </div>
                           </div>
                         </div>
-                        <Button variant="outline" size="sm">Accept</Button>
+                        <Button variant="outline" size="sm">Unfriend</Button>
                       </div>
                     ))}
                   </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="history" className="pt-4">
+                <h3 className="text-lg font-bold mb-4">Recent Games</h3>
+                <div className="space-y-2">
+                  {gameHistory.map((game, i) => (
+                    <div key={i} className="p-3 border rounded-lg flex justify-between items-center">
+                      <div>
+                        <div className="flex items-center">
+                          <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
+                            game.type === 'Daily' ? 'bg-blue-500' : 'bg-green-500'
+                          }`}></span>
+                          <span className="font-medium">{game.type}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{game.date}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold">{game.score.toLocaleString()} pts</p>
+                        {game.position && (
+                          <p className="text-xs text-muted-foreground">
+                            Position: {game.position}{getOrdinalSuffix(game.position)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </TabsContent>
             </Tabs>

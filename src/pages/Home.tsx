@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Globe, Clock, Lightbulb, Users, Share2, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -172,11 +172,9 @@ const Home = () => {
                 <p className="text-neutral-500 dark:text-neutral-400 mb-4">Invite your registered friends here or share the link.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="flex items-center gap-2" htmlFor="friends-timer-toggle">
-                        <Clock className="h-4 w-4" />
-                        Timer
-                      </Label>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      <Label className="text-sm font-medium" htmlFor="friends-timer-toggle">Timer</Label>
                       <Switch 
                         id="friends-timer-toggle" 
                         checked={timerEnabled} 
@@ -201,11 +199,9 @@ const Home = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="flex items-center gap-2" htmlFor="friends-hints-toggle">
-                        <Lightbulb className="h-4 w-4" />
-                        Hints
-                      </Label>
+                    <div className="flex items-center gap-2">
+                      <Lightbulb className="h-4 w-4" />
+                      <Label className="text-sm font-medium" htmlFor="friends-hints-toggle">Hints</Label>
                       <Switch 
                         id="friends-hints-toggle" 
                         checked={hintsEnabled} 
@@ -243,6 +239,7 @@ const Home = () => {
                     trigger={
                       <Button 
                         className="flex-1 flex items-center gap-2"
+                        onClick={handleInviteFriendsAndStart}
                       >
                         <Users className="h-4 w-4" />
                         Invite and Start Game
@@ -263,17 +260,14 @@ const Home = () => {
                   </div>
                   <CardTitle className="text-xl mt-2 flex items-center gap-2">
                     Timer
-                  </CardTitle>
-                  <CardDescription>Race against the clock.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
                     <Switch 
                       checked={timerEnabled}
                       onCheckedChange={setTimerEnabled}
                     />
-                  </div>
-                  
+                  </CardTitle>
+                  <CardDescription>Race against the clock.</CardDescription>
+                </CardHeader>
+                <CardContent>
                   {timerEnabled && (
                     <div className="mt-4">
                       <div className="flex justify-between mb-2">
@@ -298,17 +292,14 @@ const Home = () => {
                   </div>
                   <CardTitle className="text-xl mt-2 flex items-center gap-2">
                     Hints
-                  </CardTitle>
-                  <CardDescription>Using a hint will deduct 500 points.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
                     <Switch 
                       checked={hintsEnabled}
                       onCheckedChange={setHintsEnabled}
                     />
-                  </div>
-                  
+                  </CardTitle>
+                  <CardDescription>Using a hint will deduct 500 points.</CardDescription>
+                </CardHeader>
+                <CardContent>
                   {hintsEnabled && (
                     <div className="mt-4">
                       <div className="flex justify-between mb-2">

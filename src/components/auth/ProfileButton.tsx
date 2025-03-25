@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/services/auth';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
 const ProfileButton = () => {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, isAdmin } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [useMiles, setUseMiles] = useState(false);
@@ -85,14 +85,12 @@ const ProfileButton = () => {
   };
 
   // Load distance format preference
-  useState(() => {
+  useEffect(() => {
     const distancePref = localStorage.getItem('distanceFormat');
     if (distancePref) {
       setUseMiles(distancePref === 'miles');
     }
-  });
-
-  const isAdmin = user?.email === 'lama010101@gmail.com';
+  }, []);
 
   if (!isAuthenticated) {
     return (
@@ -156,7 +154,7 @@ const ProfileButton = () => {
             <DropdownMenuItem asChild className="cursor-pointer">
               <Link to="/admin">
                 <Settings className="mr-2 h-4 w-4" />
-                Admin Panel
+                Admin
               </Link>
             </DropdownMenuItem>
           )}

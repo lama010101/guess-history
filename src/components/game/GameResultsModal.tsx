@@ -47,7 +47,7 @@ const GameResultsModal = ({
 
   return (
     <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center p-4 z-50">
-      <div className="flex-1 overflow-auto w-full max-w-md flex items-center justify-center">
+      <div className="w-full max-w-md">
         <GameResult 
           isVisible={showResults}
           locationScore={locationScore}
@@ -68,29 +68,28 @@ const GameResultsModal = ({
           eventDescription={currentImage.description}
           locationName={currentImage.locationName}
         />
-      </div>
-      
-      {/* Fixed bottom bar with buttons */}
-      <div className="w-full max-w-md bg-background p-4 border-t rounded-b-lg mt-4 flex gap-2">
-        {isLastRound && !isDaily && (
+        
+        <div className="bg-background p-4 border-t rounded-b-lg flex gap-2">
+          {isLastRound && !isDaily && (
+            <Button 
+              variant="outline" 
+              className="flex-1 flex items-center justify-center"
+              asChild
+            >
+              <Link to="/">
+                <Home className="mr-1.5 h-4 w-4" />
+                Home
+              </Link>
+            </Button>
+          )}
           <Button 
-            variant="outline" 
-            className="flex-1 flex items-center justify-center"
-            asChild
+            onClick={onNextRound} 
+            className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center"
           >
-            <Link to="/">
-              <Home className="mr-1.5 h-4 w-4" />
-              Home
-            </Link>
+            {isLastRound ? "See Final Results" : "Next Image"}
+            <ChevronRight className="ml-1.5 h-4 w-4" />
           </Button>
-        )}
-        <Button 
-          onClick={onNextRound} 
-          className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center"
-        >
-          {isLastRound ? "See Final Results" : "Next Image"}
-          <ChevronRight className="ml-1.5 h-4 w-4" />
-        </Button>
+        </div>
       </div>
     </div>
   );

@@ -3,7 +3,6 @@ import { useState } from 'react';
 import MapComponent from '../MapComponent';
 import HistoricalImage from '../HistoricalImage';
 import ViewToggle from './ViewToggle';
-import { Lightbulb } from 'lucide-react';
 import HintDisplay from '../HintDisplay';
 
 interface GamePanelProps {
@@ -97,14 +96,6 @@ const GamePanel = ({
           </div>
         )}
         
-        {/* Hints Button */}
-        <button
-          onClick={toggleHints}
-          className="absolute top-4 left-4 z-10 p-2 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-full shadow-md"
-        >
-          <Lightbulb className="h-5 w-5 text-amber-500" />
-        </button>
-
         {/* Hints Popup */}
         {showHints && (
           <div className="absolute top-16 left-4 z-20">

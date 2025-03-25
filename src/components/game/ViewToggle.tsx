@@ -22,29 +22,24 @@ const ViewToggle = ({ activeView, onToggle, imageSrc, showClose = true }: ViewTo
         variant="ghost"
         className="h-32 px-4 font-medium flex flex-col items-center gap-2"
         onClick={onToggle}
+        aria-label={activeView === 'image' ? "Switch to map view" : "Switch to image view"}
       >
         {activeView === 'image' ? (
-          <>
-            <span>Map</span>
-            <img 
-              src="https://upload.wikimedia.org/wikipedia/commons/b/b0/Openstreetmap_logo.svg" 
-              alt="OpenStreetMap" 
-              className="h-16 w-16 object-contain" 
-            />
-          </>
+          <img 
+            src="https://upload.wikimedia.org/wikipedia/commons/b/b0/Openstreetmap_logo.svg" 
+            alt="OpenStreetMap" 
+            className="h-16 w-16 object-contain" 
+          />
         ) : (
-          <>
-            <span>Image</span>
-            {imageSrc && (
-              <div className="h-16 w-16 rounded overflow-hidden">
-                <img 
-                  src={imageSrc} 
-                  alt="Historical image" 
-                  className="h-full w-full object-cover" 
-                />
-              </div>
-            )}
-          </>
+          imageSrc && (
+            <div className="h-16 w-16 rounded overflow-hidden">
+              <img 
+                src={imageSrc} 
+                alt="Historical image" 
+                className="h-full w-full object-cover" 
+              />
+            </div>
+          )
         )}
       </Button>
       

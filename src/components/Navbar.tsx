@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/services/auth';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -14,10 +14,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import HintDisplay from './HintDisplay';
-import { Lightbulb, LogOut, User, Settings, HelpCircle, Home, Share2 } from 'lucide-react';
-import { ModeToggle } from './ModeToggle';
+import { Lightbulb, LogOut, User, Settings, HelpCircle, Home, Share2, ChevronDown } from 'lucide-react';
 import { SettingsDialog } from './SettingsDialog';
-import { useLocation } from 'react-router-dom';
 
 interface NavbarProps {
   roundInfo?: {
@@ -29,10 +27,18 @@ interface NavbarProps {
   timerDuration?: number;
   hintsOpen?: boolean;
   hintCoins?: number;
+  setHintsOpen?: (open: boolean) => void;
 }
 
-const Navbar = ({ roundInfo, showTimer, timerDuration, hintsOpen, hintCoins = 0 }: NavbarProps) => {
-  const { user, logout } = useAuth();
+const Navbar = ({ 
+  roundInfo, 
+  showTimer, 
+  timerDuration, 
+  hintsOpen, 
+  hintCoins = 0,
+  setHintsOpen
+}: NavbarProps) => {
+  const { user, logout, isAdmin } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
   const [showHints, setShowHints] = useState(false);
@@ -69,6 +75,14 @@ const Navbar = ({ roundInfo, showTimer, timerDuration, hintsOpen, hintCoins = 0 
     });
   };
   
+  const toggleHints = () => {
+    const newState = !showHints;
+    setShowHints(newState);
+    if (setHintsOpen) {
+      setHintsOpen(newState);
+    }
+  };
+  
   return (
     <nav className="bg-background border-b sticky top-0 z-50">
       <div className="container flex items-center justify-between h-16">
@@ -93,20 +107,35 @@ const Navbar = ({ roundInfo, showTimer, timerDuration, hintsOpen, hintCoins = 0 
         )}
 
         <div className="flex items-center space-x-4">
-          {/* Hint coin display in navbar */}
-          <div className="flex items-center gap-1">
+          {/* Hint button in navbar */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleHints}
+            className="flex items-center gap-1"
+          >
             <Lightbulb className="h-4 w-4 text-yellow-500" />
             <span className="text-sm font-medium">{hintCoins}</span>
-          </div>
+          </Button>
+          
+          {showHints && (
+            <div className="absolute top-16 right-24 z-50">
+              <HintDisplay 
+                availableHints={hintCoins} 
+                onClose={toggleHints} 
+              />
+            </div>
+          )}
           
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0 rounded-full">
+                <Button variant="ghost" className="h-8 flex items-center gap-1 p-1 rounded-full">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={user.avatarUrl} alt={user.username} />
                     <AvatarFallback>{user.username?.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -132,6 +161,14 @@ const Navbar = ({ roundInfo, showTimer, timerDuration, hintsOpen, hintCoins = 0 
                   <Settings className="mr-2 h-4 w-4" />
                   Settings
                 </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Admin
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem asChild>
                   <Link to="/help">
                     <HelpCircle className="mr-2 h-4 w-4" />

@@ -11,7 +11,7 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
   const [currentRound, setCurrentRound] = useState(1);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [gameComplete, setGameComplete] = useState(false);
-  const [images, setImages] = useState<HistoricalImage[]>(defaultImages);
+  const [images, setImages] = useState<HistoricalImage[]>([]);
   const configuredMaxRounds = useRef(maxRounds);
   
   // Load max rounds from localStorage if available
@@ -29,26 +29,43 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
     }
   }, []);
   
-  // Load images from localStorage if available
+  // Load images and select random set
   useEffect(() => {
     const savedEventsJson = localStorage.getItem('savedEvents');
+    let availableImages: HistoricalImage[] = [];
+    
     if (savedEventsJson) {
       try {
         const savedEvents = JSON.parse(savedEventsJson);
         if (Array.isArray(savedEvents) && savedEvents.length > 0) {
           console.log('Loading saved images from localStorage:', savedEvents);
-          setImages(savedEvents);
+          availableImages = savedEvents;
+        } else {
+          availableImages = defaultImages;
         }
       } catch (error) {
         console.error('Error loading saved images:', error);
+        availableImages = defaultImages;
       }
+    } else {
+      availableImages = defaultImages;
     }
-  }, []);
+    
+    // Select random images for this game session
+    if (availableImages.length > configuredMaxRounds.current) {
+      // Shuffle array and pick first n elements
+      const shuffledImages = [...availableImages].sort(() => Math.random() - 0.5);
+      setImages(shuffledImages.slice(0, configuredMaxRounds.current));
+    } else {
+      // Not enough images, use all available ones
+      setImages(availableImages);
+    }
+  }, [defaultImages]);
   
   // Current image based on the current image index
   const currentImage = images.length > 0 
-    ? images[currentImageIndex % images.length] 
-    : defaultImages[currentImageIndex % defaultImages.length];
+    ? images[currentImageIndex] 
+    : defaultImages[0]; // Fallback to first default image
   
   // Move to the next round
   const nextRound = () => {
@@ -63,17 +80,7 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
     setCurrentRound(prevRound => prevRound + 1);
     
     // Move to the next image
-    setCurrentImageIndex(prevIndex => {
-      // Make sure we don't repeat images if we have enough
-      const nextIndex = prevIndex + 1;
-      const totalImages = images.length || defaultImages.length;
-      
-      // If we're about to overflow, start from a random point
-      if (nextIndex >= totalImages) {
-        return Math.floor(Math.random() * totalImages);
-      }
-      return nextIndex;
-    });
+    setCurrentImageIndex(prevIndex => prevIndex + 1);
   };
   
   // Reset the game
@@ -81,6 +88,12 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
     setCurrentRound(1);
     setCurrentImageIndex(0);
     setGameComplete(false);
+    
+    // Regenerate random set of images
+    if (defaultImages.length > configuredMaxRounds.current) {
+      const shuffledImages = [...defaultImages].sort(() => Math.random() - 0.5);
+      setImages(shuffledImages.slice(0, configuredMaxRounds.current));
+    }
   };
   
   return {

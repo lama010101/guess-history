@@ -11,50 +11,28 @@ import { useToast } from "@/hooks/use-toast";
 interface LoginFormProps {
   isOpen: boolean;
   onClose: () => void;
+  switchToSignUp: () => void;
 }
 
-const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
+const LoginForm = ({ isOpen, onClose, switchToSignUp }: LoginFormProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [username, setUsername] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showUsernameField, setShowUsernameField] = useState(false);
-  const { login, signUp, continueAsGuest, googleLogin, isLoading, error } = useAuth();
+  const { login, continueAsGuest, googleLogin, isLoading, error } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (showUsernameField) {
-        // This is a new user, handle signup
-        await signUp(email, password, username);
-        toast({
-          title: "Account created!",
-          description: "You've successfully signed up for EventGuesser.",
-        });
-        onClose();
-      } else {
-        try {
-          // Try login first
-          await login(email, password);
-          toast({
-            title: "Welcome back!",
-            description: "You have successfully logged in.",
-          });
-          onClose();
-        } catch (loginError) {
-          // If login fails, show username field for signup
-          setShowUsernameField(true);
-          toast({
-            title: "Please create an account",
-            description: "Enter a username to sign up",
-          });
-          return; // Don't close modal, wait for user to complete signup
-        }
-      }
+      await login(email, password);
+      toast({
+        title: "Welcome back!",
+        description: "You have successfully logged in.",
+      });
+      onClose();
     } catch (error) {
       toast({
-        title: showUsernameField ? "Sign up failed" : "Login failed",
+        title: "Login failed",
         description: error instanceof Error ? error.message : "Something went wrong",
         variant: "destructive",
       });
@@ -91,13 +69,9 @@ const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl">
-            {showUsernameField ? "Create your account" : "Login to EventGuesser"}
-          </DialogTitle>
+          <DialogTitle className="text-xl">Login to EventGuesser</DialogTitle>
           <DialogDescription>
-            {showUsernameField 
-              ? "Please choose a username to complete signup" 
-              : "Login or create a new account"}
+            Login or create a new account
           </DialogDescription>
         </DialogHeader>
         
@@ -113,20 +87,6 @@ const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
               required
             />
           </div>
-          
-          {showUsernameField && (
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                type="text"
-                placeholder="your_username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-              />
-            </div>
-          )}
           
           <div className="space-y-2">
             <div className="flex justify-between">
@@ -162,9 +122,20 @@ const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
               className="w-full"
               disabled={isLoading}
             >
-              {isLoading ? (showUsernameField ? "Creating account..." : "Logging in...") : (showUsernameField ? "Sign Up" : "Login")}
+              {isLoading ? "Logging in..." : "Login"}
               <LogIn className="ml-2 h-4 w-4" />
             </Button>
+            
+            <p className="text-center text-sm text-muted-foreground">
+              Don't have an account?{" "}
+              <button
+                type="button"
+                onClick={switchToSignUp}
+                className="text-primary hover:underline cursor-pointer"
+              >
+                Sign up
+              </button>
+            </p>
             
             <div className="relative">
               <div className="absolute inset-0 flex items-center">

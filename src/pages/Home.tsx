@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Globe, Clock, Lightbulb, Users, Share2, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -143,7 +142,6 @@ const Home = () => {
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Timer: 5 minutes</p>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Hints available: 2</p>
                     
-                    {/* Daily score and countdown always visible when played */}
                     {dailyPlayed && (
                       <div className="mt-2 p-2 bg-primary/10 rounded-md">
                         <p className="font-medium">Today's score: {dailyScore}</p>
@@ -262,10 +260,8 @@ const Home = () => {
                   <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-full inline-flex">
                     <Clock className="h-6 w-6" />
                   </div>
-                  <div className="flex items-center justify-between mt-2">
-                    <CardTitle className="text-xl flex items-center gap-2">
-                      Timer
-                    </CardTitle>
+                  <div className="flex items-center gap-4 mt-2">
+                    <CardTitle className="text-xl">Timer</CardTitle>
                     <Switch 
                       checked={timerEnabled}
                       onCheckedChange={setTimerEnabled}
@@ -296,10 +292,8 @@ const Home = () => {
                   <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-full inline-flex">
                     <Lightbulb className="h-6 w-6" />
                   </div>
-                  <div className="flex items-center justify-between mt-2">
-                    <CardTitle className="text-xl flex items-center gap-2">
-                      Hints
-                    </CardTitle>
+                  <div className="flex items-center gap-4 mt-2">
+                    <CardTitle className="text-xl">Hints</CardTitle>
                     <Switch 
                       checked={hintsEnabled}
                       onCheckedChange={setHintsEnabled}

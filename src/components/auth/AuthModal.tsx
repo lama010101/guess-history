@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import LoginForm from "./LoginForm";
+import SignUpForm from "./SignUpForm";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface AuthModalProps {
 }
 
 const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
+  const [showLogin, setShowLogin] = useState(true);
   const location = useLocation();
 
   // Reset state when location changes to prevent stale modal state
@@ -18,8 +20,25 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
     }
   }, [location.pathname, isOpen, onClose]);
 
+  const switchToLogin = () => setShowLogin(true);
+  const switchToSignUp = () => setShowLogin(false);
+
   return (
-    <LoginForm isOpen={isOpen} onClose={onClose} />
+    <>
+      {showLogin ? (
+        <LoginForm 
+          isOpen={isOpen} 
+          onClose={onClose} 
+          switchToSignUp={switchToSignUp} 
+        />
+      ) : (
+        <SignUpForm 
+          isOpen={isOpen} 
+          onClose={onClose} 
+          switchToLogin={switchToLogin} 
+        />
+      )}
+    </>
   );
 };
 

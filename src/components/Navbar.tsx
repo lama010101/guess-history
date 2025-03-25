@@ -175,7 +175,7 @@ const Navbar = ({
         )}
         
         <div className="flex items-center gap-2 ml-auto">
-          {/* Only show the hint button in game */}
+          {/* Hint button - disabled when not in game */}
           {isInGame ? (
             <Button 
               variant="outline" 
@@ -190,11 +190,11 @@ const Navbar = ({
             <Button 
               variant="outline" 
               size="sm" 
-              className="flex items-center gap-1"
+              className="flex items-center"
               disabled
             >
               <Lightbulb className="h-4 w-4" />
-              <span>{hintCoins}</span>
+              <span className="sr-only">Hints</span>
             </Button>
           )}
           

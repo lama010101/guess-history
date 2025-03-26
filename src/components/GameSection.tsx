@@ -7,7 +7,6 @@ import { useGameState } from '@/hooks/useGameState';
 import Navbar from './Navbar';
 import GameTimer from './game/GameTimer';
 import NavigationConfirmation from './NavigationConfirmation';
-import { Clock } from 'lucide-react';
 const MAX_ROUNDS = 5; // Default to 5 rounds for a game
 
 const GameSection = () => {
@@ -28,7 +27,6 @@ const GameSection = () => {
     timerPaused,
     isDaily,
     dailyCompleted,
-    dailyScore,
     dailyDate,
     currentImage,
     currentScores,
@@ -60,12 +58,6 @@ const GameSection = () => {
     setNavbarKey(prev => prev + 1);
   }, []);
 
-  // Save daily score to localStorage when playing in daily mode
-  useEffect(() => {
-    if (isDaily && gameComplete) {
-      localStorage.setItem('lastDailyScore', totalScore.toString());
-    }
-  }, [isDaily, totalScore, gameComplete]);
   useEffect(() => {
     forceNavbarUpdate();
   }, [currentRound, totalScore, showResults, forceNavbarUpdate]);
@@ -96,7 +88,7 @@ const GameSection = () => {
     // Show game over screen if all rounds are completed
     if (gameComplete) {
       return <section id="game" className="h-full flex flex-col">
-          <Navbar key={navbarKey} hintCoins={hintCoins} />
+          <Navbar key={navbarKey} hintCoins={hintCoins} hideTitle={true} />
           <GameComplete totalScore={totalScore} maxRounds={MAX_ROUNDS} roundScores={roundScores} images={sampleImages} onPlayAgain={isDaily ? undefined : handleNewGame} isDaily={isDaily} />
         </section>;
     }
@@ -107,23 +99,59 @@ const GameSection = () => {
         currentRound,
         maxRounds,
         totalScore
-      }} hintCoins={hintCoins} hintsOpen={hintsOpen} setHintsOpen={setHintsOpen} />
+      }} hintCoins={hintCoins} hintsOpen={hintsOpen} setHintsOpen={setHintsOpen} hideTitle={true} />
         <div className="relative flex-1 flex flex-col overflow-hidden">
           {timerEnabled && <div className="w-full bg-gray-100 dark:bg-gray-800 px-4 py-2">
-              
-              <GameTimer duration={timerDuration} paused={timerPaused || showResults || hintsOpen} hintsOpen={hintsOpen} onTimeUp={handleSubmit} />
+              <GameTimer 
+                duration={timerDuration} 
+                paused={timerPaused || showResults || hintsOpen} 
+                hintsOpen={hintsOpen} 
+                onTimeUp={handleSubmit} 
+              />
             </div>}
           
           <div className="flex-1 overflow-hidden">
-            <GamePanel currentImage={currentImage} onLocationSelect={handleLocationSelect} selectedLocation={selectedLocation} gameRound={currentRound} maxRounds={MAX_ROUNDS} totalScore={totalScore} hintCoins={hintCoins} onUseLocationHint={handleUseLocationHint} onUseYearHint={handleUseYearHint} locationHintUsed={locationHintUsed} yearHintUsed={yearHintUsed} setHintsOpen={setHintsOpen} />
+            <GamePanel 
+              currentImage={currentImage} 
+              onLocationSelect={handleLocationSelect} 
+              selectedLocation={selectedLocation} 
+              gameRound={currentRound} 
+              maxRounds={MAX_ROUNDS} 
+              totalScore={totalScore} 
+              hintCoins={hintCoins} 
+              onUseLocationHint={handleUseLocationHint} 
+              onUseYearHint={handleUseYearHint} 
+              locationHintUsed={locationHintUsed} 
+              yearHintUsed={yearHintUsed} 
+              setHintsOpen={setHintsOpen} 
+            />
           </div>
           
-          <GameControls selectedLocation={selectedLocation} selectedYear={selectedYear} onYearChange={setSelectedYear} onSubmit={handleSubmit} />
+          <GameControls 
+            selectedLocation={selectedLocation} 
+            selectedYear={selectedYear} 
+            onYearChange={setSelectedYear} 
+            onSubmit={handleSubmit} 
+          />
           
-          <GameResultsModal showResults={showResults} locationScore={currentScores.locationScore} yearScore={currentScores.yearScore} currentImage={currentImage} selectedLocation={selectedLocation} selectedYear={selectedYear} distanceKm={currentScores.distanceKm} yearDifference={currentScores.yearDifference} onNextRound={handleNextRoundWithUpdate} currentRound={currentRound} maxRounds={MAX_ROUNDS} locationHintUsed={locationHintUsed} yearHintUsed={yearHintUsed} hintPenalty={currentScores.hintPenalty} />
+          <GameResultsModal 
+            showResults={showResults} 
+            locationScore={currentScores.locationScore} 
+            yearScore={currentScores.yearScore} 
+            currentImage={currentImage} 
+            selectedLocation={selectedLocation} 
+            selectedYear={selectedYear} 
+            distanceKm={currentScores.distanceKm} 
+            yearDifference={currentScores.yearDifference} 
+            onNextRound={handleNextRoundWithUpdate} 
+            currentRound={currentRound} 
+            maxRounds={MAX_ROUNDS} 
+            locationHintUsed={locationHintUsed} 
+            yearHintUsed={yearHintUsed} 
+            hintPenalty={currentScores.hintPenalty} 
+          />
         </div>
         
-        {/* Add navigation confirmation for game */}
         <NavigationConfirmation isInGame={true} />
       </section>;
   };

@@ -10,6 +10,17 @@ const AdminHeader = () => {
   const availableHints = 15;
   const [isHintOpen, setIsHintOpen] = useState(false);
 
+  // Mock hint handlers
+  const handleUseLocationHint = () => {
+    console.log('Location hint used from admin header');
+    return true;
+  };
+
+  const handleUseYearHint = () => {
+    console.log('Year hint used from admin header');
+    return true;
+  };
+
   return (
     <header className="w-full border-b bg-background p-4">
       <div className="container max-w-6xl mx-auto flex items-center justify-between">
@@ -27,8 +38,8 @@ const AdminHeader = () => {
             <HintDisplay 
               availableHints={availableHints} 
               onClose={() => setIsHintOpen(false)} 
-              onUseLocationHint={() => console.log('Location hint used')}
-              onUseYearHint={() => console.log('Year hint used')}
+              onUseLocationHint={handleUseLocationHint}
+              onUseYearHint={handleUseYearHint}
               locationHintUsed={false}
               yearHintUsed={false}
             />

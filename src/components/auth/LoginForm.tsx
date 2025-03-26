@@ -10,10 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 interface LoginFormProps {
   isOpen: boolean;
   onClose: () => void;
-  switchToSignUp: () => void;
 }
 
-const LoginForm = ({ isOpen, onClose, switchToSignUp }: LoginFormProps) => {
+const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -116,17 +115,6 @@ const LoginForm = ({ isOpen, onClose, switchToSignUp }: LoginFormProps) => {
             {isLoading ? "Logging in..." : "Login"}
             <LogIn className="ml-2 h-4 w-4" />
           </Button>
-          
-          <p className="text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <button
-              type="button"
-              onClick={switchToSignUp}
-              className="text-primary hover:underline cursor-pointer"
-            >
-              Sign up
-            </button>
-          </p>
           
           <div className="relative">
             <div className="absolute inset-0 flex items-center">

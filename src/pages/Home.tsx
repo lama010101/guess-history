@@ -134,7 +134,7 @@ const Home = () => {
                         <p className="text-sm text-neutral-500">Next challenge in: {timeUntilNextDaily}</p>
                       </div>}
                   </div>
-                  <div className="mt-4 md:mt-0">
+                  <div className="mt-4 md:mt-0 w-full md:w-auto">
                     {!dailyPlayed && (
                       <Button onClick={() => {
                         if (isAuthenticated) {
@@ -145,7 +145,7 @@ const Home = () => {
                             description: "You need to be logged in to play the daily challenge"
                           });
                         }
-                      }}>
+                      }} className="w-full md:min-w-[200px]">
                         Start Daily Challenge
                       </Button>
                     )}

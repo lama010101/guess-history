@@ -44,6 +44,7 @@ interface NavbarProps {
   hintCoins?: number;
   hintsOpen?: boolean;
   setHintsOpen?: (open: boolean) => void;
+  hideTitle?: boolean;
 }
 
 const Navbar = ({
@@ -52,7 +53,8 @@ const Navbar = ({
   roundInfo,
   hintCoins = 0,
   hintsOpen = false,
-  setHintsOpen
+  setHintsOpen,
+  hideTitle = false
 }: NavbarProps) => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
@@ -92,6 +94,30 @@ const Navbar = ({
     navigate(path);
   };
 
+  const handleFriendsNavigation = () => {
+    if (!isAuthenticated) {
+      setAuthModalOpen(true);
+      toast({
+        title: "Login required",
+        description: "You need to be logged in to access your friends list"
+      });
+      return;
+    }
+    handleNavigation('/friends');
+  };
+
+  const handleProfileNavigation = () => {
+    if (!isAuthenticated) {
+      setAuthModalOpen(true);
+      toast({
+        title: "Login required",
+        description: "You need to be logged in to access your profile"
+      });
+      return;
+    }
+    handleNavigation('/profile');
+  };
+
   const toggleHints = () => {
     if (isInGame) {
       if (setHintsOpen) {
@@ -106,55 +132,63 @@ const Navbar = ({
     <header className="sticky top-0 z-40 w-full bg-white dark:bg-gray-900 shadow-sm">
       <div className="container flex h-16 items-center">
         <div className="flex items-center gap-6 md:gap-10">
-          <Link to="/" className="flex items-center gap-1" onClick={(e) => {
-            e.preventDefault();
-            handleNavigation('/');
-          }}>
-            <span className="text-xl font-bold">EventGuesser</span>
-          </Link>
+          {!hideTitle && (
+            <Link to="/" className="flex items-center gap-1" onClick={(e) => {
+              e.preventDefault();
+              handleNavigation('/');
+            }}>
+              <span className="text-xl font-bold">EventGuesser</span>
+            </Link>
+          )}
           
           <nav className="hidden md:flex gap-6">
-            <Link 
-              to="/" 
-              onClick={(e) => {
-                e.preventDefault();
-                handleNavigation('/');
-              }}
-              className="text-sm font-medium transition-colors hover:text-primary"
-            >
-              Home
-            </Link>
-            <Link 
-              to="/profile" 
-              onClick={(e) => {
-                e.preventDefault();
-                handleNavigation('/profile');
-              }}
-              className="text-sm font-medium transition-colors hover:text-primary"
-            >
-              Profile
-            </Link>
-            <Link 
-              to="/leaderboard" 
-              onClick={(e) => {
-                e.preventDefault();
-                handleNavigation('/leaderboard');
-              }}
-              className="text-sm font-medium transition-colors hover:text-primary"
-            >
-              Leaderboard
-            </Link>
-            {isAdmin && (
-              <Link 
-                to="/admin" 
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleNavigation('/admin');
-                }}
-                className="text-sm font-medium transition-colors hover:text-primary"
-              >
-                Admin
-              </Link>
+            {!hideTitle && (
+              <>
+                <Link 
+                  to="/" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleNavigation('/');
+                  }}
+                  className="text-sm font-medium transition-colors hover:text-primary"
+                >
+                  Home
+                </Link>
+                <button 
+                  onClick={handleProfileNavigation}
+                  className="text-sm font-medium transition-colors hover:text-primary"
+                >
+                  Profile
+                </button>
+                <Link 
+                  to="/leaderboard" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleNavigation('/leaderboard');
+                  }}
+                  className="text-sm font-medium transition-colors hover:text-primary"
+                >
+                  Leaderboard
+                </Link>
+                <button 
+                  onClick={handleFriendsNavigation}
+                  className="text-sm font-medium transition-colors hover:text-primary"
+                >
+                  Friends
+                </button>
+                {isAdmin && (
+                  <Link 
+                    to="/admin" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleNavigation('/admin');
+                    }}
+                    className="text-sm font-medium transition-colors hover:text-primary"
+                  >
+                    Admin
+                  </Link>
+                )}
+              </>
             )}
           </nav>
         </div>
@@ -178,7 +212,7 @@ const Navbar = ({
         
         <div className="flex items-center gap-2 ml-auto">
           {/* Hint button - centered if possible */}
-          <div className="flex items-center gap-2">
+          <div className="flex-1 flex justify-center mx-4">
             <Button 
               variant="outline" 
               size="sm" 
@@ -187,16 +221,6 @@ const Navbar = ({
             >
               <Lightbulb className="h-4 w-4" />
               <span>{hintCoins}</span>
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-1"
-              onClick={() => setShowShareDialog(true)}
-            >
-              <Share2 className="h-4 w-4" />
-              <span className="sr-only">Share</span>
             </Button>
           </div>
           
@@ -218,11 +242,11 @@ const Navbar = ({
                   </div>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="z-50">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
-                  <DropdownMenuItem onClick={() => handleNavigation('/profile')}>
+                  <DropdownMenuItem onClick={handleProfileNavigation}>
                     <User className="mr-2 h-4 w-4" />
                     <span>{user?.username || 'Profile'}</span>
                   </DropdownMenuItem>
@@ -230,13 +254,17 @@ const Navbar = ({
                     <Home className="mr-2 h-4 w-4" />
                     <span>Home</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleNavigation('/friends')}>
+                  <DropdownMenuItem onClick={handleFriendsNavigation}>
                     <Users className="mr-2 h-4 w-4" />
                     <span>Friends</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleNavigation('/leaderboard')}>
                     <Trophy className="mr-2 h-4 w-4" />
                     <span>Leaderboard</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowShareDialog(true)}>
+                    <Share2 className="mr-2 h-4 w-4" />
+                    <span>Share</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShowSettingsDialog(true)}>
                     <Settings className="mr-2 h-4 w-4" />
@@ -267,9 +295,7 @@ const Navbar = ({
       <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
       <SettingsDialog 
         open={showSettingsDialog} 
-        onOpenChange={(open) => {
-          setShowSettingsDialog(open);
-        }} 
+        onOpenChange={setShowSettingsDialog} 
       />
       <HintDialog 
         open={showHintDialog} 

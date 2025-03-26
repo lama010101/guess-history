@@ -41,7 +41,9 @@ const GameTimer = ({ duration, paused = false, onTimeUp, hintsOpen = false }: Ga
             clearInterval(timerRef.current);
           }
           // Call onTimeUp to end the round when timer reaches zero
-          onTimeUp?.();
+          if (onTimeUp) {
+            setTimeout(() => onTimeUp(), 100); // Small delay to ensure UI updates
+          }
           return 0;
         }
         return prevTime - 1;

@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import LoginForm from './LoginForm';
-import SignUpForm from './SignUpForm';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -11,20 +10,12 @@ interface AuthModalProps {
 }
 
 const AuthModal = ({ isOpen, onClose, initialView = 'login' }: AuthModalProps) => {
-  const [view, setView] = useState<'login' | 'signup'>(initialView);
-  const [open, setOpen] = useState(isOpen);
+  const [open, setOpen] = useState(false);
 
   // Update internal state when isOpen prop changes
   useEffect(() => {
     setOpen(isOpen);
   }, [isOpen]);
-
-  // When view changes, make sure the modal stays open
-  useEffect(() => {
-    if (view === 'login' || view === 'signup') {
-      setOpen(true);
-    }
-  }, [view]);
 
   const handleClose = () => {
     setOpen(false);
@@ -43,19 +34,14 @@ const AuthModal = ({ isOpen, onClose, initialView = 'login' }: AuthModalProps) =
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {view === 'login' ? 'Login to EventGuesser' : 'Create an Account'}
+            Sign up or Login to EventGuesser
           </DialogTitle>
         </DialogHeader>
         
-        {view === 'login' ? (
-          <LoginForm 
-            isOpen={open} 
-            onClose={handleClose} 
-            switchToSignUp={() => setView('signup')} 
-          />
-        ) : (
-          <SignUpForm onLogin={() => setView('login')} onSuccess={handleClose} />
-        )}
+        <LoginForm 
+          isOpen={open} 
+          onClose={handleClose} 
+        />
       </DialogContent>
     </Dialog>
   );

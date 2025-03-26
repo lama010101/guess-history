@@ -74,6 +74,23 @@ const GamePanel = ({
     }
   };
 
+  // Custom hint handlers that update local state as well
+  const handleUseLocationHint = () => {
+    const result = onUseLocationHint();
+    if (result && currentImage.locationName) {
+      setCountryHint(getCountryOnly(currentImage.locationName));
+    }
+    return result;
+  };
+
+  const handleUseYearHint = () => {
+    const result = onUseYearHint();
+    if (result && currentImage.year) {
+      setDecadeHint(`${currentImage.year.toString().slice(0, -1)}X`);
+    }
+    return result;
+  };
+
   return (
     <div className="glass-card rounded-2xl overflow-hidden h-full relative">
       <div className="h-[500px] relative">
@@ -116,8 +133,8 @@ const GamePanel = ({
             <HintDisplay 
               availableHints={hintCoins} 
               onClose={toggleHints} 
-              onUseLocationHint={onUseLocationHint}
-              onUseYearHint={onUseYearHint}
+              onUseLocationHint={handleUseLocationHint}
+              onUseYearHint={handleUseYearHint}
               locationHintUsed={locationHintUsed}
               yearHintUsed={yearHintUsed}
             />

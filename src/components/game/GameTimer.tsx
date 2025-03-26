@@ -68,6 +68,12 @@ const GameTimer = ({ duration, paused, hintsOpen, onTimeUp }: GameTimerProps) =>
     const seconds = timeInSeconds % 60;
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
+
+  const getProgressColor = () => {
+    if (progress < 20) return 'bg-red-500';
+    if (progress < 50) return 'bg-yellow-500';
+    return 'bg-primary';
+  };
   
   return (
     <div className={`relative w-full ${hintsOpen ? 'opacity-30' : ''}`}>
@@ -81,8 +87,9 @@ const GameTimer = ({ duration, paused, hintsOpen, onTimeUp }: GameTimerProps) =>
       
       <Progress 
         value={progress} 
-        className="h-2" 
-        indicatorClassName={`${progress < 20 ? 'bg-red-500' : progress < 50 ? 'bg-yellow-500' : 'bg-primary'}`}
+        className="h-2"
+        // Use className directly on the Progress component instead of indicatorClassName
+        style={{ '--progress-indicator-color': getProgressColor() } as React.CSSProperties}
       />
     </div>
   );

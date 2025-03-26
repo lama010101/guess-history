@@ -5,6 +5,7 @@ interface UseLeafletMapProps {
   onLocationSelect?: (lat: number, lng: number) => void;
   selectedLocation?: { lat: number; lng: number } | null;
   initialLocation?: { lat: number; lng: number };
+  initialZoom?: number; // Added initialZoom prop
   actualLocation?: { lat: number; lng: number };
   showActualLocationMarker?: boolean;
 }
@@ -13,6 +14,7 @@ export const useLeafletMap = ({
   onLocationSelect, 
   selectedLocation,
   initialLocation = { lat: 48.8566, lng: 2.3522 }, // Default to Paris
+  initialZoom = 4, // Default zoom level
   actualLocation,
   showActualLocationMarker = false
 }: UseLeafletMapProps) => {
@@ -39,7 +41,7 @@ export const useLeafletMap = ({
       // Create map centered on initialLocation or default to Europe
       const mapInstance = L.map(mapContainerRef.current).setView(
         [initialLocation.lat, initialLocation.lng], 
-        4
+        initialZoom // Use initialZoom from props
       );
       
       // Add tile layer (OpenStreetMap)

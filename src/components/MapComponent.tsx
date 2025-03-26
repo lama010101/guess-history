@@ -9,6 +9,7 @@ interface MapComponentProps {
   onLocationSelect: (lat: number, lng: number) => void;
   selectedLocation: { lat: number; lng: number } | null;
   initialLocation?: { lat: number; lng: number };
+  initialZoom?: number; // Added initialZoom prop
   actualLocation?: { lat: number; lng: number };
   showActualLocationMarker?: boolean;
   hideInstructions?: boolean;
@@ -18,6 +19,7 @@ const MapComponent = ({
   onLocationSelect,
   selectedLocation,
   initialLocation = { lat: 50, lng: 10 }, // Center on Europe by default
+  initialZoom = 4, // Default zoom level
   actualLocation,
   showActualLocationMarker = false,
   hideInstructions = false
@@ -33,6 +35,7 @@ const MapComponent = ({
     onLocationSelect,
     selectedLocation,
     initialLocation,
+    initialZoom, // Pass initialZoom to the hook
     actualLocation,
     showActualLocationMarker
   });

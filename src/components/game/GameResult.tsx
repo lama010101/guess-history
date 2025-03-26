@@ -20,6 +20,7 @@ interface GameResultProps {
   eventTitle?: string;
   eventDescription?: string;
   locationName?: string;
+  removeShadow?: boolean; // Added removeShadow prop
 }
 
 const GameResult = ({
@@ -37,7 +38,8 @@ const GameResult = ({
   hintPenalty,
   eventTitle,
   eventDescription,
-  locationName
+  locationName,
+  removeShadow = false // Default to false
 }: GameResultProps) => {
   if (!isVisible) return null;
   
@@ -53,7 +55,7 @@ const GameResult = ({
   };
   
   return (
-    <div className="glass-card p-4 rounded-lg max-w-md w-full bg-white/90 dark:bg-gray-900/90">
+    <div className={`glass-card p-4 rounded-lg max-w-md w-full bg-white/90 dark:bg-gray-900/90 ${removeShadow ? '' : 'shadow-md'}`}>
       <div className="text-center mb-4">
         <h3 className="text-2xl font-bold mb-1">Image Score</h3>
       </div>

@@ -38,7 +38,7 @@ export const useHints = () => {
   };
   
   // Hint handlers
-  const handleUseLocationHint = () => {
+  const handleUseLocationHint = (): boolean => {
     if (hintCoins > 0 && !locationHintUsed) {
       setLocationHintUsed(true);
       setHintCoins(prev => prev - 1);
@@ -61,7 +61,7 @@ export const useHints = () => {
     return false;
   };
   
-  const handleUseYearHint = () => {
+  const handleUseYearHint = (): boolean => {
     if (hintCoins > 0 && !yearHintUsed) {
       setYearHintUsed(true);
       setHintCoins(prev => prev - 1);

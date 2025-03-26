@@ -36,24 +36,21 @@ const GameSection = () => {
     handleSubmit,
     handleNextRound,
     handleNewGame,
-    handleUseLocationHint,
-    handleUseYearHint,
+    handleUseLocationHint: gameStateUseLocationHint,
+    handleUseYearHint: gameStateUseYearHint,
     setTimerEnabled,
     setTimerDuration,
     setTimerPaused,
     maxRounds
   } = useGameState(MAX_ROUNDS);
 
-  // Enable timer by default
   useEffect(() => {
     setTimerEnabled(true);
     setTimerDuration(60); // 60 seconds by default
   }, [setTimerEnabled, setTimerDuration]);
 
-  // Create a unique key for forcing Navbar to re-render when state changes
   const [navbarKey, setNavbarKey] = useState(0);
 
-  // Force update the navbar when relevant game state changes
   const forceNavbarUpdate = useCallback(() => {
     setNavbarKey(prev => prev + 1);
   }, []);
@@ -62,7 +59,6 @@ const GameSection = () => {
     forceNavbarUpdate();
   }, [currentRound, totalScore, showResults, forceNavbarUpdate]);
 
-  // Create an adapter function to handle the different parameter types
   const handleLocationSelect = (lat: number, lng: number) => {
     updateSelectedLocation({
       lat,
@@ -70,22 +66,26 @@ const GameSection = () => {
     });
   };
 
-  // Handler for next round that also forces a navbar update
   const handleNextRoundWithUpdate = () => {
     handleNextRound();
     forceNavbarUpdate();
   };
 
-  // Stop timer when results are shown
+  const handleUseLocationHint = (): boolean => {
+    return gameStateUseLocationHint();
+  };
+
+  const handleUseYearHint = (): boolean => {
+    return gameStateUseYearHint();
+  };
+
   useEffect(() => {
     if (showResults) {
       setTimerPaused(true);
     }
   }, [showResults, setTimerPaused]);
 
-  // Prepare content based on game state
   const renderContent = () => {
-    // Show game over screen if all rounds are completed
     if (gameComplete) {
       return <section id="game" className="h-full flex flex-col">
           <Navbar key={navbarKey} hintCoins={hintCoins} hideTitle={true} />
@@ -93,7 +93,6 @@ const GameSection = () => {
         </section>;
     }
 
-    // Otherwise show the game interface
     return <section id="game" className="h-full flex flex-col">
         <Navbar key={navbarKey} roundInfo={{
         currentRound,

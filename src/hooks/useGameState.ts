@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/services/auth';
@@ -18,8 +17,8 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     locationHintUsed, 
     yearHintUsed, 
     resetHints, 
-    handleUseLocationHint, 
-    handleUseYearHint,
+    handleUseLocationHint: useHintsLocationHint, 
+    handleUseYearHint: useHintsYearHint,
     addHintCoins 
   } = useHints();
   
@@ -206,6 +205,15 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     locationHintUsed,
     yearHintUsed
   );
+
+  // Properly wrap the hint handlers to ensure they return boolean values
+  const handleUseLocationHint = (): boolean => {
+    return useHintsLocationHint();
+  };
+  
+  const handleUseYearHint = (): boolean => {
+    return useHintsYearHint();
+  };
 
   return {
     // Game state

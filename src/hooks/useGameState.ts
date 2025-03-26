@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/services/auth';
@@ -5,6 +6,9 @@ import { sampleImages } from '@/data/sampleImages';
 import { useHints } from './useHints';
 import { useGameRounds } from './useGameRounds';
 import { useGameScoring } from './useGameScoring';
+import { useGameSettings } from './useGameSettings';
+import { useGameProgress } from './useGameProgress';
+import { useDailyGame } from './useDailyGame';
 import { GameStateReturn } from '@/types/gameState';
 
 export const useGameState = (maxRounds = 5): GameStateReturn => {
@@ -25,10 +29,10 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     currentRound,
     currentImage,
     currentImageIndex,
-    gameComplete,
+    maxRounds: configuredMaxRounds,
+    gameComplete: roundsComplete,
     nextRound,
     resetGame,
-    maxRounds: configuredMaxRounds
   } = useGameRounds({ images: sampleImages, maxRounds });
   
   const {
@@ -39,62 +43,43 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     resetScores
   } = useGameScoring();
 
-  const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [selectedYear, setSelectedYear] = useState<number>(1960);
-  const [showResults, setShowResults] = useState(false);
-  
-  const [timerEnabled, setTimerEnabled] = useState(false);
-  const [timerDuration, setTimerDuration] = useState(60);
-  const [timerPaused, setTimerPaused] = useState(false);
+  const {
+    timerEnabled,
+    timerDuration,
+    timerPaused,
+    setTimerEnabled,
+    setTimerDuration,
+    setTimerPaused
+  } = useGameSettings();
 
-  const [isDaily, setIsDaily] = useState(false);
-  const [dailyCompleted, setDailyCompleted] = useState(false);
-  const [dailyScore, setDailyScore] = useState(0);
-  const [dailyDate, setDailyDate] = useState("");
+  const {
+    selectedLocation,
+    selectedYear,
+    showResults,
+    gameComplete,
+    setSelectedLocation,
+    setSelectedYear,
+    setShowResults,
+    setGameComplete
+  } = useGameProgress(roundsComplete);
 
+  const {
+    isDaily,
+    dailyCompleted,
+    dailyScore,
+    dailyDate,
+    setDailyGame,
+    completeDailyGame
+  } = useDailyGame();
+
+  // Sync gameComplete state with rounds completion
   useEffect(() => {
-    const savedState = localStorage.getItem('currentGameState');
-    if (savedState) {
-      try {
-        const state = JSON.parse(savedState);
-        if (state.selectedLocation) {
-          setSelectedLocation(state.selectedLocation);
-        }
-        if (state.selectedYear) {
-          setSelectedYear(state.selectedYear);
-        }
-        if (state.timerEnabled !== undefined) {
-          setTimerEnabled(state.timerEnabled);
-        }
-        if (state.timerDuration) {
-          setTimerDuration(state.timerDuration);
-        }
-        if (state.showResults !== undefined) {
-          setShowResults(state.showResults);
-        }
-        
-        console.info('Loaded saved game state:', state);
-      } catch (error) {
-        console.error('Error loading saved game state:', error);
-      }
+    if (roundsComplete !== gameComplete) {
+      setGameComplete(roundsComplete);
     }
-    
-    const savedSettings = localStorage.getItem('gameSettings');
-    if (savedSettings) {
-      try {
-        const settings = JSON.parse(savedSettings);
-        if (settings.timerEnabled !== undefined) {
-          setTimerEnabled(settings.timerEnabled);
-        }
-        if (settings.timerMinutes) {
-          setTimerDuration(settings.timerMinutes * 60);
-        }
-      } catch (error) {
-        console.error('Error loading game settings:', error);
-      }
-    }
-  }, []);
-  
+  }, [roundsComplete, gameComplete, setGameComplete]);
+
+  // Save detailed game state
   useEffect(() => {
     const gameState = {
       selectedLocation,

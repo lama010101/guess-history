@@ -72,15 +72,11 @@ const GameSection = () => {
     forceNavbarUpdate();
   };
 
-  // Fix: Add explicit return type and explicitly return the boolean value
   const handleUseLocationHint = (): boolean => {
-    // Make sure we're explicitly returning a boolean from gameStateUseLocationHint
     return Boolean(gameStateUseLocationHint());
   };
 
-  // Fix: Add explicit return type and explicitly return the boolean value
   const handleUseYearHint = (): boolean => {
-    // Make sure we're explicitly returning a boolean from gameStateUseYearHint
     return Boolean(gameStateUseYearHint());
   };
 

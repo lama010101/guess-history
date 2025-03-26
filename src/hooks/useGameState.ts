@@ -181,11 +181,11 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
   );
 
   const handleUseLocationHint = (): boolean => {
-    return useHintsLocationHint();
+    return Boolean(useHintsLocationHint());
   };
   
   const handleUseYearHint = (): boolean => {
-    return useHintsYearHint();
+    return Boolean(useHintsYearHint());
   };
 
   return {

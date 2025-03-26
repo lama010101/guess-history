@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -37,7 +36,7 @@ export const useHints = () => {
     });
   };
   
-  // Hint handlers
+  // Ensure hint handlers explicitly return boolean values
   const handleUseLocationHint = (): boolean => {
     if (hintCoins > 0 && !locationHintUsed) {
       setLocationHintUsed(true);

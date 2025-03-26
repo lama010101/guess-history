@@ -206,7 +206,7 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     yearHintUsed
   );
 
-  // Properly wrap the hint handlers to ensure they return boolean values
+  // Make sure these handlers explicitly return boolean values
   const handleUseLocationHint = (): boolean => {
     return useHintsLocationHint();
   };

@@ -27,7 +27,8 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     currentImageIndex,
     gameComplete,
     nextRound,
-    resetGame
+    resetGame,
+    maxRounds: configuredMaxRounds
   } = useGameRounds({ images: sampleImages, maxRounds });
   
   const {
@@ -180,13 +181,11 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
   );
 
   const handleUseLocationHint = (): boolean => {
-    const result = useHintsLocationHint();
-    return result === true;
+    return useHintsLocationHint();
   };
   
   const handleUseYearHint = (): boolean => {
-    const result = useHintsYearHint();
-    return result === true;
+    return useHintsYearHint();
   };
 
   return {
@@ -216,6 +215,7 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     currentScores,
     
     sampleImages,
+    maxRounds: configuredMaxRounds,
     
     setSelectedLocation,
     setSelectedYear,

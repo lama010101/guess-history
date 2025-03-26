@@ -72,13 +72,11 @@ const GameSection = () => {
   };
 
   const handleUseLocationHint = (): boolean => {
-    const result = gameStateUseLocationHint();
-    return result === true;
+    return gameStateUseLocationHint();
   };
 
   const handleUseYearHint = (): boolean => {
-    const result = gameStateUseYearHint();
-    return result === true;
+    return gameStateUseYearHint();
   };
 
   useEffect(() => {

@@ -8,14 +8,21 @@ import { useToast } from '@/hooks/use-toast';
 interface HintDisplayProps {
   availableHints: number;
   onClose: () => void;
+  onUseLocationHint: () => void;
+  onUseYearHint: () => void;
+  locationHintUsed: boolean;
+  yearHintUsed: boolean;
 }
 
-const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
+const HintDisplay = ({ 
+  availableHints, 
+  onClose, 
+  onUseLocationHint, 
+  onUseYearHint, 
+  locationHintUsed, 
+  yearHintUsed 
+}: HintDisplayProps) => {
   const { 
-    handleUseLocationHint, 
-    handleUseYearHint,
-    locationHintUsed,
-    yearHintUsed,
     currentImage,
     hintCoins
   } = useGameState();
@@ -28,11 +35,11 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
   const [localHintValues, setLocalHintValues] = useState<{country?: string, decade?: string}>({});
   const [remainingHints, setRemainingHints] = useState(availableHints);
   
-  // Update local state when global state changes
+  // Update local state when props change
   useEffect(() => {
     setLocalLocationHintUsed(locationHintUsed);
     setLocalYearHintUsed(yearHintUsed);
-    setRemainingHints(hintCoins);
+    setRemainingHints(availableHints);
     
     // Set hint values when hints are used and current image is available
     if (currentImage) {
@@ -48,7 +55,7 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
       
       setLocalHintValues(updatedHintValues);
     }
-  }, [locationHintUsed, yearHintUsed, currentImage, hintCoins]);
+  }, [locationHintUsed, yearHintUsed, currentImage, availableHints]);
 
   // Helper to extract just the country from location name
   const getCountryOnly = (locationName?: string): string => {
@@ -60,9 +67,9 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
   };
   
   // Handle using location hint
-  const onUseLocationHint = () => {
+  const handleUseLocationHint = () => {
     if (!localLocationHintUsed && remainingHints > 0) {
-      handleUseLocationHint();
+      onUseLocationHint();
       setLocalLocationHintUsed(true);
       setRemainingHints(prev => prev - 1);
       
@@ -76,9 +83,9 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
   };
   
   // Handle using year hint
-  const onUseYearHint = () => {
+  const handleUseYearHint = () => {
     if (!localYearHintUsed && remainingHints > 0) {
-      handleUseYearHint();
+      onUseYearHint();
       setLocalYearHintUsed(true);
       setRemainingHints(prev => prev - 1);
       
@@ -123,7 +130,7 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
         <div className="grid grid-cols-2 gap-4 py-2">
           <div className="flex flex-col items-center">
             <Button 
-              onClick={onUseLocationHint}
+              onClick={handleUseLocationHint}
               disabled={localLocationHintUsed || remainingHints <= 0}
               variant={localLocationHintUsed ? "outline" : "default"}
               className="w-full"
@@ -142,7 +149,7 @@ const HintDisplay = ({ availableHints, onClose }: HintDisplayProps) => {
           
           <div className="flex flex-col items-center">
             <Button 
-              onClick={onUseYearHint}
+              onClick={handleUseYearHint}
               disabled={localYearHintUsed || remainingHints <= 0}
               variant={localYearHintUsed ? "outline" : "default"}
               className="w-full"

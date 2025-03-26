@@ -48,7 +48,11 @@ const AuthModal = ({ isOpen, onClose, initialView = 'login' }: AuthModalProps) =
         </DialogHeader>
         
         {view === 'login' ? (
-          <LoginForm onSignUp={() => setView('signup')} onSuccess={handleClose} />
+          <LoginForm 
+            isOpen={open} 
+            onClose={handleClose} 
+            switchToSignUp={() => setView('signup')} 
+          />
         ) : (
           <SignUpForm onLogin={() => setView('login')} onSuccess={handleClose} />
         )}

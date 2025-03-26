@@ -14,17 +14,37 @@ const AdminEventsManager = () => {
   const [selectedEvent, setSelectedEvent] = useState<HistoricalImage | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const { loadEvents, saveEvents } = useEvents();
+  const [isSaving, setIsSaving] = useState(false);
+  const [selectedEvents, setSelectedEvents] = useState<Set<number>>(new Set());
 
-  // Load events on mount
+  // Load events from localStorage on mount
   useEffect(() => {
     const fetchEvents = async () => {
-      const loadedEvents = await loadEvents();
-      setEvents(loadedEvents);
+      const savedEventsJson = localStorage.getItem('savedEvents');
+      if (savedEventsJson) {
+        try {
+          const loadedEvents = JSON.parse(savedEventsJson);
+          setEvents(loadedEvents);
+        } catch (error) {
+          console.error('Error parsing saved events:', error);
+          setEvents([]);
+        }
+      }
     };
     
     fetchEvents();
-  }, [loadEvents]);
+  }, []);
+
+  // Save events to localStorage
+  const saveEvents = async (eventsToSave: HistoricalImage[]) => {
+    try {
+      localStorage.setItem('savedEvents', JSON.stringify(eventsToSave));
+      return true;
+    } catch (error) {
+      console.error('Error saving events:', error);
+      return false;
+    }
+  };
 
   // Event actions
   const handleAddEvent = () => {
@@ -44,12 +64,9 @@ const AdminEventsManager = () => {
     setIsEditing(true);
   };
 
-  const handleEditEvent = (id: number) => {
-    const event = events.find(e => e.id === id);
-    if (event) {
-      setSelectedEvent(event);
-      setIsEditing(true);
-    }
+  const handleEditEvent = (event: HistoricalImage) => {
+    setSelectedEvent(event);
+    setIsEditing(true);
   };
 
   const handleDeleteEvent = async (id: number) => {
@@ -94,6 +111,14 @@ const AdminEventsManager = () => {
     setSelectedEvent(null);
   };
 
+  const handleDeleteSelected = () => {
+    // Implement later if needed
+  };
+
+  const handleSaveSelectedToDB = () => {
+    // Implement later if needed  
+  };
+
   const handleImportExcel = async (importedEvents: HistoricalImage[]) => {
     // Combine existing events with new ones
     let updatedEvents = [...events];
@@ -129,18 +154,37 @@ const AdminEventsManager = () => {
     });
   };
 
+  const handleImageUpload = () => {
+    toast({
+      title: "Image Upload",
+      description: "This feature is not yet implemented.",
+    });
+  };
+
   return (
     <div className="space-y-6">
       {isEditing ? (
         <EventEditor 
-          event={selectedEvent} 
+          selectedEvent={selectedEvent} 
+          isAddingEvent={!selectedEvent?.id}
           onSave={handleSaveEvent} 
-          onCancel={handleCancelEdit} 
+          onCancel={handleCancelEdit}
+          onImageUpload={handleImageUpload}
+          onFileUpload={() => setIsUploading(true)}
         />
       ) : (
         <>
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <EventsToolbar onAddEvent={handleAddEvent} />
+            <EventsToolbar 
+              onAddEvent={handleAddEvent}
+              onDeleteSelected={handleDeleteSelected}
+              onSaveSelectedToDB={handleSaveSelectedToDB}
+              onImportComplete={handleImportExcel}
+              isUploading={isUploading}
+              setIsUploading={setIsUploading}
+              isSaving={isSaving}
+              selectedEventsCount={selectedEvents.size}
+            />
             <div className="ml-auto">
               <ExcelImporter 
                 onImportComplete={handleImportExcel}

@@ -22,7 +22,7 @@ interface SignUpFormProps {
 
 const SignUpForm = ({ onLogin, onSuccess }: SignUpFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
-  const { register, login } = useAuth();
+  const { signUp, login } = useAuth();
   const { toast } = useToast();
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -38,40 +38,22 @@ const SignUpForm = ({ onLogin, onSuccess }: SignUpFormProps) => {
     setIsLoading(true);
     try {
       // Register the user
-      const success = await register(values.email, values.password, values.username);
+      await signUp(values.email, values.password, values.username);
       
-      if (success) {
-        // After successful registration, automatically log the user in
-        const loginSuccess = await login(values.email, values.password);
-        
-        if (loginSuccess) {
-          toast({
-            title: "Welcome!",
-            description: "Your account has been created and you're now logged in.",
-          });
-          onSuccess();
-        } else {
-          // If auto-login fails, still consider registration successful but show a message
-          toast({
-            title: "Account created!",
-            description: "Your account has been created. Please log in.",
-          });
-          onLogin();
-        }
-      } else {
-        toast({
-          title: "Registration failed",
-          description: "This email may already be in use. Please try another.",
-          variant: "destructive",
-        });
-      }
+      // After successful registration, automatically log the user in
+      await login(values.email, values.password);
+      
+      toast({
+        title: "Welcome!",
+        description: "Your account has been created and you're now logged in.",
+      });
+      onSuccess();
     } catch (error) {
       toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        title: "Registration failed",
+        description: "This email may already be in use. Please try another.",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   };

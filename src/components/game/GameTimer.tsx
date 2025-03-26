@@ -1,52 +1,51 @@
 
 import { useState, useEffect, useRef } from 'react';
-import { useGameState } from '@/hooks/useGameState';
+import { Progress } from '@/components/ui/progress';
+import { Clock } from 'lucide-react';
 
 interface GameTimerProps {
-  duration: number; // in seconds
-  paused?: boolean;
-  onTimeUp?: () => void;
-  hintsOpen?: boolean; // Added prop for when hints are open
+  duration: number;
+  paused: boolean;
+  hintsOpen?: boolean;
+  onTimeUp: () => void;
 }
 
-const GameTimer = ({ duration, paused = false, onTimeUp, hintsOpen = false }: GameTimerProps) => {
-  const [timeLeft, setTimeLeft] = useState(duration);
-  const [isRunning, setIsRunning] = useState(true);
-  const { showResults } = useGameState();
-  const timerRef = useRef<number | null>(null);
+const GameTimer = ({ duration, paused, hintsOpen, onTimeUp }: GameTimerProps) => {
+  const [secondsLeft, setSecondsLeft] = useState(duration);
+  const [progress, setProgress] = useState(100);
+  const initialDuration = useRef(duration);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Reset timer when duration changes
+  // Update duration if it changes from props
   useEffect(() => {
-    setTimeLeft(duration);
-    setIsRunning(true);
+    initialDuration.current = duration;
+    setSecondsLeft(duration);
+    setProgress(100);
   }, [duration]);
-
-  // Stop timer when paused, hints are open, or results are showing
+  
   useEffect(() => {
-    if (paused || hintsOpen || showResults) {
-      setIsRunning(false);
-    } else {
-      setIsRunning(true);
+    if (paused) {
+      // If paused, clear any existing timer
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      return;
     }
-  }, [paused, hintsOpen, showResults]);
-
-  // Timer countdown logic
-  useEffect(() => {
-    if (!isRunning) return;
     
-    timerRef.current = window.setInterval(() => {
-      setTimeLeft((prevTime) => {
-        if (prevTime <= 1) {
+    // Create a new timer
+    timerRef.current = setInterval(() => {
+      setSecondsLeft(prev => {
+        if (prev <= 1) {
+          // Time's up, clear interval and call onTimeUp
           if (timerRef.current) {
             clearInterval(timerRef.current);
+            timerRef.current = null;
           }
-          // Call onTimeUp to end the round when timer reaches zero
-          if (onTimeUp) {
-            setTimeout(() => onTimeUp(), 100); // Small delay to ensure UI updates
-          }
+          onTimeUp();
           return 0;
         }
-        return prevTime - 1;
+        return prev - 1;
       });
     }, 1000);
     
@@ -55,30 +54,36 @@ const GameTimer = ({ duration, paused = false, onTimeUp, hintsOpen = false }: Ga
         clearInterval(timerRef.current);
       }
     };
-  }, [isRunning, onTimeUp]);
-
-  const percentLeft = (timeLeft / duration) * 100;
-
-  const getTimerColor = () => {
-    if (percentLeft <= 10) return 'bg-red-500';
-    if (percentLeft <= 30) return 'bg-yellow-500';
-    return 'bg-green-500';
+  }, [paused, onTimeUp]);
+  
+  // Update progress bar
+  useEffect(() => {
+    const progressValue = (secondsLeft / initialDuration.current) * 100;
+    setProgress(progressValue);
+  }, [secondsLeft]);
+  
+  // Format time as MM:SS
+  const formatTime = (timeInSeconds: number) => {
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = timeInSeconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
-
+  
   return (
-    <div className="relative w-full">
-      <div className="flex justify-between items-center mb-1">
-        <div className="absolute right-0 top-0 text-xs font-medium">
-          {timeLeft} sec
+    <div className={`relative w-full ${hintsOpen ? 'opacity-30' : ''}`}>
+      <div className="flex items-center gap-2 mb-1">
+        <Clock className="h-4 w-4 text-primary" />
+        <div className="flex-1 flex justify-between items-center">
+          <span className="text-sm font-medium">Time Remaining</span>
+          <span className="text-sm font-mono">{formatTime(secondsLeft)}</span>
         </div>
       </div>
-      <div className="relative w-full h-2">
-        <div 
-          className={`absolute left-0 top-0 h-2 transition-all ${getTimerColor()}`}
-          style={{ width: `${percentLeft}%` }}
-          aria-label={`${timeLeft} seconds remaining`}
-        />
-      </div>
+      
+      <Progress 
+        value={progress} 
+        className="h-2" 
+        indicatorClassName={`${progress < 20 ? 'bg-red-500' : progress < 50 ? 'bg-yellow-500' : 'bg-primary'}`}
+      />
     </div>
   );
 };

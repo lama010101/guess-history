@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useRef } from 'react';
 import MapComponent from '../MapComponent';
 import HistoricalImage from '../HistoricalImage';
 import ViewToggle from './ViewToggle';
@@ -42,7 +43,9 @@ const GamePanel = ({
   const [showHints, setShowHints] = useState(false);
   const [countryHint, setCountryHint] = useState<string | null>(null);
   const [decadeHint, setDecadeHint] = useState<string | null>(null);
+  const hintsWrapperRef = useRef<HTMLDivElement>(null);
 
+  // Persist hint details between renders
   useEffect(() => {
     if (locationHintUsed && currentImage.locationName) {
       setCountryHint(getCountryOnly(currentImage.locationName));
@@ -59,6 +62,23 @@ const GamePanel = ({
     const parts = locationName.split(',');
     return parts.length > 1 ? parts[parts.length - 1].trim() : parts[0].trim();
   };
+
+  // Handle outside clicks to close hints panel when clicking elsewhere
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (hintsWrapperRef.current && !hintsWrapperRef.current.contains(event.target as Node)) {
+        setShowHints(false);
+        if (setHintsOpen) {
+          setHintsOpen(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [setHintsOpen]);
 
   const toggleHints = () => {
     const newState = !showHints;
@@ -97,7 +117,8 @@ const GamePanel = ({
               onLocationSelect={onLocationSelect} 
               selectedLocation={selectedLocation}
               hideInstructions={true}
-              initialLocation={{ lat: 50, lng: 10 }}
+              initialLocation={{ lat: 10, lng: 0 }} // Default to a more zoomed-out world view
+              initialZoom={2} // More zoomed out to see the entire world
             />
           </div>
         )}
@@ -115,7 +136,7 @@ const GamePanel = ({
         )}
         
         {showHints && (
-          <div className="absolute top-16 left-4 z-20">
+          <div className="absolute top-16 left-4 z-20" ref={hintsWrapperRef}>
             <HintDisplay 
               availableHints={hintCoins} 
               onClose={toggleHints} 
@@ -132,6 +153,7 @@ const GamePanel = ({
           onToggle={() => setActiveView(activeView === 'image' ? 'map' : 'image')}
           imageSrc={currentImage.src}
           showClose={false}
+          size="large" // Increase the button size by 33%
         />
       </div>
     </div>

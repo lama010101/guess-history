@@ -66,9 +66,10 @@ const GameResultsModal = ({
           eventTitle={currentImage.title}
           eventDescription={currentImage.description}
           locationName={currentImage.locationName}
+          removeShadow={true} // Remove the shadow at the bottom
         />
         
-        <div className="p-4 border-t">
+        <div className="p-4">
           <Button 
             onClick={onNextRound} 
             className="w-full bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center"

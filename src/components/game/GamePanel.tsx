@@ -76,19 +76,17 @@ const GamePanel = ({
 
   // Custom hint handlers that update local state as well
   const handleUseLocationHint = () => {
-    const result = onUseLocationHint();
-    if (result && currentImage.locationName) {
+    onUseLocationHint();
+    if (currentImage.locationName) {
       setCountryHint(getCountryOnly(currentImage.locationName));
     }
-    return result;
   };
 
   const handleUseYearHint = () => {
-    const result = onUseYearHint();
-    if (result && currentImage.year) {
+    onUseYearHint();
+    if (currentImage.year) {
       setDecadeHint(`${currentImage.year.toString().slice(0, -1)}X`);
     }
-    return result;
   };
 
   return (

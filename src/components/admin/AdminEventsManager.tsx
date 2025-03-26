@@ -5,7 +5,6 @@ import EventsTable from "./EventsTable";
 import EventsToolbar from "./EventsToolbar";
 import EventEditor from "./EventEditor";
 import { HistoricalImage } from "@/types/game";
-import { useEvents } from "@/hooks/useEvents";
 import ExcelImporter from "./ExcelImporter";
 
 const AdminEventsManager = () => {
@@ -16,24 +15,27 @@ const AdminEventsManager = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedEvents, setSelectedEvents] = useState<Set<number>>(new Set());
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isAllSelected, setIsAllSelected] = useState(false);
 
   // Load events from localStorage on mount
   useEffect(() => {
-    const fetchEvents = async () => {
-      const savedEventsJson = localStorage.getItem('savedEvents');
-      if (savedEventsJson) {
-        try {
-          const loadedEvents = JSON.parse(savedEventsJson);
-          setEvents(loadedEvents);
-        } catch (error) {
-          console.error('Error parsing saved events:', error);
-          setEvents([]);
-        }
-      }
-    };
-    
-    fetchEvents();
+    loadEvents();
   }, []);
+
+  // Load events from localStorage
+  const loadEvents = () => {
+    const savedEventsJson = localStorage.getItem('savedEvents');
+    if (savedEventsJson) {
+      try {
+        const loadedEvents = JSON.parse(savedEventsJson);
+        setEvents(loadedEvents);
+      } catch (error) {
+        console.error('Error parsing saved events:', error);
+        setEvents([]);
+      }
+    }
+  };
 
   // Save events to localStorage
   const saveEvents = async (eventsToSave: HistoricalImage[]) => {
@@ -112,11 +114,27 @@ const AdminEventsManager = () => {
   };
 
   const handleDeleteSelected = () => {
-    // Implement later if needed
+    // Implement deletion of selected events
+    const updatedEvents = events.filter(e => !selectedEvents.has(e.id));
+    setEvents(updatedEvents);
+    saveEvents(updatedEvents);
+    setSelectedEvents(new Set());
+    
+    toast({
+      title: "Events deleted",
+      description: `${selectedEvents.size} events have been removed.`
+    });
   };
 
   const handleSaveSelectedToDB = () => {
-    // Implement later if needed  
+    // Save selected events to database (localStorage in this case)
+    const selectedEventsArray = events.filter(e => selectedEvents.has(e.id));
+    saveEvents(selectedEventsArray);
+    
+    toast({
+      title: "Events saved",
+      description: `${selectedEvents.size} events have been saved to the database.`
+    });
   };
 
   const handleImportExcel = async (importedEvents: HistoricalImage[]) => {
@@ -161,6 +179,32 @@ const AdminEventsManager = () => {
     });
   };
 
+  const handleToggleSelectEvent = (id: number) => {
+    setSelectedEvents(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedEvents(new Set());
+    } else {
+      const allIds = events.map(event => event.id);
+      setSelectedEvents(new Set(allIds));
+    }
+    setIsAllSelected(!isAllSelected);
+  };
+
+  const handleSearchChange = (term: string) => {
+    setSearchTerm(term);
+  };
+
   return (
     <div className="space-y-6">
       {isEditing ? (
@@ -197,7 +241,13 @@ const AdminEventsManager = () => {
           <EventsTable 
             events={events} 
             onEdit={handleEditEvent} 
-            onDelete={handleDeleteEvent} 
+            onDelete={handleDeleteEvent}
+            selectedEvents={selectedEvents}
+            onToggleSelectEvent={handleToggleSelectEvent}
+            onToggleSelectAll={handleToggleSelectAll}
+            isAllSelected={isAllSelected}
+            searchTerm={searchTerm}
+            onSearchChange={handleSearchChange}
           />
         </>
       )}

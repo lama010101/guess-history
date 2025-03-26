@@ -27,6 +27,10 @@ const AdminHeader = () => {
             <HintDisplay 
               availableHints={availableHints} 
               onClose={() => setIsHintOpen(false)} 
+              onUseLocationHint={() => console.log('Location hint used')}
+              onUseYearHint={() => console.log('Year hint used')}
+              locationHintUsed={false}
+              yearHintUsed={false}
             />
           )}
         </div>

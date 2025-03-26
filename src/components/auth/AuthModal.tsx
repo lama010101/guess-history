@@ -1,52 +1,59 @@
 
-import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
-import LoginForm from "./LoginForm";
-import SignUpForm from "./SignUpForm";
+import { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import LoginForm from './LoginForm';
+import SignUpForm from './SignUpForm';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialView?: 'login' | 'signup';
 }
 
-const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
-  const [showLogin, setShowLogin] = useState(true);
-  const location = useLocation();
+const AuthModal = ({ isOpen, onClose, initialView = 'login' }: AuthModalProps) => {
+  const [view, setView] = useState<'login' | 'signup'>(initialView);
+  const [open, setOpen] = useState(isOpen);
 
-  // Use ref to track the last path to avoid unnecessary effects
-  const lastPathRef = React.useRef(location.pathname);
-
-  // Only reset state when location changes, not on every render
+  // Update internal state when isOpen prop changes
   useEffect(() => {
-    // Only close when location changes, not when isOpen changes
-    if (isOpen && location.pathname !== lastPathRef.current) {
-      onClose();
-      lastPathRef.current = location.pathname;
+    setOpen(isOpen);
+  }, [isOpen]);
+
+  // When view changes, make sure the modal stays open
+  useEffect(() => {
+    if (view === 'login' || view === 'signup') {
+      setOpen(true);
     }
-  }, [location.pathname, isOpen, onClose]);
+  }, [view]);
 
-  const switchToLogin = () => setShowLogin(true);
-  const switchToSignUp = () => setShowLogin(false);
+  const handleClose = () => {
+    setOpen(false);
+    onClose();
+  };
 
-  // This fixes the issue where the modal disappears immediately
-  if (!isOpen) return null;
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (!newOpen) {
+      onClose();
+    }
+  };
 
   return (
-    <>
-      {showLogin ? (
-        <LoginForm 
-          isOpen={isOpen} 
-          onClose={onClose} 
-          switchToSignUp={switchToSignUp} 
-        />
-      ) : (
-        <SignUpForm 
-          isOpen={isOpen} 
-          onClose={onClose} 
-          switchToLogin={switchToLogin} 
-        />
-      )}
-    </>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>
+            {view === 'login' ? 'Login to EventGuesser' : 'Create an Account'}
+          </DialogTitle>
+        </DialogHeader>
+        
+        {view === 'login' ? (
+          <LoginForm onSignUp={() => setView('signup')} onSuccess={handleClose} />
+        ) : (
+          <SignUpForm onLogin={() => setView('login')} onSuccess={handleClose} />
+        )}
+      </DialogContent>
+    </Dialog>
   );
 };
 

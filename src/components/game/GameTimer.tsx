@@ -12,7 +12,7 @@ interface GameTimerProps {
 const GameTimer = ({ duration, paused = false, onTimeUp, hintsOpen = false }: GameTimerProps) => {
   const [timeLeft, setTimeLeft] = useState(duration);
   const [isRunning, setIsRunning] = useState(true);
-  const { handleSubmit, showResults } = useGameState();
+  const { showResults } = useGameState();
   const timerRef = useRef<number | null>(null);
   
   // Reset timer when duration changes
@@ -40,8 +40,7 @@ const GameTimer = ({ duration, paused = false, onTimeUp, hintsOpen = false }: Ga
           if (timerRef.current) {
             clearInterval(timerRef.current);
           }
-          // Call handleSubmit to end the round when timer reaches zero
-          handleSubmit();
+          // Call onTimeUp to end the round when timer reaches zero
           onTimeUp?.();
           return 0;
         }
@@ -54,7 +53,7 @@ const GameTimer = ({ duration, paused = false, onTimeUp, hintsOpen = false }: Ga
         clearInterval(timerRef.current);
       }
     };
-  }, [isRunning, onTimeUp, handleSubmit]);
+  }, [isRunning, onTimeUp]);
 
   const percentLeft = (timeLeft / duration) * 100;
 

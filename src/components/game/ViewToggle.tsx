@@ -15,6 +15,9 @@ const ViewToggle = ({
   imageSrc,
   showClose = true
 }: ViewToggleProps) => {
+  // OpenStreetMap attribution image
+  const osmLogo = "https://wiki.openstreetmap.org/w/images/7/79/Public-images-osm_logo.svg";
+
   return (
     <div className="absolute top-4 right-4 z-10 flex">
       <Button
@@ -46,7 +49,17 @@ const ViewToggle = ({
         }`}
         onClick={activeView === 'image' ? onToggle : undefined}
       >
-        <Map className="h-5 w-5" />
+        {activeView === 'map' ? (
+          <Map className="h-5 w-5" />
+        ) : (
+          <div className="h-8 w-8 rounded overflow-hidden">
+            <img 
+              src={osmLogo} 
+              alt="OpenStreetMap" 
+              className="h-full w-full object-contain"
+            />
+          </div>
+        )}
       </Button>
     </div>
   );

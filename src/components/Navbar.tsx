@@ -10,7 +10,10 @@ import {
   LogIn,
   Settings,
   Lightbulb,
-  ChevronDown
+  ChevronDown,
+  Users,
+  Trophy,
+  Share2
 } from 'lucide-react';
 import AuthModal from './auth/AuthModal';
 import { 
@@ -25,6 +28,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import GameTimer from './game/GameTimer';
 import { SettingsDialog } from './SettingsDialog';
+import HintDialog from './game/HintDialog';
+import ShareDialog from './ShareDialog';
 
 interface RoundInfo {
   currentRound: number;
@@ -51,6 +56,8 @@ const Navbar = ({
 }: NavbarProps) => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [showHintDialog, setShowHintDialog] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
@@ -86,8 +93,12 @@ const Navbar = ({
   };
 
   const toggleHints = () => {
-    if (setHintsOpen) {
-      setHintsOpen(!hintsOpen);
+    if (isInGame) {
+      if (setHintsOpen) {
+        setHintsOpen(!hintsOpen);
+      }
+    } else {
+      setShowHintDialog(true);
     }
   };
   
@@ -148,7 +159,7 @@ const Navbar = ({
           </nav>
         </div>
         
-        {/* Round Info and Timer */}
+        {/* Round Info */}
         {roundInfo && (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
@@ -161,22 +172,13 @@ const Navbar = ({
                   Score: {roundInfo.totalScore.toLocaleString()}
                 </span>
               </div>
-              
-              {showTimer && timerDuration && (
-                <div className="mt-1 w-48 h-1">
-                  <GameTimer 
-                    duration={timerDuration} 
-                    paused={false}
-                  />
-                </div>
-              )}
             </div>
           </div>
         )}
         
         <div className="flex items-center gap-2 ml-auto">
-          {/* Hint button - disabled when not in game */}
-          {isInGame ? (
+          {/* Hint button - centered if possible */}
+          <div className="flex items-center gap-2">
             <Button 
               variant="outline" 
               size="sm" 
@@ -186,17 +188,17 @@ const Navbar = ({
               <Lightbulb className="h-4 w-4" />
               <span>{hintCoins}</span>
             </Button>
-          ) : (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex items-center"
-              disabled
+            
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1"
+              onClick={() => setShowShareDialog(true)}
             >
-              <Lightbulb className="h-4 w-4" />
-              <span className="sr-only">Hints</span>
+              <Share2 className="h-4 w-4" />
+              <span className="sr-only">Share</span>
             </Button>
-          )}
+          </div>
           
           {isAuthenticated ? (
             <DropdownMenu>
@@ -228,6 +230,14 @@ const Navbar = ({
                     <Home className="mr-2 h-4 w-4" />
                     <span>Home</span>
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleNavigation('/friends')}>
+                    <Users className="mr-2 h-4 w-4" />
+                    <span>Friends</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleNavigation('/leaderboard')}>
+                    <Trophy className="mr-2 h-4 w-4" />
+                    <span>Leaderboard</span>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShowSettingsDialog(true)}>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
@@ -255,7 +265,21 @@ const Navbar = ({
         </div>
       </div>
       <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
-      <SettingsDialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog} />
+      <SettingsDialog 
+        open={showSettingsDialog} 
+        onOpenChange={(open) => {
+          setShowSettingsDialog(open);
+        }} 
+      />
+      <HintDialog 
+        open={showHintDialog} 
+        onOpenChange={setShowHintDialog} 
+        hintCoins={hintCoins} 
+      />
+      <ShareDialog 
+        open={showShareDialog} 
+        onOpenChange={setShowShareDialog} 
+      />
     </header>
   );
 };

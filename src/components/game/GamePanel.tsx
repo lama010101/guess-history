@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import MapComponent from '../MapComponent';
 import HistoricalImage from '../HistoricalImage';
 import ViewToggle from './ViewToggle';
@@ -42,6 +42,20 @@ const GamePanel = ({
   // Start with image view by default
   const [activeView, setActiveView] = useState<'image' | 'map'>('image');
   const [showHints, setShowHints] = useState(false);
+  const [countryHint, setCountryHint] = useState<string | null>(null);
+  const [decadeHint, setDecadeHint] = useState<string | null>(null);
+
+  useEffect(() => {
+    // When location hint is used, calculate and save the country hint
+    if (locationHintUsed && currentImage.locationName) {
+      setCountryHint(getCountryOnly(currentImage.locationName));
+    }
+    
+    // When year hint is used, calculate and save the decade hint
+    if (yearHintUsed && currentImage.year) {
+      setDecadeHint(`${currentImage.year.toString().slice(0, -1)}X`);
+    }
+  }, [locationHintUsed, yearHintUsed, currentImage]);
 
   // Helper to extract just the country from location name
   const getCountryOnly = (locationName?: string): string => {
@@ -82,17 +96,17 @@ const GamePanel = ({
           </div>
         )}
         
-        {/* Display location hint if used - country only */}
-        {locationHintUsed && (
+        {/* Display location hint if used */}
+        {locationHintUsed && countryHint && (
           <div className="absolute bottom-4 left-4 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
-            <span className="font-medium">Country:</span> {getCountryOnly(currentImage.locationName)}
+            <span className="font-medium">Country:</span> {countryHint}
           </div>
         )}
         
         {/* Display year hint if used */}
-        {yearHintUsed && (
+        {yearHintUsed && decadeHint && (
           <div className="absolute bottom-16 left-4 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
-            <span className="font-medium">Decade:</span> {currentImage.year.toString().slice(0, -1) + "X"}
+            <span className="font-medium">Decade:</span> {decadeHint}
           </div>
         )}
         
@@ -102,6 +116,10 @@ const GamePanel = ({
             <HintDisplay 
               availableHints={hintCoins} 
               onClose={toggleHints} 
+              onUseLocationHint={onUseLocationHint}
+              onUseYearHint={onUseYearHint}
+              locationHintUsed={locationHintUsed}
+              yearHintUsed={yearHintUsed}
             />
           </div>
         )}

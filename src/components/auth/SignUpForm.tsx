@@ -1,149 +1,147 @@
 
-import { useState } from "react";
-import { Eye, EyeOff, UserPlus } from "lucide-react";
-import { useAuth } from "@/services/auth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from 'react';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { useAuth } from '@/services/auth';
+import { useToast } from '@/hooks/use-toast';
+
+const formSchema = z.object({
+  username: z.string().min(3, 'Username must be at least 3 characters'),
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
 
 interface SignUpFormProps {
-  isOpen: boolean;
-  onClose: () => void;
-  switchToLogin: () => void;
+  onLogin: () => void;
+  onSuccess: () => void;
 }
 
-const SignUpForm = ({ isOpen, onClose, switchToLogin }: SignUpFormProps) => {
-  const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const { signUp, isLoading, error } = useAuth();
+const SignUpForm = ({ onLogin, onSuccess }: SignUpFormProps) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const { register, login } = useAuth();
   const { toast } = useToast();
-
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (password !== confirmPassword) {
-      toast({
-        title: "Passwords don't match",
-        description: "Please make sure your passwords match.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
+  
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      username: '',
+      email: '',
+      password: '',
+    },
+  });
+  
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsLoading(true);
     try {
-      await signUp(email, password, username);
-      toast({
-        title: "Account created!",
-        description: "You've successfully signed up and logged in to EventGuesser.",
-      });
-      onClose();
+      // Register the user
+      const success = await register(values.email, values.password, values.username);
+      
+      if (success) {
+        // After successful registration, automatically log the user in
+        const loginSuccess = await login(values.email, values.password);
+        
+        if (loginSuccess) {
+          toast({
+            title: "Welcome!",
+            description: "Your account has been created and you're now logged in.",
+          });
+          onSuccess();
+        } else {
+          // If auto-login fails, still consider registration successful but show a message
+          toast({
+            title: "Account created!",
+            description: "Your account has been created. Please log in.",
+          });
+          onLogin();
+        }
+      } else {
+        toast({
+          title: "Registration failed",
+          description: "This email may already be in use. Please try another.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       toast({
-        title: "Sign up failed",
-        description: error instanceof Error ? error.message : "Something went wrong",
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
-
+  
   return (
-    <Dialog open={isOpen && !isLoading} onOpenChange={(open) => {
-      if (!open && !isLoading) onClose();
-    }}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-xl">Create your account</DialogTitle>
-        </DialogHeader>
-        
-        <form onSubmit={handleSignUp} className="space-y-4 pt-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
+    <div className="space-y-4 py-2 pb-4">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="username"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Username</FormLabel>
+                <FormControl>
+                  <Input placeholder="johndoe" {...field} disabled={isLoading} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           
-          <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
-            <Input
-              id="username"
-              type="text"
-              placeholder="your_username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-            />
-          </div>
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input placeholder="john.doe@example.com" type="email" {...field} disabled={isLoading} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-[50%] transform -translate-y-1/2 text-muted-foreground"
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-          </div>
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <FormControl>
+                  <Input placeholder="******" type="password" {...field} disabled={isLoading} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
-            <Input
-              id="confirmPassword"
-              type={showPassword ? "text" : "password"}
-              placeholder="••••••••"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-            />
-          </div>
-          
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          
-          <div className="pt-2 space-y-3">
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading}
-            >
+          <div className="flex flex-col space-y-2">
+            <Button type="submit" disabled={isLoading}>
               {isLoading ? "Creating account..." : "Sign Up"}
-              <UserPlus className="ml-2 h-4 w-4" />
             </Button>
-            
-            <p className="text-center text-sm text-muted-foreground">
-              Already have an account?{" "}
-              <button
-                type="button"
-                onClick={switchToLogin}
-                className="text-primary hover:underline cursor-pointer"
-              >
-                Log in
-              </button>
-            </p>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </Form>
+      
+      <div className="text-center text-sm">
+        Already have an account?{" "}
+        <button 
+          type="button"
+          onClick={onLogin} 
+          className="text-primary hover:underline focus:outline-none"
+          disabled={isLoading}
+        >
+          Log in
+        </button>
+      </div>
+    </div>
   );
 };
 

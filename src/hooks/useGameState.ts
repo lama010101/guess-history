@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/services/auth';
 import { sampleImages } from '@/data/sampleImages';
@@ -55,6 +55,72 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
   const [dailyCompleted, setDailyCompleted] = useState(false);
   const [dailyScore, setDailyScore] = useState(0);
   const [dailyDate, setDailyDate] = useState("");
+  
+  // Load saved game state on initial render
+  useEffect(() => {
+    const savedState = localStorage.getItem('currentGameState');
+    if (savedState) {
+      try {
+        const state = JSON.parse(savedState);
+        if (state.selectedLocation) {
+          setSelectedLocation(state.selectedLocation);
+        }
+        if (state.selectedYear) {
+          setSelectedYear(state.selectedYear);
+        }
+        if (state.timerEnabled !== undefined) {
+          setTimerEnabled(state.timerEnabled);
+        }
+        if (state.timerDuration) {
+          setTimerDuration(state.timerDuration);
+        }
+        if (state.showResults !== undefined) {
+          setShowResults(state.showResults);
+        }
+        
+        console.info('Loaded saved game state:', state);
+      } catch (error) {
+        console.error('Error loading saved game state:', error);
+      }
+    }
+    
+    // Load timer settings from game settings
+    const savedSettings = localStorage.getItem('gameSettings');
+    if (savedSettings) {
+      try {
+        const settings = JSON.parse(savedSettings);
+        if (settings.timerEnabled !== undefined) {
+          setTimerEnabled(settings.timerEnabled);
+        }
+        if (settings.timerMinutes) {
+          // Convert minutes to seconds
+          setTimerDuration(settings.timerMinutes * 60);
+        }
+      } catch (error) {
+        console.error('Error loading game settings:', error);
+      }
+    }
+  }, []);
+  
+  // Save current game state when it changes
+  useEffect(() => {
+    const gameState = {
+      selectedLocation,
+      selectedYear,
+      timerEnabled,
+      timerDuration,
+      showResults,
+      currentRound,
+      currentImageIndex,
+      gameComplete,
+      totalScore,
+      roundScores
+    };
+    
+    localStorage.setItem('currentGameState', JSON.stringify(gameState));
+    console.info('Saved game state:', gameState);
+  }, [selectedLocation, selectedYear, timerEnabled, timerDuration, showResults, 
+      currentRound, currentImageIndex, gameComplete, totalScore, roundScores]);
   
   // Handle submitting a guess
   const handleSubmit = () => {
@@ -116,6 +182,9 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     resetGame();
     resetScores();
     resetHints();
+    
+    // Clear saved game state
+    localStorage.removeItem('currentGameState');
     
     // Give some hint coins if the player is logged in
     if (user && !user.isGuest) {

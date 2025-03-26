@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import GamePanel from './game/GamePanel';
 import GameControls from './game/GameControls';
@@ -8,6 +7,7 @@ import { useGameState } from '@/hooks/useGameState';
 import Navbar from './Navbar';
 import GameTimer from './game/GameTimer';
 import NavigationConfirmation from './NavigationConfirmation';
+import { Clock } from 'lucide-react';
 
 const MAX_ROUNDS = 5; // Default to 5 rounds for a game
 
@@ -120,8 +120,6 @@ const GameSection = () => {
             maxRounds,
             totalScore
           }}
-          showTimer={timerEnabled}
-          timerDuration={timerDuration}
           hintCoins={hintCoins}
           hintsOpen={hintsOpen}
           setHintsOpen={setHintsOpen}
@@ -129,10 +127,9 @@ const GameSection = () => {
         <div className="relative flex-1 flex flex-col overflow-hidden">
           {timerEnabled && (
             <div className="w-full bg-gray-100 dark:bg-gray-800 px-4 py-2">
-              <div className="flex justify-between items-center mb-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm">Timer</span>
-                </div>
+              <div className="flex items-center gap-2 mb-1">
+                <Clock className="h-4 w-4" />
+                <span className="font-medium text-sm">Timer</span>
               </div>
               <GameTimer 
                 duration={timerDuration} 

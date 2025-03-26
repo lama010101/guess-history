@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Globe, Clock, Lightbulb, Users, Share2, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import Navbar from '@/components/Navbar';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/services/auth';
 import FriendsInviteDialog from '@/components/friends/FriendsInviteDialog';
+
 const Home = () => {
   const [activeTab, setActiveTab] = useState<'compete' | 'play'>('compete');
   const [timerEnabled, setTimerEnabled] = useState<boolean>(false);
@@ -31,6 +33,7 @@ const Home = () => {
   const [dailyScore, setDailyScore] = useState(0);
   const [dailyDate, setDailyDate] = useState("");
   const [timeUntilNextDaily, setTimeUntilNextDaily] = useState("");
+  
   useEffect(() => {
     const lastPlayed = localStorage.getItem('lastDailyPlayed');
     const savedScore = localStorage.getItem('lastDailyScore');
@@ -62,6 +65,7 @@ const Home = () => {
       setUseMiles(distancePref === 'miles');
     }
   }, []);
+  
   const handleStartGame = () => {
     const gameSettings = {
       timerEnabled,
@@ -76,10 +80,12 @@ const Home = () => {
     }
     navigate('/play');
   };
+  
   const generateGameLink = () => {
     const gameId = Math.random().toString(36).substring(2, 8);
     return `${window.location.origin}/play?mode=friends&id=${gameId}`;
   };
+  
   const copyGameLink = () => {
     const link = generateGameLink();
     navigator.clipboard.writeText(link);
@@ -92,6 +98,7 @@ const Home = () => {
       setLinkCopied(false);
     }, 2000);
   };
+  
   const handleInviteFriendsAndStart = () => {
     toast({
       title: "Invitations sent!",
@@ -99,6 +106,7 @@ const Home = () => {
     });
     handleStartGame();
   };
+  
   return <div className="min-h-[100dvh] bg-white dark:bg-gray-900 text-black dark:text-white flex flex-col">
       <Navbar />
       <main className="flex-1 container max-w-6xl mx-auto px-4 py-8">
@@ -111,7 +119,9 @@ const Home = () => {
           <TabsContent value="compete" className="mt-6">
             <div className="space-y-8">
               <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-6">
-                <h3 className="text-xl font-medium mb-2">Daily Challenge</h3>
+                <h3 className="text-xl font-medium mb-2">
+                  {dailyPlayed ? 'Daily Challenge: Already Played Today' : 'Daily Challenge'}
+                </h3>
                 <p className="text-neutral-500 dark:text-neutral-400 mb-4">Same 5 images as everyone else.</p>
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                   <div>
@@ -125,18 +135,20 @@ const Home = () => {
                       </div>}
                   </div>
                   <div className="mt-4 md:mt-0">
-                    <Button onClick={() => {
-                    if (isAuthenticated) {
-                      handleStartGame();
-                    } else {
-                      toast({
-                        title: "Login required",
-                        description: "You need to be logged in to play the daily challenge"
-                      });
-                    }
-                  }} disabled={dailyPlayed}>
-                      {dailyPlayed ? "Already Played Today" : "Start Daily Challenge"}
-                    </Button>
+                    {!dailyPlayed && (
+                      <Button onClick={() => {
+                        if (isAuthenticated) {
+                          handleStartGame();
+                        } else {
+                          toast({
+                            title: "Login required",
+                            description: "You need to be logged in to play the daily challenge"
+                          });
+                        }
+                      }}>
+                        Start Daily Challenge
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -194,8 +206,8 @@ const Home = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
               <Card>
                 <CardHeader className="pb-2">
-                  
                   <div className="flex items-center gap-4 mt-2">
+                    <Clock className="h-5 w-5" />
                     <CardTitle className="text-xl">Timer</CardTitle>
                     <Switch checked={timerEnabled} onCheckedChange={setTimerEnabled} />
                   </div>
@@ -213,8 +225,8 @@ const Home = () => {
               
               <Card>
                 <CardHeader className="pb-2">
-                  
                   <div className="flex items-center gap-4 mt-2">
+                    <Lightbulb className="h-5 w-5" />
                     <CardTitle className="text-xl">Hints</CardTitle>
                     <Switch checked={hintsEnabled} onCheckedChange={setHintsEnabled} />
                   </div>
@@ -241,4 +253,5 @@ const Home = () => {
       </main>
     </div>;
 };
+
 export default Home;

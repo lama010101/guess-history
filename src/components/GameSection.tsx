@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import GamePanel from './game/GamePanel';
 import GameControls from './game/GameControls';
@@ -73,11 +72,13 @@ const GameSection = () => {
   };
 
   const handleUseLocationHint = (): boolean => {
-    return Boolean(gameStateUseLocationHint());
+    const result = gameStateUseLocationHint();
+    return Boolean(result);
   };
 
   const handleUseYearHint = (): boolean => {
-    return Boolean(gameStateUseYearHint());
+    const result = gameStateUseYearHint();
+    return Boolean(result);
   };
 
   useEffect(() => {

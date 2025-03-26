@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/services/auth';
@@ -72,14 +71,12 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     completeDailyGame
   } = useDailyGame();
 
-  // Sync gameComplete state with rounds completion
   useEffect(() => {
     if (roundsComplete !== gameComplete) {
       setGameComplete(roundsComplete);
     }
   }, [roundsComplete, gameComplete, setGameComplete]);
 
-  // Save detailed game state
   useEffect(() => {
     const gameState = {
       selectedLocation,

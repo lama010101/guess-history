@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,9 +17,10 @@ const formSchema = z.object({
 interface SignUpFormProps {
   onLogin: () => void;
   onSuccess: () => void;
+  autoFocus?: boolean;
 }
 
-const SignUpForm = ({ onLogin, onSuccess }: SignUpFormProps) => {
+const SignUpForm = ({ onLogin, onSuccess, autoFocus = false }: SignUpFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const { signUp, login } = useAuth();
   const { toast } = useToast();
@@ -69,7 +69,12 @@ const SignUpForm = ({ onLogin, onSuccess }: SignUpFormProps) => {
               <FormItem>
                 <FormLabel>Username</FormLabel>
                 <FormControl>
-                  <Input placeholder="johndoe" {...field} disabled={isLoading} />
+                  <Input 
+                    placeholder="johndoe" 
+                    {...field} 
+                    disabled={isLoading} 
+                    autoFocus={autoFocus} 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

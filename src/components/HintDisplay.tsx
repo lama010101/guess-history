@@ -69,15 +69,17 @@ const HintDisplay = ({
   // Handle using location hint
   const handleUseLocationHint = () => {
     if (!localLocationHintUsed && remainingHints > 0) {
-      onUseLocationHint();
-      setLocalLocationHintUsed(true);
-      setRemainingHints(prev => prev - 1);
-      
-      if (currentImage && currentImage.locationName) {
-        setLocalHintValues(prev => ({
-          ...prev,
-          country: getCountryOnly(currentImage.locationName)
-        }));
+      const success = onUseLocationHint();
+      if (success) {
+        setLocalLocationHintUsed(true);
+        setRemainingHints(prev => prev - 1);
+        
+        if (currentImage && currentImage.locationName) {
+          setLocalHintValues(prev => ({
+            ...prev,
+            country: getCountryOnly(currentImage.locationName)
+          }));
+        }
       }
     }
   };
@@ -85,15 +87,17 @@ const HintDisplay = ({
   // Handle using year hint
   const handleUseYearHint = () => {
     if (!localYearHintUsed && remainingHints > 0) {
-      onUseYearHint();
-      setLocalYearHintUsed(true);
-      setRemainingHints(prev => prev - 1);
-      
-      if (currentImage) {
-        setLocalHintValues(prev => ({
-          ...prev,
-          decade: currentImage.year.toString().slice(0, -1) + "X"
-        }));
+      const success = onUseYearHint();
+      if (success) {
+        setLocalYearHintUsed(true);
+        setRemainingHints(prev => prev - 1);
+        
+        if (currentImage) {
+          setLocalHintValues(prev => ({
+            ...prev,
+            decade: currentImage.year.toString().slice(0, -1) + "X"
+          }));
+        }
       }
     }
   };

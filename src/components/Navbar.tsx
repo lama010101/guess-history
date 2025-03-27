@@ -125,7 +125,7 @@ const Navbar = ({
       });
       return;
     }
-    handleNavigation('/friends');
+    navigate('/friends');
   };
 
   const handleProfileNavigation = () => {
@@ -137,7 +137,7 @@ const Navbar = ({
       });
       return;
     }
-    handleNavigation('/profile');
+    navigate('/profile');
   };
 
   const toggleHints = () => {

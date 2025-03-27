@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Globe, Clock, Lightbulb, Users, Share2, Copy, Check, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -226,7 +225,7 @@ const Home = () => {
                   </div>
                   
                   {dailyPlayed && (
-                    <div className="mt-2 md:mt-0 p-2 bg-primary/10 rounded-md">
+                    <div className="mt-2 md:mt-0 p-3 bg-primary/10 rounded-md">
                       <p className="font-medium">Today's score: {dailyScore}</p>
                       <p className="text-sm text-neutral-500">Next challenge in: {timeUntilNextDaily}</p>
                     </div>

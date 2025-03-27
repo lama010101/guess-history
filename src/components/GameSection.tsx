@@ -88,15 +88,15 @@ const GameSection = () => {
     forceNavbarUpdate();
   };
 
-  // Fix for void return types - ensure we always return a boolean value
+  // Fixed: Ensure these functions return a boolean value
   const handleUseLocationHint = () => {
     gameStateUseLocationHint();
-    return !locationHintUsed; // This will return true if the hint was not previously used
+    return !locationHintUsed; // Return true if the hint was not previously used
   };
 
   const handleUseYearHint = () => {
     gameStateUseYearHint();
-    return !yearHintUsed; // This will return true if the hint was not previously used
+    return !yearHintUsed; // Return true if the hint was not previously used
   };
 
   useEffect(() => {

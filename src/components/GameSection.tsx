@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import GamePanel from './game/GamePanel';
 import GameControls from './game/GameControls';
@@ -88,13 +87,15 @@ const GameSection = () => {
     forceNavbarUpdate();
   };
 
-  // Fixed to return boolean values
-  const handleUseLocationHint = (): boolean => {
-    return gameStateUseLocationHint() || false;
+  // Fix for void return types - ensure we always return a boolean value
+  const handleUseLocationHint = () => {
+    gameStateUseLocationHint();
+    return !locationHintUsed; // This will return true if the hint was not previously used
   };
 
-  const handleUseYearHint = (): boolean => {
-    return gameStateUseYearHint() || false;
+  const handleUseYearHint = () => {
+    gameStateUseYearHint();
+    return !yearHintUsed; // This will return true if the hint was not previously used
   };
 
   useEffect(() => {

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/services/auth';
@@ -97,7 +98,7 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
       currentRound, currentImageIndex, gameComplete, totalScore, roundScores]);
   
   const handleSubmit = () => {
-    if (!selectedLocation) {
+    if (!selectedLocation || !currentImage) {
       return;
     }
     
@@ -153,11 +154,15 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     }
   };
 
+  // Add default values in case currentImage is undefined
+  const defaultImage = sampleImages[0];
+  const safeCurrentImage = currentImage || defaultImage;
+
   const currentScores = calculateRoundScore(
     selectedLocation,
     selectedYear,
-    currentImage.location,
-    currentImage.year,
+    safeCurrentImage.location,
+    safeCurrentImage.year,
     locationHintUsed,
     yearHintUsed
   );
@@ -193,7 +198,7 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     dailyScore,
     dailyDate,
     
-    currentImage,
+    currentImage: safeCurrentImage,
     currentScores,
     
     sampleImages,

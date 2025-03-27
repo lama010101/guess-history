@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Globe, Clock, Lightbulb, Users, Share2, Copy, Check, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -52,7 +51,6 @@ const Home = () => {
         year: 'numeric'
       }));
       
-      // Only mark as completed if it was the same day AND the daily was actually completed
       const isSameDay = lastPlayedDate.getDate() === today.getDate() && 
                        lastPlayedDate.getMonth() === today.getMonth() && 
                        lastPlayedDate.getFullYear() === today.getFullYear();
@@ -77,19 +75,40 @@ const Home = () => {
     if (distancePref) {
       setUseMiles(distancePref === 'miles');
     }
+    
+    const gameSettings = localStorage.getItem('gameSettings');
+    if (gameSettings) {
+      try {
+        const settings = JSON.parse(gameSettings);
+        if (settings.timerEnabled !== undefined) {
+          setTimerEnabled(settings.timerEnabled);
+        }
+        if (settings.timerMinutes !== undefined) {
+          setTimerMinutes(settings.timerMinutes);
+        }
+        if (settings.hintsEnabled !== undefined) {
+          setHintsEnabled(settings.hintsEnabled);
+        }
+        if (settings.initialHintCoins !== undefined) {
+          setHintsCount(settings.initialHintCoins);
+        }
+      } catch (error) {
+        console.error("Error parsing game settings:", error);
+      }
+    }
   }, []);
   
   const handleStartGame = () => {
     const gameSettings = {
       timerEnabled,
       timerMinutes: timerMinutes,
+      timerDuration: timerMinutes * 60,
       hintsEnabled,
       initialHintCoins: hintsEnabled ? hintsCount : 0,
       distanceFormat: useMiles ? 'miles' : 'km'
     };
     localStorage.setItem('gameSettings', JSON.stringify(gameSettings));
     
-    // For daily mode, track when we started playing but don't mark as completed yet
     if (activeTab === 'compete') {
       if (!isAuthenticated) {
         setShowAuthModal(true);
@@ -101,8 +120,15 @@ const Home = () => {
       }
       
       localStorage.setItem('lastDailyPlayed', new Date().toISOString());
-      // Clear the completed flag when starting a new game
       localStorage.removeItem('dailyCompleted');
+      
+      const dailySettings = {
+        ...gameSettings,
+        timerEnabled: true,
+        timerMinutes: 5,
+        timerDuration: 300
+      };
+      localStorage.setItem('gameSettings', JSON.stringify(dailySettings));
     }
     
     navigate('/play');
@@ -225,15 +251,13 @@ const Home = () => {
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">Hints available: 2</p>
                   </div>
                   
-                  {dailyPlayed && (
-                    <div className="mt-2 md:mt-0 p-2 bg-primary/10 rounded-md">
-                      <p className="font-medium">Today's score: {dailyScore}</p>
+                  {dailyPlayed ? (
+                    <div className="mt-2 md:mt-0 p-4 bg-primary/10 rounded-md text-center w-full md:w-auto">
+                      <p className="font-medium text-lg mb-1">Today's score: {dailyScore}</p>
                       <p className="text-sm text-neutral-500">Next challenge in: {timeUntilNextDaily}</p>
                     </div>
-                  )}
-                  
-                  <div className="mt-4 md:mt-0 w-full md:w-auto">
-                    {!dailyPlayed && (
+                  ) : (
+                    <div className="mt-4 md:mt-0 w-full md:w-auto">
                       <Button 
                         onClick={handleStartGame} 
                         className="w-full md:min-w-[200px]"
@@ -241,8 +265,8 @@ const Home = () => {
                       >
                         Start Daily Challenge
                       </Button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
               
@@ -309,7 +333,7 @@ const Home = () => {
           </TabsContent>
         </Tabs>
       </main>
-      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} autoFocus={false} />
     </div>;
 };
 

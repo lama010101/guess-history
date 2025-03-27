@@ -3,7 +3,6 @@ import { useRef, useEffect, useState } from 'react';
 import { useLeafletMap } from '@/hooks/useLeafletMap';
 import MapInstructions from './map/MapInstructions';
 import LoadingIndicator from './map/LoadingIndicator';
-import ClearPinButton from './map/ClearPinButton';
 
 interface MapComponentProps {
   onLocationSelect: (lat: number, lng: number) => void;
@@ -17,7 +16,7 @@ interface MapComponentProps {
 const MapComponent = ({
   onLocationSelect,
   selectedLocation,
-  initialLocation = { lat: 50, lng: 10 }, // Center on Europe by default
+  initialLocation = { lat: 40, lng: -20 }, // Center between Europe and USA
   actualLocation,
   showActualLocationMarker = false,
   hideInstructions = false
@@ -40,11 +39,6 @@ const MapComponent = ({
   // Derive loading state from mapLoaded
   const isLoading = !mapLoaded;
 
-  // Handler for clearing the marker
-  const handleClearMarker = () => {
-    clearMarker();
-  };
-
   return (
     <div className="h-full w-full relative">
       {/* Map Container */}
@@ -58,10 +52,7 @@ const MapComponent = ({
         <MapInstructions showInstructions={!hideInstructions} />
       )}
       
-      {/* Clear Pin Button */}
-      {selectedLocation && !isLoading && (
-        <ClearPinButton onClear={handleClearMarker} />
-      )}
+      {/* Clear Pin Button removed as requested */}
     </div>
   );
 };

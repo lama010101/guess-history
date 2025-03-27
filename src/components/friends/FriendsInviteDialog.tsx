@@ -1,20 +1,10 @@
 
-import { useState } from 'react';
-import { Users, Check, Search } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Search, UserPlus } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/services/auth";
 
 interface FriendsInviteDialogProps {
   trigger: React.ReactNode;
@@ -22,136 +12,101 @@ interface FriendsInviteDialogProps {
 }
 
 const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogProps) => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
-  const { toast } = useToast();
-
-  // Mock friends data
-  const friends = [
-    { id: '1', name: 'Jane Smith', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jane', status: 'online' },
-    { id: '2', name: 'John Doe', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John', status: 'offline' },
-    { id: '3', name: 'Sarah Wilson', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah', status: 'online' },
-    { id: '4', name: 'Mike Johnson', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mike', status: 'offline' },
-    { id: '5', name: 'Emily Davis', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Emily', status: 'online' },
-  ];
-
-  const filteredFriends = friends.filter(friend => 
-    friend.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const toggleFriendSelection = (friendId: string) => {
-    setSelectedFriends(prev => {
-      if (prev.includes(friendId)) {
-        return prev.filter(id => id !== friendId);
-      } else {
-        return [...prev, friendId];
-      }
-    });
-  };
-
-  const handleInviteAndStart = () => {
-    if (selectedFriends.length === 0) {
-      toast({
-        title: "No friends selected",
-        description: "Please select at least one friend to invite",
-        variant: "destructive"
-      });
-      return;
+  const { user } = useAuth();
+  
+  // Mock data - would be replaced with actual API calls
+  const [friends, setFriends] = useState([
+    { id: '1', username: 'friend1', selected: false },
+    { id: '2', username: 'friend2', selected: false },
+    { id: '3', username: 'friend3', selected: false },
+  ]);
+  
+  // Reset search when dialog closes
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchTerm('');
+      // Reset selected state
+      setFriends(friends.map(f => ({ ...f, selected: false })));
     }
-
-    // Close the dialog
+  }, [isOpen]);
+  
+  const handleSelect = (id: string) => {
+    setFriends(friends.map(friend => 
+      friend.id === id ? { ...friend, selected: !friend.selected } : friend
+    ));
+  };
+  
+  const filteredFriends = friends.filter(friend => 
+    friend.username.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  
+  const handleInviteAndStart = () => {
     setIsOpen(false);
-    
-    // Notify the parent component
     if (onInviteAndStart) {
       onInviteAndStart();
     }
   };
-
+  
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild onClick={() => setIsOpen(true)}>
+      <DialogTrigger asChild>
         {trigger}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Invite Friends</DialogTitle>
-          <DialogDescription>
-            Select friends to invite to your game.
-          </DialogDescription>
         </DialogHeader>
         
-        <div className="relative my-2">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search friends" 
-            className="pl-10"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+        <div className="relative mb-4">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search friends..."
+            className="pl-8"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            autoFocus={false}
           />
         </div>
         
-        <div className="max-h-[300px] overflow-y-auto">
+        <div className="max-h-60 overflow-y-auto mb-4">
           {filteredFriends.length > 0 ? (
             <div className="space-y-2">
               {filteredFriends.map(friend => (
                 <div 
-                  key={friend.id} 
-                  className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
-                  onClick={() => toggleFriendSelection(friend.id)}
+                  key={friend.id}
+                  className={`p-2 rounded-md flex items-center justify-between cursor-pointer ${
+                    friend.selected ? 'bg-primary/10' : 'hover:bg-primary/5'
+                  }`}
+                  onClick={() => handleSelect(friend.id)}
                 >
-                  <Checkbox 
-                    id={`friend-${friend.id}`} 
-                    checked={selectedFriends.includes(friend.id)}
-                    onCheckedChange={() => toggleFriendSelection(friend.id)}
-                  />
-                  <div className="h-10 w-10 rounded-full overflow-hidden">
-                    <img 
-                      src={friend.avatarUrl} 
-                      alt={friend.name} 
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <Label htmlFor={`friend-${friend.id}`} className="font-medium cursor-pointer">
-                      {friend.name}
-                    </Label>
-                    <div className="flex items-center text-xs">
-                      <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${
-                        friend.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
-                      }`}></span>
-                      <span className="text-muted-foreground capitalize">{friend.status}</span>
-                    </div>
-                  </div>
-                  {selectedFriends.includes(friend.id) && (
-                    <Check className="h-4 w-4 text-primary" />
-                  )}
+                  <span>{friend.username}</span>
+                  <Button 
+                    variant={friend.selected ? "default" : "outline"} 
+                    size="sm"
+                  >
+                    <UserPlus className="h-4 w-4 mr-1" />
+                    {friend.selected ? "Selected" : "Select"}
+                  </Button>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-4 text-muted-foreground">
-              No friends found with that name
+            <div className="text-center py-8 text-muted-foreground">
+              {searchTerm ? "No friends match your search." : "You don't have any friends yet."}
             </div>
           )}
         </div>
         
-        <DialogFooter>
-          <Button 
-            variant="outline" 
-            onClick={() => setIsOpen(false)}
-          >
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => setIsOpen(false)}>
             Cancel
           </Button>
-          <Button 
-            onClick={handleInviteAndStart}
-            className="flex items-center gap-2"
-          >
-            <Users className="h-4 w-4" />
+          <Button onClick={handleInviteAndStart}>
             Invite and Start Game
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

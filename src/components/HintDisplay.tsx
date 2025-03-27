@@ -1,17 +1,20 @@
 
 import { X, Lightbulb, MapPin, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useGameState } from '@/hooks/useGameState';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 interface HintDisplayProps {
   availableHints: number;
   onClose: () => void;
-  onUseLocationHint: () => void;
-  onUseYearHint: () => void;
+  onUseLocationHint: () => boolean;
+  onUseYearHint: () => boolean;
   locationHintUsed: boolean;
   yearHintUsed: boolean;
+  currentImage?: {
+    locationName?: string;
+    year?: number;
+  };
 }
 
 const HintDisplay = ({ 
@@ -20,13 +23,9 @@ const HintDisplay = ({
   onUseLocationHint, 
   onUseYearHint, 
   locationHintUsed, 
-  yearHintUsed 
+  yearHintUsed,
+  currentImage 
 }: HintDisplayProps) => {
-  const { 
-    currentImage,
-    hintCoins
-  } = useGameState();
-  
   const { toast } = useToast();
   
   // Persist hint usage states locally
@@ -49,7 +48,7 @@ const HintDisplay = ({
         updatedHintValues.country = getCountryOnly(currentImage.locationName);
       }
       
-      if (yearHintUsed) {
+      if (yearHintUsed && currentImage.year) {
         updatedHintValues.decade = currentImage.year.toString().slice(0, -1) + "X";
       }
       
@@ -69,15 +68,17 @@ const HintDisplay = ({
   // Handle using location hint
   const handleUseLocationHint = () => {
     if (!localLocationHintUsed && remainingHints > 0) {
-      onUseLocationHint();
-      setLocalLocationHintUsed(true);
-      setRemainingHints(prev => prev - 1);
-      
-      if (currentImage && currentImage.locationName) {
-        setLocalHintValues(prev => ({
-          ...prev,
-          country: getCountryOnly(currentImage.locationName)
-        }));
+      const hintUsed = onUseLocationHint();
+      if (hintUsed) {
+        setLocalLocationHintUsed(true);
+        setRemainingHints(prev => prev - 1);
+        
+        if (currentImage && currentImage.locationName) {
+          setLocalHintValues(prev => ({
+            ...prev,
+            country: getCountryOnly(currentImage.locationName)
+          }));
+        }
       }
     }
   };
@@ -85,15 +86,17 @@ const HintDisplay = ({
   // Handle using year hint
   const handleUseYearHint = () => {
     if (!localYearHintUsed && remainingHints > 0) {
-      onUseYearHint();
-      setLocalYearHintUsed(true);
-      setRemainingHints(prev => prev - 1);
-      
-      if (currentImage) {
-        setLocalHintValues(prev => ({
-          ...prev,
-          decade: currentImage.year.toString().slice(0, -1) + "X"
-        }));
+      const hintUsed = onUseYearHint();
+      if (hintUsed) {
+        setLocalYearHintUsed(true);
+        setRemainingHints(prev => prev - 1);
+        
+        if (currentImage && currentImage.year) {
+          setLocalHintValues(prev => ({
+            ...prev,
+            decade: currentImage.year.toString().slice(0, -1) + "X"
+          }));
+        }
       }
     }
   };
@@ -110,7 +113,7 @@ const HintDisplay = ({
   };
 
   return (
-    <div className="w-[290px] bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg rounded-lg border border-border shadow-lg">
+    <div className="w-[290px] bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg rounded-lg border border-border">
       <div className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">

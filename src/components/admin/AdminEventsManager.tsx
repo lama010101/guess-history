@@ -5,7 +5,6 @@ import EventsTable from "./EventsTable";
 import EventsToolbar from "./EventsToolbar";
 import EventEditor from "./EventEditor";
 import { HistoricalImage } from "@/types/game";
-import ExcelImporter from "./ExcelImporter";
 
 const AdminEventsManager = () => {
   const { toast } = useToast();
@@ -82,16 +81,94 @@ const AdminEventsManager = () => {
     });
   };
 
+  // Validate Wikimedia URL
+  const validateAndFixWikimediaUrl = (url: string): string => {
+    if (!url) return url;
+    
+    // Check if it's a wikimedia URL but in the wrong format
+    if (url.includes('wikimedia.org/wiki/')) {
+      // Extract the filename
+      const fileNameMatch = url.match(/File:([^/]+)$/);
+      if (fileNameMatch && fileNameMatch[1]) {
+        const fileName = fileNameMatch[1];
+        return `https://commons.wikimedia.org/wiki/Special:FilePath/${fileName}?width=800`;
+      }
+    }
+    
+    return url;
+  };
+
+  // Check if country field exists, and if not, extract it from locationName
+  const ensureCountryField = (event: HistoricalImage): HistoricalImage => {
+    if (!event.locationName) return event;
+    
+    const updatedEvent = { ...event };
+    
+    // If no country specified, try to extract from locationName
+    if (!updatedEvent.country) {
+      const parts = event.locationName.split(',');
+      if (parts.length > 1) {
+        updatedEvent.country = parts[parts.length - 1].trim();
+      } else {
+        updatedEvent.country = event.locationName.trim();
+      }
+    }
+    
+    return updatedEvent;
+  };
+
+  // Validate event data
+  const validateEvent = (event: HistoricalImage): { valid: boolean; message?: string } => {
+    // Check for required fields
+    if (!event.title || !event.title.trim()) {
+      return { valid: false, message: "Title is required" };
+    }
+    
+    if (!event.year || event.year < 1000 || event.year > new Date().getFullYear()) {
+      return { valid: false, message: "Valid year is required" };
+    }
+    
+    if (!event.location || typeof event.location.lat !== 'number' || typeof event.location.lng !== 'number') {
+      return { valid: false, message: "Valid location coordinates are required" };
+    }
+    
+    if (!event.src || !event.src.trim() || event.src === 'https://via.placeholder.com/800x500?text=Select+Image') {
+      return { valid: false, message: "Image URL is required" };
+    }
+    
+    // Validate image URL
+    if (!event.src.startsWith('https://commons.wikimedia.org/')) {
+      return { valid: false, message: "Image URL must start with https://commons.wikimedia.org/" };
+    }
+    
+    return { valid: true };
+  };
+
   const handleSaveEvent = async (event: HistoricalImage) => {
+    // First, ensure country field and fix wikimedia URL
+    const processedEvent = ensureCountryField(event);
+    processedEvent.src = validateAndFixWikimediaUrl(processedEvent.src);
+    
+    // Validate the event
+    const validation = validateEvent(processedEvent);
+    if (!validation.valid) {
+      toast({
+        title: "Validation Error",
+        description: validation.message,
+        variant: "destructive"
+      });
+      return;
+    }
+    
     // Check if this is an update or a new event
-    const eventExists = events.some(e => e.id === event.id);
+    const eventExists = events.some(e => e.id === processedEvent.id);
     
     let updatedEvents: HistoricalImage[];
     
     if (eventExists) {
-      updatedEvents = events.map(e => e.id === event.id ? event : e);
+      updatedEvents = events.map(e => e.id === processedEvent.id ? processedEvent : e);
     } else {
-      updatedEvents = [...events, event];
+      updatedEvents = [...events, processedEvent];
     }
     
     setEvents(updatedEvents);
@@ -138,11 +215,50 @@ const AdminEventsManager = () => {
   };
 
   const handleImportExcel = async (importedEvents: HistoricalImage[]) => {
-    // Combine existing events with new ones
-    let updatedEvents = [...events];
+    // Process and validate imported events
+    const validEvents: HistoricalImage[] = [];
+    const invalidEvents: HistoricalImage[] = [];
     
     // Process each imported event
-    importedEvents.forEach(newEvent => {
+    for (const newEvent of importedEvents) {
+      // Fix URL if needed
+      newEvent.src = validateAndFixWikimediaUrl(newEvent.src);
+      
+      // Ensure country field
+      const processedEvent = ensureCountryField(newEvent);
+      
+      // Validate the event
+      const validation = validateEvent(processedEvent);
+      if (validation.valid) {
+        validEvents.push(processedEvent);
+      } else {
+        invalidEvents.push(processedEvent);
+      }
+    }
+    
+    if (invalidEvents.length > 0) {
+      toast({
+        title: "Some events were not imported",
+        description: `${invalidEvents.length} events had invalid data and were not imported.`,
+        variant: "destructive"
+      });
+    }
+    
+    if (validEvents.length === 0) {
+      toast({
+        title: "No valid events found",
+        description: "None of the imported events had valid data. Check the URLs and try again.",
+        variant: "destructive"
+      });
+      setIsUploading(false);
+      return;
+    }
+    
+    // Combine existing events with new valid ones
+    let updatedEvents = [...events];
+    
+    // Process each valid imported event
+    validEvents.forEach(newEvent => {
       // Check if this event already exists by checking if there's an event with the same source
       const existingEventIndex = updatedEvents.findIndex(e => e.src === newEvent.src);
       
@@ -168,7 +284,7 @@ const AdminEventsManager = () => {
     
     toast({
       title: "Import complete",
-      description: `${importedEvents.length} events were imported successfully.`
+      description: `${validEvents.length} events were imported successfully.`
     });
   };
 
@@ -218,7 +334,7 @@ const AdminEventsManager = () => {
         />
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-4">
             <EventsToolbar 
               onAddEvent={handleAddEvent}
               onDeleteSelected={handleDeleteSelected}
@@ -229,13 +345,6 @@ const AdminEventsManager = () => {
               isSaving={isSaving}
               selectedEventsCount={selectedEvents.size}
             />
-            <div className="ml-auto">
-              <ExcelImporter 
-                onImportComplete={handleImportExcel}
-                isUploading={isUploading}
-                setIsUploading={setIsUploading}
-              />
-            </div>
           </div>
           
           <EventsTable 

@@ -63,11 +63,18 @@ const GameTimer = ({ duration, paused = false, onTimeUp, hintsOpen = false }: Ga
     return 'bg-green-500';
   };
 
+  // Format time to minutes:seconds
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
   return (
     <div className="relative w-full">
       <div className="flex justify-between items-center mb-1">
         <div className="absolute right-0 top-0 text-xs font-medium">
-          {timeLeft} sec
+          {formatTime(timeLeft)}
         </div>
       </div>
       <div className="relative w-full h-2">

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import GamePanel from './game/GamePanel';
 import GameControls from './game/GameControls';
@@ -7,6 +8,7 @@ import { useGameState } from '@/hooks/useGameState';
 import Navbar from './Navbar';
 import GameTimer from './game/GameTimer';
 import NavigationConfirmation from './NavigationConfirmation';
+
 const MAX_ROUNDS = 5; // Default to 5 rounds for a game
 
 const GameSection = () => {
@@ -44,9 +46,24 @@ const GameSection = () => {
     maxRounds
   } = useGameState(MAX_ROUNDS);
 
+  // Load timer settings from localStorage on mount
   useEffect(() => {
-    setTimerEnabled(true);
-    setTimerDuration(60); // 60 seconds by default
+    const gameSettings = localStorage.getItem('gameSettings');
+    if (gameSettings) {
+      try {
+        const settings = JSON.parse(gameSettings);
+        if (settings.timerEnabled !== undefined) {
+          setTimerEnabled(settings.timerEnabled);
+        }
+        if (settings.timerDuration !== undefined) {
+          setTimerDuration(settings.timerDuration); // This should be in seconds
+        } else if (settings.timerMinutes !== undefined) {
+          setTimerDuration(settings.timerMinutes * 60); // Convert minutes to seconds
+        }
+      } catch (error) {
+        console.error("Error parsing game settings:", error);
+      }
+    }
   }, [setTimerEnabled, setTimerDuration]);
 
   const [navbarKey, setNavbarKey] = useState(0);
@@ -72,13 +89,11 @@ const GameSection = () => {
   };
 
   const handleUseLocationHint = (): boolean => {
-    const result = gameStateUseLocationHint();
-    return Boolean(result);
+    return gameStateUseLocationHint();
   };
 
   const handleUseYearHint = (): boolean => {
-    const result = gameStateUseYearHint();
-    return Boolean(result);
+    return gameStateUseYearHint();
   };
 
   useEffect(() => {
@@ -86,6 +101,14 @@ const GameSection = () => {
       setTimerPaused(true);
     }
   }, [showResults, setTimerPaused]);
+
+  // For Daily Challenge, set timer to 5 minutes (300 seconds)
+  useEffect(() => {
+    if (isDaily) {
+      setTimerEnabled(true);
+      setTimerDuration(300); // 5 minutes in seconds
+    }
+  }, [isDaily, setTimerEnabled, setTimerDuration]);
 
   const renderContent = () => {
     if (gameComplete) {

@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 interface GameSettings {
   timerEnabled: boolean;
   timerDuration: number;
-  timerMinutes: number;
   maxRounds: number;
   initialHintCoins: number;
 }
@@ -24,8 +23,6 @@ export const useGameSettings = () => {
           if (settings.timerEnabled !== undefined) {
             setTimerEnabled(settings.timerEnabled);
           }
-          
-          // Set timer duration from minutes to seconds
           if (settings.timerMinutes) {
             setTimerDuration(settings.timerMinutes * 60);
           } else if (settings.timerDuration) {
@@ -60,11 +57,7 @@ export const useGameSettings = () => {
     },
     setTimerDuration: (value: number) => {
       setTimerDuration(value);
-      // Also save as minutes for the UI
-      saveSettings({ 
-        timerDuration: value,
-        timerMinutes: Math.floor(value / 60)
-      });
+      saveSettings({ timerDuration: value });
     },
     setTimerPaused,
   };

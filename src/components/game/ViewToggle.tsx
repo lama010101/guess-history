@@ -1,42 +1,47 @@
 
-import React from 'react';
+import { Map, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { MapPin, Image, X } from 'lucide-react';
 
 interface ViewToggleProps {
   activeView: 'image' | 'map';
   onToggle: () => void;
-  imageSrc?: string; 
+  imageSrc: string;
   showClose?: boolean;
-  onClose?: () => void;
-  size?: 'default' | 'large';
 }
 
 const ViewToggle = ({ 
   activeView, 
   onToggle, 
-  imageSrc, 
-  showClose = true,
-  onClose,
-  size = 'default'
+  imageSrc,
+  showClose = true
 }: ViewToggleProps) => {
-  // Size multiplier (33% larger for large size)
-  const sizeClass = size === 'large' ? 'w-12 h-12' : 'w-9 h-9';
-  const iconSize = size === 'large' ? 24 : 18;
+  // OpenStreetMap attribution image
+  const osmLogo = "https://wiki.openstreetmap.org/w/images/7/79/Public-images-osm_logo.svg";
 
   return (
-    <div className="absolute bottom-4 right-4 z-10 flex items-center space-x-2">
+    <div className="absolute top-4 right-4 z-10">
       <Button
         variant="outline"
         size="icon"
-        className={`${sizeClass} rounded-full bg-white dark:bg-gray-800 shadow-md hover:bg-gray-100 dark:hover:bg-gray-700`}
+        className="h-10 w-10 rounded-md bg-background/80 backdrop-blur-sm"
         onClick={onToggle}
-        title={activeView === 'image' ? 'Switch to map view' : 'Switch to image view'}
       >
         {activeView === 'image' ? (
-          <MapPin size={iconSize} />
+          <div className="h-8 w-8 rounded overflow-hidden">
+            <img 
+              src={osmLogo} 
+              alt="Switch to map view" 
+              className="h-full w-full object-contain"
+            />
+          </div>
         ) : (
-          <Image size={iconSize} />
+          <div className="h-8 w-8 rounded overflow-hidden">
+            <img 
+              src={imageSrc} 
+              alt="Switch to image view" 
+              className="h-full w-full object-cover"
+            />
+          </div>
         )}
       </Button>
     </div>

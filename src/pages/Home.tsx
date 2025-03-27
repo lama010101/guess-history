@@ -35,68 +35,35 @@ const Home = () => {
   const [timeUntilNextDaily, setTimeUntilNextDaily] = useState("");
   
   useEffect(() => {
-    const loadDailyStatus = () => {
-      const lastPlayed = localStorage.getItem('lastDailyPlayed');
-      const savedScore = localStorage.getItem('lastDailyScore');
-      // Check if there's a daily game in progress
-      const savedGameState = localStorage.getItem('currentGameState');
-      let isCurrentGameDaily = false;
-      
-      if (savedGameState) {
-        try {
-          const gameState = JSON.parse(savedGameState);
-          // Check if the game is a daily game and not completed
-          if (gameState.isDaily && !gameState.gameComplete) {
-            isCurrentGameDaily = true;
-          }
-        } catch (error) {
-          console.error('Error parsing game state:', error);
-        }
+    const lastPlayed = localStorage.getItem('lastDailyPlayed');
+    const savedScore = localStorage.getItem('lastDailyScore');
+    if (lastPlayed) {
+      const lastPlayedDate = new Date(lastPlayed);
+      const today = new Date();
+      setDailyDate(lastPlayedDate.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }));
+      const isSameDay = lastPlayedDate.getDate() === today.getDate() && lastPlayedDate.getMonth() === today.getMonth() && lastPlayedDate.getFullYear() === today.getFullYear();
+      setDailyPlayed(isSameDay);
+      if (isSameDay) {
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+        const hoursLeft = Math.floor((tomorrow.getTime() - today.getTime()) / (1000 * 60 * 60));
+        const minutesLeft = Math.floor((tomorrow.getTime() - today.getTime()) % (1000 * 60 * 60) / (1000 * 60));
+        setTimeUntilNextDaily(`${hoursLeft}h ${minutesLeft}m`);
       }
-      
-      if (lastPlayed) {
-        const lastPlayedDate = new Date(lastPlayed);
-        const today = new Date();
-        setDailyDate(lastPlayedDate.toLocaleDateString('en-US', {
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric'
-        }));
-        
-        // Only consider it played if it was completed today
-        const isSameDay = lastPlayedDate.getDate() === today.getDate() && 
-                          lastPlayedDate.getMonth() === today.getMonth() && 
-                          lastPlayedDate.getFullYear() === today.getFullYear();
-        
-        // If there's a daily game in progress, don't mark it as played
-        setDailyPlayed(isSameDay && !isCurrentGameDaily);
-        
-        if (isSameDay) {
-          const tomorrow = new Date(today);
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          tomorrow.setHours(0, 0, 0, 0);
-          const hoursLeft = Math.floor((tomorrow.getTime() - today.getTime()) / (1000 * 60 * 60));
-          const minutesLeft = Math.floor((tomorrow.getTime() - today.getTime()) % (1000 * 60 * 60) / (1000 * 60));
-          setTimeUntilNextDaily(`${hoursLeft}h ${minutesLeft}m`);
-        }
-        
-        if (savedScore) {
-          setDailyScore(parseInt(savedScore, 10));
-        }
+      if (savedScore) {
+        setDailyScore(parseInt(savedScore, 10));
       }
-    };
-    
-    loadDailyStatus();
-    
+    }
     const distancePref = localStorage.getItem('distanceFormat');
     if (distancePref) {
       setUseMiles(distancePref === 'miles');
     }
-    
-    // Add event listener to refresh daily status whenever storage changes
-    window.addEventListener('storage', loadDailyStatus);
-    return () => window.removeEventListener('storage', loadDailyStatus);
   }, []);
   
   const handleStartGame = () => {
@@ -108,16 +75,9 @@ const Home = () => {
       distanceFormat: useMiles ? 'miles' : 'km'
     };
     localStorage.setItem('gameSettings', JSON.stringify(gameSettings));
-    
-    // Mark as daily game if in compete tab
     if (activeTab === 'compete') {
-      // Set the daily game flag in session storage
-      sessionStorage.setItem('startingDailyGame', 'true');
-    } else {
-      // Clear any daily game flag
-      sessionStorage.removeItem('startingDailyGame');
+      localStorage.setItem('lastDailyPlayed', new Date().toISOString());
     }
-    
     navigate('/play');
   };
   
@@ -140,35 +100,11 @@ const Home = () => {
   };
   
   const handleInviteFriendsAndStart = () => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Login required",
-        description: "You need to be logged in to invite friends",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     toast({
       title: "Invitations sent!",
       description: "Your friends have been invited to join the game"
     });
-    
     handleStartGame();
-  };
-  
-  const handleFriendsMode = () => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Login required",
-        description: "You need to be logged in to play Friends mode",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Continue with friends mode
-    copyGameLink();
   };
   
   return <div className="min-h-[100dvh] bg-white dark:bg-gray-900 text-black dark:text-white flex flex-col">
@@ -186,7 +122,7 @@ const Home = () => {
                 <h3 className="text-xl font-medium mb-2">
                   {dailyPlayed ? 'Daily Challenge: Already Played Today' : 'Daily Challenge'}
                 </h3>
-                <p className="text-neutral-500 dark:text-neutral-400 mb-4">Compete with the world on the same set of random images.</p>
+                <p className="text-neutral-500 dark:text-neutral-400 mb-4">Same 5 images as everyone else.</p>
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">One attempt per day</p>
@@ -253,27 +189,15 @@ const Home = () => {
                 </div>
                 
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <Button 
-                    variant="outline" 
-                    className="flex-1 flex items-center gap-2" 
-                    onClick={handleFriendsMode}
-                  >
+                  <Button variant="outline" className="flex-1 flex items-center gap-2" onClick={copyGameLink}>
                     {linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     {linkCopied ? "Copied!" : "Copy Game Link"}
                   </Button>
-                  <FriendsInviteDialog 
-                    trigger={
-                      <Button disabled={!isAuthenticated} className="flex-1 flex items-center gap-2">
+                  <FriendsInviteDialog trigger={<Button className="flex-1 flex items-center gap-2">
                         <Users className="h-4 w-4" />
                         Invite and Start Game
-                      </Button>
-                    } 
-                    onInviteAndStart={handleInviteFriendsAndStart} 
-                  />
+                      </Button>} onInviteAndStart={handleInviteFriendsAndStart} />
                 </div>
-                {!isAuthenticated && (
-                  <p className="text-sm text-red-500 mt-2">You need to be logged in to play Friends mode</p>
-                )}
               </div>
             </div>
           </TabsContent>

@@ -30,7 +30,6 @@ import GameTimer from './game/GameTimer';
 import { SettingsDialog } from './SettingsDialog';
 import HintDialog from './game/HintDialog';
 import ShareDialog from './ShareDialog';
-import HintSystem from './game/HintSystem';
 
 interface RoundInfo {
   currentRound: number;
@@ -61,7 +60,6 @@ const Navbar = ({
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [showHintDialog, setShowHintDialog] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
-  const [showHintSystem, setShowHintSystem] = useState(false);
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
@@ -133,101 +131,98 @@ const Navbar = ({
   return (
     <header className="sticky top-0 z-40 w-full bg-white dark:bg-gray-900 shadow-sm">
       <div className="container flex h-16 items-center">
-        {isInGame ? (
-          // Game mode navbar layout
-          <>
-            {roundInfo && (
-              <div className="flex items-center justify-start flex-1">
-                <div className="text-center">
-                  <div className="flex items-center gap-2 justify-start">
-                    <span className="text-sm font-medium">
-                      Round {roundInfo.currentRound}/{roundInfo.maxRounds}
-                    </span>
-                    <span className="w-[1px] h-4 bg-border"></span>
-                    <span className="text-sm font-medium">
-                      Score: {roundInfo.totalScore.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          // Regular navbar layout
-          <div className="flex items-center gap-6 md:gap-10 flex-1">
+        <div className="flex items-center gap-6 md:gap-10">
+          {!hideTitle && (
+            <Link to="/" className="flex items-center gap-1" onClick={(e) => {
+              e.preventDefault();
+              handleNavigation('/');
+            }}>
+              <span className="text-xl font-bold">EventGuesser</span>
+            </Link>
+          )}
+          
+          <nav className="hidden md:flex gap-6">
             {!hideTitle && (
-              <Link to="/" className="flex items-center gap-1" onClick={(e) => {
-                e.preventDefault();
-                handleNavigation('/');
-              }}>
-                <span className="text-xl font-bold">EventGuesser</span>
-              </Link>
+              <>
+                <Link 
+                  to="/" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleNavigation('/');
+                  }}
+                  className="text-sm font-medium transition-colors hover:text-primary"
+                >
+                  Home
+                </Link>
+                <button 
+                  onClick={handleProfileNavigation}
+                  className="text-sm font-medium transition-colors hover:text-primary"
+                >
+                  Profile
+                </button>
+                <Link 
+                  to="/leaderboard" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleNavigation('/leaderboard');
+                  }}
+                  className="text-sm font-medium transition-colors hover:text-primary"
+                >
+                  Leaderboard
+                </Link>
+                <button 
+                  onClick={handleFriendsNavigation}
+                  className="text-sm font-medium transition-colors hover:text-primary"
+                >
+                  Friends
+                </button>
+                {isAdmin && (
+                  <Link 
+                    to="/admin" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleNavigation('/admin');
+                    }}
+                    className="text-sm font-medium transition-colors hover:text-primary"
+                  >
+                    Admin
+                  </Link>
+                )}
+              </>
             )}
-            
-            <nav className="hidden md:flex gap-6">
-              {!hideTitle && (
-                <>
-                  <Link 
-                    to="/" 
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleNavigation('/');
-                    }}
-                    className="text-sm font-medium transition-colors hover:text-primary"
-                  >
-                    Home
-                  </Link>
-                  <button 
-                    onClick={handleProfileNavigation}
-                    className="text-sm font-medium transition-colors hover:text-primary"
-                  >
-                    Profile
-                  </button>
-                  <Link 
-                    to="/leaderboard" 
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleNavigation('/leaderboard');
-                    }}
-                    className="text-sm font-medium transition-colors hover:text-primary"
-                  >
-                    Leaderboard
-                  </Link>
-                  <button 
-                    onClick={handleFriendsNavigation}
-                    className="text-sm font-medium transition-colors hover:text-primary"
-                  >
-                    Friends
-                  </button>
-                  {isAdmin && (
-                    <Link 
-                      to="/admin" 
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleNavigation('/admin');
-                      }}
-                      className="text-sm font-medium transition-colors hover:text-primary"
-                    >
-                      Admin
-                    </Link>
-                  )}
-                </>
-              )}
-            </nav>
+          </nav>
+        </div>
+        
+        {/* Round Info */}
+        {roundInfo && (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="flex items-center gap-2 justify-center">
+                <span className="text-sm font-medium">
+                  Round {roundInfo.currentRound}/{roundInfo.maxRounds}
+                </span>
+                <span className="w-[1px] h-4 bg-border"></span>
+                <span className="text-sm font-medium">
+                  Score: {roundInfo.totalScore.toLocaleString()}
+                </span>
+              </div>
+            </div>
           </div>
         )}
         
         <div className="flex items-center gap-2 ml-auto">
-          {/* Hint button */}
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex items-center gap-1"
-            onClick={toggleHints}
-          >
-            <Lightbulb className="h-4 w-4" />
-            <span>{hintCoins}</span>
-          </Button>
+          {/* Hint button - centered if possible */}
+          <div className="flex-1 flex justify-center mx-4">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center gap-1"
+              onClick={toggleHints}
+            >
+              <Lightbulb className="h-4 w-4" />
+              <span>{hintCoins}</span>
+            </Button>
+          </div>
           
           {isAuthenticated ? (
             <DropdownMenu>
@@ -251,39 +246,39 @@ const Navbar = ({
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
-                  <DropdownMenuItem onSelect={() => handleProfileNavigation()}>
+                  <DropdownMenuItem onClick={handleProfileNavigation}>
                     <User className="mr-2 h-4 w-4" />
                     <span>{user?.username || 'Profile'}</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => handleNavigation('/')}>
+                  <DropdownMenuItem onClick={() => handleNavigation('/')}>
                     <Home className="mr-2 h-4 w-4" />
                     <span>Home</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => handleFriendsNavigation()}>
+                  <DropdownMenuItem onClick={handleFriendsNavigation}>
                     <Users className="mr-2 h-4 w-4" />
                     <span>Friends</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => handleNavigation('/leaderboard')}>
+                  <DropdownMenuItem onClick={() => handleNavigation('/leaderboard')}>
                     <Trophy className="mr-2 h-4 w-4" />
                     <span>Leaderboard</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setShowShareDialog(true)}>
+                  <DropdownMenuItem onClick={() => setShowShareDialog(true)}>
                     <Share2 className="mr-2 h-4 w-4" />
                     <span>Share</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setShowSettingsDialog(true)}>
+                  <DropdownMenuItem onClick={() => setShowSettingsDialog(true)}>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
                   </DropdownMenuItem>
                   {isAdmin && (
-                    <DropdownMenuItem onSelect={() => handleNavigation('/admin')}>
+                    <DropdownMenuItem onClick={() => handleNavigation('/admin')}>
                       <Settings className="mr-2 h-4 w-4" />
                       <span>Admin</span>
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={handleLogout}>
+                <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Logout</span>
                 </DropdownMenuItem>
@@ -292,12 +287,11 @@ const Navbar = ({
           ) : (
             <Button variant="default" size="sm" onClick={openAuthModal}>
               <LogIn className="mr-2 h-4 w-4" />
-              <span>Continue with Email</span>
+              <span>Login</span>
             </Button>
           )}
         </div>
       </div>
-      
       <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
       <SettingsDialog 
         open={showSettingsDialog} 

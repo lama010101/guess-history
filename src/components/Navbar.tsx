@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/services/auth';
@@ -31,7 +30,7 @@ import { SettingsDialog } from './SettingsDialog';
 import HintDialog from './game/HintDialog';
 import ShareDialog from './ShareDialog';
 import HintSystem from './game/HintSystem';
-import { useNavigationConfirmation } from './NavigationConfirmation';
+import { useNavigationConfirmation } from '@/hooks/useNavigationConfirmation';
 
 interface RoundInfo {
   currentRound: number;
@@ -88,17 +87,13 @@ const Navbar = ({
   const location = useLocation();
   const navigate = useNavigate();
   
-  // Integration with NavigationConfirmation
   const { registerNavigationHandler } = useNavigationConfirmation();
   
-  // Check if we're currently in a game
   const isInGame = location.pathname === '/play';
   
-  // Register navigation handler
   useEffect(() => {
     if (isInGame) {
       registerNavigationHandler((path) => {
-        // Return true to indicate that we're handling the navigation
         navigate(path);
         return true;
       });
@@ -159,9 +154,7 @@ const Navbar = ({
     <header className="sticky top-0 z-40 w-full bg-white dark:bg-gray-900 shadow-sm">
       <div className="container flex h-16 items-center">
         {isInGame ? (
-          // Game mode navbar layout
           <>
-            {/* Left side - Round info */}
             {roundInfo && (
               <div className="flex items-center">
                 <div className="text-center">
@@ -178,7 +171,6 @@ const Navbar = ({
               </div>
             )}
             
-            {/* Center - Timer if enabled */}
             {showTimer && timerEnabled && (
               <div className="flex-1 flex justify-center px-4 max-w-[300px] mx-auto">
                 <GameTimer 
@@ -190,9 +182,7 @@ const Navbar = ({
               </div>
             )}
             
-            {/* Right side - Hint button and user menu */}
             <div className="flex items-center gap-2 ml-auto">
-              {/* Home button for non-authenticated users */}
               {!isAuthenticated && (
                 <Button 
                   variant="ghost" 
@@ -205,7 +195,6 @@ const Navbar = ({
                 </Button>
               )}
               
-              {/* Hint button */}
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -285,7 +274,6 @@ const Navbar = ({
             </div>
           </>
         ) : (
-          // Regular (non-game) navbar layout
           <>
             <div className="flex items-center gap-6 md:gap-10">
               {!hideTitle && (
@@ -335,7 +323,6 @@ const Navbar = ({
             </div>
             
             <div className="flex items-center gap-2 ml-auto">
-              {/* Hint button - centered if possible */}
               <div className="flex-1 flex justify-center mx-4">
                 <Button 
                   variant="outline" 
@@ -419,7 +406,6 @@ const Navbar = ({
         )}
       </div>
       
-      {/* Display hints UI when open in game mode */}
       {isInGame && hintsOpen && currentImage && onUseLocationHint && onUseYearHint && (
         <div className="absolute top-16 left-4 z-40">
           <HintSystem

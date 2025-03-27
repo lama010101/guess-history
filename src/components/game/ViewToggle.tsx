@@ -23,11 +23,11 @@ const ViewToggle = ({
       <Button
         variant="outline"
         size="icon"
-        className="h-10 w-10 rounded-md bg-background/80 backdrop-blur-sm"
+        className="h-[40px] w-[40px] rounded-md bg-background/80 backdrop-blur-sm"
         onClick={onToggle}
       >
         {activeView === 'image' ? (
-          <div className="h-8 w-8 rounded overflow-hidden">
+          <div className="h-10 w-10 rounded overflow-hidden">
             <img 
               src={osmLogo} 
               alt="Switch to map view" 
@@ -35,7 +35,7 @@ const ViewToggle = ({
             />
           </div>
         ) : (
-          <div className="h-8 w-8 rounded overflow-hidden">
+          <div className="h-10 w-10 rounded overflow-hidden">
             <img 
               src={imageSrc} 
               alt="Switch to image view" 

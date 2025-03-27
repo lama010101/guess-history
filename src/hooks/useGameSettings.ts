@@ -3,14 +3,15 @@ import { useState, useEffect } from 'react';
 
 interface GameSettings {
   timerEnabled: boolean;
-  timerDuration: number;
+  timerDuration: number; // in seconds
+  timerMinutes: number; // in minutes
   maxRounds: number;
   initialHintCoins: number;
 }
 
 export const useGameSettings = () => {
   const [timerEnabled, setTimerEnabled] = useState(false);
-  const [timerDuration, setTimerDuration] = useState(60);
+  const [timerDuration, setTimerDuration] = useState(60); // Default of 60 seconds
   const [timerPaused, setTimerPaused] = useState(false);
   
   // Load settings from localStorage on first render
@@ -23,7 +24,9 @@ export const useGameSettings = () => {
           if (settings.timerEnabled !== undefined) {
             setTimerEnabled(settings.timerEnabled);
           }
+          
           if (settings.timerMinutes) {
+            // Convert minutes to seconds for the timer
             setTimerDuration(settings.timerMinutes * 60);
           } else if (settings.timerDuration) {
             setTimerDuration(settings.timerDuration);

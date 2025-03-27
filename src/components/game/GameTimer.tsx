@@ -1,6 +1,5 @@
 
 import { useState, useEffect, useRef } from 'react';
-import { useGameState } from '@/hooks/useGameState';
 
 interface GameTimerProps {
   duration: number; // in seconds
@@ -12,7 +11,6 @@ interface GameTimerProps {
 const GameTimer = ({ duration, paused = false, onTimeUp, hintsOpen = false }: GameTimerProps) => {
   const [timeLeft, setTimeLeft] = useState(duration);
   const [isRunning, setIsRunning] = useState(true);
-  const { showResults } = useGameState();
   const timerRef = useRef<number | null>(null);
   
   // Reset timer when duration changes
@@ -23,12 +21,12 @@ const GameTimer = ({ duration, paused = false, onTimeUp, hintsOpen = false }: Ga
 
   // Stop timer when paused, hints are open, or results are showing
   useEffect(() => {
-    if (paused || hintsOpen || showResults) {
+    if (paused || hintsOpen) {
       setIsRunning(false);
     } else {
       setIsRunning(true);
     }
-  }, [paused, hintsOpen, showResults]);
+  }, [paused, hintsOpen]);
 
   // Timer countdown logic
   useEffect(() => {

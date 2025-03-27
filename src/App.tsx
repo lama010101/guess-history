@@ -10,9 +10,21 @@ import Leaderboard from "./pages/Leaderboard";
 import AdminPanel from "./pages/AdminPanel";
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
+import Friends from "./pages/Friends";
 import { useAuth } from "./services/auth";
 
 const queryClient = new QueryClient();
+
+// Protected route component
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated } = useAuth();
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+  
+  return <>{children}</>;
+};
 
 // Admin route protection component
 const ProtectedAdminRoute = ({ children }: { children: React.ReactNode }) => {
@@ -34,7 +46,16 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/play" element={<Index />} />
-          <Route path="/profile" element={<Profile />} />
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          } />
+          <Route path="/friends" element={
+            <ProtectedRoute>
+              <Friends />
+            </ProtectedRoute>
+          } />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/admin" element={
             <ProtectedAdminRoute>

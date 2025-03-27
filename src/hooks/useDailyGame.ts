@@ -10,6 +10,7 @@ export const useDailyGame = () => {
   useEffect(() => {
     const lastPlayed = localStorage.getItem('lastDailyPlayed');
     const savedScore = localStorage.getItem('lastDailyScore');
+    const dailyCompleted = localStorage.getItem('dailyCompleted');
     
     if (lastPlayed) {
       const lastPlayedDate = new Date(lastPlayed);
@@ -26,7 +27,8 @@ export const useDailyGame = () => {
                        lastPlayedDate.getMonth() === today.getMonth() && 
                        lastPlayedDate.getFullYear() === today.getFullYear();
       
-      setDailyCompleted(isSameDay);
+      // Only mark as completed if the daily game was actually completed
+      setDailyCompleted(isSameDay && dailyCompleted === 'true');
       
       if (savedScore) {
         setDailyScore(parseInt(savedScore, 10));
@@ -38,6 +40,8 @@ export const useDailyGame = () => {
     setIsDaily(active);
     if (active) {
       localStorage.setItem('lastDailyPlayed', new Date().toISOString());
+      // Remove completed flag when starting a new daily game
+      localStorage.removeItem('dailyCompleted');
     }
   };
 
@@ -45,6 +49,7 @@ export const useDailyGame = () => {
     setDailyCompleted(true);
     setDailyScore(score);
     localStorage.setItem('lastDailyScore', score.toString());
+    localStorage.setItem('dailyCompleted', 'true');
   };
 
   return {

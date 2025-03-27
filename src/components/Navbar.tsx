@@ -30,6 +30,8 @@ import GameTimer from './game/GameTimer';
 import { SettingsDialog } from './SettingsDialog';
 import HintDialog from './game/HintDialog';
 import ShareDialog from './ShareDialog';
+import HintSystem from './game/HintSystem';
+import { useNavigationConfirmation } from './NavigationConfirmation';
 
 interface RoundInfo {
   currentRound: number;
@@ -40,21 +42,42 @@ interface RoundInfo {
 interface NavbarProps {
   showTimer?: boolean;
   timerDuration?: number;
+  timerEnabled?: boolean;
+  onTimerEnd?: () => void;
+  timerPaused?: boolean;
   roundInfo?: RoundInfo;
   hintCoins?: number;
   hintsOpen?: boolean;
   setHintsOpen?: (open: boolean) => void;
   hideTitle?: boolean;
+  locationHintUsed?: boolean;
+  yearHintUsed?: boolean;
+  onUseLocationHint?: () => boolean;
+  onUseYearHint?: () => boolean;
+  currentImage?: {
+    year: number;
+    location: { lat: number; lng: number };
+    description: string;
+    locationName?: string;
+  };
 }
 
 const Navbar = ({
   showTimer = false,
   timerDuration = 60,
+  timerEnabled = false,
+  onTimerEnd,
+  timerPaused = false,
   roundInfo,
   hintCoins = 0,
   hintsOpen = false,
   setHintsOpen,
-  hideTitle = false
+  hideTitle = false,
+  locationHintUsed = false,
+  yearHintUsed = false,
+  onUseLocationHint,
+  onUseYearHint,
+  currentImage
 }: NavbarProps) => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
@@ -65,8 +88,22 @@ const Navbar = ({
   const location = useLocation();
   const navigate = useNavigate();
   
+  // Integration with NavigationConfirmation
+  const { registerNavigationHandler } = useNavigationConfirmation();
+  
   // Check if we're currently in a game
   const isInGame = location.pathname === '/play';
+  
+  // Register navigation handler
+  useEffect(() => {
+    if (isInGame) {
+      registerNavigationHandler((path) => {
+        // Return true to indicate that we're handling the navigation
+        navigate(path);
+        return true;
+      });
+    }
+  }, [isInGame, navigate, registerNavigationHandler]);
   
   const openAuthModal = () => {
     setAuthModalOpen(true);
@@ -81,16 +118,6 @@ const Navbar = ({
   };
   
   const handleNavigation = (path: string) => {
-    // If we're in a game, use the navigation confirmation
-    if (isInGame && window.appNavigation) {
-      // If the navigation handler returns true, it means it's handling the navigation
-      // so we should return to prevent the default navigation
-      if (window.appNavigation.navigateTo(path)) {
-        return;
-      }
-    }
-    
-    // Normal navigation if we're not in a game or the handler didn't handle it
     navigate(path);
   };
 
@@ -131,167 +158,281 @@ const Navbar = ({
   return (
     <header className="sticky top-0 z-40 w-full bg-white dark:bg-gray-900 shadow-sm">
       <div className="container flex h-16 items-center">
-        <div className="flex items-center gap-6 md:gap-10">
-          {!hideTitle && (
-            <Link to="/" className="flex items-center gap-1" onClick={(e) => {
-              e.preventDefault();
-              handleNavigation('/');
-            }}>
-              <span className="text-xl font-bold">EventGuesser</span>
-            </Link>
-          )}
-          
-          <nav className="hidden md:flex gap-6">
-            {!hideTitle && (
-              <>
-                <Link 
-                  to="/" 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleNavigation('/');
-                  }}
-                  className="text-sm font-medium transition-colors hover:text-primary"
-                >
-                  Home
-                </Link>
-                <button 
-                  onClick={handleProfileNavigation}
-                  className="text-sm font-medium transition-colors hover:text-primary"
-                >
-                  Profile
-                </button>
-                <Link 
-                  to="/leaderboard" 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleNavigation('/leaderboard');
-                  }}
-                  className="text-sm font-medium transition-colors hover:text-primary"
-                >
-                  Leaderboard
-                </Link>
-                <button 
-                  onClick={handleFriendsNavigation}
-                  className="text-sm font-medium transition-colors hover:text-primary"
-                >
-                  Friends
-                </button>
-                {isAdmin && (
-                  <Link 
-                    to="/admin" 
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleNavigation('/admin');
-                    }}
-                    className="text-sm font-medium transition-colors hover:text-primary"
-                  >
-                    Admin
-                  </Link>
-                )}
-              </>
-            )}
-          </nav>
-        </div>
-        
-        {/* Round Info */}
-        {roundInfo && (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <div className="flex items-center gap-2 justify-center">
-                <span className="text-sm font-medium">
-                  Round {roundInfo.currentRound}/{roundInfo.maxRounds}
-                </span>
-                <span className="w-[1px] h-4 bg-border"></span>
-                <span className="text-sm font-medium">
-                  Score: {roundInfo.totalScore.toLocaleString()}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        <div className="flex items-center gap-2 ml-auto">
-          {/* Hint button - centered if possible */}
-          <div className="flex-1 flex justify-center mx-4">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex items-center gap-1"
-              onClick={toggleHints}
-            >
-              <Lightbulb className="h-4 w-4" />
-              <span>{hintCoins}</span>
-            </Button>
-          </div>
-          
-          {isAuthenticated ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="relative h-8 w-8 rounded-full">
-                  <div className="flex items-center gap-1">
-                    {user?.avatarUrl ? (
-                      <img 
-                        src={user.avatarUrl} 
-                        alt="User avatar" 
-                        className="h-8 w-8 rounded-full object-cover"
-                      />
-                    ) : (
-                      <User className="h-5 w-5" />
-                    )}
-                    <ChevronDown className="h-4 w-4" />
+        {isInGame ? (
+          // Game mode navbar layout
+          <>
+            {/* Left side - Round info */}
+            {roundInfo && (
+              <div className="flex items-center">
+                <div className="text-center">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">
+                      Round {roundInfo.currentRound}/{roundInfo.maxRounds}
+                    </span>
+                    <span className="w-[1px] h-4 bg-border"></span>
+                    <span className="text-sm font-medium">
+                      Score: {roundInfo.totalScore.toLocaleString()}
+                    </span>
                   </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Center - Timer if enabled */}
+            {showTimer && timerEnabled && (
+              <div className="flex-1 flex justify-center px-4 max-w-[300px] mx-auto">
+                <GameTimer 
+                  duration={timerDuration} 
+                  paused={timerPaused}
+                  onTimeUp={onTimerEnd}
+                  hintsOpen={hintsOpen}
+                />
+              </div>
+            )}
+            
+            {/* Right side - Hint button and user menu */}
+            <div className="flex items-center gap-2 ml-auto">
+              {/* Home button for non-authenticated users */}
+              {!isAuthenticated && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => handleNavigation('/')}
+                  className="mr-2"
+                >
+                  <Home className="h-4 w-4 mr-1" />
+                  <span>Home</span>
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="z-50">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuItem onClick={handleProfileNavigation}>
-                    <User className="mr-2 h-4 w-4" />
-                    <span>{user?.username || 'Profile'}</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleNavigation('/')}>
-                    <Home className="mr-2 h-4 w-4" />
-                    <span>Home</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleFriendsNavigation}>
-                    <Users className="mr-2 h-4 w-4" />
-                    <span>Friends</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleNavigation('/leaderboard')}>
-                    <Trophy className="mr-2 h-4 w-4" />
-                    <span>Leaderboard</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowShareDialog(true)}>
-                    <Share2 className="mr-2 h-4 w-4" />
-                    <span>Share</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowSettingsDialog(true)}>
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
-                  </DropdownMenuItem>
-                  {isAdmin && (
-                    <DropdownMenuItem onClick={() => handleNavigation('/admin')}>
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Admin</span>
+              )}
+              
+              {/* Hint button */}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-1"
+                onClick={toggleHints}
+              >
+                <Lightbulb className="h-4 w-4" />
+                <span>{hintCoins}</span>
+              </Button>
+              
+              {isAuthenticated ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="relative h-8 w-8 rounded-full">
+                      <div className="flex items-center gap-1">
+                        {user?.avatarUrl ? (
+                          <img 
+                            src={user.avatarUrl} 
+                            alt="User avatar" 
+                            className="h-8 w-8 rounded-full object-cover"
+                          />
+                        ) : (
+                          <User className="h-5 w-5" />
+                        )}
+                        <ChevronDown className="h-4 w-4" />
+                      </div>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="z-50">
+                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem onClick={() => handleNavigation('/profile')}>
+                        <User className="mr-2 h-4 w-4" />
+                        <span>{user?.username || 'Profile'}</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleNavigation('/')}>
+                        <Home className="mr-2 h-4 w-4" />
+                        <span>Home</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleNavigation('/friends')}>
+                        <Users className="mr-2 h-4 w-4" />
+                        <span>Friends</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleNavigation('/leaderboard')}>
+                        <Trophy className="mr-2 h-4 w-4" />
+                        <span>Leaderboard</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setShowShareDialog(true)}>
+                        <Share2 className="mr-2 h-4 w-4" />
+                        <span>Share</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setShowSettingsDialog(true)}>
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Settings</span>
+                      </DropdownMenuItem>
+                      {isAdmin && (
+                        <DropdownMenuItem onClick={() => handleNavigation('/admin')}>
+                          <Settings className="mr-2 h-4 w-4" />
+                          <span>Admin</span>
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Logout</span>
                     </DropdownMenuItem>
-                  )}
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Logout</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button variant="default" size="sm" onClick={openAuthModal}>
-              <LogIn className="mr-2 h-4 w-4" />
-              <span>Login</span>
-            </Button>
-          )}
-        </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button variant="default" size="sm" onClick={openAuthModal}>
+                  <LogIn className="mr-2 h-4 w-4" />
+                  <span>Login</span>
+                </Button>
+              )}
+            </div>
+          </>
+        ) : (
+          // Regular (non-game) navbar layout
+          <>
+            <div className="flex items-center gap-6 md:gap-10">
+              {!hideTitle && (
+                <Link to="/" className="flex items-center gap-1">
+                  <span className="text-xl font-bold">EventGuesser</span>
+                </Link>
+              )}
+              
+              <nav className="hidden md:flex gap-6">
+                {!hideTitle && (
+                  <>
+                    <Link 
+                      to="/" 
+                      className="text-sm font-medium transition-colors hover:text-primary"
+                    >
+                      Home
+                    </Link>
+                    <button 
+                      onClick={handleProfileNavigation}
+                      className="text-sm font-medium transition-colors hover:text-primary"
+                    >
+                      Profile
+                    </button>
+                    <Link 
+                      to="/leaderboard" 
+                      className="text-sm font-medium transition-colors hover:text-primary"
+                    >
+                      Leaderboard
+                    </Link>
+                    <button 
+                      onClick={handleFriendsNavigation}
+                      className="text-sm font-medium transition-colors hover:text-primary"
+                    >
+                      Friends
+                    </button>
+                    {isAdmin && (
+                      <Link 
+                        to="/admin" 
+                        className="text-sm font-medium transition-colors hover:text-primary"
+                      >
+                        Admin
+                      </Link>
+                    )}
+                  </>
+                )}
+              </nav>
+            </div>
+            
+            <div className="flex items-center gap-2 ml-auto">
+              {/* Hint button - centered if possible */}
+              <div className="flex-1 flex justify-center mx-4">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex items-center gap-1"
+                  onClick={toggleHints}
+                >
+                  <Lightbulb className="h-4 w-4" />
+                  <span>{hintCoins}</span>
+                </Button>
+              </div>
+              
+              {isAuthenticated ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="relative h-8 w-8 rounded-full">
+                      <div className="flex items-center gap-1">
+                        {user?.avatarUrl ? (
+                          <img 
+                            src={user.avatarUrl} 
+                            alt="User avatar" 
+                            className="h-8 w-8 rounded-full object-cover"
+                          />
+                        ) : (
+                          <User className="h-5 w-5" />
+                        )}
+                        <ChevronDown className="h-4 w-4" />
+                      </div>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="z-50">
+                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem onClick={() => handleNavigation('/profile')}>
+                        <User className="mr-2 h-4 w-4" />
+                        <span>{user?.username || 'Profile'}</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleNavigation('/')}>
+                        <Home className="mr-2 h-4 w-4" />
+                        <span>Home</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleNavigation('/friends')}>
+                        <Users className="mr-2 h-4 w-4" />
+                        <span>Friends</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleNavigation('/leaderboard')}>
+                        <Trophy className="mr-2 h-4 w-4" />
+                        <span>Leaderboard</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setShowShareDialog(true)}>
+                        <Share2 className="mr-2 h-4 w-4" />
+                        <span>Share</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setShowSettingsDialog(true)}>
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Settings</span>
+                      </DropdownMenuItem>
+                      {isAdmin && (
+                        <DropdownMenuItem onClick={() => handleNavigation('/admin')}>
+                          <Settings className="mr-2 h-4 w-4" />
+                          <span>Admin</span>
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Logout</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button variant="default" size="sm" onClick={openAuthModal}>
+                  <LogIn className="mr-2 h-4 w-4" />
+                  <span>Login</span>
+                </Button>
+              )}
+            </div>
+          </>
+        )}
       </div>
+      
+      {/* Display hints UI when open in game mode */}
+      {isInGame && hintsOpen && currentImage && onUseLocationHint && onUseYearHint && (
+        <div className="absolute top-16 left-4 z-40">
+          <HintSystem
+            hintCoins={hintCoins}
+            onUseLocationHint={onUseLocationHint}
+            onUseYearHint={onUseYearHint}
+            locationHintUsed={locationHintUsed}
+            yearHintUsed={yearHintUsed}
+            currentImage={currentImage}
+          />
+        </div>
+      )}
+      
       <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
       <SettingsDialog 
         open={showSettingsDialog} 

@@ -34,7 +34,7 @@ const AuthModal = ({ isOpen, onClose, initialView = 'login' }: AuthModalProps) =
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            Sign up or Login to EventGuesser
+            Identify yourself
           </DialogTitle>
         </DialogHeader>
         

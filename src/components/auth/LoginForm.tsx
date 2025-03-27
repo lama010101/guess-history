@@ -112,7 +112,7 @@ const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
             className="w-full"
             disabled={isLoading}
           >
-            {isLoading ? "Logging in..." : "Login"}
+            {isLoading ? "Logging in..." : "Continue with Email"}
             <LogIn className="ml-2 h-4 w-4" />
           </Button>
           

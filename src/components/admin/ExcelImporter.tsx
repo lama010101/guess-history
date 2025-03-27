@@ -102,7 +102,7 @@ const ExcelImporter = ({ onImportComplete, isUploading, setIsUploading }: ExcelI
         toast({
           title: "Some Entries Skipped",
           description: `${data.length - validData.length} entries were skipped due to missing required fields or invalid image URLs.`,
-          variant: "warning",
+          variant: "destructive",
         });
       }
       

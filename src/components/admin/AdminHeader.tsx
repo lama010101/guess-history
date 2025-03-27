@@ -21,6 +21,15 @@ const AdminHeader = () => {
     return true;
   };
 
+  // Mock currentImage data for HintDisplay
+  const mockCurrentImage = {
+    year: 2000,
+    location: { lat: 40.7128, lng: -74.0060 },
+    description: "Sample image description",
+    locationName: "New York, USA",
+    country: "USA"
+  };
+
   return (
     <header className="w-full border-b bg-background p-4">
       <div className="container max-w-6xl mx-auto flex items-center justify-between">
@@ -42,6 +51,7 @@ const AdminHeader = () => {
               onUseYearHint={handleUseYearHint}
               locationHintUsed={false}
               yearHintUsed={false}
+              currentImage={mockCurrentImage}
             />
           )}
         </div>

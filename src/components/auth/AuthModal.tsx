@@ -32,7 +32,11 @@ const AuthModal = ({
             <LoginForm onSuccess={onClose} autoFocus={autoFocus} />
           </TabsContent>
           <TabsContent value="signup">
-            <SignUpForm onSuccess={onClose} autoFocus={autoFocus} />
+            <SignUpForm 
+              onSuccess={onClose} 
+              autoFocus={autoFocus} 
+              onLogin={() => setActiveTab('login')} 
+            />
           </TabsContent>
         </Tabs>
       </DialogContent>

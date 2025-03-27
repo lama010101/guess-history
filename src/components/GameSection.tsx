@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import GamePanel from './game/GamePanel';
 import GameControls from './game/GameControls';
@@ -45,25 +44,9 @@ const GameSection = () => {
     maxRounds
   } = useGameState(MAX_ROUNDS);
 
-  // Load game settings from localStorage if available
   useEffect(() => {
-    const savedSettings = localStorage.getItem('gameSettings');
-    if (savedSettings) {
-      try {
-        const parsedSettings = JSON.parse(savedSettings);
-        // Convert minutes to seconds for the timer
-        if (parsedSettings.timerMinutes) {
-          const seconds = parsedSettings.timerMinutes * 60;
-          setTimerDuration(seconds);
-        }
-        // Set timer enabled state based on user preference
-        if (typeof parsedSettings.timerEnabled === 'boolean') {
-          setTimerEnabled(parsedSettings.timerEnabled);
-        }
-      } catch (error) {
-        console.error('Error loading game settings:', error);
-      }
-    }
+    setTimerEnabled(true);
+    setTimerDuration(60); // 60 seconds by default
   }, [setTimerEnabled, setTimerDuration]);
 
   const [navbarKey, setNavbarKey] = useState(0);

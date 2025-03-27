@@ -8,8 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 interface HintDisplayProps {
   availableHints: number;
   onClose: () => void;
-  onUseLocationHint: () => boolean; // Updated to ensure it returns a boolean
-  onUseYearHint: () => boolean; // Updated to ensure it returns a boolean
+  onUseLocationHint: () => void;
+  onUseYearHint: () => void;
   locationHintUsed: boolean;
   yearHintUsed: boolean;
 }
@@ -69,17 +69,15 @@ const HintDisplay = ({
   // Handle using location hint
   const handleUseLocationHint = () => {
     if (!localLocationHintUsed && remainingHints > 0) {
-      const success = onUseLocationHint();
-      if (success) {
-        setLocalLocationHintUsed(true);
-        setRemainingHints(prev => prev - 1);
-        
-        if (currentImage && currentImage.locationName) {
-          setLocalHintValues(prev => ({
-            ...prev,
-            country: getCountryOnly(currentImage.locationName)
-          }));
-        }
+      onUseLocationHint();
+      setLocalLocationHintUsed(true);
+      setRemainingHints(prev => prev - 1);
+      
+      if (currentImage && currentImage.locationName) {
+        setLocalHintValues(prev => ({
+          ...prev,
+          country: getCountryOnly(currentImage.locationName)
+        }));
       }
     }
   };
@@ -87,17 +85,15 @@ const HintDisplay = ({
   // Handle using year hint
   const handleUseYearHint = () => {
     if (!localYearHintUsed && remainingHints > 0) {
-      const success = onUseYearHint();
-      if (success) {
-        setLocalYearHintUsed(true);
-        setRemainingHints(prev => prev - 1);
-        
-        if (currentImage) {
-          setLocalHintValues(prev => ({
-            ...prev,
-            decade: currentImage.year.toString().slice(0, -1) + "X"
-          }));
-        }
+      onUseYearHint();
+      setLocalYearHintUsed(true);
+      setRemainingHints(prev => prev - 1);
+      
+      if (currentImage) {
+        setLocalHintValues(prev => ({
+          ...prev,
+          decade: currentImage.year.toString().slice(0, -1) + "X"
+        }));
       }
     }
   };

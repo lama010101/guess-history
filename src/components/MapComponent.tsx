@@ -17,7 +17,7 @@ interface MapComponentProps {
 const MapComponent = ({
   onLocationSelect,
   selectedLocation,
-  initialLocation = { lat: 30, lng: -20 }, // Centered between USA and Europe
+  initialLocation = { lat: 50, lng: 10 }, // Center on Europe by default
   actualLocation,
   showActualLocationMarker = false,
   hideInstructions = false
@@ -34,8 +34,7 @@ const MapComponent = ({
     selectedLocation,
     initialLocation,
     actualLocation,
-    showActualLocationMarker,
-    initialZoom: 1  // Zoomed out to show the entire world
+    showActualLocationMarker
   });
 
   // Derive loading state from mapLoaded

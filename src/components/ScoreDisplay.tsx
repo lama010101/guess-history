@@ -49,7 +49,7 @@ const ScoreDisplay = ({
   if (!isVisible) return null;
 
   return (
-    <div className="glass-card p-6 animate-scale-in rounded-lg">
+    <div className="glass-card p-6 animate-scale-in">
       <div className="text-center mb-6">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-3">
           <Award className="h-8 w-8 text-primary" />
@@ -93,7 +93,7 @@ const ScoreDisplay = ({
         </div>
       </div>
       
-      <div className="bg-secondary p-4 rounded-lg space-y-3 border border-border/50">
+      <div className="bg-secondary p-4 rounded-lg space-y-3">
         <div className="flex items-start gap-2">
           <AlertCircle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
           <div>
@@ -149,7 +149,7 @@ const ScoreDisplay = ({
         )}
       </div>
       
-      <button className="w-full mt-4 px-4 py-3 rounded-lg bg-primary text-primary-foreground font-medium btn-transition hover:shadow-md hover:brightness-110">
+      <button className="w-full mt-0 px-4 py-3 rounded-lg bg-primary text-primary-foreground font-medium btn-transition hover:shadow-md hover:brightness-110">
         Next Round
       </button>
     </div>

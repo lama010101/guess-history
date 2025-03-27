@@ -88,12 +88,15 @@ const GameSection = () => {
     forceNavbarUpdate();
   };
 
+  // Fix: Ensure these functions return boolean values
   const handleUseLocationHint = (): boolean => {
-    return gameStateUseLocationHint();
+    const result = gameStateUseLocationHint();
+    return typeof result === 'boolean' ? result : false;
   };
 
   const handleUseYearHint = (): boolean => {
-    return gameStateUseYearHint();
+    const result = gameStateUseYearHint();
+    return typeof result === 'boolean' ? result : false;
   };
 
   useEffect(() => {

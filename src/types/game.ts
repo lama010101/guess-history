@@ -7,6 +7,7 @@ export interface HistoricalImage {
   description: string;
   title?: string;
   locationName?: string;
+  country?: string;
 }
 
 export interface RoundScore {

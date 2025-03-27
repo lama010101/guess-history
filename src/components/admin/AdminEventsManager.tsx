@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import EventsTable from "./EventsTable";
@@ -98,7 +97,7 @@ const AdminEventsManager = () => {
     return url;
   };
 
-  // Check if country field exists, and if not, extract it from locationName
+  // Ensure country field exists, and if not, extract it from locationName
   const ensureCountryField = (event: HistoricalImage): HistoricalImage => {
     if (!event.locationName) return event;
     

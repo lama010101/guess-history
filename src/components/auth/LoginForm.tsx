@@ -8,11 +8,11 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 
 interface LoginFormProps {
-  isOpen: boolean;
-  onClose: () => void;
+  onSuccess: () => void;
+  autoFocus?: boolean;
 }
 
-const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
+const LoginForm = ({ onSuccess, autoFocus = false }: LoginFormProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -27,7 +27,7 @@ const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
         title: "Welcome back!",
         description: "You have successfully logged in.",
       });
-      onClose();
+      onSuccess();
     } catch (error) {
       toast({
         title: "Login failed",
@@ -44,7 +44,7 @@ const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
         title: "Welcome!",
         description: "You have successfully logged in with Google.",
       });
-      onClose();
+      onSuccess();
     } catch (error) {
       toast({
         title: "Google login failed",
@@ -60,7 +60,7 @@ const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
       title: "Playing as guest",
       description: "Your scores won't be saved to the leaderboard.",
     });
-    onClose();
+    onSuccess();
   };
 
   return (
@@ -74,6 +74,7 @@ const LoginForm = ({ isOpen, onClose }: LoginFormProps) => {
             placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            autoFocus={autoFocus}
             required
           />
         </div>

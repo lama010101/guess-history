@@ -1,11 +1,12 @@
 
 import { Lightbulb, MapPin, Calendar, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useEffect, useState } from 'react';
 
 interface HintSystemProps {
   hintCoins: number;
-  onUseLocationHint: () => void;
-  onUseYearHint: () => void;
+  onUseLocationHint: () => boolean;
+  onUseYearHint: () => boolean;
   locationHintUsed: boolean;
   yearHintUsed: boolean;
   currentImage: {
@@ -13,6 +14,7 @@ interface HintSystemProps {
     location: { lat: number; lng: number };
     description: string;
     locationName?: string;
+    country?: string;
   };
 }
 
@@ -24,8 +26,26 @@ const HintSystem = ({
   yearHintUsed,
   currentImage
 }: HintSystemProps) => {
+  const [countryHint, setCountryHint] = useState<string | null>(null);
+  const [yearHint, setYearHint] = useState<string | null>(null);
+  
+  // Persist hints even after closing/reopening
+  useEffect(() => {
+    if (locationHintUsed && !countryHint) {
+      setCountryHint(getCountryHint());
+    }
+    
+    if (yearHintUsed && !yearHint) {
+      setYearHint(getYearHint());
+    }
+  }, [locationHintUsed, yearHintUsed, currentImage]);
+  
   // For location hint, we'll show the country only
   const getCountryHint = () => {
+    if (currentImage.country) {
+      return currentImage.country;
+    }
+    
     if (currentImage.locationName) {
       // Split by comma and get the last part which is usually the country
       const parts = currentImage.locationName.split(',');
@@ -38,6 +58,26 @@ const HintSystem = ({
   const getYearHint = () => {
     const yearString = currentImage.year.toString();
     return yearString.slice(0, -1) + "X";
+  };
+  
+  // Handle location hint click with proper return value
+  const handleLocationHintClick = () => {
+    if (locationHintUsed || hintCoins <= 0) return;
+    
+    const success = onUseLocationHint();
+    if (success) {
+      setCountryHint(getCountryHint());
+    }
+  };
+  
+  // Handle year hint click with proper return value
+  const handleYearHintClick = () => {
+    if (yearHintUsed || hintCoins <= 0) return;
+    
+    const success = onUseYearHint();
+    if (success) {
+      setYearHint(getYearHint());
+    }
   };
   
   return (
@@ -59,7 +99,7 @@ const HintSystem = ({
             variant={locationHintUsed ? "outline" : "default"} 
             size="sm" 
             className="w-full flex items-center justify-center"
-            onClick={onUseLocationHint}
+            onClick={handleLocationHintClick}
             disabled={locationHintUsed || hintCoins <= 0}
           >
             <MapPin className="h-4 w-4 mr-1.5" />
@@ -68,9 +108,9 @@ const HintSystem = ({
           <div className="text-xs mt-1 text-center text-neutral-500 dark:text-neutral-400">
             Cost: -500 points
           </div>
-          {locationHintUsed && (
+          {locationHintUsed && countryHint && (
             <div className="text-xs mt-1 text-center font-medium">
-              {getCountryHint()}
+              {countryHint}
             </div>
           )}
         </div>
@@ -80,7 +120,7 @@ const HintSystem = ({
             variant={yearHintUsed ? "outline" : "default"} 
             size="sm" 
             className="w-full flex items-center justify-center"
-            onClick={onUseYearHint}
+            onClick={handleYearHintClick}
             disabled={yearHintUsed || hintCoins <= 0}
           >
             <Calendar className="h-4 w-4 mr-1.5" />
@@ -89,9 +129,9 @@ const HintSystem = ({
           <div className="text-xs mt-1 text-center text-neutral-500 dark:text-neutral-400">
             Cost: -500 points
           </div>
-          {yearHintUsed && (
+          {yearHintUsed && yearHint && (
             <div className="text-xs mt-1 text-center font-medium">
-              {getYearHint()}
+              {yearHint}
             </div>
           )}
         </div>

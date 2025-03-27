@@ -58,12 +58,23 @@ const Home = () => {
       setDailyPlayed(isSameDay && dailyCompleted === 'true');
       
       if (isSameDay && dailyCompleted === 'true') {
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(0, 0, 0, 0);
-        const hoursLeft = Math.floor((tomorrow.getTime() - today.getTime()) / (1000 * 60 * 60));
-        const minutesLeft = Math.floor((tomorrow.getTime() - today.getTime()) % (1000 * 60 * 60) / (1000 * 60));
-        setTimeUntilNextDaily(`${hoursLeft}h ${minutesLeft}m`);
+        const updateTimer = () => {
+          const now = new Date();
+          const tomorrow = new Date(now);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          tomorrow.setHours(0, 0, 0, 0);
+          
+          const timeLeftMs = tomorrow.getTime() - now.getTime();
+          const hoursLeft = Math.floor(timeLeftMs / (1000 * 60 * 60));
+          const minutesLeft = Math.floor((timeLeftMs % (1000 * 60 * 60)) / (1000 * 60));
+          
+          setTimeUntilNextDaily(`${hoursLeft}h ${minutesLeft}m`);
+        };
+        
+        updateTimer();
+        const timerInterval = setInterval(updateTimer, 60000);
+        
+        return () => clearInterval(timerInterval);
       }
       
       if (savedScore) {
@@ -240,7 +251,7 @@ const Home = () => {
             <div className="space-y-8">
               <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-6">
                 <h3 className="text-xl font-medium mb-2">
-                  {dailyPlayed ? 'Daily Challenge: Already Played Today' : 'Daily Challenge'}
+                  {dailyPlayed ? 'Daily Challenge: Completed' : 'Daily Challenge'}
                 </h3>
                 <p className="text-neutral-500 dark:text-neutral-400 mb-4">Compete with the world on the same set of random images.</p>
                 
@@ -252,9 +263,12 @@ const Home = () => {
                   </div>
                   
                   {dailyPlayed ? (
-                    <div className="mt-2 md:mt-0 p-4 bg-primary/10 rounded-md text-center w-full md:w-auto">
-                      <p className="font-medium text-lg mb-1">Today's score: {dailyScore}</p>
-                      <p className="text-sm text-neutral-500">Next challenge in: {timeUntilNextDaily}</p>
+                    <div className="mt-4 md:mt-0 p-4 bg-primary/10 rounded-md text-center w-full md:w-auto">
+                      <div className="font-medium text-lg mb-1">Today's score: {dailyScore}</div>
+                      <div className="flex items-center justify-center gap-2 text-sm text-primary">
+                        <Clock className="h-4 w-4" />
+                        <span>Next challenge in: {timeUntilNextDaily}</span>
+                      </div>
                     </div>
                   ) : (
                     <div className="mt-4 md:mt-0 w-full md:w-auto">

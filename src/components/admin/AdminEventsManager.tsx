@@ -16,12 +16,10 @@ const AdminEventsManager = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAllSelected, setIsAllSelected] = useState(false);
 
-  // Load events from localStorage on mount
   useEffect(() => {
     loadEvents();
   }, []);
 
-  // Load events from localStorage
   const loadEvents = () => {
     const savedEventsJson = localStorage.getItem('savedEvents');
     if (savedEventsJson) {
@@ -35,7 +33,6 @@ const AdminEventsManager = () => {
     }
   };
 
-  // Save events to localStorage
   const saveEvents = async (eventsToSave: HistoricalImage[]) => {
     try {
       localStorage.setItem('savedEvents', JSON.stringify(eventsToSave));
@@ -46,7 +43,6 @@ const AdminEventsManager = () => {
     }
   };
 
-  // Event actions
   const handleAddEvent = () => {
     const newId = events.length > 0 ? Math.max(...events.map(e => e.id)) + 1 : 1;
     
@@ -80,13 +76,10 @@ const AdminEventsManager = () => {
     });
   };
 
-  // Validate Wikimedia URL
   const validateAndFixWikimediaUrl = (url: string): string => {
     if (!url) return url;
     
-    // Check if it's a wikimedia URL but in the wrong format
     if (url.includes('wikimedia.org/wiki/')) {
-      // Extract the filename
       const fileNameMatch = url.match(/File:([^/]+)$/);
       if (fileNameMatch && fileNameMatch[1]) {
         const fileName = fileNameMatch[1];
@@ -97,13 +90,11 @@ const AdminEventsManager = () => {
     return url;
   };
 
-  // Ensure country field exists, and if not, extract it from locationName
   const ensureCountryField = (event: HistoricalImage): HistoricalImage => {
     if (!event.locationName) return event;
     
     const updatedEvent = { ...event };
     
-    // If no country specified, try to extract from locationName
     if (!updatedEvent.country) {
       const parts = event.locationName.split(',');
       if (parts.length > 1) {
@@ -116,9 +107,7 @@ const AdminEventsManager = () => {
     return updatedEvent;
   };
 
-  // Validate event data
   const validateEvent = (event: HistoricalImage): { valid: boolean; message?: string } => {
-    // Check for required fields
     if (!event.title || !event.title.trim()) {
       return { valid: false, message: "Title is required" };
     }
@@ -127,7 +116,8 @@ const AdminEventsManager = () => {
       return { valid: false, message: "Valid year is required" };
     }
     
-    if (!event.location || typeof event.location.lat !== 'number' || typeof event.location.lng !== 'number') {
+    if (!event.location || typeof event.location.lat !== 'number' || typeof event.location.lng !== 'number' ||
+        isNaN(event.location.lat) || isNaN(event.location.lng)) {
       return { valid: false, message: "Valid location coordinates are required" };
     }
     
@@ -135,20 +125,20 @@ const AdminEventsManager = () => {
       return { valid: false, message: "Image URL is required" };
     }
     
-    // Validate image URL
     if (!event.src.startsWith('https://commons.wikimedia.org/')) {
-      return { valid: false, message: "Image URL must start with https://commons.wikimedia.org/" };
+      return { 
+        valid: false, 
+        message: "Image URL must be from Wikimedia Commons (https://commons.wikimedia.org/)" 
+      };
     }
     
     return { valid: true };
   };
 
   const handleSaveEvent = async (event: HistoricalImage) => {
-    // First, ensure country field and fix wikimedia URL
     const processedEvent = ensureCountryField(event);
     processedEvent.src = validateAndFixWikimediaUrl(processedEvent.src);
     
-    // Validate the event
     const validation = validateEvent(processedEvent);
     if (!validation.valid) {
       toast({
@@ -159,7 +149,6 @@ const AdminEventsManager = () => {
       return;
     }
     
-    // Check if this is an update or a new event
     const eventExists = events.some(e => e.id === processedEvent.id);
     
     let updatedEvents: HistoricalImage[];
@@ -190,7 +179,6 @@ const AdminEventsManager = () => {
   };
 
   const handleDeleteSelected = () => {
-    // Implement deletion of selected events
     const updatedEvents = events.filter(e => !selectedEvents.has(e.id));
     setEvents(updatedEvents);
     saveEvents(updatedEvents);
@@ -203,7 +191,6 @@ const AdminEventsManager = () => {
   };
 
   const handleSaveSelectedToDB = () => {
-    // Save selected events to database (localStorage in this case)
     const selectedEventsArray = events.filter(e => selectedEvents.has(e.id));
     saveEvents(selectedEventsArray);
     
@@ -214,23 +201,19 @@ const AdminEventsManager = () => {
   };
 
   const handleImportExcel = async (importedEvents: HistoricalImage[]) => {
-    // Process and validate imported events
     const validEvents: HistoricalImage[] = [];
     const invalidEvents: HistoricalImage[] = [];
     
-    // Process each imported event
     for (const newEvent of importedEvents) {
-      // Fix URL if needed
       newEvent.src = validateAndFixWikimediaUrl(newEvent.src);
       
-      // Ensure country field
       const processedEvent = ensureCountryField(newEvent);
       
-      // Validate the event
       const validation = validateEvent(processedEvent);
       if (validation.valid) {
         validEvents.push(processedEvent);
       } else {
+        console.log(`Invalid event: ${validation.message}`, processedEvent);
         invalidEvents.push(processedEvent);
       }
     }
@@ -253,32 +236,25 @@ const AdminEventsManager = () => {
       return;
     }
     
-    // Combine existing events with new valid ones
     let updatedEvents = [...events];
     
-    // Process each valid imported event
     validEvents.forEach(newEvent => {
-      // Check if this event already exists by checking if there's an event with the same source
       const existingEventIndex = updatedEvents.findIndex(e => e.src === newEvent.src);
       
       if (existingEventIndex >= 0) {
-        // Update existing event
         updatedEvents[existingEventIndex] = {
           ...updatedEvents[existingEventIndex],
           ...newEvent,
-          id: updatedEvents[existingEventIndex].id // Keep the original ID
+          id: updatedEvents[existingEventIndex].id
         };
       } else {
-        // Add new event
         updatedEvents.push(newEvent);
       }
     });
     
-    // Save all events
     setEvents(updatedEvents);
     await saveEvents(updatedEvents);
     
-    // Stop loading indicator
     setIsUploading(false);
     
     toast({

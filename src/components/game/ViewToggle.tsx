@@ -1,6 +1,7 @@
 
-import { Map, Image } from 'lucide-react';
+import { Map, Image, ArrowLeftRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useState, useEffect } from 'react';
 
 interface ViewToggleProps {
   activeView: 'image' | 'map';
@@ -21,33 +22,65 @@ const ViewToggle = ({
 
   // Use the provided imageSrc or fall back to default if it's undefined or empty
   const safeImageSrc = imageSrc || defaultImageSrc;
+  
+  // State to show first-time user tooltip
+  const [showTooltip, setShowTooltip] = useState(false);
+  
+  useEffect(() => {
+    // Check if user has seen the tooltip before
+    const hasSeenTooltip = localStorage.getItem('hasSeenToggleTooltip');
+    
+    if (!hasSeenTooltip) {
+      setShowTooltip(true);
+      
+      // Hide tooltip after 5 seconds
+      const timer = setTimeout(() => {
+        setShowTooltip(false);
+        localStorage.setItem('hasSeenToggleTooltip', 'true');
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   return (
     <div className="absolute top-4 right-4 z-10">
-      <Button
-        variant="outline"
-        size="icon"
-        className="h-[53px] w-[53px] rounded-md bg-background/80 backdrop-blur-sm" /* Increased by 33% from 40px */
-        onClick={onToggle}
-      >
-        {activeView === 'image' ? (
-          <div className="h-13 w-13 rounded overflow-hidden"> {/* Increased by 33% from 10 */}
-            <img 
-              src={osmLogo} 
-              alt="Switch to map view" 
-              className="h-full w-full object-contain"
-            />
-          </div>
-        ) : (
-          <div className="h-13 w-13 rounded overflow-hidden"> {/* Increased by 33% from 10 */}
-            <img 
-              src={safeImageSrc} 
-              alt="Switch to image view" 
-              className="h-full w-full object-cover"
-            />
+      <div className="relative">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-[53px] w-[53px] rounded-md bg-background/80 backdrop-blur-sm hover:bg-background/90 transition-all"
+          onClick={onToggle}
+        >
+          {activeView === 'image' ? (
+            <div className="h-13 w-13 rounded overflow-hidden">
+              <img 
+                src={osmLogo} 
+                alt="Switch to map view" 
+                className="h-full w-full object-contain"
+              />
+            </div>
+          ) : (
+            <div className="h-13 w-13 rounded overflow-hidden">
+              <img 
+                src={safeImageSrc} 
+                alt="Switch to image view" 
+                className="h-full w-full object-cover"
+              />
+            </div>
+          )}
+        </Button>
+        
+        {showTooltip && (
+          <div className="absolute right-0 top-full mt-2 bg-black/80 text-white p-2 rounded text-sm w-48 backdrop-blur-sm animate-fade-in">
+            <div className="flex items-center gap-1 mb-1">
+              <ArrowLeftRight className="h-4 w-4" />
+              <span className="font-bold">Toggle View</span>
+            </div>
+            <p>Click to switch between image and map view</p>
           </div>
         )}
-      </Button>
+      </div>
     </div>
   );
 };

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import MapComponent from '../MapComponent';
 import HistoricalImage from '../HistoricalImage';
@@ -69,17 +70,11 @@ const GamePanel = ({
   };
 
   const handleUseLocationHint = () => {
-    const hintUsed = onUseLocationHint();
-    if (hintUsed && currentImage.locationName) {
-      setCountryHint(getCountryOnly(currentImage.locationName));
-    }
+    return onUseLocationHint();
   };
 
   const handleUseYearHint = () => {
-    const hintUsed = onUseYearHint();
-    if (hintUsed && currentImage.year) {
-      setDecadeHint(`${currentImage.year.toString().slice(0, -1)}X`);
-    }
+    return onUseYearHint();
   };
 
   return (

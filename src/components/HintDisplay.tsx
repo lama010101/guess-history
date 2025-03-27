@@ -8,8 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 interface HintDisplayProps {
   availableHints: number;
   onClose: () => void;
-  onUseLocationHint: () => void;
-  onUseYearHint: () => void;
+  onUseLocationHint: () => boolean; // Updated to ensure it returns a boolean
+  onUseYearHint: () => boolean; // Updated to ensure it returns a boolean
   locationHintUsed: boolean;
   yearHintUsed: boolean;
 }

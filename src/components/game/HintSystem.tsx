@@ -38,7 +38,7 @@ const HintSystem = ({
     if (yearHintUsed && !yearHint) {
       setYearHint(getYearHint());
     }
-  }, [locationHintUsed, yearHintUsed, currentImage]);
+  }, [locationHintUsed, yearHintUsed, currentImage, countryHint, yearHint]);
   
   // For location hint, we'll show the country only
   const getCountryHint = () => {
@@ -60,8 +60,11 @@ const HintSystem = ({
     return yearString.slice(0, -1) + "X";
   };
   
-  // Handle location hint click with proper return value
-  const handleLocationHintClick = () => {
+  // Handle location hint click with proper return value and prevent event propagation
+  const handleLocationHintClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (locationHintUsed || hintCoins <= 0) return;
     
     const success = onUseLocationHint();
@@ -70,8 +73,11 @@ const HintSystem = ({
     }
   };
   
-  // Handle year hint click with proper return value
-  const handleYearHintClick = () => {
+  // Handle year hint click with proper return value and prevent event propagation
+  const handleYearHintClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (yearHintUsed || hintCoins <= 0) return;
     
     const success = onUseYearHint();
@@ -96,6 +102,7 @@ const HintSystem = ({
       <div className="grid grid-cols-2 gap-2">
         <div>
           <Button 
+            type="button"
             variant={locationHintUsed ? "outline" : "default"} 
             size="sm" 
             className="w-full flex items-center justify-center"
@@ -117,6 +124,7 @@ const HintSystem = ({
           
         <div>
           <Button 
+            type="button"
             variant={yearHintUsed ? "outline" : "default"} 
             size="sm" 
             className="w-full flex items-center justify-center"

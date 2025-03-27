@@ -1,3 +1,4 @@
+
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Check, MapPin, Calendar } from "lucide-react";
@@ -82,7 +83,7 @@ const GameResultsModal = ({
         // Show badges with a slight delay for better UX
         setTimeout(() => {
           setShowBadges(true);
-        }, 500);
+        }, 300);
       }
     } else {
       setShowBadges(false);
@@ -107,6 +108,12 @@ const GameResultsModal = ({
               {locationHintUsed && (
                 <div className="text-xs text-red-500">Hint Penalty: -{hintPenalty}</div>
               )}
+              {perfectLocation && (
+                <div className="text-xs text-green-600 font-semibold mt-1 flex items-center">
+                  <Check className="h-3 w-3 mr-1" />
+                  Perfect!
+                </div>
+              )}
             </div>
             
             <div>
@@ -118,10 +125,16 @@ const GameResultsModal = ({
               {yearHintUsed && (
                 <div className="text-xs text-red-500">Hint Penalty: -{hintPenalty}</div>
               )}
+              {perfectYear && (
+                <div className="text-xs text-green-600 font-semibold mt-1 flex items-center">
+                  <Check className="h-3 w-3 mr-1" />
+                  Perfect!
+                </div>
+              )}
             </div>
           </div>
           
-          {/* Add achievement badges */}
+          {/* Achievement badges section - improved visibility */}
           {showBadges && (perfectLocation || perfectYear) && (
             <div className="mt-4 pt-4 border-t">
               <div className="text-center mb-2 font-medium">

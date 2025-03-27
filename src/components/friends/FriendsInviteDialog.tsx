@@ -1,62 +1,58 @@
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Search, UserPlus } from "lucide-react";
-import { useState, useEffect } from "react";
-import { useAuth } from "@/services/auth";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Users, Search, UserPlus, Check } from "lucide-react";
+
+// Mock user data - would come from an API in a real app
+const mockUsers = [
+  { id: '1', username: 'user1', email: 'user1@example.com', avatar: null },
+  { id: '2', username: 'user2', email: 'user2@example.com', avatar: null },
+  { id: '3', username: 'user3', email: 'user3@example.com', avatar: null },
+];
 
 interface FriendsInviteDialogProps {
   trigger: React.ReactNode;
-  onInviteAndStart?: () => void;
+  onInviteAndStart: () => void;
 }
 
 const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogProps) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
-  const { user } = useAuth();
+  const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
   
-  // Mock data - would be replaced with actual API calls
-  const [friends, setFriends] = useState([
-    { id: '1', username: 'friend1', selected: false },
-    { id: '2', username: 'friend2', selected: false },
-    { id: '3', username: 'friend3', selected: false },
-  ]);
-  
-  // Reset search when dialog closes
-  useEffect(() => {
-    if (!isOpen) {
-      setSearchTerm('');
-      // Reset selected state
-      setFriends(friends.map(f => ({ ...f, selected: false })));
-    }
-  }, [isOpen]);
-  
-  const handleSelect = (id: string) => {
-    setFriends(friends.map(friend => 
-      friend.id === id ? { ...friend, selected: !friend.selected } : friend
-    ));
-  };
-  
-  const filteredFriends = friends.filter(friend => 
-    friend.username.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filter users based on search term
+  const filteredUsers = mockUsers.filter(user => 
+    user.username.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
   
+  const toggleFriendSelection = (userId: string) => {
+    setSelectedFriends(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+  
   const handleInviteAndStart = () => {
-    setIsOpen(false);
-    if (onInviteAndStart) {
-      onInviteAndStart();
-    }
+    onInviteAndStart();
+    setDialogOpen(false);
   };
   
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       <DialogTrigger asChild>
         {trigger}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Invite Friends</DialogTitle>
+          <DialogDescription>
+            Select friends to invite to the game
+          </DialogDescription>
         </DialogHeader>
         
         <div className="relative mb-4">
@@ -66,47 +62,51 @@ const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogP
             className="pl-8"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            autoFocus={false}
+            // Remove autoFocus here
           />
         </div>
         
-        <div className="max-h-60 overflow-y-auto mb-4">
-          {filteredFriends.length > 0 ? (
+        <ScrollArea className="max-h-[280px] pr-4 -mr-4">
+          {filteredUsers.length > 0 ? (
             <div className="space-y-2">
-              {filteredFriends.map(friend => (
+              {filteredUsers.map(user => (
                 <div 
-                  key={friend.id}
-                  className={`p-2 rounded-md flex items-center justify-between cursor-pointer ${
-                    friend.selected ? 'bg-primary/10' : 'hover:bg-primary/5'
+                  key={user.id} 
+                  className={`flex items-center p-2 rounded cursor-pointer ${
+                    selectedFriends.includes(user.id) ? 'bg-primary/10' : 'hover:bg-accent'
                   }`}
-                  onClick={() => handleSelect(friend.id)}
+                  onClick={() => toggleFriendSelection(user.id)}
                 >
-                  <span>{friend.username}</span>
-                  <Button 
-                    variant={friend.selected ? "default" : "outline"} 
-                    size="sm"
-                  >
-                    <UserPlus className="h-4 w-4 mr-1" />
-                    {friend.selected ? "Selected" : "Select"}
-                  </Button>
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary mr-3">
+                    <Users className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">{user.username}</p>
+                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                  </div>
+                  {selectedFriends.includes(user.id) && (
+                    <Check className="h-5 w-5 text-primary" />
+                  )}
                 </div>
               ))}
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              {searchTerm ? "No friends match your search." : "You don't have any friends yet."}
+              <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p>No users found</p>
             </div>
           )}
-        </div>
+        </ScrollArea>
         
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setIsOpen(false)}>
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={() => setDialogOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={handleInviteAndStart}>
-            Invite and Start Game
+          <Button onClick={handleInviteAndStart} disabled={selectedFriends.length === 0}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Invite and Start
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

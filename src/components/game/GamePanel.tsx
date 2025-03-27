@@ -39,11 +39,18 @@ const GamePanel = ({
   onUseYearHint,
   setHintsOpen
 }: GamePanelProps) => {
+  // Always default to 'image' view
   const [activeView, setActiveView] = useState<'image' | 'map'>('image');
   const [showHints, setShowHints] = useState(false);
   const [countryHint, setCountryHint] = useState<string | null>(null);
   const [decadeHint, setDecadeHint] = useState<string | null>(null);
 
+  // Reset to image view when round changes (detected by currentImage.id changing)
+  useEffect(() => {
+    setActiveView('image');
+  }, [currentImage.id]);
+
+  // Persist hints between hint dialog opens/closes
   useEffect(() => {
     if (locationHintUsed && currentImage.locationName) {
       setCountryHint(getCountryOnly(currentImage.locationName));
@@ -105,6 +112,7 @@ const GamePanel = ({
           </div>
         )}
         
+        {/* Show hints persistently if they've been used/purchased */}
         {locationHintUsed && countryHint && (
           <div className="absolute bottom-4 left-4 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm px-3 py-2 rounded-md text-sm border border-amber-300">
             <span className="font-medium">Country:</span> {countryHint}

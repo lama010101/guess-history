@@ -1,12 +1,13 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { Check, Image, Upload, FileSpreadsheet } from "lucide-react";
+import { Check, Image, Upload, FileSpreadsheet, AlertCircle } from "lucide-react";
 import { HistoricalImage } from "@/types/game";
+import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface EventEditorProps {
   selectedEvent: HistoricalImage | null;
@@ -25,6 +26,7 @@ const EventEditor = ({
   onImageUpload,
   onFileUpload
 }: EventEditorProps) => {
+  const { toast } = useToast();
   const [eventData, setEventData] = useState<Partial<HistoricalImage>>(
     selectedEvent || {
       description: "",
@@ -35,6 +37,7 @@ const EventEditor = ({
       locationName: ""
     }
   );
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   // Reset form when selectedEvent changes
   useEffect(() => {
@@ -48,6 +51,7 @@ const EventEditor = ({
         locationName: ""
       }
     );
+    setValidationErrors([]);
   }, [selectedEvent]);
 
   const handleChange = (field: string, value: any) => {
@@ -65,10 +69,93 @@ const EventEditor = ({
         [field]: field === "year" ? parseInt(value) : value
       });
     }
+    
+    setValidationErrors([]);
   };
 
+  const validateEventData = (): boolean => {
+    const errors: string[] = [];
+    
+    if (!eventData.description) {
+      errors.push("Description is required");
+    }
+    
+    if (!eventData.year) {
+      errors.push("Year is required");
+    }
+    
+    if (!eventData.location || 
+        typeof eventData.location.lat !== 'number' || 
+        typeof eventData.location.lng !== 'number') {
+      errors.push("Valid location coordinates are required");
+    }
+    
+    if (!eventData.src) {
+      errors.push("Image URL is required");
+    } else if (!isWikimediaUrl(eventData.src) && !isValidImageUrl(eventData.src)) {
+      errors.push("Image URL should be from Wikimedia Commons");
+    }
+    
+    setValidationErrors(errors);
+    return errors.length === 0;
+  };
+  
+  const isWikimediaUrl = (url: string): boolean => {
+    return url.includes('wikimedia.org') || 
+           url.includes('wikipedia.org') || 
+           url.includes('commons.wikimedia.org');
+  };
+  
+  const isValidImageUrl = (url: string): boolean => {
+    return url.startsWith('http') && 
+           (url.endsWith('.jpg') || 
+            url.endsWith('.jpeg') || 
+            url.endsWith('.png') || 
+            url.endsWith('.gif'));
+  };
+  
+  const fixWikimediaUrl = (url: string): string => {
+    if (url.includes('commons.wikimedia.org/wiki/File:')) {
+      const fileNameMatch = url.match(/File:([^/]+)$/);
+      if (fileNameMatch && fileNameMatch[1]) {
+        const fileName = fileNameMatch[1];
+        return `https://commons.wikimedia.org/wiki/Special:FilePath/${fileName}?width=800`;
+      }
+    }
+    return url;
+  };
+  
   const handleSave = () => {
-    onSave(eventData);
+    if (eventData.locationName && !eventData.country) {
+      const parts = eventData.locationName.split(',');
+      if (parts.length > 1) {
+        eventData.country = parts[parts.length - 1].trim();
+      }
+    }
+    
+    if (eventData.src && !isWikimediaUrl(eventData.src) && !isValidImageUrl(eventData.src)) {
+      const fixedUrl = fixWikimediaUrl(eventData.src);
+      if (fixedUrl !== eventData.src) {
+        setEventData({
+          ...eventData,
+          src: fixedUrl
+        });
+        toast({
+          title: "URL Automatically Fixed",
+          description: "The image URL has been converted to a standard Wikimedia format."
+        });
+      }
+    }
+    
+    if (validateEventData()) {
+      onSave(eventData);
+    } else {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the errors before saving.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -82,6 +169,19 @@ const EventEditor = ({
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {validationErrors.length > 0 && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <ul className="list-disc pl-4 mt-2">
+                {validationErrors.map((error, index) => (
+                  <li key={index}>{error}</li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+        
         {(isAddingEvent || selectedEvent) ? (
           <div className="space-y-4">
             <div className="space-y-2">
@@ -154,13 +254,16 @@ const EventEditor = ({
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="event-image-url">Image URL</Label>
+              <Label htmlFor="event-image-url">Image URL (Wikimedia Commons recommended)</Label>
               <Input 
                 id="event-image-url"
                 placeholder="Enter image URL..."
                 value={eventData.src || ""}
                 onChange={(e) => handleChange("src", e.target.value)}
               />
+              <p className="text-xs text-muted-foreground">
+                URLs from Wikimedia Commons are recommended (https://commons.wikimedia.org/wiki/...)
+              </p>
             </div>
 
             <div className="space-y-2">

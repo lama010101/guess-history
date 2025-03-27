@@ -1,4 +1,3 @@
-
 import { useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { FileSpreadsheet, RefreshCw } from "lucide-react";
@@ -35,6 +34,27 @@ const ExcelImporter = ({ onImportComplete, isUploading, setIsUploading }: ExcelI
     }
   };
 
+  const isValidWikimediaUrl = (url: string): boolean => {
+    return url.includes('wikimedia.org') || 
+           url.includes('wikipedia.org') || 
+           url.startsWith('http') && 
+           (url.endsWith('.jpg') || 
+            url.endsWith('.jpeg') || 
+            url.endsWith('.png') || 
+            url.endsWith('.gif'));
+  };
+
+  const fixWikimediaUrl = (url: string): string => {
+    if (url.includes('commons.wikimedia.org/wiki/File:')) {
+      const fileNameMatch = url.match(/File:([^/]+)$/);
+      if (fileNameMatch && fileNameMatch[1]) {
+        const fileName = fileNameMatch[1];
+        return `https://commons.wikimedia.org/wiki/Special:FilePath/${fileName}?width=800`;
+      }
+    }
+    return url;
+  };
+
   const processExcelFile = async (file: File) => {
     setIsUploading(true);
     
@@ -42,80 +62,98 @@ const ExcelImporter = ({ onImportComplete, isUploading, setIsUploading }: ExcelI
       const data = await readExcelFile(file);
       console.log("Parsed Excel data:", data);
       
-      if (data && data.length > 0) {
-        // Convert Excel data to HistoricalImage format
-        const newEvents: HistoricalImage[] = data.map((row, index) => {
-          // Handle potential data inconsistencies
-          const latitude = typeof row.latitude === 'number' ? row.latitude : parseFloat(String(row.latitude)) || 0;
-          const longitude = typeof row.longitude === 'number' ? row.longitude : parseFloat(String(row.longitude)) || 0;
-          const year = typeof row.year === 'number' ? row.year : parseInt(String(row.year)) || 2000;
+      const validData = data.filter(row => {
+        const hasRequiredFields = 
+          row.description && 
+          row.year && 
+          (row.latitude !== undefined && row.latitude !== null) && 
+          (row.longitude !== undefined && row.longitude !== null) &&
+          row.imageUrl;
           
-          // Get existing events to generate a new unique ID
-          const existingEvents = localStorage.getItem('savedEvents');
-          let maxId = 0;
-          if (existingEvents) {
-            try {
-              const parsedEvents = JSON.parse(existingEvents);
-              if (Array.isArray(parsedEvents) && parsedEvents.length > 0) {
-                maxId = Math.max(...parsedEvents.map(e => e.id));
-              }
-            } catch (e) {
-              console.error("Error parsing existing events:", e);
-            }
-          }
-          
-          // Generate a unique ID
-          const newId = maxId + index + 1;
-          
-          // Build a description if not provided
-          let description = row.description || '';
-          if (!description && row.title) {
-            description = row.title;
-          }
-          
-          // Create locationName from location and country if provided
-          let locationName = row.locationName || row.location || '';
-          if (row.country && !locationName.includes(row.country)) {
-            locationName = locationName ? `${locationName}, ${row.country}` : row.country;
-          }
-          
-          // Process image URL for Wikimedia Commons and other sources
-          let imageUrl = row.imageUrl || '';
-          
-          // Handle Wikimedia Commons links
-          if (imageUrl && imageUrl.includes('wikimedia.org/wiki/File:')) {
-            const fileNameMatch = imageUrl.match(/File:([^/]+)$/);
-            if (fileNameMatch && fileNameMatch[1]) {
-              const fileName = fileNameMatch[1];
-              imageUrl = `https://commons.wikimedia.org/wiki/Special:FilePath/${fileName}?width=800`;
-            }
-          }
-          
-          return {
-            id: newId,
-            title: row.title || '',
-            description: description || 'Unknown location',
-            year: year,
-            location: { 
-              lat: latitude, 
-              lng: longitude 
-            },
-            locationName: locationName,
-            src: imageUrl || 'https://via.placeholder.com/500'
-          };
-        });
+        if (!hasRequiredFields) {
+          console.warn("Skipping invalid row:", row);
+          return false;
+        }
         
-        console.log("Converted to HistoricalImages:", newEvents);
+        if (row.imageUrl && !isValidWikimediaUrl(row.imageUrl)) {
+          const fixedUrl = fixWikimediaUrl(row.imageUrl);
+          if (isValidWikimediaUrl(fixedUrl)) {
+            row.imageUrl = fixedUrl;
+            return true;
+          }
+          console.warn("Skipping row with invalid image URL:", row);
+          return false;
+        }
         
-        onImportComplete(newEvents);
-      } else {
+        return true;
+      });
+      
+      if (validData.length === 0) {
         toast({
-          title: "No Data Found",
-          description: "The Excel file doesn't contain any valid data.",
+          title: "No Valid Data Found",
+          description: "No valid records were found in the Excel file. Events must include description, year, coordinates, and a valid image URL.",
           variant: "destructive",
         });
         setIsUploading(false);
+        return;
       }
+      
+      if (validData.length < data.length) {
+        toast({
+          title: "Some Entries Skipped",
+          description: `${data.length - validData.length} entries were skipped due to missing required fields or invalid image URLs.`,
+          variant: "warning",
+        });
+      }
+      
+      const newEvents: HistoricalImage[] = validData.map((row, index) => {
+        const latitude = typeof row.latitude === 'number' ? row.latitude : parseFloat(String(row.latitude)) || 0;
+        const longitude = typeof row.longitude === 'number' ? row.longitude : parseFloat(String(row.longitude)) || 0;
+        const year = typeof row.year === 'number' ? row.year : parseInt(String(row.year)) || 2000;
+        
+        const existingEvents = localStorage.getItem('savedEvents');
+        let maxId = 0;
+        if (existingEvents) {
+          try {
+            const parsedEvents = JSON.parse(existingEvents);
+            if (Array.isArray(parsedEvents) && parsedEvents.length > 0) {
+              maxId = Math.max(...parsedEvents.map(e => e.id));
+            }
+          } catch (e) {
+            console.error("Error parsing existing events:", e);
+          }
+        }
+        
+        const newId = maxId + index + 1;
+        
+        let description = row.description || '';
+        if (!description && row.title) {
+          description = row.title;
+        }
+        
+        let locationName = row.locationName || row.location || '';
+        if (row.country && !locationName.includes(row.country)) {
+          locationName = locationName ? `${locationName}, ${row.country}` : row.country;
+        }
+        
+        return {
+          id: newId,
+          title: row.title || '',
+          description: description || 'Unknown location',
+          year: year,
+          location: { 
+            lat: latitude, 
+            lng: longitude 
+          },
+          locationName: locationName,
+          country: row.country || locationName.split(',').pop()?.trim() || '',
+          src: row.imageUrl || 'https://via.placeholder.com/500'
+        };
+      });
+      
+      console.log("Converted to HistoricalImages:", newEvents);
+      
+      onImportComplete(newEvents);
     } catch (error) {
       console.error("Excel processing error:", error);
       toast({
@@ -138,7 +176,6 @@ const ExcelImporter = ({ onImportComplete, isUploading, setIsUploading }: ExcelI
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
           
-          // Get raw data with headers
           const rawData = XLSX.utils.sheet_to_json(worksheet, { 
             header: 1, 
             raw: false,
@@ -151,17 +188,14 @@ const ExcelImporter = ({ onImportComplete, isUploading, setIsUploading }: ExcelI
             throw new Error("Excel file must have at least a header row and one data row");
           }
           
-          // Extract header row and normalize headers
           const headers = (rawData[0] as string[]).map(header => 
             String(header).toLowerCase().trim()
           );
           
           console.log("Normalized headers:", headers);
           
-          // Map column indices to our expected fields
           const fieldMap: Record<string, string> = {};
           
-          // Define variations of each field name we want to capture
           const fieldVariations: Record<string, string[]> = {
             description: ['description', 'desc', 'text', 'info', 'details', 'caption', 'notes'],
             title: ['title', 'name', 'heading', 'subject', 'event'],
@@ -174,7 +208,6 @@ const ExcelImporter = ({ onImportComplete, isUploading, setIsUploading }: ExcelI
             locationName: ['locationname', 'placename', 'placefull', 'fullname', 'fullplace']
           };
           
-          // Map each header to our expected fields if possible
           headers.forEach((header, index) => {
             for (const [field, variations] of Object.entries(fieldVariations)) {
               if (variations.some(v => header.includes(v))) {
@@ -186,20 +219,17 @@ const ExcelImporter = ({ onImportComplete, isUploading, setIsUploading }: ExcelI
           
           console.log("Field mapping:", fieldMap);
           
-          // Process data rows
           const processedData: ExcelImageData[] = [];
           
           for (let i = 1; i < rawData.length; i++) {
             const row = rawData[i] as any[];
             const item: ExcelImageData = {};
             
-            // Map each cell to the appropriate field based on the mapping
             for (let j = 0; j < row.length; j++) {
               const field = fieldMap[j];
               if (field) {
                 const value = row[j];
                 
-                // Convert to appropriate type
                 if (field === 'year') {
                   item[field] = parseInt(String(value)) || null;
                 } else if (field === 'latitude' || field === 'longitude') {
@@ -210,7 +240,6 @@ const ExcelImporter = ({ onImportComplete, isUploading, setIsUploading }: ExcelI
               }
             }
             
-            // Only add if we have at least some basic data
             if (Object.keys(item).length > 0) {
               processedData.push(item);
             }

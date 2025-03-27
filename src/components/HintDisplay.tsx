@@ -1,8 +1,7 @@
 
-import { X, Lightbulb, MapPin, Calendar } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useEffect, useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
+import HintSystem from './game/HintSystem';
 
 interface HintDisplayProps {
   availableHints: number;
@@ -11,9 +10,12 @@ interface HintDisplayProps {
   onUseYearHint: () => boolean;
   locationHintUsed: boolean;
   yearHintUsed: boolean;
-  currentImage?: {
+  currentImage: {
+    year: number;
+    location: { lat: number; lng: number };
+    description: string;
     locationName?: string;
-    year?: number;
+    country?: string;
   };
 }
 
@@ -23,170 +25,50 @@ const HintDisplay = ({
   onUseLocationHint, 
   onUseYearHint, 
   locationHintUsed, 
-  yearHintUsed,
+  yearHintUsed, 
   currentImage 
 }: HintDisplayProps) => {
-  const { toast } = useToast();
+  const [isClosing, setIsClosing] = useState(false);
   
-  // Persist hint usage states locally
-  const [localLocationHintUsed, setLocalLocationHintUsed] = useState(locationHintUsed);
-  const [localYearHintUsed, setLocalYearHintUsed] = useState(yearHintUsed);
-  const [localHintValues, setLocalHintValues] = useState<{country?: string, decade?: string}>({});
-  const [remainingHints, setRemainingHints] = useState(availableHints);
-  
-  // Update local state when props change
+  // Handle escape key
   useEffect(() => {
-    setLocalLocationHintUsed(locationHintUsed);
-    setLocalYearHintUsed(yearHintUsed);
-    setRemainingHints(availableHints);
-    
-    // Set hint values when hints are used and current image is available
-    if (currentImage) {
-      const updatedHintValues = { ...localHintValues };
-      
-      if (locationHintUsed && currentImage.locationName) {
-        updatedHintValues.country = getCountryOnly(currentImage.locationName);
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose();
       }
-      
-      if (yearHintUsed && currentImage.year) {
-        updatedHintValues.decade = currentImage.year.toString().slice(0, -1) + "X";
-      }
-      
-      setLocalHintValues(updatedHintValues);
-    }
-  }, [locationHintUsed, yearHintUsed, currentImage, availableHints]);
-
-  // Helper to extract just the country from location name
-  const getCountryOnly = (locationName?: string): string => {
-    if (!locationName) return "Unknown";
+    };
     
-    // Split by comma and get the last part which is usually the country
-    const parts = locationName.split(',');
-    return parts.length > 1 ? parts[parts.length - 1].trim() : parts[0].trim();
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, []);
+  
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+      setIsClosing(false);
+    }, 150);
   };
   
-  // Handle using location hint
-  const handleUseLocationHint = () => {
-    if (!localLocationHintUsed && remainingHints > 0) {
-      const hintUsed = onUseLocationHint();
-      if (hintUsed) {
-        setLocalLocationHintUsed(true);
-        setRemainingHints(prev => prev - 1);
-        
-        if (currentImage && currentImage.locationName) {
-          setLocalHintValues(prev => ({
-            ...prev,
-            country: getCountryOnly(currentImage.locationName)
-          }));
-        }
-      }
-    }
-  };
-  
-  // Handle using year hint
-  const handleUseYearHint = () => {
-    if (!localYearHintUsed && remainingHints > 0) {
-      const hintUsed = onUseYearHint();
-      if (hintUsed) {
-        setLocalYearHintUsed(true);
-        setRemainingHints(prev => prev - 1);
-        
-        if (currentImage && currentImage.year) {
-          setLocalHintValues(prev => ({
-            ...prev,
-            decade: currentImage.year.toString().slice(0, -1) + "X"
-          }));
-        }
-      }
-    }
-  };
-  
-  // Handle watching an ad for more hints
-  const handleWatchAd = () => {
-    // Simulate watching an ad - just give 2 more hints
-    setRemainingHints(prev => prev + 2);
-    
-    toast({
-      title: "Hints added!",
-      description: "You've earned 2 hints by watching the ad."
-    });
-  };
-
   return (
-    <div className="w-[290px] bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg rounded-lg border border-border">
-      <div className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Lightbulb className="h-4 w-4 text-yellow-500" />
-            <h3 className="text-sm font-semibold">Hints</h3>
-          </div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-6 w-6 p-0" 
-            onClick={onClose}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+    <div className={`transition-opacity duration-150 ${isClosing ? 'opacity-0' : 'opacity-100'}`}>
+      <div className="relative">
+        <button 
+          className="absolute -top-2 -right-2 p-1 rounded-full bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 shadow-sm"
+          onClick={handleClose}
+          aria-label="Close hints"
+        >
+          <X className="h-4 w-4" />
+        </button>
         
-        <div className="grid grid-cols-2 gap-4 py-2">
-          <div className="flex flex-col items-center">
-            <Button 
-              onClick={handleUseLocationHint}
-              disabled={localLocationHintUsed || remainingHints <= 0}
-              variant={localLocationHintUsed ? "outline" : "default"}
-              className="w-full"
-            >
-              <MapPin className="h-4 w-4 mr-1" />
-              <span className="text-xs">Country</span>
-            </Button>
-            <span className="text-xs text-muted-foreground mt-1">-500 pts</span>
-            
-            {localLocationHintUsed && localHintValues.country && (
-              <span className="text-xs font-medium mt-2">
-                {localHintValues.country}
-              </span>
-            )}
-          </div>
-          
-          <div className="flex flex-col items-center">
-            <Button 
-              onClick={handleUseYearHint}
-              disabled={localYearHintUsed || remainingHints <= 0}
-              variant={localYearHintUsed ? "outline" : "default"}
-              className="w-full"
-            >
-              <Calendar className="h-4 w-4 mr-1" />
-              <span className="text-xs">Decade</span>
-            </Button>
-            <span className="text-xs text-muted-foreground mt-1">-500 pts</span>
-            
-            {localYearHintUsed && localHintValues.decade && (
-              <span className="text-xs font-medium mt-2">
-                {localHintValues.decade}
-              </span>
-            )}
-          </div>
-        </div>
-        
-        <div className="mt-2 text-center text-xs font-medium">
-          Remaining hints: {remainingHints}
-        </div>
-        
-        {/* Ad for more hints when none are available */}
-        {remainingHints <= 0 && (
-          <div className="mt-3 pt-3 border-t border-border">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full text-xs"
-              onClick={handleWatchAd}
-            >
-              <span>Watch Ad for 2 Free Hints</span>
-            </Button>
-          </div>
-        )}
+        <HintSystem 
+          hintCoins={availableHints}
+          onUseLocationHint={onUseLocationHint}
+          onUseYearHint={onUseYearHint}
+          locationHintUsed={locationHintUsed}
+          yearHintUsed={yearHintUsed}
+          currentImage={currentImage}
+        />
       </div>
     </div>
   );

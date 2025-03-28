@@ -1,10 +1,9 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Calendar, Trash2, UserMinus } from "lucide-react";
 import { format } from 'date-fns';
-import { useToast } from "@/hooks/use-toast";
 
 interface User {
   id: string;
@@ -15,146 +14,54 @@ interface User {
 }
 
 export default function UsersTable() {
-  const { toast } = useToast();
-  const [users, setUsers] = useState<User[]>([]);
+  // Mock user data - in a real application, this would come from an API
+  const [users, setUsers] = useState<User[]>([
+    {
+      id: '1',
+      username: 'admin',
+      email: 'admin@example.com',
+      createdAt: new Date('2023-01-01'),
+      avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin'
+    },
+    {
+      id: '2',
+      username: 'test_user',
+      email: 'test@example.com',
+      createdAt: new Date('2023-02-15'),
+      avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=test'
+    },
+    {
+      id: '3',
+      username: 'john_doe',
+      email: 'john@example.com',
+      createdAt: new Date('2023-03-10'),
+      avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=john'
+    },
+    {
+      id: '4',
+      username: 'jane_smith',
+      email: 'jane@example.com',
+      createdAt: new Date('2023-04-05'),
+      avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=jane'
+    },
+    {
+      id: '5',
+      username: 'alex_wilson',
+      email: 'alex@example.com',
+      createdAt: new Date('2023-05-20'),
+      avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alex'
+    },
+    {
+      id: '6',
+      username: 'lili',
+      email: 'lili@example.com',
+      createdAt: new Date('2023-06-15'),
+      avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=lili'
+    }
+  ]);
+
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Fetch users from localStorage on mount
-  useEffect(() => {
-    setIsLoading(true);
-    
-    // Simulate API call delay
-    setTimeout(() => {
-      try {
-        // First, get registered users from localStorage
-        const registeredUsers: User[] = [];
-        
-        // Check if there are registered users in localStorage
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          try {
-            const user = JSON.parse(storedUser);
-            if (user && user.id && user.username && !user.isGuest) {
-              registeredUsers.push({
-                id: user.id,
-                username: user.username,
-                email: user.email || 'unknown@example.com',
-                createdAt: new Date(),
-                avatarUrl: user.avatarUrl
-              });
-            }
-          } catch (error) {
-            console.error('Error parsing stored user:', error);
-          }
-        }
-        
-        // Check auth-storage which may contain Zustand state
-        const authStorage = localStorage.getItem('auth-storage');
-        if (authStorage) {
-          try {
-            const authState = JSON.parse(authStorage);
-            if (authState && authState.state && authState.state.user && 
-                !authState.state.user.isGuest && 
-                !registeredUsers.some(u => u.id === authState.state.user.id)) {
-              registeredUsers.push({
-                id: authState.state.user.id,
-                username: authState.state.user.username,
-                email: authState.state.user.email || 'unknown@example.com',
-                createdAt: new Date(),
-                avatarUrl: authState.state.user.avatarUrl
-              });
-            }
-          } catch (error) {
-            console.error('Error parsing auth storage:', error);
-          }
-        }
-        
-        // Add mock users if no real users found
-        const mockUsers: User[] = [
-          {
-            id: '1',
-            username: 'admin',
-            email: 'admin@example.com',
-            createdAt: new Date('2023-01-01'),
-            avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin'
-          },
-          {
-            id: '2',
-            username: 'test_user',
-            email: 'test@example.com',
-            createdAt: new Date('2023-02-15'),
-            avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=test'
-          },
-          {
-            id: '3',
-            username: 'john_doe',
-            email: 'john@example.com',
-            createdAt: new Date('2023-03-10'),
-            avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=john'
-          },
-          {
-            id: '4',
-            username: 'jane_smith',
-            email: 'jane@example.com',
-            createdAt: new Date('2023-04-05'),
-            avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=jane'
-          },
-          {
-            id: '5',
-            username: 'alex_wilson',
-            email: 'alex@example.com',
-            createdAt: new Date('2023-05-20'),
-            avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alex'
-          },
-          {
-            id: '6',
-            username: 'lili',
-            email: 'lili@example.com',
-            createdAt: new Date('2023-06-15'),
-            avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=lili'
-          }
-        ];
-        
-        // Combine real and mock users, ensuring no duplicates by username
-        const allUsers = [...registeredUsers];
-        
-        // Only add mock users if no real users found
-        if (registeredUsers.length === 0) {
-          allUsers.push(...mockUsers);
-        } else {
-          // Add Lili as a registered user if she's not already there
-          if (!allUsers.some(u => u.username.toLowerCase() === 'lili')) {
-            allUsers.push(mockUsers[5]); // Add Lili
-          }
-        }
-        
-        setUsers(allUsers);
-      } catch (error) {
-        console.error('Error loading users:', error);
-        // Fallback to mock data
-        setUsers([
-          {
-            id: '1',
-            username: 'admin',
-            email: 'admin@example.com',
-            createdAt: new Date('2023-01-01'),
-            avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin'
-          },
-          {
-            id: '6',
-            username: 'lili',
-            email: 'lili@example.com',
-            createdAt: new Date('2023-06-15'),
-            avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=lili'
-          }
-        ]);
-      } finally {
-        setIsLoading(false);
-      }
-    }, 500);
-  }, []);
 
   // Handle select all checkbox
   const handleSelectAll = (checked: boolean) => {
@@ -182,12 +89,6 @@ export default function UsersTable() {
     setUsers(remainingUsers);
     setSelectedUsers([]);
     setSelectAll(false);
-    
-    // Show success toast
-    toast({
-      title: "Users deleted",
-      description: `${selectedUsers.length} user(s) have been deleted.`,
-    });
   };
 
   return (
@@ -229,13 +130,7 @@ export default function UsersTable() {
             </tr>
           </thead>
           <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                  Loading users...
-                </td>
-              </tr>
-            ) : users.length > 0 ? (
+            {users.length > 0 ? (
               users.map(user => (
                 <tr key={user.id} className="border-b hover:bg-muted/20">
                   <td className="p-3">

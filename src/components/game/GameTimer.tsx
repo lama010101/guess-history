@@ -15,14 +15,12 @@ const GameTimer = ({ duration, paused, hintsOpen = false, onTimeUp }: GameTimerP
   const [progress, setProgress] = useState(100);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const lastUpdateRef = useRef<number | null>(null);
-  const timeUpFiredRef = useRef(false);
 
   // Initialize timer
   useEffect(() => {
     setTimeRemaining(duration);
     setProgress(100);
     lastUpdateRef.current = Date.now();
-    timeUpFiredRef.current = false;
     
     return () => {
       if (timerRef.current) {
@@ -56,13 +54,10 @@ const GameTimer = ({ duration, paused, hintsOpen = false, onTimeUp }: GameTimerP
         const newTime = Math.max(0, prev - elapsed);
         setProgress((newTime / duration) * 100);
         
-        // Time's up - only fire the callback once
-        if (newTime <= 0 && !timeUpFiredRef.current) {
-          if (timerRef.current) {
-            clearInterval(timerRef.current);
-            timerRef.current = null;
-          }
-          timeUpFiredRef.current = true;
+        // Time's up
+        if (newTime <= 0 && timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
           onTimeUp();
         }
         

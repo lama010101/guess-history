@@ -1,7 +1,6 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { useToast } from '@/hooks/use-toast';
 
 // Define user types
 export interface User {
@@ -10,7 +9,6 @@ export interface User {
   email?: string;
   avatarUrl?: string;
   isGuest: boolean;
-  createdAt?: Date;
 }
 
 // Define auth store type
@@ -48,28 +46,19 @@ export const useAuth = create<AuthState>()(
           // Check if this is an admin user
           const isAdmin = email.toLowerCase() === 'lama010101@gmail.com';
           
-          // Create timestamp for registration
-          const createdAt = new Date();
-          
           // Mock successful login
-          const user = {
-            id: '1',
-            username: email.split('@')[0],
-            email,
-            isGuest: false,
-            avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + email,
-            createdAt,
-          };
-          
           set({
-            user,
+            user: {
+              id: '1',
+              username: email.split('@')[0],
+              email,
+              isGuest: false,
+              avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + email,
+            },
             isAuthenticated: true,
             isLoading: false,
             isAdmin,
           });
-          
-          // Store the user in localStorage for other components to access
-          localStorage.setItem('user', JSON.stringify(user));
         } catch (error) {
           set({ 
             error: error instanceof Error ? error.message : 'Failed to login', 
@@ -87,28 +76,19 @@ export const useAuth = create<AuthState>()(
           // Check if this is an admin user
           const isAdmin = email.toLowerCase() === 'lama010101@gmail.com';
           
-          // Create timestamp for registration
-          const createdAt = new Date();
-          
           // Mock successful registration
-          const user = {
-            id: '1',
-            username,
-            email,
-            isGuest: false,
-            avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + username,
-            createdAt,
-          };
-          
           set({
-            user,
+            user: {
+              id: '1',
+              username,
+              email,
+              isGuest: false,
+              avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + username,
+            },
             isAuthenticated: true,
             isLoading: false,
             isAdmin,
           });
-          
-          // Store the user in localStorage for other components to access
-          localStorage.setItem('user', JSON.stringify(user));
         } catch (error) {
           set({ 
             error: error instanceof Error ? error.message : 'Failed to sign up', 
@@ -123,28 +103,20 @@ export const useAuth = create<AuthState>()(
           isAuthenticated: false,
           isAdmin: false,
         });
-        
-        // Remove from localStorage
-        localStorage.removeItem('user');
       },
       
       continueAsGuest: () => {
         const guestId = 'guest-' + Math.random().toString(36).substring(2, 9);
-        const user = {
-          id: guestId,
-          username: 'Guest',
-          isGuest: true,
-          avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + guestId,
-        };
-        
         set({
-          user,
+          user: {
+            id: guestId,
+            username: 'Guest',
+            isGuest: true,
+            avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + guestId,
+          },
           isAuthenticated: true,
           isAdmin: false,
         });
-        
-        // Store the guest user in localStorage
-        localStorage.setItem('user', JSON.stringify(user));
       },
       
       googleLogin: async () => {
@@ -162,27 +134,18 @@ export const useAuth = create<AuthState>()(
           // Check if this is an admin user
           const isAdmin = email.toLowerCase() === 'lama010101@gmail.com';
           
-          // Create timestamp for registration
-          const createdAt = new Date();
-          
-          const user = {
-            id: '2',
-            username,
-            email,
-            isGuest: false,
-            avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-            createdAt,
-          };
-          
           set({
-            user,
+            user: {
+              id: '2',
+              username,
+              email,
+              isGuest: false,
+              avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+            },
             isAuthenticated: true,
             isLoading: false,
             isAdmin,
           });
-          
-          // Store the user in localStorage for other components to access
-          localStorage.setItem('user', JSON.stringify(user));
         } catch (error) {
           set({ 
             error: error instanceof Error ? error.message : 'Failed to login with Google', 
@@ -200,9 +163,6 @@ export const useAuth = create<AuthState>()(
         set({
           user: updatedUser
         });
-        
-        // Update localStorage
-        localStorage.setItem('user', JSON.stringify(updatedUser));
       },
     }),
     {

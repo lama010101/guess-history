@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 export const useHints = () => {
-  const [hintCoins, setHintCoins] = useState(0);
+  const [hintCoins, setHintCoins] = useState(3); // Start with 3 hint coins by default
   const [locationHintUsed, setLocationHintUsed] = useState(false);
   const [yearHintUsed, setYearHintUsed] = useState(false);
   const [persistentHints, setPersistentHints] = useState({
@@ -12,17 +12,36 @@ export const useHints = () => {
   });
   const { toast } = useToast();
   
-  // Load initial coins from localStorage if available
+  // Load state from localStorage on mount
   useEffect(() => {
-    const savedSettings = localStorage.getItem('gameSettings');
-    if (savedSettings) {
+    const savedState = localStorage.getItem('currentGameState');
+    if (savedState) {
       try {
-        const settings = JSON.parse(savedSettings);
-        if (settings && typeof settings.initialHintCoins === 'number') {
-          setHintCoins(settings.initialHintCoins);
+        const state = JSON.parse(savedState);
+        if (state.hintCoins !== undefined) {
+          setHintCoins(state.hintCoins);
+        }
+        if (state.locationHintUsed !== undefined) {
+          setLocationHintUsed(state.locationHintUsed);
+        }
+        if (state.yearHintUsed !== undefined) {
+          setYearHintUsed(state.yearHintUsed);
         }
       } catch (error) {
-        console.error('Error loading game settings:', error);
+        console.error('Error loading saved game state:', error);
+      }
+    } else {
+      // If no game state, load from settings
+      const savedSettings = localStorage.getItem('gameSettings');
+      if (savedSettings) {
+        try {
+          const settings = JSON.parse(savedSettings);
+          if (settings && typeof settings.initialHintCoins === 'number') {
+            setHintCoins(settings.initialHintCoins);
+          }
+        } catch (error) {
+          console.error('Error loading game settings:', error);
+        }
       }
     }
   }, []);

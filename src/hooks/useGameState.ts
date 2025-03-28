@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/services/auth';
@@ -72,14 +71,12 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     completeDailyGame
   } = useDailyGame();
 
-  // Sync gameComplete with roundsComplete
   useEffect(() => {
     if (roundsComplete !== gameComplete) {
       setGameComplete(roundsComplete);
     }
   }, [roundsComplete, gameComplete, setGameComplete]);
 
-  // Check for URL parameters on mount to set daily mode if needed
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
     const mode = queryParams.get('mode');
@@ -88,7 +85,6 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     }
   }, [setDailyGame]);
 
-  // Save complete game state to localStorage
   useEffect(() => {
     const gameState = {
       selectedLocation,
@@ -114,7 +110,6 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
       showResults, currentRound, currentImageIndex, gameComplete, totalScore, 
       roundScores, locationHintUsed, yearHintUsed, hintCoins, isDaily]);
   
-  // Handle submitting a guess
   const handleSubmit = () => {
     if (!selectedLocation || !currentImage) {
       return;
@@ -142,13 +137,11 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     
     setShowResults(true);
     
-    // If this is a daily challenge and it's the final round, mark it as completed
     if (isDaily && currentRound >= configuredMaxRounds) {
       completeDailyGame(totalScore + scores.locationScore + scores.yearScore - scores.hintPenalty);
     }
   };
   
-  // Handle moving to the next round
   const handleNextRound = () => {
     setShowResults(false);
     setTimerPaused(false);
@@ -158,7 +151,6 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     resetHints();
   };
 
-  // Handle starting a new game
   const handleNewGame = () => {
     setSelectedLocation(null);
     setSelectedYear(1960);
@@ -179,11 +171,9 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     }
   };
 
-  // Add default values in case currentImage is undefined
   const defaultImage = sampleImages[0];
   const safeCurrentImage = currentImage || defaultImage;
 
-  // Calculate scores for the current state
   const currentScores = calculateRoundScore(
     selectedLocation,
     selectedYear,
@@ -193,16 +183,13 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     yearHintUsed
   );
 
-  // Handle hint usage
   const handleUseLocationHint = (): boolean => {
     if (locationHintUsed) return false;
-    // Don't pause the timer when using hints
     return Boolean(useHintsLocationHint());
   };
   
   const handleUseYearHint = (): boolean => {
     if (yearHintUsed) return false;
-    // Don't pause the timer when using hints
     return Boolean(useHintsYearHint());
   };
 

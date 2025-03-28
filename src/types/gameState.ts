@@ -25,6 +25,7 @@ export interface GameState {
 export interface GameStateActions {
   setSelectedLocation: React.Dispatch<React.SetStateAction<{ lat: number; lng: number } | null>>;
   setSelectedYear: React.Dispatch<React.SetStateAction<number>>;
+  setGameComplete: React.Dispatch<React.SetStateAction<boolean>>;
   handleSubmit: () => void;
   handleNextRound: () => void;
   handleNewGame: () => void;

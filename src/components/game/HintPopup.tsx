@@ -1,9 +1,7 @@
 
-import { useState, useEffect } from 'react';
-import { X, Lightbulb, MapPin, Calendar, Coins } from 'lucide-react';
+import { useState } from 'react';
+import { Lightbulb, MapPin, Calendar, X, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 
 interface HintPopupProps {
   onClose: () => void;
@@ -17,7 +15,6 @@ interface HintPopupProps {
     location: { lat: number; lng: number };
     description: string;
     locationName?: string;
-    country?: string;
   };
 }
 
@@ -30,38 +27,11 @@ const HintPopup = ({
   yearHintUsed,
   currentImage
 }: HintPopupProps) => {
-  const [isClosing, setIsClosing] = useState(false);
   const [countryHint, setCountryHint] = useState<string | null>(null);
   const [yearHint, setYearHint] = useState<string | null>(null);
   
-  // Setup escape key listener
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handleClose();
-      }
-    };
-    
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, []);
-  
-  // Persist hints even after closing/reopening
-  useEffect(() => {
-    if (locationHintUsed) {
-      setCountryHint(getCountryHint());
-    }
-    
-    if (yearHintUsed) {
-      setYearHint(getYearHint());
-    }
-  }, [locationHintUsed, yearHintUsed, currentImage]);
-  
+  // Function to extract country from location name
   const getCountryHint = () => {
-    if (currentImage.country) {
-      return currentImage.country;
-    }
-    
     if (currentImage.locationName) {
       // Split by comma and get the last part which is usually the country
       const parts = currentImage.locationName.split(',');
@@ -70,16 +40,14 @@ const HintPopup = ({
     return "Unknown Country";
   };
   
-  // For year hint, show the year with the last digit hidden
+  // Function to get decade hint from year
   const getYearHint = () => {
     const yearString = currentImage.year.toString();
     return yearString.slice(0, -1) + "X";
   };
   
-  const handleLocationHintClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
+  // Handle location hint click
+  const handleLocationHintClick = () => {
     if (locationHintUsed || hintCoins <= 0) return;
     
     const success = onUseLocationHint();
@@ -88,10 +56,8 @@ const HintPopup = ({
     }
   };
   
-  const handleYearHintClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
+  // Handle year hint click
+  const handleYearHintClick = () => {
     if (yearHintUsed || hintCoins <= 0) return;
     
     const success = onUseYearHint();
@@ -100,99 +66,67 @@ const HintPopup = ({
     }
   };
   
-  const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      onClose();
-    }, 150);
-  };
-  
   return (
-    <div 
-      className={`fixed inset-0 flex items-center justify-center z-50 bg-black/40 backdrop-blur-sm transition-opacity duration-150 ${isClosing ? 'opacity-0' : 'opacity-100'}`} 
-      onClick={handleClose}
-    >
-      <Card 
-        className="w-[90%] max-w-md shadow-xl transition-all duration-150 transform"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Lightbulb className="h-5 w-5 text-yellow-500" />
-              <CardTitle>Hints</CardTitle>
-            </div>
-            <Button variant="ghost" size="icon" onClick={handleClose} className="h-7 w-7">
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="flex items-center text-sm font-medium text-muted-foreground">
+    <div className="absolute top-12 right-4 z-50 bg-white dark:bg-gray-900 shadow-lg rounded-lg w-64 p-4">
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="text-sm font-semibold flex items-center">
+          <Lightbulb className="h-4 w-4 mr-1.5 text-yellow-500" />
+          Hints
+        </h3>
+        <div className="flex gap-2">
+          <div className="flex items-center text-sm font-medium">
             <Coins className="h-4 w-4 mr-1.5 text-yellow-500" />
-            {hintCoins} hint coins available
+            {hintCoins} coins
           </div>
-        </CardHeader>
-        
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-medium flex items-center">
-                  <MapPin className="h-4 w-4 mr-1.5" />
-                  Country Hint
-                </div>
-                <Badge variant="outline" className="text-xs">-500 pts</Badge>
-              </div>
-              
-              <Button 
-                className="w-full"
-                variant={locationHintUsed ? "outline" : "default"}
-                onClick={handleLocationHintClick}
-                disabled={locationHintUsed || hintCoins <= 0}
-              >
-                {locationHintUsed ? "Revealed" : "Reveal Country"}
-              </Button>
-              
-              {locationHintUsed && countryHint && (
-                <div className="bg-primary/10 p-2 rounded text-center font-medium">
-                  {countryHint}
-                </div>
-              )}
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-medium flex items-center">
-                  <Calendar className="h-4 w-4 mr-1.5" />
-                  Year Hint
-                </div>
-                <Badge variant="outline" className="text-xs">-500 pts</Badge>
-              </div>
-              
-              <Button 
-                className="w-full"
-                variant={yearHintUsed ? "outline" : "default"}
-                onClick={handleYearHintClick}
-                disabled={yearHintUsed || hintCoins <= 0}
-              >
-                {yearHintUsed ? "Revealed" : "Reveal Decade"}
-              </Button>
-              
-              {yearHintUsed && yearHint && (
-                <div className="bg-primary/10 p-2 rounded text-center font-medium">
-                  {yearHint}
-                </div>
-              )}
-            </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+      
+      <div className="space-y-4">
+        <div>
+          <Button 
+            variant={locationHintUsed ? "outline" : "default"} 
+            size="sm" 
+            className="w-full flex items-center justify-center"
+            onClick={handleLocationHintClick}
+            disabled={locationHintUsed || hintCoins <= 0}
+          >
+            <MapPin className="h-4 w-4 mr-1.5" />
+            Country Hint
+          </Button>
+          <div className="text-xs mt-1 text-center text-neutral-500 dark:text-neutral-400">
+            Cost: -500 points
           </div>
-          
-          {hintCoins <= 0 && (
-            <div className="bg-yellow-500/10 border border-yellow-500/30 p-3 rounded-md text-sm">
-              <p className="font-medium">No hint coins left!</p>
-              <p className="text-muted-foreground">Complete more rounds to earn hint coins.</p>
+          {locationHintUsed && countryHint && (
+            <div className="text-xs mt-2 p-2 bg-amber-50 dark:bg-amber-900/20 rounded text-center font-medium border border-amber-200 dark:border-amber-800">
+              {countryHint}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+          
+        <div>
+          <Button 
+            variant={yearHintUsed ? "outline" : "default"} 
+            size="sm" 
+            className="w-full flex items-center justify-center"
+            onClick={handleYearHintClick}
+            disabled={yearHintUsed || hintCoins <= 0}
+          >
+            <Calendar className="h-4 w-4 mr-1.5" />
+            Decade Hint
+          </Button>
+          <div className="text-xs mt-1 text-center text-neutral-500 dark:text-neutral-400">
+            Cost: -500 points
+          </div>
+          {yearHintUsed && yearHint && (
+            <div className="text-xs mt-2 p-2 bg-amber-50 dark:bg-amber-900/20 rounded text-center font-medium border border-amber-200 dark:border-amber-800">
+              {yearHint}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

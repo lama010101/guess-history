@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -10,13 +9,16 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/services/auth';
 import { Plus, Search, UserMinus, Users } from 'lucide-react';
 
-// This will be replaced by real API calls in the future
+// Mock data - this would be replaced by real API calls
 const getRealUsers = () => {
   // In a real implementation, this would fetch from an API
   return [
     { id: '4', username: 'john_doe', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=john' },
     { id: '5', username: 'jane_smith', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=jane' },
     { id: '6', username: 'alex_wilson', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alex' },
+    { id: '7', username: 'lili', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=lili' },
+    { id: '8', username: 'emma_johnson', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=emma' },
+    { id: '9', username: 'michael_brown', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=michael' },
   ];
 };
 
@@ -74,6 +76,7 @@ const Friends = () => {
     }
   };
 
+  // Filter users more effectively to show matches by partial username
   const filteredFriends = friends.filter(friend => 
     friend.username.toLowerCase().includes(searchTerm.toLowerCase())
   );

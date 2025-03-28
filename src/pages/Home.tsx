@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Globe, Clock, Lightbulb, Users, Share2, Copy, Check, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -181,6 +180,110 @@ const Home = () => {
     handleStartGame();
   };
   
+  const renderDailyChallenge = () => {
+    return (
+      <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-6">
+        <h3 className="text-xl font-medium mb-2">
+          {dailyPlayed ? 'Daily Challenge: Completed' : 'Daily Challenge'}
+        </h3>
+        <p className="text-neutral-500 dark:text-neutral-400 mb-4">Compete with the world on the same set of random images.</p>
+        
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+          <div className="md:mr-4">
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">One attempt per day</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">Timer: 5 minutes</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">Hints available: 2</p>
+          </div>
+          
+          {dailyPlayed ? (
+            <div className="mt-4 md:mt-0 p-4 bg-primary/10 rounded-md text-center w-full md:w-auto">
+              <div className="font-medium text-lg mb-1">Today's score: {dailyScore}</div>
+              <div className="flex items-center justify-center gap-2 text-sm text-primary">
+                <Clock className="h-4 w-4" />
+                <span>Next challenge in: {timeUntilNextDaily}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 md:mt-0 w-full md:w-auto">
+              <Button 
+                onClick={handleStartGame} 
+                className="w-full md:min-w-[200px]"
+                disabled={!isAuthenticated}
+              >
+                Start Daily Challenge
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderFriendsMode = () => {
+    return (
+      <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-6">
+        <h3 className="text-xl font-medium mb-2">Friends Mode</h3>
+        <p className="text-neutral-500 dark:text-neutral-400 mb-4">Invite your friends to play together.</p>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              <Label className="text-sm font-medium" htmlFor="friends-timer-toggle">Timer</Label>
+              <Switch id="friends-timer-toggle" checked={timerEnabled} onCheckedChange={setTimerEnabled} />
+            </div>
+            {timerEnabled && <div>
+                <div className="flex justify-between mb-2">
+                  <Label>Time Limit: {timerMinutes} minutes</Label>
+                </div>
+                <Slider value={[timerMinutes]} min={1} max={10} step={1} onValueChange={value => setTimerMinutes(value[0])} />
+              </div>}
+            <p className="text-xs text-muted-foreground">Race against the clock</p>
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Lightbulb className="h-4 w-4" />
+              <Label className="text-sm font-medium" htmlFor="friends-hints-toggle">Hints</Label>
+              <Switch id="friends-hints-toggle" checked={hintsEnabled} onCheckedChange={setHintsEnabled} />
+            </div>
+            {hintsEnabled && <div>
+                <div className="flex justify-between mb-2">
+                  <Label>Hints per game: {hintsCount}</Label>
+                </div>
+                <Slider value={[hintsCount]} min={1} max={10} step={1} onValueChange={value => setHintsCount(value[0])} />
+              </div>}
+            <p className="text-xs text-muted-foreground">Using a hint will deduct 500 points</p>
+          </div>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Button 
+            variant="outline" 
+            className="flex-1 flex items-center gap-2" 
+            onClick={copyGameLink}
+            disabled={!isAuthenticated}
+          >
+            {linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {linkCopied ? "Copied!" : "Copy Game Link"}
+          </Button>
+          <FriendsInviteDialog 
+            trigger={
+              <Button 
+                className="flex-1 flex items-center gap-2"
+                disabled={!isAuthenticated}
+              >
+                <Users className="h-4 w-4" />
+                Invite and Start Game
+              </Button>
+            } 
+            onInviteAndStart={handleInviteFriendsAndStart} 
+          />
+        </div>
+      </div>
+    );
+  };
+
   return <div className="min-h-[100dvh] bg-white dark:bg-gray-900 text-black dark:text-white flex flex-col">
       <Navbar />
       <main className="flex-1 container max-w-6xl mx-auto px-4 py-8">
@@ -250,100 +353,8 @@ const Home = () => {
             )}
             
             <div className="space-y-8">
-              <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-6">
-                <h3 className="text-xl font-medium mb-2">
-                  {dailyPlayed ? 'Daily Challenge: Completed' : 'Daily Challenge'}
-                </h3>
-                <p className="text-neutral-500 dark:text-neutral-400 mb-4">Compete with the world on the same set of random images.</p>
-                
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                  <div className="md:mr-4">
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">One attempt per day</p>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Timer: 5 minutes</p>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Hints available: 2</p>
-                  </div>
-                  
-                  {dailyPlayed ? (
-                    <div className="mt-4 md:mt-0 p-4 bg-primary/10 rounded-md text-center w-full md:w-auto">
-                      <div className="font-medium text-lg mb-1">Today's score: {dailyScore}</div>
-                      <div className="flex items-center justify-center gap-2 text-sm text-primary">
-                        <Clock className="h-4 w-4" />
-                        <span>Next challenge in: {timeUntilNextDaily}</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mt-4 md:mt-0 w-full md:w-auto">
-                      <Button 
-                        onClick={handleStartGame} 
-                        className="w-full md:min-w-[200px]"
-                        disabled={!isAuthenticated}
-                      >
-                        Start Daily Challenge
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-6">
-                <h3 className="text-xl font-medium mb-2">Friends Mode</h3>
-                <p className="text-neutral-500 dark:text-neutral-400 mb-4">Invite your friends to play together.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      <Label className="text-sm font-medium" htmlFor="friends-timer-toggle">Timer</Label>
-                      <Switch id="friends-timer-toggle" checked={timerEnabled} onCheckedChange={setTimerEnabled} />
-                    </div>
-                    {timerEnabled && <div>
-                        <div className="flex justify-between mb-2">
-                          <Label>Time Limit: {timerMinutes} minutes</Label>
-                        </div>
-                        <Slider value={[timerMinutes]} min={1} max={10} step={1} onValueChange={value => setTimerMinutes(value[0])} />
-                      </div>}
-                    <p className="text-xs text-muted-foreground">Race against the clock</p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Lightbulb className="h-4 w-4" />
-                      <Label className="text-sm font-medium" htmlFor="friends-hints-toggle">Hints</Label>
-                      <Switch id="friends-hints-toggle" checked={hintsEnabled} onCheckedChange={setHintsEnabled} />
-                    </div>
-                    {hintsEnabled && <div>
-                        <div className="flex justify-between mb-2">
-                          <Label>Hints per game: {hintsCount}</Label>
-                        </div>
-                        <Slider value={[hintsCount]} min={1} max={10} step={1} onValueChange={value => setHintsCount(value[0])} />
-                      </div>}
-                    <p className="text-xs text-muted-foreground">Using a hint will deduct 500 points</p>
-                  </div>
-                </div>
-                
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Button 
-                    variant="outline" 
-                    className="flex-1 flex items-center gap-2" 
-                    onClick={copyGameLink}
-                    disabled={!isAuthenticated}
-                  >
-                    {linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    {linkCopied ? "Copied!" : "Copy Game Link"}
-                  </Button>
-                  <FriendsInviteDialog 
-                    trigger={
-                      <Button 
-                        className="flex-1 flex items-center gap-2"
-                        disabled={!isAuthenticated}
-                      >
-                        <Users className="h-4 w-4" />
-                        Invite and Start Game
-                      </Button>
-                    } 
-                    onInviteAndStart={handleInviteFriendsAndStart} 
-                  />
-                </div>
-              </div>
+              {renderDailyChallenge()}
+              {renderFriendsMode()}
             </div>
           </TabsContent>
         </Tabs>

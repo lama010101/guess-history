@@ -117,16 +117,35 @@ const GameSection = () => {
     if (gameComplete) {
       return <section id="game" className="h-full flex flex-col">
           <Navbar key={navbarKey} hintCoins={hintCoins} hideTitle={true} />
-          <GameComplete totalScore={totalScore} maxRounds={MAX_ROUNDS} roundScores={roundScores} images={sampleImages} onPlayAgain={isDaily ? undefined : handleNewGame} isDaily={isDaily} />
+          <GameComplete 
+            totalScore={totalScore} 
+            maxRounds={MAX_ROUNDS} 
+            roundScores={roundScores} 
+            images={sampleImages} 
+            onPlayAgain={isDaily ? undefined : handleNewGame} 
+            isDaily={isDaily} 
+          />
         </section>;
     }
 
     return <section id="game" className="h-full flex flex-col">
-        <Navbar key={navbarKey} roundInfo={{
-        currentRound,
-        maxRounds,
-        totalScore
-      }} hintCoins={hintCoins} hintsOpen={hintsOpen} setHintsOpen={setHintsOpen} hideTitle={true} />
+        <Navbar 
+          key={navbarKey} 
+          roundInfo={{
+            currentRound,
+            maxRounds,
+            totalScore
+          }} 
+          hintCoins={hintCoins} 
+          hintsOpen={hintsOpen} 
+          setHintsOpen={setHintsOpen} 
+          hideTitle={true}
+          onUseLocationHint={handleUseLocationHint}
+          onUseYearHint={handleUseYearHint}
+          locationHintUsed={locationHintUsed}
+          yearHintUsed={yearHintUsed}
+          currentImage={currentImage}
+        />
         <div className="relative flex-1 flex flex-col overflow-hidden">
           {timerEnabled && <div className="w-full bg-gray-100 dark:bg-gray-800 px-4 py-2">
               <GameTimer 

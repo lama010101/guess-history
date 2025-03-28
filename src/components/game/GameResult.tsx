@@ -1,5 +1,6 @@
 
 import { MapPin, Calendar, Lightbulb } from 'lucide-react';
+import ResultVisualization from './ResultVisualization';
 
 interface GameResultProps {
   isVisible: boolean;
@@ -55,7 +56,7 @@ const GameResult = ({
   return (
     <div className="glass-card p-4 rounded-lg max-w-md w-full bg-white/90 dark:bg-gray-900/90">
       <div className="text-center mb-4">
-        <h3 className="text-2xl font-bold mb-1">Image Score</h3>
+        <h3 className="text-2xl font-bold mb-1">Round Results</h3>
       </div>
       
       {/* Event Title and Description */}
@@ -73,7 +74,7 @@ const GameResult = ({
         <div className="bg-neutral-100 dark:bg-neutral-800 px-4 py-2 flex justify-between items-center">
           <div className="flex items-center">
             <MapPin className="h-4 w-4 mr-2 text-primary" />
-            <span className="text-sm font-medium">Location: {getCountryOnly(locationName)}</span>
+            <span className="text-sm font-medium">Location: {locationName || getCountryOnly(locationName)}</span>
           </div>
           <span className="font-semibold">{locationScore.toLocaleString()} pts</span>
         </div>
@@ -81,6 +82,17 @@ const GameResult = ({
           <p className="text-sm font-medium">
             You were {Math.round(distanceKm)} km away
           </p>
+          
+          {/* Map visualization */}
+          {guessedLocation && (
+            <ResultVisualization 
+              actualLocation={actualLocation} 
+              guessedLocation={guessedLocation} 
+              isVisible={true} 
+              circleRadius={300000} 
+              showConnectionLine={true} 
+            />
+          )}
         </div>
         {locationHintUsed && (
           <div className="bg-amber-500/10 px-3 py-2 flex items-center text-xs text-amber-600">

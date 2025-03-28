@@ -11,6 +11,7 @@ interface MapComponentProps {
   actualLocation?: { lat: number; lng: number };
   showActualLocationMarker?: boolean;
   hideInstructions?: boolean;
+  initialZoom?: number;
 }
 
 const MapComponent = ({
@@ -19,7 +20,8 @@ const MapComponent = ({
   initialLocation = { lat: 40, lng: -20 }, // Center between Europe and USA
   actualLocation,
   showActualLocationMarker = false,
-  hideInstructions = false
+  hideInstructions = false,
+  initialZoom = 1 // Ensure zoom level 1 is passed
 }: MapComponentProps) => {
   // Use the custom hook for map functionality
   const {
@@ -34,7 +36,7 @@ const MapComponent = ({
     initialLocation,
     actualLocation,
     showActualLocationMarker,
-    initialZoom: 1 // Set default zoom level to 1
+    initialZoom // Pass the zoom level to the hook
   });
 
   // Derive loading state from mapLoaded

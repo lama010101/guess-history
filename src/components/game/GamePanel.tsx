@@ -71,14 +71,6 @@ const GamePanel = ({
     return parts.length > 1 ? parts[parts.length - 1].trim() : parts[0].trim();
   };
 
-  const toggleHintPopup = () => {
-    const newState = !showHintPopup;
-    setShowHintPopup(newState);
-    if (setHintsOpen) {
-      setHintsOpen(newState);
-    }
-  };
-
   const handleUseLocationHint = () => {
     const hintUsed = onUseLocationHint();
     if (hintUsed && currentImage.locationName) {
@@ -111,6 +103,7 @@ const GamePanel = ({
               selectedLocation={selectedLocation}
               hideInstructions={true}
               initialLocation={{ lat: 40, lng: -20 }} // Center between Europe and USA
+              initialZoom={1} // Set zoom level to 1
             />
           </div>
         )}
@@ -128,18 +121,7 @@ const GamePanel = ({
           </div>
         )}
         
-        {/* Hint button */}
-        <Button 
-          variant="secondary"
-          size="sm"
-          className="absolute top-4 right-4 z-10 flex items-center gap-1.5"
-          onClick={toggleHintPopup}
-        >
-          <Lightbulb className="h-4 w-4" />
-          <span>Hints</span>
-        </Button>
-        
-        {/* Show hint popup when button is clicked */}
+        {/* Display hint popup when triggered */}
         {showHintPopup && (
           <HintPopup 
             onClose={() => setShowHintPopup(false)}

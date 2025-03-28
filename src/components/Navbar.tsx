@@ -29,7 +29,6 @@ import GameTimer from './game/GameTimer';
 import { SettingsDialog } from './SettingsDialog';
 import HintDialog from './game/HintDialog';
 import ShareDialog from './ShareDialog';
-import HintSystem from './game/HintSystem';
 import { useNavigationConfirmation } from '@/hooks/useNavigationConfirmation';
 
 interface RoundInfo {
@@ -183,6 +182,16 @@ const Navbar = ({
             )}
             
             <div className="flex items-center gap-2 ml-auto">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-1"
+                onClick={toggleHints}
+              >
+                <Lightbulb className="h-4 w-4" />
+                <span>{hintCoins}</span>
+              </Button>
+              
               {!isAuthenticated && (
                 <Button 
                   variant="ghost" 
@@ -194,16 +203,6 @@ const Navbar = ({
                   <span>Home</span>
                 </Button>
               )}
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex items-center gap-1"
-                onClick={toggleHints}
-              >
-                <Lightbulb className="h-4 w-4" />
-                <span>{hintCoins}</span>
-              </Button>
               
               {isAuthenticated ? (
                 <DropdownMenu>

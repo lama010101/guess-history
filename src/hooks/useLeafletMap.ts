@@ -17,7 +17,7 @@ export const useLeafletMap = ({
   initialLocation = { lat: 0, lng: 0 },
   actualLocation,
   showActualLocationMarker = false,
-  initialZoom = 2
+  initialZoom = 1  // Default to zoom level 1 as requested
 }: UseLeafletMapProps) => {
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
@@ -31,7 +31,7 @@ export const useLeafletMap = ({
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
-    // Create map
+    // Create map with fixed initialZoom of 1
     const map = L.map(mapContainerRef.current, {
       center: [initialLocation.lat, initialLocation.lng],
       zoom: initialZoom,

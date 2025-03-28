@@ -4,7 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Calendar, Trash2, UserMinus, UserPlus } from "lucide-react";
 import { format } from 'date-fns';
-import { useAuth } from '@/services/auth';
+import { useAuth } from '@/services/auth.tsx';
 
 interface User {
   id: string;
@@ -25,11 +25,11 @@ export default function UsersTable() {
     // First check if we have users from the auth provider
     if (users && users.length > 0) {
       setRegisteredUsers(users.map(user => ({
-        id: user.id || user.uid || String(Math.random()),
-        username: user.username || user.displayName || user.email?.split('@')[0] || 'Unknown',
+        id: user.id || String(Math.random()),
+        username: user.username || user.email?.split('@')[0] || 'Unknown',
         email: user.email || 'No email',
         createdAt: user.createdAt ? new Date(user.createdAt) : new Date(),
-        avatarUrl: user.avatarUrl || user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username || user.displayName || Math.random()}`
+        avatarUrl: user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username || Math.random()}`
       })));
       return;
     }
@@ -85,11 +85,11 @@ export default function UsersTable() {
     if (user) {
       // Add current user if available
       sampleUsers.push({
-        id: user.id || user.uid || '999',
-        username: user.displayName || user.email?.split('@')[0] || 'Current User',
+        id: user.id || '999',
+        username: user.username || user.email?.split('@')[0] || 'Current User',
         email: user.email || 'current@user.com',
         createdAt: new Date(),
-        avatarUrl: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.displayName || Math.random()}`
+        avatarUrl: user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username || Math.random()}`
       });
     }
     

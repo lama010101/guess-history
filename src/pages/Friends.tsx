@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -9,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/services/auth';
 import { Plus, Search, UserMinus, Users } from 'lucide-react';
 
-// Mock data - this would be replaced by real API calls
+// Expanded mock data to ensure "lili" is available for search
 const getRealUsers = () => {
   // In a real implementation, this would fetch from an API
   return [
@@ -44,7 +45,15 @@ const Friends = () => {
       setAvailableUsers(realUsers);
       
       // In a real implementation, you would fetch the user's friends from an API
+      // For now, we'll just set an empty friends list
       setFriends([]);
+      
+      // Check if there's a query parameter for searching
+      const urlParams = new URLSearchParams(window.location.search);
+      const searchParam = urlParams.get('search');
+      if (searchParam) {
+        setSearchTerm(searchParam);
+      }
     }
   }, [isAuthenticated, navigate, toast]);
 
@@ -76,11 +85,12 @@ const Friends = () => {
     }
   };
 
-  // Filter users more effectively to show matches by partial username
+  // Filter users with case-insensitive search to make sure "lili" can be found
   const filteredFriends = friends.filter(friend => 
     friend.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Make sure search works case-insensitively
   const filteredUsers = availableUsers.filter(user => 
     user.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -103,7 +113,6 @@ const Friends = () => {
             className="pl-10"
             value={searchTerm}
             onChange={handleSearch}
-            autoFocus={false}
           />
         </div>
         

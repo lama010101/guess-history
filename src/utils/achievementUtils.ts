@@ -1,87 +1,100 @@
 
-import { HistoricalImage, Coordinates } from '@/types/game';
+import { Coordinates } from '@/types/game';
 
-export interface Achievements {
-  perfectLocations: number;
-  perfectYears: number;
-  perfectCombos: number;
-}
+// Define the threshold for "perfect" location guess in kilometers
+const PERFECT_LOCATION_THRESHOLD = 200;
 
-export const calculateDistanceInKm = (
-  point1: Coordinates,
-  point2: Coordinates
-): number => {
-  const R = 6371; // Earth's radius in km
-  const dLat = (point2.lat - point1.lat) * (Math.PI / 180);
-  const dLon = (point2.lng - point1.lng) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(point1.lat * (Math.PI / 180)) *
-      Math.cos(point2.lat * (Math.PI / 180)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-};
-
+/**
+ * Determines if the guessed location is close enough to the actual location
+ * to be considered "perfect"
+ */
 export const isPerfectLocation = (
-  selected: Coordinates,
-  actual: Coordinates,
-  threshold: number = 5 // Default threshold in km
+  guessedLocation: Coordinates,
+  actualLocation: Coordinates,
+  threshold = PERFECT_LOCATION_THRESHOLD
 ): boolean => {
-  const distance = calculateDistanceInKm(selected, actual);
-  return distance <= threshold;
-};
-
-export const isPerfectYear = (
-  selectedYear: number,
-  actualYear: number
-): boolean => {
-  return selectedYear === actualYear;
-};
-
-export const isPerfectCombo = (
-  isPerfectLoc: boolean,
-  isPerfectYr: boolean
-): boolean => {
-  return isPerfectLoc && isPerfectYr;
-};
-
-export const getUserAchievements = (): Achievements => {
-  try {
-    const stored = localStorage.getItem('userAchievements');
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (e) {
-    console.error('Error getting user achievements', e);
-  }
+  // Calculate distance between the two points
+  const R = 6371; // Earth's radius in km
+  const dLat = (actualLocation.lat - guessedLocation.lat) * Math.PI / 180;
+  const dLng = (actualLocation.lng - guessedLocation.lng) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(guessedLocation.lat * Math.PI / 180) * Math.cos(actualLocation.lat * Math.PI / 180) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const distance = R * c;
   
-  return {
-    perfectLocations: 0,
-    perfectYears: 0,
-    perfectCombos: 0
-  };
+  return distance < threshold;
 };
 
+/**
+ * Determines if the guessed year matches the actual year exactly
+ */
+export const isPerfectYear = (guessedYear: number, actualYear: number): boolean => {
+  return guessedYear === actualYear;
+};
+
+/**
+ * Determines if both location and year are perfect (combo achievement)
+ */
+export const isPerfectCombo = (perfectLocation: boolean, perfectYear: boolean): boolean => {
+  return perfectLocation && perfectYear;
+};
+
+/**
+ * Updates the user's achievement counts in localStorage
+ */
 export const updateUserAchievements = (
   isPerfectLoc: boolean,
   isPerfectYr: boolean
-): Achievements => {
-  const achievements = getUserAchievements();
+): void => {
+  const userAchievements = localStorage.getItem('userAchievements');
+  let achievements = {
+    locationCount: 0,
+    yearCount: 0,
+    comboCount: 0
+  };
+  
+  if (userAchievements) {
+    try {
+      achievements = JSON.parse(userAchievements);
+    } catch (error) {
+      console.error('Error parsing user achievements:', error);
+    }
+  }
   
   if (isPerfectLoc) {
-    achievements.perfectLocations += 1;
+    achievements.locationCount = (achievements.locationCount || 0) + 1;
   }
   
   if (isPerfectYr) {
-    achievements.perfectYears += 1;
+    achievements.yearCount = (achievements.yearCount || 0) + 1;
   }
   
   if (isPerfectLoc && isPerfectYr) {
-    achievements.perfectCombos += 1;
+    achievements.comboCount = (achievements.comboCount || 0) + 1;
   }
   
   localStorage.setItem('userAchievements', JSON.stringify(achievements));
+};
+
+/**
+ * Gets the user's achievement counts from localStorage
+ */
+export const getUserAchievements = () => {
+  const userAchievements = localStorage.getItem('userAchievements');
+  let achievements = {
+    locationCount: 0,
+    yearCount: 0,
+    comboCount: 0
+  };
+  
+  if (userAchievements) {
+    try {
+      achievements = JSON.parse(userAchievements);
+    } catch (error) {
+      console.error('Error parsing user achievements:', error);
+    }
+  }
+  
   return achievements;
 };

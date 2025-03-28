@@ -1,67 +1,65 @@
 
-import { BadgeCheck, Map, Calendar, Star } from 'lucide-react';
-import { cn } from '@/lib/utils';
-
-export type BadgeType = 'location' | 'year' | 'combo';
+import { Award, MapPin, Calendar, Trophy } from 'lucide-react';
 
 interface AchievementBadgeProps {
-  type: BadgeType;
-  count?: number;
-  showLabel?: boolean;
+  type: 'location' | 'year' | 'combo';
   size?: 'sm' | 'md' | 'lg';
-  className?: string;
+  animated?: boolean;
 }
 
-const AchievementBadge = ({
-  type,
-  count = 0,
-  showLabel = true,
-  size = 'md',
-  className
+const AchievementBadge = ({ 
+  type, 
+  size = 'md', 
+  animated = true 
 }: AchievementBadgeProps) => {
-  const badges = {
-    location: {
-      icon: Map,
-      label: 'Perfect Location',
-      color: 'bg-green-500 text-white'
+  // Set sizes based on the size prop
+  const sizeClasses = {
+    sm: {
+      wrapper: 'w-10 h-10',
+      icon: 'h-5 w-5'
     },
-    year: {
-      icon: Calendar,
-      label: 'Perfect Year',
-      color: 'bg-blue-500 text-white'
+    md: {
+      wrapper: 'w-14 h-14',
+      icon: 'h-7 w-7'
     },
-    combo: {
-      icon: Star,
-      label: 'Perfect Combo',
-      color: 'bg-purple-500 text-white'
+    lg: {
+      wrapper: 'w-20 h-20',
+      icon: 'h-10 w-10'
     }
   };
 
-  const { icon: Icon, label, color } = badges[type];
-  
-  const sizeClasses = {
-    sm: 'h-8 w-8 text-xs',
-    md: 'h-12 w-12 text-sm',
-    lg: 'h-16 w-16 text-base'
+  // Set colors and icons based on the badge type
+  const badgeConfig = {
+    location: {
+      bgColor: 'bg-blue-500',
+      textColor: 'text-blue-500',
+      icon: <MapPin className={`${sizeClasses[size].icon}`} />
+    },
+    year: {
+      bgColor: 'bg-amber-500',
+      textColor: 'text-amber-500',
+      icon: <Calendar className={`${sizeClasses[size].icon}`} />
+    },
+    combo: {
+      bgColor: 'bg-green-500',
+      textColor: 'text-green-500',
+      icon: <Trophy className={`${sizeClasses[size].icon}`} />
+    }
   };
 
+  const config = badgeConfig[type];
+  const animationClass = animated ? 'animate-pulse' : '';
+
   return (
-    <div className={cn("flex flex-col items-center", className)}>
-      <div className={cn(
-        "rounded-full flex items-center justify-center relative",
-        color,
-        sizeClasses[size]
-      )}>
-        <Icon className="h-1/2 w-1/2" />
-        {count > 0 && (
-          <div className="absolute -top-1 -right-1 bg-white rounded-full border-2 border-current h-5 w-5 flex items-center justify-center text-xs font-bold">
-            {count}
-          </div>
-        )}
+    <div className="relative inline-block">
+      <div className={`${sizeClasses[size].wrapper} rounded-full ${config.bgColor} bg-opacity-20 border-2 ${config.bgColor} flex items-center justify-center ${animationClass}`}>
+        <div className={`${config.textColor}`}>
+          {config.icon}
+        </div>
       </div>
-      {showLabel && (
-        <span className="mt-1 text-xs text-center">{label}</span>
-      )}
+      <div className="absolute -top-1 -right-1 bg-white dark:bg-gray-800 rounded-full p-1 shadow-md">
+        <Award className="h-4 w-4 text-yellow-500" />
+      </div>
     </div>
   );
 };

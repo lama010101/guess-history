@@ -1,9 +1,14 @@
 
+export interface Coordinates {
+  lat: number;
+  lng: number;
+}
+
 export interface HistoricalImage {
   id: number;
   src: string;
   year: number;
-  location: { lat: number; lng: number };
+  location: Coordinates;
   description: string;
   title?: string;
   locationName?: string;
@@ -11,15 +16,19 @@ export interface HistoricalImage {
 }
 
 export interface RoundScore {
+  image: number;
   locationScore: number;
   yearScore: number;
-  image: number;
   locationHintUsed: boolean;
   yearHintUsed: boolean;
   hintPenalty: number;
 }
 
-export interface Coordinates {
-  lat: number;
-  lng: number;
+export interface GameSettings {
+  timerEnabled: boolean;
+  timerDuration: number;
+  maxRoundsPerGame: number;
+  locationThreshold: number;
+  maxLocationScore: number;
+  maxYearScore: number;
 }

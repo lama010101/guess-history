@@ -14,10 +14,10 @@ interface UseLeafletMapProps {
 export const useLeafletMap = ({
   onLocationSelect,
   selectedLocation,
-  initialLocation = { lat: 0, lng: 0 },
+  initialLocation = { lat: 40, lng: 0 },
   actualLocation,
   showActualLocationMarker = false,
-  initialZoom = 1  // Default to zoom level 1 as requested
+  initialZoom = 2  // Use zoom level 2 for better default view
 }: UseLeafletMapProps) => {
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
@@ -31,7 +31,7 @@ export const useLeafletMap = ({
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
-    // Create map with fixed initialZoom of 1
+    // Create map with fixed initialZoom
     const map = L.map(mapContainerRef.current, {
       center: [initialLocation.lat, initialLocation.lng],
       zoom: initialZoom,
@@ -39,7 +39,8 @@ export const useLeafletMap = ({
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         })
-      ]
+      ],
+      worldCopyJump: true // Allows seamless wraparound of the world
     });
 
     // Set map reference
@@ -128,13 +129,19 @@ export const useLeafletMap = ({
 
       // Draw distance line
       if (selectedLocation) {
-        // Fix: Cast the array of coordinates as L.LatLngExpression[]
+        // Create proper LatLngExpression array for the polyline
         const latlngs: L.LatLngExpression[] = [
           [selectedLocation.lat, selectedLocation.lng],
           [actualLocation.lat, actualLocation.lng]
         ];
         const polyline = L.polyline(latlngs, { color: 'red' }).addTo(map);
         distanceLineRef.current = polyline;
+        
+        // Fit bounds to show both markers with padding
+        map.fitBounds([
+          [selectedLocation.lat, selectedLocation.lng],
+          [actualLocation.lat, actualLocation.lng]
+        ], { padding: [50, 50] });
       }
     }
 

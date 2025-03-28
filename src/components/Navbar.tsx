@@ -8,7 +8,6 @@ import {
   LogOut,
   LogIn,
   Settings,
-  Lightbulb,
   ChevronDown,
   Users,
   Trophy,
@@ -177,7 +176,7 @@ const Navbar = ({
                   duration={timerDuration} 
                   paused={timerPaused}
                   onTimeUp={onTimerEnd}
-                  hintsOpen={hintsOpen}
+                  hintsOpen={false}
                 />
               </div>
             )}
@@ -189,8 +188,7 @@ const Navbar = ({
                 className="flex items-center gap-1"
                 onClick={toggleHints}
               >
-                <Lightbulb className="h-4 w-4" />
-                <span>{hintCoins}</span>
+                <span>Hints: {hintCoins}</span>
               </Button>
               
               {!isAuthenticated && (
@@ -330,8 +328,7 @@ const Navbar = ({
                   className="flex items-center gap-1"
                   onClick={toggleHints}
                 >
-                  <Lightbulb className="h-4 w-4" />
-                  <span>{hintCoins}</span>
+                  <span>Hints: {hintCoins}</span>
                 </Button>
               </div>
               

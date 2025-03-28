@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
 import GameSection from './components/GameSection';
 import AdminPanel from './pages/AdminPanel';
@@ -19,6 +19,8 @@ function App() {
         <Route path="/friends" element={<Friends />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
+        {/* Redirect any unknown routes to home */}
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>
   );

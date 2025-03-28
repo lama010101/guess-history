@@ -1,6 +1,5 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { AuthModal } from '@/components/auth/AuthModal';
+import AuthModal from '@/components/auth/AuthModal';
 
 // Define interfaces for our auth types
 interface User {
@@ -214,7 +213,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-        initialView={authView}
+        defaultTab={authView}
       />
     </AuthContext.Provider>
   );

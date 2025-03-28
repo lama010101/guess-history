@@ -50,6 +50,7 @@ const MapComponent = ({
       const { lat, lng } = e.latlng;
       onLocationSelect(lat, lng);
       setShowInstructions(false);
+      // Removed any code that would reset the view or zoom
     });
 
     mapRef.current = map;
@@ -79,6 +80,7 @@ const MapComponent = ({
     if (selectedLocation) {
       const marker = L.marker([selectedLocation.lat, selectedLocation.lng]).addTo(map);
       markerRef.current = marker;
+      // Do not center or change zoom level after placing the marker
     }
   }, [selectedLocation, mapLoaded]);
 

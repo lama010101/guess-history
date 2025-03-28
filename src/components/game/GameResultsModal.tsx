@@ -112,15 +112,15 @@ const GameResultsModal = ({
   return (
     <Dialog open={showResults} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl">{currentImage.title || "Round Results"}</DialogTitle>
-          <DialogDescription className="text-base">
+        <DialogHeader className="mb-4">
+          <DialogTitle className="text-xl font-bold">{currentImage.title || "Round Results"}</DialogTitle>
+          <DialogDescription className="text-base mt-2">
             {currentImage.description || "Here's how you did in this round"}
           </DialogDescription>
         </DialogHeader>
         
-        {/* Image preview */}
-        <div className="relative aspect-video rounded-md overflow-hidden bg-black/10 mb-2">
+        {/* Image preview - now directly below description */}
+        <div className="relative aspect-video rounded-md overflow-hidden bg-black/10 mb-6">
           <img 
             src={currentImage.src} 
             alt={currentImage.description || "Historical image"} 
@@ -128,7 +128,7 @@ const GameResultsModal = ({
           />
         </div>
                 
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Location Section */}
           <div className="border rounded-md overflow-hidden">
             <div className="bg-muted p-3 flex justify-between items-center">
@@ -138,13 +138,13 @@ const GameResultsModal = ({
               </div>
               <span className="font-semibold">{locationScore.toLocaleString()} pts</span>
             </div>
-            <div className="p-3">
-              <p className="text-sm mb-2">
+            <div className="p-4">
+              <p className="text-sm mb-3">
                 You were <span className="font-medium">{Math.round(distanceKm)} km</span> away from the actual location.
               </p>
               
               {selectedLocation && (
-                <div className="h-48 rounded-md overflow-hidden border mb-2">
+                <div className="h-48 rounded-md overflow-hidden border mb-4">
                   <ResultVisualization 
                     actualLocation={currentImage.location}
                     guessedLocation={selectedLocation}
@@ -156,7 +156,7 @@ const GameResultsModal = ({
               )}
               
               {perfectLocation && (
-                <div className="flex items-center text-green-600 gap-2 mt-2">
+                <div className="flex items-center text-green-600 gap-2 mt-3">
                   <AchievementBadge 
                     type="location" 
                     size="sm" 
@@ -167,7 +167,7 @@ const GameResultsModal = ({
               )}
               
               {locationHintUsed && (
-                <div className="bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400 text-xs p-2 rounded mt-2">
+                <div className="bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400 text-xs p-2 rounded mt-3">
                   Location hint used (-{hintPenalty / (locationHintUsed && yearHintUsed ? 2 : 1)} points)
                 </div>
               )}
@@ -183,7 +183,7 @@ const GameResultsModal = ({
               </div>
               <span className="font-semibold">{yearScore.toLocaleString()} pts</span>
             </div>
-            <div className="p-3">
+            <div className="p-4">
               <p className="text-sm">
                 You guessed <span className="font-medium">{selectedYear}</span>
                 {yearDifference !== 0 && (
@@ -195,7 +195,7 @@ const GameResultsModal = ({
               </p>
               
               {perfectYear && (
-                <div className="flex items-center text-green-600 gap-2 mt-2">
+                <div className="flex items-center text-green-600 gap-2 mt-3">
                   <AchievementBadge 
                     type="year" 
                     size="sm" 
@@ -206,7 +206,7 @@ const GameResultsModal = ({
               )}
               
               {yearHintUsed && (
-                <div className="bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400 text-xs p-2 rounded mt-2">
+                <div className="bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400 text-xs p-2 rounded mt-3">
                   Year hint used (-{hintPenalty / (locationHintUsed && yearHintUsed ? 2 : 1)} points)
                 </div>
               )}
@@ -215,7 +215,7 @@ const GameResultsModal = ({
           
           {/* Combo Achievement */}
           {perfectCombo && (
-            <div className="border border-green-300 dark:border-green-800 rounded-md p-3 bg-green-50 dark:bg-green-900/20">
+            <div className="border border-green-300 dark:border-green-800 rounded-md p-4 bg-green-50 dark:bg-green-900/20">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Trophy className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -228,23 +228,23 @@ const GameResultsModal = ({
                   animated={true}
                 />
               </div>
-              <p className="text-sm text-green-700 dark:text-green-400 mt-1">
+              <p className="text-sm text-green-700 dark:text-green-400 mt-2">
                 You correctly guessed both the location and year!
               </p>
             </div>
           )}
           
           {/* Total Score */}
-          <div className="bg-primary/5 p-3 rounded-lg">
+          <div className="bg-primary/5 p-4 rounded-lg">
             <div className="flex justify-between items-center">
-              <div className="text-sm">
-                <div className="flex justify-between mb-1">
+              <div className="text-sm w-full">
+                <div className="flex justify-between mb-2">
                   <span>Location + Year:</span>
                   <span className="font-medium">{(locationScore + yearScore).toLocaleString()} pts</span>
                 </div>
                 
                 {hintPenalty > 0 && (
-                  <div className="flex justify-between text-amber-600 mb-1">
+                  <div className="flex justify-between text-amber-600 mb-2">
                     <span>Hint Penalty:</span>
                     <span className="font-medium">-{hintPenalty.toLocaleString()} pts</span>
                   </div>
@@ -252,7 +252,7 @@ const GameResultsModal = ({
               </div>
             </div>
             
-            <div className="h-px bg-border my-2"></div>
+            <div className="h-px bg-border my-3"></div>
             
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Total Score:</span>
@@ -260,7 +260,7 @@ const GameResultsModal = ({
             </div>
           </div>
           
-          <div className="pt-2 flex justify-center">
+          <div className="pt-2">
             <Button onClick={onNextRound} className="w-full">
               {currentRound >= maxRounds ? 'View Final Results' : 'Next Round'}
             </Button>

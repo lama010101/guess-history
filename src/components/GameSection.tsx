@@ -21,6 +21,7 @@ const GameSection = () => {
     totalScore,
     roundScores,
     gameComplete,
+    setGameComplete,
     hintCoins,
     locationHintUsed,
     yearHintUsed,
@@ -113,6 +114,13 @@ const GameSection = () => {
     }
   }, [isDaily, setTimerEnabled, setTimerDuration]);
 
+  // Handle timer reaching zero - end the entire game, not just the round
+  const handleTimeUp = () => {
+    // Instead of just submitting the current round, we'll end the game
+    setTimerPaused(true);
+    setGameComplete(true);
+  };
+
   const renderContent = () => {
     if (gameComplete) {
       return <section id="game" className="h-full flex flex-col">
@@ -152,7 +160,7 @@ const GameSection = () => {
                 duration={timerDuration} 
                 paused={timerPaused || showResults || hintsOpen} 
                 hintsOpen={hintsOpen} 
-                onTimeUp={handleSubmit} 
+                onTimeUp={handleTimeUp} 
               />
             </div>}
           

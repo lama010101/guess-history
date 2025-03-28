@@ -79,6 +79,15 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     }
   }, [roundsComplete, gameComplete, setGameComplete]);
 
+  // Check for URL parameters on mount to set daily mode if needed
+  useEffect(() => {
+    const queryParams = new URLSearchParams(window.location.search);
+    const mode = queryParams.get('mode');
+    if (mode === 'daily') {
+      setDailyGame(true);
+    }
+  }, [setDailyGame]);
+
   // Save complete game state to localStorage
   useEffect(() => {
     const gameState = {
@@ -95,14 +104,15 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
       roundScores,
       locationHintUsed,
       yearHintUsed,
-      hintCoins
+      hintCoins,
+      isDaily
     };
     
     localStorage.setItem('currentGameState', JSON.stringify(gameState));
     console.info('Saved game state:', gameState);
   }, [selectedLocation, selectedYear, timerEnabled, timerDuration, timerPaused, 
       showResults, currentRound, currentImageIndex, gameComplete, totalScore, 
-      roundScores, locationHintUsed, yearHintUsed, hintCoins]);
+      roundScores, locationHintUsed, yearHintUsed, hintCoins, isDaily]);
   
   // Handle submitting a guess
   const handleSubmit = () => {
@@ -131,6 +141,11 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     );
     
     setShowResults(true);
+    
+    // If this is a daily challenge and it's the final round, mark it as completed
+    if (isDaily && currentRound >= configuredMaxRounds) {
+      completeDailyGame(totalScore + scores.locationScore + scores.yearScore - scores.hintPenalty);
+    }
   };
   
   // Handle moving to the next round
@@ -181,11 +196,13 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
   // Handle hint usage
   const handleUseLocationHint = (): boolean => {
     if (locationHintUsed) return false;
+    // Don't pause the timer when using hints
     return Boolean(useHintsLocationHint());
   };
   
   const handleUseYearHint = (): boolean => {
     if (yearHintUsed) return false;
+    // Don't pause the timer when using hints
     return Boolean(useHintsYearHint());
   };
 
@@ -220,6 +237,7 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     
     setSelectedLocation,
     setSelectedYear,
+    setGameComplete,
     handleSubmit,
     handleNextRound,
     handleNewGame,

@@ -30,6 +30,7 @@ import { SettingsDialog } from './SettingsDialog';
 import HintDialog from './game/HintDialog';
 import ShareDialog from './ShareDialog';
 import { useNavigationConfirmation } from '@/hooks/useNavigationConfirmation';
+import HintSystem from './game/HintSystem';
 
 interface RoundInfo {
   currentRound: number;

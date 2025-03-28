@@ -1,232 +1,166 @@
-
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
+import * as L from 'leaflet';
 
 interface UseLeafletMapProps {
-  onLocationSelect?: (lat: number, lng: number) => void;
-  selectedLocation?: { lat: number; lng: number } | null;
+  onLocationSelect: (lat: number, lng: number) => void;
+  selectedLocation: { lat: number; lng: number } | null;
   initialLocation?: { lat: number; lng: number };
   actualLocation?: { lat: number; lng: number };
   showActualLocationMarker?: boolean;
+  initialZoom?: number;
 }
 
-export const useLeafletMap = ({ 
-  onLocationSelect, 
+export const useLeafletMap = ({
+  onLocationSelect,
   selectedLocation,
-  initialLocation = { lat: 48.8566, lng: 2.3522 }, // Default to Paris
+  initialLocation = { lat: 0, lng: 0 },
   actualLocation,
-  showActualLocationMarker = false
+  showActualLocationMarker = false,
+  initialZoom = 2
 }: UseLeafletMapProps) => {
+  const mapRef = useRef<L.Map | null>(null);
+  const markerRef = useRef<L.Marker | null>(null);
+  const actualMarkerRef = useRef<L.Marker | null>(null);
+  const distanceLineRef = useRef<L.Polyline | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [showInstructions, setShowInstructions] = useState(true);
-  const mapRef = useRef<any>(null);
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const leafletLoadedRef = useRef(false);
-  const markerRef = useRef<any>(null);
-  const actualMarkerRef = useRef<any>(null);
 
-  // Initialize Leaflet map
-  const initializeMap = () => {
-    try {
-      const L = window.L;
-      if (!L || !mapContainerRef.current) return;
-      
-      // If a map is already initialized for this container, clean it up
+  // Initialize map
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    // Create map
+    const map = L.map(mapContainerRef.current, {
+      center: [initialLocation.lat, initialLocation.lng],
+      zoom: initialZoom,
+      layers: [
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        })
+      ]
+    });
+
+    // Set map reference
+    mapRef.current = map;
+    setMapLoaded(true);
+
+    // Cleanup
+    return () => {
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
       }
-      
-      // Create map centered on initialLocation or default to Europe
-      const mapInstance = L.map(mapContainerRef.current).setView(
-        [initialLocation.lat, initialLocation.lng], 
-        4
-      );
-      
-      // Add tile layer (OpenStreetMap)
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
-      }).addTo(mapInstance);
-      
-      // Set map click handler
-      mapInstance.on('click', (e: any) => {
-        const { lat, lng } = e.latlng;
-        
-        // Remove existing marker if any
-        if (markerRef.current) {
-          mapInstance.removeLayer(markerRef.current);
-          markerRef.current = null;
-        }
-        
-        // Create a new marker
-        const marker = L.marker([lat, lng], {
-          icon: L.divIcon({
-            className: 'custom-div-icon',
-            html: `<div style="
-              background-color: rgb(59, 130, 246);
-              width: 20px;
-              height: 20px;
-              border-radius: 50%;
-              border: 3px solid white;
-              box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-              transform: translate(-50%, -50%);
-            "></div>`,
-            iconSize: [20, 20],
-            iconAnchor: [0, 0],
-          })
-        }).addTo(mapInstance);
-        
-        // Save the new marker
-        markerRef.current = marker;
-        
-        // Hide instructions
-        setShowInstructions(false);
-        
-        // Call the callback with selected coordinates
-        if (onLocationSelect) {
-          onLocationSelect(lat, lng);
-        }
-      });
+    };
+  }, [initialLocation, initialZoom]);
 
-      // Add actual location marker if provided and enabled
-      if (actualLocation && showActualLocationMarker) {
-        // Use a different colored marker for actual location
-        const actualMarker = L.marker([actualLocation.lat, actualLocation.lng], {
-          icon: L.divIcon({
-            className: 'actual-location-marker',
-            html: `<div style="
-              background-color: #ff4444;
-              width: 20px;
-              height: 20px;
-              border-radius: 50%;
-              border: 3px solid white;
-              box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-              transform: translate(-50%, -50%);
-            "></div>`,
-            iconSize: [20, 20],
-            iconAnchor: [0, 0],
-          })
-        }).addTo(mapInstance);
-        
-        actualMarkerRef.current = actualMarker;
-      }
-      
-      mapRef.current = mapInstance;
-      setMapLoaded(true);
-    } catch (error) {
-      console.error("Error initializing map:", error);
-    }
-  };
-
-  // Clear the current marker
-  const clearMarker = () => {
-    if (mapRef.current && markerRef.current) {
-      mapRef.current.removeLayer(markerRef.current);
-      markerRef.current = null;
-      
-      // Reset the selected location
-      if (onLocationSelect) {
-        onLocationSelect(0, 0); // Reset to default/null location
-      }
-      
-      // Show instructions again
-      setShowInstructions(true);
-    }
-  };
-
-  // Load Leaflet library and initialize map
+  // Handle map click to place marker
   useEffect(() => {
-    // Load Leaflet only once
-    if (leafletLoadedRef.current) {
-      initializeMap();
-      return;
-    }
+    if (!mapRef.current || !mapLoaded) return;
 
-    // Load Leaflet dynamically
-    const loadLeaflet = async () => {
-      try {
-        // This will check if Leaflet is already loaded
-        if (!(window as any).L) {
-          // If Leaflet isn't loaded yet, add it to the document
-          const cssLink = document.createElement('link');
-          cssLink.rel = 'stylesheet';
-          cssLink.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-          document.head.appendChild(cssLink);
-          
-          const scriptTag = document.createElement('script');
-          scriptTag.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-          scriptTag.onload = () => {
-            leafletLoadedRef.current = true;
-            initializeMap();
-          };
-          document.head.appendChild(scriptTag);
-        } else {
-          leafletLoadedRef.current = true;
-          initializeMap();
-        }
-      } catch (error) {
-        console.error("Error loading Leaflet:", error);
-      }
+    const map = mapRef.current;
+
+    const handleClick = (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+      onLocationSelect(lat, lng);
+      setShowInstructions(false);
     };
 
-    loadLeaflet();
+    map.on('click', handleClick);
 
     return () => {
-      // Cleanup
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
+      map.off('click', handleClick);
     };
-  }, []);
+  }, [onLocationSelect, mapLoaded]);
 
-  // Update marker when selectedLocation changes from parent
+  // Update marker position when selectedLocation changes
   useEffect(() => {
-    if (!mapRef.current || !leafletLoadedRef.current) return;
-    
-    const L = (window as any).L;
-    if (!L) return;
-    
-    // Clear existing marker
-    if (markerRef.current) {
-      mapRef.current.removeLayer(markerRef.current);
+    if (!mapRef.current || !mapLoaded) return;
+
+    const map = mapRef.current;
+
+    if (selectedLocation) {
+      const { lat, lng } = selectedLocation;
+
+      // Remove existing marker
+      if (markerRef.current) {
+        map.removeLayer(markerRef.current);
+      }
+
+      // Add new marker
+      const newMarker = L.marker([lat, lng]).addTo(map);
+      markerRef.current = newMarker;
+    } else if (markerRef.current) {
+      map.removeLayer(markerRef.current);
       markerRef.current = null;
-    }
-    
-    // Add marker for selected location if it exists and is valid
-    if (selectedLocation && selectedLocation.lat !== 0 && selectedLocation.lng !== 0) {
-      const marker = L.marker([selectedLocation.lat, selectedLocation.lng], {
-        icon: L.divIcon({
-          className: 'custom-div-icon',
-          html: `<div style="
-            background-color: rgb(59, 130, 246);
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            border: 3px solid white;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            transform: translate(-50%, -50%);
-          "></div>`,
-          iconSize: [20, 20],
-          iconAnchor: [0, 0],
-        })
-      }).addTo(mapRef.current);
-      
-      markerRef.current = marker;
-      
-      // Hide instructions when marker is present
-      setShowInstructions(false);
-    } else {
-      // Show instructions when no marker is present
       setShowInstructions(true);
     }
-  }, [selectedLocation]);
+  }, [selectedLocation, mapLoaded]);
+
+  // Show actual location marker and distance line
+  useEffect(() => {
+    if (!mapRef.current || !mapLoaded || !actualLocation) return;
+
+    const map = mapRef.current;
+
+    // Remove existing actual location marker and distance line
+    if (actualMarkerRef.current) {
+      map.removeLayer(actualMarkerRef.current);
+    }
+    if (distanceLineRef.current) {
+      map.removeLayer(distanceLineRef.current);
+    }
+
+    if (showActualLocationMarker && actualLocation) {
+      // Add actual location marker
+      const actualMarker = L.marker([actualLocation.lat, actualLocation.lng], {
+        icon: L.icon({
+          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41]
+        })
+      }).addTo(map);
+      actualMarkerRef.current = actualMarker;
+
+      // Draw distance line
+      if (selectedLocation) {
+        const latlngs = [
+          [selectedLocation.lat, selectedLocation.lng],
+          [actualLocation.lat, actualLocation.lng]
+        ];
+        const polyline = L.polyline(latlngs, { color: 'red' }).addTo(map);
+        distanceLineRef.current = polyline;
+      }
+    }
+
+    return () => {
+      if (actualMarkerRef.current) {
+        map.removeLayer(actualMarkerRef.current);
+        actualMarkerRef.current = null;
+      }
+      if (distanceLineRef.current) {
+        map.removeLayer(distanceLineRef.current);
+        distanceLineRef.current = null;
+      }
+    };
+  }, [actualLocation, showActualLocationMarker, selectedLocation, mapLoaded]);
 
   return {
+    mapRef,
     mapContainerRef,
     mapLoaded,
-    showInstructions,
-    clearMarker,
     markerRef,
+    actualMarkerRef,
+    distanceLineRef,
+    showInstructions,
+    clearMarker: () => {
+      if (markerRef.current && mapRef.current) {
+        mapRef.current.removeLayer(markerRef.current);
+        markerRef.current = null;
+      }
+    }
   };
 };

@@ -33,7 +33,8 @@ const MapComponent = ({
     selectedLocation,
     initialLocation,
     actualLocation,
-    showActualLocationMarker
+    showActualLocationMarker,
+    initialZoom: 1 // Set default zoom level to 1
   });
 
   // Derive loading state from mapLoaded
@@ -51,8 +52,6 @@ const MapComponent = ({
       {!hideInstructions && !selectedLocation && !isLoading && (
         <MapInstructions showInstructions={!hideInstructions} />
       )}
-      
-      {/* Clear Pin Button removed as requested */}
     </div>
   );
 };

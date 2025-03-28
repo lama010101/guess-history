@@ -3,33 +3,30 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/services/auth';
 import { Plus, Search, UserMinus, Users } from 'lucide-react';
 
-// Mock data - replace with actual API calls in a real implementation
-const mockFriends = [
-  { id: '1', username: 'friend1', avatarUrl: null },
-  { id: '2', username: 'friend2', avatarUrl: null },
-  { id: '3', username: 'friend3', avatarUrl: null },
-];
-
-const mockUsers = [
-  { id: '4', username: 'user1', avatarUrl: null },
-  { id: '5', username: 'user2', avatarUrl: null },
-  { id: '6', username: 'user3', avatarUrl: null },
-];
+// This will be replaced by real API calls in the future
+const getRealUsers = () => {
+  // In a real implementation, this would fetch from an API
+  return [
+    { id: '4', username: 'john_doe', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=john' },
+    { id: '5', username: 'jane_smith', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=jane' },
+    { id: '6', username: 'alex_wilson', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alex' },
+  ];
+};
 
 const Friends = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
-  const [friends, setFriends] = useState(mockFriends);
-  const [availableUsers, setAvailableUsers] = useState(mockUsers);
+  const [friends, setFriends] = useState([]);
+  const [availableUsers, setAvailableUsers] = useState([]);
   const [activeTab, setActiveTab] = useState('friends');
 
   useEffect(() => {
@@ -39,15 +36,21 @@ const Friends = () => {
         description: "You need to be logged in to access your friends list"
       });
       navigate('/');
+    } else {
+      // Fetch real users
+      const realUsers = getRealUsers();
+      setAvailableUsers(realUsers);
+      
+      // In a real implementation, you would fetch the user's friends from an API
+      setFriends([]);
     }
-    // You would typically fetch friends from API here
   }, [isAuthenticated, navigate, toast]);
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSearch = (e) => {
     setSearchTerm(e.target.value);
   };
 
-  const handleAddFriend = (id: string) => {
+  const handleAddFriend = (id) => {
     const userToAdd = availableUsers.find(u => u.id === id);
     if (userToAdd) {
       setFriends(prev => [...prev, userToAdd]);
@@ -59,7 +62,7 @@ const Friends = () => {
     }
   };
 
-  const handleRemoveFriend = (id: string) => {
+  const handleRemoveFriend = (id) => {
     const friendToRemove = friends.find(f => f.id === id);
     if (friendToRemove) {
       setFriends(prev => prev.filter(f => f.id !== id));
@@ -97,6 +100,7 @@ const Friends = () => {
             className="pl-10"
             value={searchTerm}
             onChange={handleSearch}
+            autoFocus={false}
           />
         </div>
         

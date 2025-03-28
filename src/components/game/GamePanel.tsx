@@ -3,7 +3,9 @@ import { useState, useEffect } from 'react';
 import MapComponent from '../MapComponent';
 import HistoricalImage from '../HistoricalImage';
 import ViewToggle from './ViewToggle';
-import HintDisplay from '../HintDisplay';
+import HintPopup from './HintPopup';
+import { Lightbulb } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface GamePanelProps {
   currentImage: {
@@ -14,6 +16,7 @@ interface GamePanelProps {
     description: string;
     title?: string;
     locationName?: string;
+    country?: string;
   };
   onLocationSelect: (lat: number, lng: number) => void;
   selectedLocation: { lat: number; lng: number } | null;
@@ -41,7 +44,7 @@ const GamePanel = ({
 }: GamePanelProps) => {
   // Always default to 'image' view
   const [activeView, setActiveView] = useState<'image' | 'map'>('image');
-  const [showHints, setShowHints] = useState(false);
+  const [showHintPopup, setShowHintPopup] = useState(false);
   const [countryHint, setCountryHint] = useState<string | null>(null);
   const [decadeHint, setDecadeHint] = useState<string | null>(null);
 
@@ -68,9 +71,9 @@ const GamePanel = ({
     return parts.length > 1 ? parts[parts.length - 1].trim() : parts[0].trim();
   };
 
-  const toggleHints = () => {
-    const newState = !showHints;
-    setShowHints(newState);
+  const toggleHintPopup = () => {
+    const newState = !showHintPopup;
+    setShowHintPopup(newState);
     if (setHintsOpen) {
       setHintsOpen(newState);
     }
@@ -125,18 +128,28 @@ const GamePanel = ({
           </div>
         )}
         
-        {showHints && (
-          <div className="absolute top-16 left-4 z-20">
-            <HintDisplay 
-              availableHints={hintCoins} 
-              onClose={toggleHints} 
-              onUseLocationHint={handleUseLocationHint}
-              onUseYearHint={handleUseYearHint}
-              locationHintUsed={locationHintUsed}
-              yearHintUsed={yearHintUsed}
-              currentImage={currentImage}
-            />
-          </div>
+        {/* Hint button */}
+        <Button 
+          variant="secondary"
+          size="sm"
+          className="absolute top-4 right-4 z-10 flex items-center gap-1.5"
+          onClick={toggleHintPopup}
+        >
+          <Lightbulb className="h-4 w-4" />
+          <span>Hints</span>
+        </Button>
+        
+        {/* Show hint popup when button is clicked */}
+        {showHintPopup && (
+          <HintPopup 
+            onClose={() => setShowHintPopup(false)}
+            hintCoins={hintCoins}
+            onUseLocationHint={handleUseLocationHint}
+            onUseYearHint={handleUseYearHint}
+            locationHintUsed={locationHintUsed}
+            yearHintUsed={yearHintUsed}
+            currentImage={currentImage}
+          />
         )}
         
         <ViewToggle 

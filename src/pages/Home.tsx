@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Globe, Clock, Lightbulb, Users, Share2, Copy, Check, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -286,7 +287,7 @@ const Home = () => {
               
               <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-6">
                 <h3 className="text-xl font-medium mb-2">Friends Mode</h3>
-                <p className="text-neutral-500 dark:text-neutral-400 mb-4">Invite your registered friends or share this link to play together!</p>
+                <p className="text-neutral-500 dark:text-neutral-400 mb-4">Invite your friends to play together.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">

@@ -1,3 +1,4 @@
+
 import { useRef, useState, useEffect } from 'react';
 import * as L from 'leaflet';
 
@@ -127,7 +128,8 @@ export const useLeafletMap = ({
 
       // Draw distance line
       if (selectedLocation) {
-        const latlngs = [
+        // Fix: Cast the array of coordinates as L.LatLngExpression[]
+        const latlngs: L.LatLngExpression[] = [
           [selectedLocation.lat, selectedLocation.lng],
           [actualLocation.lat, actualLocation.lng]
         ];

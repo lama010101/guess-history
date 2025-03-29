@@ -1,44 +1,28 @@
 
-import { useState } from 'react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import LoginForm from './LoginForm';
-import SignUpForm from './SignUpForm';
+import UnifiedAuthForm from './UnifiedAuthForm';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  defaultTab?: 'login' | 'signup';
   autoFocus?: boolean;
 }
 
 const AuthModal = ({ 
   isOpen, 
   onClose, 
-  defaultTab = 'login',
   autoFocus = false 
 }: AuthModalProps) => {
-  const [activeTab, setActiveTab] = useState<'login' | 'signup'>(defaultTab);
-  
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
-        <Tabs defaultValue={activeTab} value={activeTab} onValueChange={(value) => setActiveTab(value as 'login' | 'signup')}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Login</TabsTrigger>
-            <TabsTrigger value="signup">Create Account</TabsTrigger>
-          </TabsList>
-          <TabsContent value="login">
-            <LoginForm onSuccess={onClose} autoFocus={autoFocus} />
-          </TabsContent>
-          <TabsContent value="signup">
-            <SignUpForm 
-              onSuccess={onClose} 
-              autoFocus={autoFocus} 
-              onLogin={() => setActiveTab('login')} 
-            />
-          </TabsContent>
-        </Tabs>
+        <div className="text-center mb-4">
+          <h3 className="font-semibold text-lg">Welcome to GuessEvents</h3>
+          <p className="text-sm text-muted-foreground">
+            Sign in or create an account to continue
+          </p>
+        </div>
+        <UnifiedAuthForm onSuccess={onClose} autoFocus={autoFocus} />
       </DialogContent>
     </Dialog>
   );

@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +26,7 @@ interface AuthState {
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, username: string) => Promise<void>;
+  loginOrSignUp: (email: string, password: string) => Promise<void>;
   logout: () => void;
   continueAsGuest: () => void;
   googleLogin: () => Promise<void>;
@@ -113,7 +115,8 @@ export const useAuth = create<AuthState>()(
               id: data.user.id,
               username,
               avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
-              created_at: data.user.created_at
+              created_at: data.user.created_at,
+              role: 'user'
             });
             
             set({
@@ -139,6 +142,100 @@ export const useAuth = create<AuthState>()(
             error: error instanceof Error ? error.message : 'Failed to sign up', 
             isLoading: false 
           });
+        }
+      },
+      
+      loginOrSignUp: async (email: string, password: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          // First try to sign in
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email, 
+            password
+          });
+          
+          // If sign in fails with "invalid credentials" or "user not found", try to sign up
+          if (error && (error.message.includes("Invalid login credentials") || error.message.includes("user"))) {
+            // Try to sign up
+            const { data: signupData, error: signupError } = await supabase.auth.signUp({
+              email,
+              password,
+              options: {
+                data: {
+                  username: email.split('@')[0]
+                }
+              }
+            });
+            
+            if (signupError) throw signupError;
+            
+            const isAdmin = email.toLowerCase() === 'lama010101@gmail.com';
+            const username = email.split('@')[0];
+            
+            if (signupData.user) {
+              // Create profile for the new user
+              await supabase.from('profiles').upsert({
+                id: signupData.user.id,
+                username,
+                avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
+                role: 'user',
+                created_at: signupData.user.created_at
+              });
+              
+              set({
+                user: {
+                  id: signupData.user.id,
+                  username,
+                  email,
+                  isGuest: false,
+                  avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
+                  createdAt: signupData.user.created_at,
+                  registrationMethod: 'email',
+                  user_type: 'real'
+                },
+                isAuthenticated: true,
+                isLoading: false,
+                isAdmin,
+              });
+              
+              get().syncUsersFromSupabase();
+            }
+          } else if (data.user) {
+            // Successful login
+            const isAdmin = email.toLowerCase() === 'lama010101@gmail.com';
+            
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', data.user.id)
+              .single();
+            
+            set({
+              user: {
+                id: data.user.id,
+                username: profile?.username || email.split('@')[0],
+                email,
+                isGuest: false,
+                avatarUrl: profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+                createdAt: data.user.created_at,
+                registrationMethod: 'email',
+                user_type: 'real'
+              },
+              isAuthenticated: true,
+              isLoading: false,
+              isAdmin,
+            });
+            
+            get().syncUsersFromSupabase();
+          } else if (error) {
+            throw error;
+          }
+        } catch (error) {
+          set({ 
+            error: error instanceof Error ? error.message : 'Authentication failed', 
+            isLoading: false 
+          });
+          throw error;
         }
       },
       

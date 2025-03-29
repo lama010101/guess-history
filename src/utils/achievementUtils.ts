@@ -49,29 +49,35 @@ export const updateUserAchievements = (
 ): void => {
   const userAchievements = localStorage.getItem('userAchievements');
   let achievements = {
-    locationCount: 0,
-    yearCount: 0,
-    comboCount: 0
+    perfectLocations: 0,
+    perfectYears: 0,
+    perfectCombos: 0
   };
   
   if (userAchievements) {
     try {
-      achievements = JSON.parse(userAchievements);
+      const parsed = JSON.parse(userAchievements);
+      // Handle both the old and new structure
+      achievements = {
+        perfectLocations: parsed.locationCount || parsed.perfectLocations || 0,
+        perfectYears: parsed.yearCount || parsed.perfectYears || 0,
+        perfectCombos: parsed.comboCount || parsed.perfectCombos || 0
+      };
     } catch (error) {
       console.error('Error parsing user achievements:', error);
     }
   }
   
   if (isPerfectLoc) {
-    achievements.locationCount = (achievements.locationCount || 0) + 1;
+    achievements.perfectLocations += 1;
   }
   
   if (isPerfectYr) {
-    achievements.yearCount = (achievements.yearCount || 0) + 1;
+    achievements.perfectYears += 1;
   }
   
   if (isPerfectLoc && isPerfectYr) {
-    achievements.comboCount = (achievements.comboCount || 0) + 1;
+    achievements.perfectCombos += 1;
   }
   
   localStorage.setItem('userAchievements', JSON.stringify(achievements));
@@ -83,14 +89,20 @@ export const updateUserAchievements = (
 export const getUserAchievements = () => {
   const userAchievements = localStorage.getItem('userAchievements');
   let achievements = {
-    locationCount: 0,
-    yearCount: 0,
-    comboCount: 0
+    perfectLocations: 0,
+    perfectYears: 0,
+    perfectCombos: 0
   };
   
   if (userAchievements) {
     try {
-      achievements = JSON.parse(userAchievements);
+      const parsed = JSON.parse(userAchievements);
+      // Handle both the old and new structure
+      achievements = {
+        perfectLocations: parsed.locationCount || parsed.perfectLocations || 0,
+        perfectYears: parsed.yearCount || parsed.perfectYears || 0,
+        perfectCombos: parsed.comboCount || parsed.perfectCombos || 0
+      };
     } catch (error) {
       console.error('Error parsing user achievements:', error);
     }

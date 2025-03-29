@@ -43,6 +43,7 @@ const GameSection = () => {
     setTimerEnabled,
     setTimerDuration,
     setTimerPaused,
+    setGameComplete,
     maxRounds
   } = useGameState(MAX_ROUNDS);
 
@@ -99,11 +100,30 @@ const GameSection = () => {
     return !yearHintUsed; // Return true if the hint was not previously used
   };
 
+  // Handle timer completion - now ends the game instead of just the round
+  const handleTimerComplete = () => {
+    // End the entire game when timer runs out
+    setTimerPaused(true);
+    handleSubmit(); // Submit the current round first
+    
+    // After a short delay, end the game
+    setTimeout(() => {
+      setGameComplete(true);
+    }, 2000);
+  };
+
   useEffect(() => {
     if (showResults) {
       setTimerPaused(true);
     }
   }, [showResults, setTimerPaused]);
+
+  // Fix for timer pausing when hint button is clicked
+  useEffect(() => {
+    // We don't pause the timer when hints are opened
+    // Only pause when results are shown
+    setTimerPaused(showResults);
+  }, [showResults, hintsOpen, setTimerPaused]);
 
   // For Daily Challenge, set timer to 5 minutes (300 seconds)
   useEffect(() => {
@@ -150,9 +170,9 @@ const GameSection = () => {
           {timerEnabled && <div className="w-full bg-gray-100 dark:bg-gray-800 px-4 py-2">
               <GameTimer 
                 duration={timerDuration} 
-                paused={timerPaused || showResults || hintsOpen} 
+                paused={timerPaused} 
                 hintsOpen={hintsOpen} 
-                onTimeUp={handleSubmit} 
+                onTimeUp={handleTimerComplete} 
               />
             </div>}
           

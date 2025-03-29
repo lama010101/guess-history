@@ -1,126 +1,222 @@
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import AuthModal from '@/components/auth/AuthModal';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-
+// Define interfaces for our auth types
 interface User {
   id: string;
-  username?: string;
+  uid?: string;
+  displayName?: string;
   email?: string;
+  photoURL?: string;
+  isGuest?: boolean;
+  createdAt?: Date | string;
+  username?: string;
   avatarUrl?: string;
-  isGuest: boolean;
 }
 
-interface AuthState {
-  isAuthenticated: boolean;
+interface AuthContextType {
   user: User | null;
-  isAdmin: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, username: string, password: string) => Promise<void>;
-  logout: () => void;
-  loginAsGuest: () => void;
-  updateUserProfile: (userData: Partial<User>) => void;
+  users: User[];
+  isAuthenticated: boolean;
+  isGuest: boolean;
+  isLoading: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, username: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  continueAsGuest: () => Promise<void>;
+  openAuthModal: (initialView?: 'login' | 'signup') => void;
 }
 
-const AuthContext = createContext<AuthState>({
-  isAuthenticated: false,
+// Create the auth context
+const AuthContext = createContext<AuthContextType>({
   user: null,
-  isAdmin: false,
-  login: async () => {},
-  register: async () => {},
-  logout: () => {},
-  loginAsGuest: () => {},
-  updateUserProfile: () => {},
+  users: [],
+  isAuthenticated: false,
+  isGuest: false,
+  isLoading: true,
+  signIn: async () => {},
+  signUp: async () => {},
+  signOut: async () => {},
+  continueAsGuest: async () => {},
+  openAuthModal: () => {},
 });
+
+// Create a hook to use the auth context
+export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isGuest, setIsGuest] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authView, setAuthView] = useState<'login' | 'signup'>('login');
 
-  // Load user from localStorage on initial render
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      setIsAuthenticated(true);
-      setIsAdmin(parsedUser.email === 'admin@example.com' || parsedUser.email === 'lama010101@gmail.com');
-    }
+    // Load user from localStorage
+    const loadUser = () => {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const user = JSON.parse(storedUser);
+          setUser(user);
+          setIsAuthenticated(!user.isGuest);
+          setIsGuest(user.isGuest || false);
+        } catch (error) {
+          console.error('Error parsing user:', error);
+          // Continue as guest if there's an error
+          handleContinueAsGuest();
+        }
+      } else {
+        // No stored user, continue as guest
+        handleContinueAsGuest();
+      }
+      setIsLoading(false);
+    };
+
+    // Load registered users
+    const loadUsers = () => {
+      const storedUsers = localStorage.getItem('registeredUsers');
+      if (storedUsers) {
+        try {
+          const parsedUsers = JSON.parse(storedUsers);
+          setUsers(parsedUsers);
+        } catch (error) {
+          console.error('Error parsing users:', error);
+          setUsers([]);
+        }
+      }
+    };
+
+    loadUser();
+    loadUsers();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    // Mock login - in a real app, this would call an API
-    const mockUser: User = {
-      id: '1',
-      username: email.split('@')[0],
-      email,
-      avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email.split('@')[0]}`,
-      isGuest: false
-    };
-    
-    localStorage.setItem('user', JSON.stringify(mockUser));
-    setUser(mockUser);
-    setIsAuthenticated(true);
-    setIsAdmin(email === 'admin@example.com' || email === 'lama010101@gmail.com');
+  const handleSignIn = async (email: string, password: string) => {
+    try {
+      // In a real app, this would make an API call
+      const registeredUsers = localStorage.getItem('registeredUsers');
+      let users = [];
+      
+      if (registeredUsers) {
+        users = JSON.parse(registeredUsers);
+        const user = users.find((u: any) => u.email === email);
+        
+        if (!user) {
+          throw new Error('User not found');
+        }
+        
+        // Simple password check - in a real app this would be done securely
+        // Here we're just checking if the user exists
+        
+        setUser(user);
+        setIsAuthenticated(true);
+        setIsGuest(false);
+        localStorage.setItem('user', JSON.stringify(user));
+        setShowAuthModal(false);
+      } else {
+        throw new Error('No registered users found');
+      }
+    } catch (error) {
+      console.error('Error signing in:', error);
+      alert('Invalid email or password');
+    }
   };
 
-  const register = async (email: string, username: string, password: string) => {
-    // Mock registration - in a real app, this would call an API
-    const mockUser: User = {
-      id: '1',
-      username,
-      email,
-      avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
-      isGuest: false
-    };
-    
-    localStorage.setItem('user', JSON.stringify(mockUser));
-    setUser(mockUser);
-    setIsAuthenticated(true);
-    setIsAdmin(email === 'admin@example.com' || email === 'lama010101@gmail.com');
+  const handleSignUp = async (email: string, password: string, username: string) => {
+    try {
+      // Check if email already exists
+      const registeredUsers = localStorage.getItem('registeredUsers');
+      let users = [];
+      
+      if (registeredUsers) {
+        users = JSON.parse(registeredUsers);
+        const existingUser = users.find((u: any) => u.email === email);
+        
+        if (existingUser) {
+          throw new Error('Email already in use');
+        }
+      }
+      
+      // Generate a unique ID
+      const newUser = {
+        id: Math.random().toString(36).substring(2, 15),
+        email,
+        username,
+        displayName: username,
+        createdAt: new Date().toISOString(),
+        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
+      };
+      
+      // Add to registered users
+      users.push(newUser);
+      localStorage.setItem('registeredUsers', JSON.stringify(users));
+      setUsers(users);
+      
+      // Log in the new user
+      setUser(newUser);
+      setIsAuthenticated(true);
+      setIsGuest(false);
+      localStorage.setItem('user', JSON.stringify(newUser));
+      
+      setShowAuthModal(false);
+    } catch (error) {
+      console.error('Error signing up:', error);
+      alert(error instanceof Error ? error.message : 'Error creating account');
+    }
   };
 
-  const logout = () => {
+  const handleSignOut = async () => {
     localStorage.removeItem('user');
     setUser(null);
     setIsAuthenticated(false);
-    setIsAdmin(false);
+    setIsGuest(false);
+    // Transition to guest mode automatically
+    handleContinueAsGuest();
   };
 
-  const loginAsGuest = () => {
-    const guestId = `guest_${Math.random().toString(36).substring(2, 9)}`;
-    const guestUser: User = {
-      id: guestId,
-      username: `Guest_${guestId.substring(6)}`,
-      isGuest: true
+  const handleContinueAsGuest = async () => {
+    const guestUser = {
+      id: 'guest-' + Math.random().toString(36).substring(2, 15),
+      displayName: 'Guest User',
+      isGuest: true,
+      createdAt: new Date().toISOString(),
     };
-    
-    localStorage.setItem('user', JSON.stringify(guestUser));
     setUser(guestUser);
-    setIsAuthenticated(true);
+    setIsAuthenticated(false);
+    setIsGuest(true);
+    localStorage.setItem('user', JSON.stringify(guestUser));
   };
 
-  const updateUserProfile = (userData: Partial<User>) => {
-    if (!user) return;
-    
-    const updatedUser = { ...user, ...userData };
-    localStorage.setItem('user', JSON.stringify(updatedUser));
-    setUser(updatedUser);
+  const openAuthModal = (initialView: 'login' | 'signup' = 'login') => {
+    setAuthView(initialView);
+    setShowAuthModal(true);
+  };
+
+  const authContextValue = {
+    user,
+    users,
+    isAuthenticated,
+    isGuest,
+    isLoading,
+    signIn: handleSignIn,
+    signUp: handleSignUp,
+    signOut: handleSignOut,
+    continueAsGuest: handleContinueAsGuest,
+    openAuthModal,
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      isAuthenticated, 
-      user, 
-      isAdmin,
-      login, 
-      register, 
-      logout, 
-      loginAsGuest,
-      updateUserProfile
-    }}>
+    <AuthContext.Provider value={authContextValue}>
       {children}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        defaultTab={authView}
+      />
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export default AuthProvider;

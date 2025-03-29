@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -34,7 +33,6 @@ export default function Home() {
   } = useDailyLimit();
 
   const handlePlayNow = () => {
-    // Save the current game settings
     const gameSettings = {
       timerEnabled,
       timerMinutes,
@@ -43,7 +41,6 @@ export default function Home() {
     };
     localStorage.setItem('gameSettings', JSON.stringify(gameSettings));
     
-    // Navigate to the game
     navigate('/play');
   };
   
@@ -57,7 +54,6 @@ export default function Home() {
       return;
     }
     
-    // Navigate to daily challenge
     navigate('/play?mode=daily');
   };
   
@@ -74,7 +70,6 @@ export default function Home() {
         </div>
         
         <div className="grid gap-6 md:grid-cols-3">
-          {/* Play Now Card */}
           <Card className="md:col-span-1">
             <CardHeader className="space-y-1">
               <CardTitle className="text-2xl">Play Now</CardTitle>
@@ -146,7 +141,6 @@ export default function Home() {
             </CardFooter>
           </Card>
           
-          {/* Play with Friends Card */}
           <Card className="md:col-span-1">
             <CardHeader className="space-y-1">
               <CardTitle className="text-2xl">Play with Friends</CardTitle>
@@ -232,7 +226,6 @@ export default function Home() {
             </CardFooter>
           </Card>
           
-          {/* Daily Challenge Card */}
           <Card className="md:col-span-1">
             <CardHeader className="space-y-1">
               <CardTitle className="text-2xl">Daily Challenge</CardTitle>
@@ -266,7 +259,11 @@ export default function Home() {
                   
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Next challenge in:</p>
-                    <DailyCountdown targetDate={new Date(Date.now() + timeUntilNextReset)} className="text-lg font-mono" />
+                    <DailyCountdown 
+                      score={todayScore || 0} 
+                      targetDate={new Date(Date.now() + timeUntilNextReset)} 
+                      className="text-lg font-mono" 
+                    />
                   </div>
                 </div>
               )}

@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -9,6 +10,9 @@ export interface User {
   avatarUrl?: string;
   isGuest: boolean;
   isAI?: boolean;
+  createdAt?: Date | string; // Add createdAt
+  registrationMethod?: 'email' | 'google' | 'guest' | 'system'; // Add registrationMethod
+  user_type?: 'real' | 'ai'; // Add user_type
 }
 
 // Define auth store type

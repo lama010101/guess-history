@@ -83,7 +83,7 @@ export default function UsersTable() {
         id: user.id || String(Math.random()),
         username: user.username || user.email?.split('@')[0] || 'Unknown',
         email: user.email || 'No email',
-        createdAt: user.createdAt ? new Date(user.createdAt) : new Date(),
+        createdAt: user.createdAt ? new Date(user.createdAt as string) : new Date(),
         avatarUrl: user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username || Math.random()}`,
         isAI: user.isAI === false ? false : true,
         registrationMethod: user.registrationMethod || 'system',

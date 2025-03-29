@@ -14,24 +14,31 @@ import { useGameSettings } from '@/hooks/useGameSettings';
 import { useDailyLimit } from '@/hooks/useDailyLimit';
 import { Clock, HelpCircle, Medal, Share2, Trophy, Users, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
 export default function Home() {
   const navigate = useNavigate();
-  const { isAuthenticated, openAuthModal } = useAuth();
+  const {
+    isAuthenticated,
+    openAuthModal
+  } = useAuth();
   const [showPlayWithFriendsDialog, setShowPlayWithFriendsDialog] = useState(false);
-  const { toast } = useToast();
-  const { 
-    timerEnabled, setTimerEnabled, 
-    timerMinutes, setTimerMinutes,
-    hintsEnabled, setHintsEnabled,
-    hintCount, setHintCount
+  const {
+    toast
+  } = useToast();
+  const {
+    timerEnabled,
+    setTimerEnabled,
+    timerMinutes,
+    setTimerMinutes,
+    hintsEnabled,
+    setHintsEnabled,
+    hintCount,
+    setHintCount
   } = useGameSettings();
   const {
     canPlayDaily,
     todayScore,
     timeUntilNextReset
   } = useDailyLimit();
-
   const handlePlayNow = () => {
     const gameSettings = {
       timerEnabled,
@@ -40,10 +47,8 @@ export default function Home() {
       hintCount
     };
     localStorage.setItem('gameSettings', JSON.stringify(gameSettings));
-    
     navigate('/play');
   };
-  
   const handlePlayDaily = () => {
     if (!canPlayDaily) {
       toast({
@@ -53,17 +58,14 @@ export default function Home() {
       });
       return;
     }
-    
     navigate('/play?mode=daily');
   };
-  
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       <Navbar />
       
       <main className="container px-4 py-6 space-y-8 max-w-6xl mx-auto">
         <div className="text-center space-y-4 mb-8">
-          <h1 className="text-4xl font-bold">Test Your Historical Knowledge</h1>
+          
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
             Guess when and where historical events happened. How accurate can you be?
           </p>
@@ -84,54 +86,30 @@ export default function Home() {
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <Label htmlFor="timer-toggle">Timer</Label>
                   </div>
-                  <Switch 
-                    id="timer-toggle" 
-                    checked={timerEnabled} 
-                    onCheckedChange={setTimerEnabled} 
-                  />
+                  <Switch id="timer-toggle" checked={timerEnabled} onCheckedChange={setTimerEnabled} />
                 </div>
                 
-                {timerEnabled && (
-                  <div className="space-y-2">
+                {timerEnabled && <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Game duration: {timerMinutes} min</span>
                     </div>
-                    <Slider 
-                      min={1} 
-                      max={10} 
-                      step={1} 
-                      value={[timerMinutes]} 
-                      onValueChange={(value) => setTimerMinutes(value[0])} 
-                    />
-                  </div>
-                )}
+                    <Slider min={1} max={10} step={1} value={[timerMinutes]} onValueChange={value => setTimerMinutes(value[0])} />
+                  </div>}
                 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <HelpCircle className="h-4 w-4 text-muted-foreground" />
                     <Label htmlFor="hints-toggle">Hints</Label>
                   </div>
-                  <Switch 
-                    id="hints-toggle" 
-                    checked={hintsEnabled} 
-                    onCheckedChange={setHintsEnabled} 
-                  />
+                  <Switch id="hints-toggle" checked={hintsEnabled} onCheckedChange={setHintsEnabled} />
                 </div>
                 
-                {hintsEnabled && (
-                  <div className="space-y-2">
+                {hintsEnabled && <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Hint coins: {hintCount}</span>
                     </div>
-                    <Slider 
-                      min={0} 
-                      max={10} 
-                      step={1} 
-                      value={[hintCount]} 
-                      onValueChange={(value) => setHintCount(value[0])} 
-                    />
-                  </div>
-                )}
+                    <Slider min={0} max={10} step={1} value={[hintCount]} onValueChange={value => setHintCount(value[0])} />
+                  </div>}
               </div>
             </CardContent>
             <CardFooter>
@@ -155,71 +133,44 @@ export default function Home() {
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <Label htmlFor="friend-timer-toggle">Timer</Label>
                   </div>
-                  <Switch 
-                    id="friend-timer-toggle" 
-                    checked={timerEnabled} 
-                    onCheckedChange={setTimerEnabled} 
-                  />
+                  <Switch id="friend-timer-toggle" checked={timerEnabled} onCheckedChange={setTimerEnabled} />
                 </div>
                 
-                {timerEnabled && (
-                  <div className="space-y-2">
+                {timerEnabled && <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Game duration: {timerMinutes} min</span>
                     </div>
-                    <Slider 
-                      min={1} 
-                      max={10} 
-                      step={1} 
-                      value={[timerMinutes]} 
-                      onValueChange={(value) => setTimerMinutes(value[0])} 
-                    />
-                  </div>
-                )}
+                    <Slider min={1} max={10} step={1} value={[timerMinutes]} onValueChange={value => setTimerMinutes(value[0])} />
+                  </div>}
                 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <HelpCircle className="h-4 w-4 text-muted-foreground" />
                     <Label htmlFor="friend-hints-toggle">Hints</Label>
                   </div>
-                  <Switch 
-                    id="friend-hints-toggle" 
-                    checked={hintsEnabled} 
-                    onCheckedChange={setHintsEnabled} 
-                  />
+                  <Switch id="friend-hints-toggle" checked={hintsEnabled} onCheckedChange={setHintsEnabled} />
                 </div>
                 
-                {hintsEnabled && (
-                  <div className="space-y-2">
+                {hintsEnabled && <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Hint coins: {hintCount}</span>
                     </div>
-                    <Slider 
-                      min={0} 
-                      max={10} 
-                      step={1} 
-                      value={[hintCount]} 
-                      onValueChange={(value) => setHintCount(value[0])} 
-                    />
-                  </div>
-                )}
+                    <Slider min={0} max={10} step={1} value={[hintCount]} onValueChange={value => setHintCount(value[0])} />
+                  </div>}
               </div>
             </CardContent>
             <CardFooter>
-              <Button 
-                onClick={() => {
-                  if (isAuthenticated) {
-                    setShowPlayWithFriendsDialog(true);
-                  } else {
-                    openAuthModal();
-                    toast({
-                      title: "Login required",
-                      description: "Please login or create an account to play with friends"
-                    });
-                  }
-                }} 
-                className="w-full"
-              >
+              <Button onClick={() => {
+              if (isAuthenticated) {
+                setShowPlayWithFriendsDialog(true);
+              } else {
+                openAuthModal();
+                toast({
+                  title: "Login required",
+                  description: "Please login or create an account to play with friends"
+                });
+              }
+            }} className="w-full">
                 <Users className="mr-2 h-4 w-4" />
                 Play with Friends
               </Button>
@@ -234,8 +185,7 @@ export default function Home() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {canPlayDaily ? (
-                <div className="space-y-2 text-center py-2">
+              {canPlayDaily ? <div className="space-y-2 text-center py-2">
                   <p className="text-sm text-muted-foreground">
                     Each day brings a new event to guess.
                   </p>
@@ -245,9 +195,7 @@ export default function Home() {
                   <p className="text-sm font-medium">
                     Today's challenge is ready!
                   </p>
-                </div>
-              ) : (
-                <div className="space-y-4 text-center py-2">
+                </div> : <div className="space-y-4 text-center py-2">
                   <div className="flex justify-center">
                     <Medal className="h-16 w-16 text-emerald-500" />
                   </div>
@@ -259,34 +207,17 @@ export default function Home() {
                   
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Next challenge in:</p>
-                    <DailyCountdown 
-                      score={todayScore || 0} 
-                      targetDate={new Date(Date.now() + timeUntilNextReset)} 
-                      className="text-lg font-mono" 
-                    />
+                    <DailyCountdown score={todayScore || 0} targetDate={new Date(Date.now() + timeUntilNextReset)} className="text-lg font-mono" />
                   </div>
-                </div>
-              )}
+                </div>}
             </CardContent>
             <CardFooter>
-              {canPlayDaily ? (
-                <Button 
-                  onClick={handlePlayDaily} 
-                  variant="outline" 
-                  className="w-full"
-                >
+              {canPlayDaily ? <Button onClick={handlePlayDaily} variant="outline" className="w-full">
                   Play Today's Challenge
-                </Button>
-              ) : (
-                <Button 
-                  disabled 
-                  variant="outline" 
-                  className="w-full"
-                >
+                </Button> : <Button disabled variant="outline" className="w-full">
                   <AlertTriangle className="mr-2 h-4 w-4" />
                   Already Played Today
-                </Button>
-              )}
+                </Button>}
             </CardFooter>
           </Card>
         </div>
@@ -308,10 +239,6 @@ export default function Home() {
         </div>
       </main>
       
-      <PlayWithFriendsDialog 
-        open={showPlayWithFriendsDialog} 
-        onOpenChange={setShowPlayWithFriendsDialog} 
-      />
-    </div>
-  );
+      <PlayWithFriendsDialog open={showPlayWithFriendsDialog} onOpenChange={setShowPlayWithFriendsDialog} />
+    </div>;
 }

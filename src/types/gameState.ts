@@ -33,7 +33,6 @@ export interface GameStateActions {
   setTimerEnabled: React.Dispatch<React.SetStateAction<boolean>>;
   setTimerDuration: React.Dispatch<React.SetStateAction<number>>;
   setTimerPaused: React.Dispatch<React.SetStateAction<boolean>>;
-  setGameComplete: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export interface GameStateReturn extends GameState, GameStateActions {

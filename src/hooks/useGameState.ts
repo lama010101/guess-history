@@ -68,7 +68,6 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     dailyCompleted,
     dailyScore,
     dailyDate,
-    countdown,
     setDailyGame,
     completeDailyGame
   } = useDailyGame();
@@ -228,7 +227,6 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     handleUseYearHint,
     setTimerEnabled,
     setTimerDuration,
-    setTimerPaused,
-    setGameComplete
+    setTimerPaused
   };
 };

@@ -1,6 +1,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { supabase } from '@/integrations/supabase/client';
 
 // Define user types
 export interface User {
@@ -31,10 +32,11 @@ interface AuthState {
   googleSignIn: () => Promise<void>; // Add googleSignIn alias for consistency
   openAuthModal: (initialView?: 'login' | 'signup') => void; // Add openAuthModal
   updateUserProfile: (userData: Partial<User>) => void;
+  syncUsersFromSupabase: () => Promise<void>;
 }
 
-// For now, we'll implement a mock auth system
-// This would be replaced with Supabase or another auth provider later
+// For now, we'll implement a mock auth system with Supabase integration
+// This would be enhanced with full Supabase auth later
 export const useAuth = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -48,25 +50,43 @@ export const useAuth = create<AuthState>()(
       login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
         try {
-          // Simulate API call
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email, 
+            password
+          });
+          
+          if (error) throw error;
           
           // Check if this is an admin user
           const isAdmin = email.toLowerCase() === 'lama010101@gmail.com';
           
-          // Mock successful login
-          set({
-            user: {
-              id: '1',
-              username: email.split('@')[0],
-              email,
-              isGuest: false,
-              avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + email,
-            },
-            isAuthenticated: true,
-            isLoading: false,
-            isAdmin,
-          });
+          if (data.user) {
+            // Get or create user profile
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', data.user.id)
+              .single();
+            
+            set({
+              user: {
+                id: data.user.id,
+                username: profile?.username || email.split('@')[0],
+                email,
+                isGuest: false,
+                avatarUrl: profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+                createdAt: data.user.created_at,
+                registrationMethod: 'email',
+                user_type: 'real'
+              },
+              isAuthenticated: true,
+              isLoading: false,
+              isAdmin,
+            });
+            
+            // Sync users from Supabase
+            get().syncUsersFromSupabase();
+          }
         } catch (error) {
           set({ 
             error: error instanceof Error ? error.message : 'Failed to login', 
@@ -78,25 +98,49 @@ export const useAuth = create<AuthState>()(
       signUp: async (email: string, password: string, username: string) => {
         set({ isLoading: true, error: null });
         try {
-          // Simulate API call
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                username
+              }
+            }
+          });
+          
+          if (error) throw error;
           
           // Check if this is an admin user
           const isAdmin = email.toLowerCase() === 'lama010101@gmail.com';
           
-          // Mock successful registration
-          set({
-            user: {
-              id: '1',
+          if (data.user) {
+            // Try to create a profile for the user
+            await supabase.from('profiles').upsert({
+              id: data.user.id,
               username,
-              email,
-              isGuest: false,
-              avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + username,
-            },
-            isAuthenticated: true,
-            isLoading: false,
-            isAdmin,
-          });
+              avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
+              created_at: data.user.created_at
+            });
+            
+            set({
+              user: {
+                id: data.user.id,
+                username,
+                email,
+                isGuest: false,
+                avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
+                createdAt: data.user.created_at,
+                registrationMethod: 'email',
+                user_type: 'real'
+              },
+              isAuthenticated: true,
+              isLoading: false,
+              isAdmin,
+            });
+            
+            // Sync users from Supabase
+            get().syncUsersFromSupabase();
+          }
         } catch (error) {
           set({ 
             error: error instanceof Error ? error.message : 'Failed to sign up', 
@@ -105,7 +149,9 @@ export const useAuth = create<AuthState>()(
         }
       },
       
-      logout: () => {
+      logout: async () => {
+        await supabase.auth.signOut();
+        
         set({ 
           user: null, 
           isAuthenticated: false,
@@ -115,12 +161,16 @@ export const useAuth = create<AuthState>()(
       
       continueAsGuest: () => {
         const guestId = 'guest-' + Math.random().toString(36).substring(2, 9);
+        
         set({
           user: {
             id: guestId,
             username: 'Guest',
             isGuest: true,
-            avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + guestId,
+            avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${guestId}`,
+            createdAt: new Date().toISOString(),
+            registrationMethod: 'guest',
+            user_type: 'ai'
           },
           isAuthenticated: true,
           isAdmin: false,
@@ -130,30 +180,18 @@ export const useAuth = create<AuthState>()(
       googleLogin: async () => {
         set({ isLoading: true, error: null });
         try {
-          // Simulate Google login
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // Generate a random email but check if it's our admin email
-          const email = Math.random() < 0.1 ? 'lama010101@gmail.com' : 
-            `user${Math.floor(Math.random() * 10000)}@gmail.com`;
-          const username = email === 'lama010101@gmail.com' ? 'AdminUser' : 
-            `User${Math.floor(Math.random() * 10000)}`;
-          
-          // Check if this is an admin user
-          const isAdmin = email.toLowerCase() === 'lama010101@gmail.com';
-          
-          set({
-            user: {
-              id: '2',
-              username,
-              email,
-              isGuest: false,
-              avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-            },
-            isAuthenticated: true,
-            isLoading: false,
-            isAdmin,
+          const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+              redirectTo: window.location.origin
+            }
           });
+          
+          if (error) throw error;
+          
+          // The OAuth sign-in will redirect the user away from the app,
+          // so we won't perform state updates here.
+          // The auth state will be managed by the onAuthStateChange listener.
         } catch (error) {
           set({ 
             error: error instanceof Error ? error.message : 'Failed to login with Google', 
@@ -183,6 +221,39 @@ export const useAuth = create<AuthState>()(
           user: updatedUser
         });
       },
+      
+      syncUsersFromSupabase: async () => {
+        try {
+          const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .order('created_at', { ascending: false });
+          
+          if (error) {
+            console.error('Error fetching users from Supabase:', error);
+            return;
+          }
+          
+          if (data && data.length > 0) {
+            const mappedUsers = data.map(user => ({
+              id: user.id,
+              username: user.name || user.email?.split('@')[0] || 'Unknown',
+              email: user.email || '',
+              isGuest: false,
+              avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name || user.email || Math.random()}`,
+              createdAt: user.created_at,
+              isAI: user.user_type !== 'real',
+              registrationMethod: user.signup_method || 'email',
+              user_type: user.user_type || 'real'
+            }));
+            
+            set({ users: mappedUsers });
+            console.log("Synced users from Supabase:", mappedUsers);
+          }
+        } catch (error) {
+          console.error('Error syncing users from Supabase:', error);
+        }
+      }
     }),
     {
       name: 'auth-storage', // name of the item in localStorage
@@ -194,3 +265,72 @@ export const useAuth = create<AuthState>()(
     }
   )
 );
+
+// Initialize auth state with Supabase session
+export const initializeAuthWithSupabase = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session && session.user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', session.user.id)
+      .single();
+    
+    const isAdmin = session.user.email?.toLowerCase() === 'lama010101@gmail.com';
+    
+    useAuth.setState({
+      user: {
+        id: session.user.id,
+        username: profile?.username || session.user.email?.split('@')[0] || 'User',
+        email: session.user.email,
+        isGuest: false,
+        avatarUrl: profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}`,
+        createdAt: session.user.created_at,
+        registrationMethod: 'email',
+        user_type: 'real'
+      },
+      isAuthenticated: true,
+      isAdmin
+    });
+    
+    // Sync users from Supabase
+    useAuth.getState().syncUsersFromSupabase();
+  }
+  
+  // Set up auth state change listener
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session?.user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+      
+      const isAdmin = session.user.email?.toLowerCase() === 'lama010101@gmail.com';
+      
+      useAuth.setState({
+        user: {
+          id: session.user.id,
+          username: profile?.username || session.user.email?.split('@')[0] || 'User',
+          email: session.user.email,
+          isGuest: false,
+          avatarUrl: profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}`,
+          createdAt: session.user.created_at,
+          registrationMethod: 'email',
+          user_type: 'real'
+        },
+        isAuthenticated: true,
+        isAdmin
+      });
+      
+      // Sync users from Supabase
+      useAuth.getState().syncUsersFromSupabase();
+    } else if (event === 'SIGNED_OUT') {
+      useAuth.setState({
+        user: null,
+        isAuthenticated: false,
+        isAdmin: false
+      });
+    }
+  });
+};

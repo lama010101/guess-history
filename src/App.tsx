@@ -10,9 +10,13 @@ import Leaderboard from './pages/Leaderboard';
 import { initializeAuth } from './services/initAuth';
 
 function App() {
-  // Initialize auth with mock users on app start
+  // Initialize auth with Supabase on app start
   useEffect(() => {
-    initializeAuth();
+    const init = async () => {
+      await initializeAuth();
+    };
+    
+    init();
   }, []);
 
   return (

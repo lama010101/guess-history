@@ -1,0 +1,8 @@
+
+/* Fix for timer visibility under navbar */
+.game-timer-container {
+  position: relative;
+  z-index: 10;
+  margin-top: 1rem;
+  padding-top: 0.5rem;
+}

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import GamePanel from './game/GamePanel';
 import GameControls from './game/GameControls';
@@ -168,7 +167,7 @@ const GameSection = () => {
         />
         
         <div className="relative flex-1 flex flex-col overflow-hidden">
-          {timerEnabled && <div className="w-full bg-gray-100 dark:bg-gray-800 px-4 py-2 z-10">
+          {timerEnabled && <div className="w-full bg-gray-100 dark:bg-gray-800 px-4 py-2 z-10 game-timer-container">
               <GameTimer 
                 duration={timerDuration} 
                 paused={timerPaused} 

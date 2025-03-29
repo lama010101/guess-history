@@ -166,8 +166,9 @@ const GameSection = () => {
           yearHintUsed={yearHintUsed}
           currentImage={currentImage}
         />
+        
         <div className="relative flex-1 flex flex-col overflow-hidden">
-          {timerEnabled && <div className="w-full bg-gray-100 dark:bg-gray-800 px-4 py-2">
+          {timerEnabled && <div className="w-full bg-gray-100 dark:bg-gray-800 px-4 py-2 z-10">
               <GameTimer 
                 duration={timerDuration} 
                 paused={timerPaused} 

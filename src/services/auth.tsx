@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AuthModal from '@/components/auth/AuthModal';
 
@@ -146,7 +147,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         username,
         displayName: username,
         createdAt: new Date().toISOString(),
-        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
+        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
+        isAI: false // Flag to identify real users
       };
       
       // Add to registered users
@@ -180,6 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const guestUser = {
       id: 'guest-' + Math.random().toString(36).substring(2, 15),
       displayName: 'Guest User',
+      username: 'Guest User',
       isGuest: true,
       createdAt: new Date().toISOString(),
     };

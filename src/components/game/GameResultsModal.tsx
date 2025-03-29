@@ -127,8 +127,8 @@ const GameResultsModal = ({
             className="w-full h-full object-contain"
           />
         </div>
-                
-        <div className="space-y-6"> {/* Increased spacing between sections */}
+        
+        <div className="space-y-6">
           {/* Location Section */}
           <div className="border rounded-md overflow-hidden">
             <div className="bg-muted p-3 flex justify-between items-center">
@@ -138,13 +138,13 @@ const GameResultsModal = ({
               </div>
               <span className="font-semibold">{locationScore.toLocaleString()} pts</span>
             </div>
-            <div className="p-4"> {/* Increased padding */}
-              <p className="text-sm mb-3"> {/* Increased margin */}
+            <div className="p-4">
+              <p className="text-sm mb-3">
                 You were <span className="font-medium">{Math.round(distanceKm)} km</span> away from the actual location.
               </p>
               
               {selectedLocation && (
-                <div className="h-48 rounded-md overflow-hidden border mb-3"> {/* Increased margin */}
+                <div className="h-48 rounded-md overflow-hidden border mb-3">
                   <ResultVisualization 
                     actualLocation={currentImage.location}
                     guessedLocation={selectedLocation}
@@ -156,7 +156,7 @@ const GameResultsModal = ({
               )}
               
               {perfectLocation && (
-                <div className="flex items-center text-green-600 gap-2 mt-3"> {/* Increased margin */}
+                <div className="flex items-center text-green-600 gap-2 mt-3">
                   <AchievementBadge 
                     type="location" 
                     size="sm" 
@@ -167,7 +167,7 @@ const GameResultsModal = ({
               )}
               
               {locationHintUsed && (
-                <div className="bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400 text-xs p-3 rounded mt-3"> {/* Increased padding and margin */}
+                <div className="bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400 text-xs p-3 rounded mt-3">
                   Location hint used (-{hintPenalty / (locationHintUsed && yearHintUsed ? 2 : 1)} points)
                 </div>
               )}
@@ -183,7 +183,7 @@ const GameResultsModal = ({
               </div>
               <span className="font-semibold">{yearScore.toLocaleString()} pts</span>
             </div>
-            <div className="p-4"> {/* Increased padding */}
+            <div className="p-4">
               <p className="text-sm">
                 You guessed <span className="font-medium">{selectedYear}</span>
                 {yearDifference !== 0 && (
@@ -195,7 +195,7 @@ const GameResultsModal = ({
               </p>
               
               {perfectYear && (
-                <div className="flex items-center text-green-600 gap-2 mt-3"> {/* Increased margin */}
+                <div className="flex items-center text-green-600 gap-2 mt-3">
                   <AchievementBadge 
                     type="year" 
                     size="sm" 
@@ -206,7 +206,7 @@ const GameResultsModal = ({
               )}
               
               {yearHintUsed && (
-                <div className="bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400 text-xs p-3 rounded mt-3"> {/* Increased padding and margin */}
+                <div className="bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400 text-xs p-3 rounded mt-3">
                   Year hint used (-{hintPenalty / (locationHintUsed && yearHintUsed ? 2 : 1)} points)
                 </div>
               )}
@@ -215,7 +215,7 @@ const GameResultsModal = ({
           
           {/* Combo Achievement */}
           {perfectCombo && (
-            <div className="border border-green-300 dark:border-green-800 rounded-md p-4 bg-green-50 dark:bg-green-900/20"> {/* Increased padding */}
+            <div className="border border-green-300 dark:border-green-800 rounded-md p-4 bg-green-50 dark:bg-green-900/20">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Trophy className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -235,16 +235,16 @@ const GameResultsModal = ({
           )}
           
           {/* Total Score */}
-          <div className="bg-primary/5 p-4 rounded-lg"> {/* Increased padding */}
-            <div className="flex justify-between items-center mb-2"> {/* Added margin */}
+          <div className="bg-primary/5 p-4 rounded-lg">
+            <div className="flex justify-between items-center mb-2">
               <div className="text-sm w-full">
-                <div className="flex justify-between mb-2"> {/* Increased margin */}
+                <div className="flex justify-between mb-2">
                   <span>Location + Year:</span>
                   <span className="font-medium">{(locationScore + yearScore).toLocaleString()} pts</span>
                 </div>
                 
                 {hintPenalty > 0 && (
-                  <div className="flex justify-between text-amber-600 mb-2"> {/* Increased margin */}
+                  <div className="flex justify-between text-amber-600 mb-2">
                     <span>Hint Penalty:</span>
                     <span className="font-medium">-{hintPenalty.toLocaleString()} pts</span>
                   </div>
@@ -252,7 +252,7 @@ const GameResultsModal = ({
               </div>
             </div>
             
-            <div className="h-px bg-border my-3"></div> {/* Increased margin */}
+            <div className="h-px bg-border my-3"></div>
             
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Total Score:</span>

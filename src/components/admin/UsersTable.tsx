@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Calendar, Trash2, UserMinus, UserPlus } from "lucide-react";
+import { Calendar, Trash2, UserMinus, UserPlus, Check, X } from "lucide-react";
 import { format } from 'date-fns';
 import { useAuth } from '@/services/auth.tsx';
 
@@ -12,6 +12,7 @@ interface User {
   email: string;
   createdAt: Date;
   avatarUrl?: string;
+  isAI?: boolean;
 }
 
 export default function UsersTable() {
@@ -20,17 +21,19 @@ export default function UsersTable() {
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(false);
 
-  // Load users from localStorage (or auth provider if available)
+  // Load users from auth context and localStorage 
   useEffect(() => {
     // First check if we have users from the auth provider
     if (users && users.length > 0) {
-      setRegisteredUsers(users.map(user => ({
+      const mappedUsers = users.map(user => ({
         id: user.id || String(Math.random()),
         username: user.username || user.email?.split('@')[0] || 'Unknown',
         email: user.email || 'No email',
         createdAt: user.createdAt ? new Date(user.createdAt) : new Date(),
-        avatarUrl: user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username || Math.random()}`
-      })));
+        avatarUrl: user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username || Math.random()}`,
+        isAI: user.isAI === false ? false : true // Default to true for old data without the flag
+      }));
+      setRegisteredUsers(mappedUsers);
       return;
     }
     
@@ -42,7 +45,8 @@ export default function UsersTable() {
         // Ensure createdAt is a Date object
         savedUsers = savedUsers.map((user: any) => ({
           ...user,
-          createdAt: new Date(user.createdAt)
+          createdAt: new Date(user.createdAt),
+          isAI: user.isAI === false ? false : true // Default to true for sample data
         }));
         setRegisteredUsers(savedUsers);
       } catch (error) {
@@ -64,21 +68,24 @@ export default function UsersTable() {
         username: 'admin',
         email: 'admin@example.com',
         createdAt: new Date('2023-01-01'),
-        avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin'
+        avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
+        isAI: true
       },
       {
         id: '2',
         username: 'test_user',
         email: 'test@example.com',
         createdAt: new Date('2023-02-15'),
-        avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=test'
+        avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=test',
+        isAI: true
       },
       {
         id: '3',
         username: 'john_doe',
         email: 'john@example.com',
         createdAt: new Date('2023-03-10'),
-        avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=john'
+        avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=john',
+        isAI: true
       }
     ];
     
@@ -89,7 +96,8 @@ export default function UsersTable() {
         username: user.username || user.email?.split('@')[0] || 'Current User',
         email: user.email || 'current@user.com',
         createdAt: new Date(),
-        avatarUrl: user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username || Math.random()}`
+        avatarUrl: user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username || Math.random()}`,
+        isAI: false // Current user is real
       });
     }
     
@@ -165,6 +173,7 @@ export default function UsersTable() {
                   Registration Date
                 </div>
               </th>
+              <th className="p-3 text-left font-medium">Type</th>
               <th className="p-3 text-left font-medium">Actions</th>
             </tr>
           </thead>
@@ -197,6 +206,17 @@ export default function UsersTable() {
                     {format(user.createdAt, 'PPP')}
                   </td>
                   <td className="p-3">
+                    {user.isAI ? (
+                      <span className="px-2 py-1 text-xs rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 flex items-center w-fit">
+                        <X size={12} className="mr-1" /> AI Sample
+                      </span>
+                    ) : (
+                      <span className="px-2 py-1 text-xs rounded bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 flex items-center w-fit">
+                        <Check size={12} className="mr-1" /> Real User
+                      </span>
+                    )}
+                  </td>
+                  <td className="p-3">
                     <Button 
                       variant="ghost" 
                       size="sm" 
@@ -211,7 +231,7 @@ export default function UsersTable() {
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                <td colSpan={6} className="p-8 text-center text-muted-foreground">
                   No users found.
                 </td>
               </tr>

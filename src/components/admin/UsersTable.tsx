@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -163,14 +164,14 @@ export default function UsersTable() {
     localStorage.setItem('registeredUsers', JSON.stringify(sampleUsers));
     console.log("Created sample users:", sampleUsers);
     
+    // Let's add these sample users to the profiles table instead of the non-existent users table
     sampleUsers.forEach(async (user) => {
       try {
-        await supabase.from('users').upsert({
+        await supabase.from('profiles').upsert({
           id: user.id,
-          email: user.email,
-          name: user.username,
-          signup_method: user.registrationMethod,
-          user_type: user.user_type || 'ai',
+          username: user.username,
+          avatar_url: user.avatarUrl,
+          role: user.user_type === 'real' ? 'admin' : 'user',
           created_at: user.createdAt.toISOString(),
         });
       } catch (error) {
@@ -199,7 +200,7 @@ export default function UsersTable() {
   const handleBatchDelete = async () => {
     try {
       for (const userId of selectedUsers) {
-        const { error } = await supabase.from('users').delete().eq('id', userId);
+        const { error } = await supabase.from('profiles').delete().eq('id', userId);
         if (error) {
           console.error(`Error deleting user ${userId} from Supabase:`, error);
         }

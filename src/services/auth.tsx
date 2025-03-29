@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import AuthModal from '@/components/auth/AuthModal';
@@ -49,9 +48,7 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 // Create Supabase client
-const supabaseUrl = 'https://your-project-url.supabase.co';
-const supabaseKey = 'your-anon-key';
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { supabase } from '@/integrations/supabase/client';
 
 // Create a hook to use the auth context
 export const useAuth = () => useContext(AuthContext);
@@ -144,7 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchUsers = async () => {
     try {
       const { data, error } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
       
@@ -155,16 +152,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (data && data.length > 0) {
-        const mappedUsers = data.map(user => ({
-          id: user.id,
-          email: user.email,
-          username: user.name || user.email?.split('@')[0] || 'Unknown',
-          displayName: user.name || user.email?.split('@')[0] || 'Unknown',
-          createdAt: user.created_at,
-          avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
-          isAI: user.user_type !== 'real',
-          registrationMethod: user.signup_method || 'system',
-          user_type: user.user_type
+        const mappedUsers = data.map(profile => ({
+          id: profile.id,
+          email: '',  // No email in profiles table
+          username: profile.username || 'Unknown',
+          displayName: profile.username || 'Unknown',
+          createdAt: profile.created_at,
+          avatarUrl: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.id}`,
+          isAI: profile.role !== 'admin',
+          registrationMethod: 'email', // Default to email since we don't have this info
+          user_type: profile.role === 'admin' ? 'real' : 'ai'
         }));
         
         setUsers(mappedUsers);
@@ -199,16 +196,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Sync user data to Supabase
   const syncUserToDatabase = async (user: any) => {
     const { email, user_metadata, id, created_at, app_metadata } = user;
-    const name = user_metadata?.name || '';
-    const signup_method = app_metadata?.provider || 'email';
+    const username = user_metadata?.name || email?.split('@')[0] || 'User';
 
     try {
-      const { error } = await supabase.from('users').upsert({
+      const { error } = await supabase.from('profiles').upsert({
         id,
-        email,
-        name,
-        signup_method,
-        user_type: 'real',
+        username,
+        avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`,
+        role: 'admin',  // Make the user an admin by default
         created_at: created_at,
       });
 
@@ -263,15 +258,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUsers(sampleUsers);
     localStorage.setItem('registeredUsers', JSON.stringify(sampleUsers));
     
-    // Also add sample users to Supabase
+    // Also add sample users to Supabase profiles table
     try {
       for (const user of sampleUsers) {
-        const { error } = await supabase.from('users').upsert({
+        const { error } = await supabase.from('profiles').upsert({
           id: user.id,
-          email: user.email,
-          name: user.username,
-          signup_method: user.registrationMethod,
-          user_type: 'ai',
+          username: user.username,
+          avatar_url: user.avatarUrl,
+          role: user.user_type === 'real' ? 'admin' : 'user',
           created_at: user.createdAt,
         });
         

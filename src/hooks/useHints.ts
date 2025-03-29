@@ -36,11 +36,26 @@ export const useHints = () => {
       if (savedSettings) {
         try {
           const settings = JSON.parse(savedSettings);
-          if (settings && typeof settings.initialHintCoins === 'number') {
-            setHintCoins(settings.initialHintCoins);
+          if (settings) {
+            // Use the hintsEnabled and hintCount from gameSettings
+            if (settings.hintsEnabled && typeof settings.hintCount === 'number') {
+              setHintCoins(settings.hintCount);
+            } else if (settings.initialHintCoins !== undefined) {
+              setHintCoins(settings.initialHintCoins);
+            }
           }
         } catch (error) {
           console.error('Error loading game settings:', error);
+        }
+      }
+      
+      // Also check for initialHintCoins as a direct setting
+      const initialHintCoins = localStorage.getItem('initialHintCoins');
+      if (initialHintCoins) {
+        try {
+          setHintCoins(parseInt(initialHintCoins, 10));
+        } catch (error) {
+          console.error('Error parsing initial hint coins:', error);
         }
       }
     }

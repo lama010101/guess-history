@@ -7,6 +7,8 @@ interface GameSettings {
   timerMinutes: number; // in minutes
   maxRounds: number;
   initialHintCoins: number;
+  hintsEnabled: boolean;
+  hintCount: number;
 }
 
 export const useGameSettings = () => {

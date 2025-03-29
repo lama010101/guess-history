@@ -116,6 +116,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsAuthenticated(true);
         setIsGuest(false);
         localStorage.setItem('user', JSON.stringify(user));
+        
+        // Make sure to update users list with the latest data
+        setUsers(users);
+        
         setShowAuthModal(false);
       } else {
         throw new Error('No registered users found');
@@ -155,6 +159,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Add to registered users
       users.push(newUser);
       localStorage.setItem('registeredUsers', JSON.stringify(users));
+      
+      // Update the users state immediately to ensure it's available in the admin panel
       setUsers(users);
       
       // Log in the new user

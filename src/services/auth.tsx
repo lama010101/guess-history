@@ -13,7 +13,7 @@ interface User {
   createdAt?: Date | string;
   username?: string;
   avatarUrl?: string;
-  isAI?: boolean; // Add this optional boolean property
+  isAI?: boolean; // Flag to identify AI-generated users vs real users
 }
 
 interface AuthContextType {
@@ -149,7 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         displayName: username,
         createdAt: new Date().toISOString(),
         avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
-        isAI: false // Flag to identify real users
+        isAI: false // Explicitly mark real users as not AI
       };
       
       // Add to registered users

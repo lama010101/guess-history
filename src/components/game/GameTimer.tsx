@@ -88,7 +88,7 @@ const GameTimer = ({ duration, paused, hintsOpen = false, onTimeUp }: GameTimerP
   };
 
   return (
-    <div className="relative">
+    <div className="relative mt-4">
       <div className="flex justify-between items-center mb-1">
         <div className="flex items-center">
           <Clock className="h-4 w-4 mr-1.5" />

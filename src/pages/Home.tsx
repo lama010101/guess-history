@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import Hero from '@/components/Hero';
 import { useAuth } from '@/services/auth';
 import { useDailyGame } from '@/hooks/useDailyGame';
 import Navbar from '@/components/Navbar';
@@ -27,19 +26,21 @@ const Home = () => {
     navigate('/play');
   };
 
+  const handlePlayWithFriends = () => {
+    navigate('/friends');
+  };
+
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-gray-900 flex flex-col">
       <Navbar />
       <main className="flex-1 flex flex-col">
-        <Hero />
-        
         <div className="container px-4 py-12 mb-8 mt-auto">
           <div className="max-w-3xl mx-auto">
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-3">
               <div className="bg-primary/5 p-6 rounded-xl">
                 <h2 className="text-xl font-semibold mb-3">Play Now</h2>
                 <p className="mb-5 text-muted-foreground">
-                  Start a regular game with {5} rounds of historical photos. Test your knowledge of history and geography!
+                  Start a regular game with 5 rounds of historical photos. Test your knowledge of history and geography!
                 </p>
                 <Button onClick={handlePlayNow} size="lg" className="w-full">
                   Play Now
@@ -64,6 +65,21 @@ const Home = () => {
                 ) : (
                   <DailyCountdown score={dailyScore} />
                 )}
+              </div>
+              
+              <div className="bg-blue-500/10 dark:bg-blue-500/5 p-6 rounded-xl">
+                <h2 className="text-xl font-semibold mb-3">Play with Friends</h2>
+                <p className="mb-5 text-muted-foreground">
+                  Challenge your friends to see who has the best knowledge of history and geography!
+                </p>
+                <Button 
+                  onClick={handlePlayWithFriends} 
+                  variant="outline" 
+                  size="lg" 
+                  className="w-full border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-400"
+                >
+                  Play with Friends
+                </Button>
               </div>
             </div>
             

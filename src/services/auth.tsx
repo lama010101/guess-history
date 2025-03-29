@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AuthModal from '@/components/auth/AuthModal';
 
@@ -13,6 +12,7 @@ interface User {
   createdAt?: Date | string;
   username?: string;
   avatarUrl?: string;
+  isAI?: boolean; // Add this optional boolean property
 }
 
 interface AuthContextType {

@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -9,6 +8,7 @@ export interface User {
   email?: string;
   avatarUrl?: string;
   isGuest: boolean;
+  isAI?: boolean; // Add this optional boolean property
 }
 
 // Define auth store type

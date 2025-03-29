@@ -16,7 +16,7 @@ const LoginForm = ({ onSuccess, autoFocus = false }: LoginFormProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const { login, continueAsGuest, googleLogin, isLoading, error } = useAuth();
+  const { login, continueAsGuest, googleSignIn, isLoading, error } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,7 +39,7 @@ const LoginForm = ({ onSuccess, autoFocus = false }: LoginFormProps) => {
 
   const handleGoogleLogin = async () => {
     try {
-      await googleLogin();
+      await googleSignIn();
       toast({
         title: "Welcome!",
         description: "You have successfully logged in with Google.",

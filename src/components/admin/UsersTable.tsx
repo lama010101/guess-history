@@ -1,9 +1,10 @@
+
 import { useState, useEffect } from 'react';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Calendar, Trash2, UserMinus, UserPlus, Check, X } from "lucide-react";
 import { format } from 'date-fns';
-import { useAuth } from '@/services/auth';
+import { useAuth } from '@/services/auth.tsx';
 
 interface User {
   id: string;

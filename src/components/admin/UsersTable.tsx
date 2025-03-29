@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -21,9 +20,7 @@ export default function UsersTable() {
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(false);
 
-  // Load users from auth context and localStorage 
   useEffect(() => {
-    // First check if we have users from the auth provider
     if (users && users.length > 0) {
       const mappedUsers = users.map(user => ({
         id: user.id || String(Math.random()),
@@ -31,36 +28,31 @@ export default function UsersTable() {
         email: user.email || 'No email',
         createdAt: user.createdAt ? new Date(user.createdAt) : new Date(),
         avatarUrl: user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username || Math.random()}`,
-        isAI: user.isAI === false ? false : true // Default to true for old data without the flag
+        isAI: user.isAI === false ? false : true
       }));
       setRegisteredUsers(mappedUsers);
       return;
     }
     
-    // If no users from auth provider, check localStorage
     const savedUsersString = localStorage.getItem('registeredUsers');
     if (savedUsersString) {
       try {
         let savedUsers = JSON.parse(savedUsersString);
-        // Ensure createdAt is a Date object
         savedUsers = savedUsers.map((user: any) => ({
           ...user,
           createdAt: new Date(user.createdAt),
-          isAI: user.isAI === false ? false : true // Default to true for sample data
+          isAI: user.isAI === false ? false : true
         }));
         setRegisteredUsers(savedUsers);
       } catch (error) {
         console.error('Error loading registered users:', error);
-        // Fallback with sample data
         createSampleUsers();
       }
     } else {
-      // Create sample data if nothing found
       createSampleUsers();
     }
   }, [users]);
 
-  // Create sample users for testing
   const createSampleUsers = () => {
     const sampleUsers: User[] = [
       {
@@ -90,14 +82,13 @@ export default function UsersTable() {
     ];
     
     if (user) {
-      // Add current user if available
       sampleUsers.push({
         id: user.id || '999',
         username: user.username || user.email?.split('@')[0] || 'Current User',
         email: user.email || 'current@user.com',
         createdAt: new Date(),
         avatarUrl: user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username || Math.random()}`,
-        isAI: false // Current user is real
+        isAI: false
       });
     }
     
@@ -105,7 +96,6 @@ export default function UsersTable() {
     localStorage.setItem('registeredUsers', JSON.stringify(sampleUsers));
   };
 
-  // Handle select all checkbox
   const handleSelectAll = (checked: boolean) => {
     setSelectAll(checked);
     if (checked) {
@@ -115,7 +105,6 @@ export default function UsersTable() {
     }
   };
 
-  // Handle individual user selection
   const handleSelectUser = (userId: string, checked: boolean) => {
     if (checked) {
       setSelectedUsers(prev => [...prev, userId]);
@@ -124,15 +113,12 @@ export default function UsersTable() {
     }
   };
 
-  // Handle batch delete
   const handleBatchDelete = () => {
-    // Filter out selected users
     const remainingUsers = registeredUsers.filter(user => !selectedUsers.includes(user.id));
     setRegisteredUsers(remainingUsers);
     setSelectedUsers([]);
     setSelectAll(false);
     
-    // Save updated users to localStorage
     localStorage.setItem('registeredUsers', JSON.stringify(remainingUsers));
   };
 

@@ -53,8 +53,6 @@ const Friends = () => {
       const searchParam = urlParams.get('search');
       if (searchParam) {
         setSearchTerm(searchParam);
-        // Force the activeTab to 'discover' when searching
-        setActiveTab('discover');
       }
     }
   }, [isAuthenticated, navigate, toast]);

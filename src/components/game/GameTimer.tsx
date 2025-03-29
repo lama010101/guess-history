@@ -1,104 +1,89 @@
 
 import { useState, useEffect, useRef } from 'react';
-import { Clock } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
 
 interface GameTimerProps {
   duration: number; // in seconds
-  paused: boolean;
-  hintsOpen?: boolean;
-  onTimeUp: () => void;
+  paused?: boolean;
+  onTimeUp?: () => void;
+  hintsOpen?: boolean; // Added prop for when hints are open
 }
 
-const GameTimer = ({ duration, paused, hintsOpen = false, onTimeUp }: GameTimerProps) => {
-  const [timeRemaining, setTimeRemaining] = useState(duration);
-  const [progress, setProgress] = useState(100);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const lastUpdateRef = useRef<number | null>(null);
-
-  // Initialize timer
+const GameTimer = ({ duration, paused = false, onTimeUp, hintsOpen = false }: GameTimerProps) => {
+  const [timeLeft, setTimeLeft] = useState(duration);
+  const [isRunning, setIsRunning] = useState(true);
+  const timerRef = useRef<number | null>(null);
+  
+  // Reset timer when duration changes
   useEffect(() => {
-    setTimeRemaining(duration);
-    setProgress(100);
-    lastUpdateRef.current = Date.now();
-    
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
+    setTimeLeft(duration);
+    setIsRunning(true);
   }, [duration]);
 
-  // Handle timer logic
+  // Stop timer when paused, hints are open, or results are showing
   useEffect(() => {
-    // Clear any existing timer
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
+    if (paused || hintsOpen) {
+      setIsRunning(false);
+    } else {
+      setIsRunning(true);
     }
+  }, [paused, hintsOpen]);
+
+  // Timer countdown logic
+  useEffect(() => {
+    if (!isRunning) return;
     
-    // Don't set up timer if it's paused
-    if (paused) {
-      // Store the current time when paused to calculate elapsed time accurately later
-      lastUpdateRef.current = Date.now();
-      return;
-    }
-    
-    // Set up a new timer that updates every 100ms for smoother progress bar
-    timerRef.current = setInterval(() => {
-      const now = Date.now();
-      const elapsed = lastUpdateRef.current ? (now - lastUpdateRef.current) / 1000 : 0;
-      lastUpdateRef.current = now;
-      
-      setTimeRemaining(prev => {
-        const newTime = Math.max(0, prev - elapsed);
-        setProgress((newTime / duration) * 100);
-        
-        // Time's up
-        if (newTime <= 0 && timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-          onTimeUp();
+    timerRef.current = window.setInterval(() => {
+      setTimeLeft((prevTime) => {
+        if (prevTime <= 1) {
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+          }
+          // Call onTimeUp to end the round when timer reaches zero
+          if (onTimeUp) {
+            setTimeout(() => onTimeUp(), 100); // Small delay to ensure UI updates
+          }
+          return 0;
         }
-        
-        return newTime;
+        return prevTime - 1;
       });
-    }, 100);
+    }, 1000);
     
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
     };
-  }, [paused, duration, onTimeUp]);
+  }, [isRunning, onTimeUp]);
 
-  // Format time as MM:SS
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  const percentLeft = (timeLeft / duration) * 100;
+
+  const getTimerColor = () => {
+    if (percentLeft <= 10) return 'bg-red-500';
+    if (percentLeft <= 30) return 'bg-yellow-500';
+    return 'bg-green-500';
   };
 
-  // Apply warning colors based on remaining time
-  const getColorClass = () => {
-    const percentage = (timeRemaining / duration) * 100;
-    if (percentage < 25) return 'text-red-500';
-    if (percentage < 50) return 'text-orange-500';
-    return 'text-primary';
+  // Format time to minutes:seconds
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <div className="flex justify-between items-center mb-1">
-        <div className="flex items-center">
-          <Clock className="h-4 w-4 mr-1.5" />
-          <span className="text-sm font-medium">Time Remaining:</span>
+        <div className="absolute right-0 top-0 text-xs font-medium">
+          {formatTime(timeLeft)}
         </div>
-        <span className={`font-mono text-sm font-medium ${getColorClass()}`}>
-          {formatTime(timeRemaining)}
-        </span>
       </div>
-      <Progress value={progress} className="h-2" />
+      <div className="relative w-full h-2">
+        <div 
+          className={`absolute left-0 top-0 h-2 transition-all ${getTimerColor()}`}
+          style={{ width: `${percentLeft}%` }}
+          aria-label={`${timeLeft} seconds remaining`}
+        />
+      </div>
     </div>
   );
 };

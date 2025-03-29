@@ -5,16 +5,12 @@ interface AchievementBadgeProps {
   type: 'location' | 'year' | 'combo';
   size?: 'sm' | 'md' | 'lg';
   animated?: boolean;
-  count?: number;
-  className?: string;
 }
 
 const AchievementBadge = ({ 
   type, 
   size = 'md', 
-  animated = true,
-  count,
-  className = ''
+  animated = true 
 }: AchievementBadgeProps) => {
   // Set sizes based on the size prop
   const sizeClasses = {
@@ -55,7 +51,7 @@ const AchievementBadge = ({
   const animationClass = animated ? 'animate-pulse' : '';
 
   return (
-    <div className={`relative inline-block ${className}`}>
+    <div className="relative inline-block">
       <div className={`${sizeClasses[size].wrapper} rounded-full ${config.bgColor} bg-opacity-20 border-2 ${config.bgColor} flex items-center justify-center ${animationClass}`}>
         <div className={`${config.textColor}`}>
           {config.icon}
@@ -64,11 +60,6 @@ const AchievementBadge = ({
       <div className="absolute -top-1 -right-1 bg-white dark:bg-gray-800 rounded-full p-1 shadow-md">
         <Award className="h-4 w-4 text-yellow-500" />
       </div>
-      {count !== undefined && (
-        <div className="absolute -bottom-1 -right-1 bg-white dark:bg-gray-800 rounded-full p-1 shadow-md text-xs font-semibold">
-          {count}
-        </div>
-      )}
     </div>
   );
 };

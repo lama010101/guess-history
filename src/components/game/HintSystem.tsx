@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Lightbulb, MapPin, Calendar, X, Coins } from 'lucide-react';
+import { Lightbulb, MapPin, Calendar, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
@@ -15,7 +15,6 @@ interface HintSystemProps {
     location: { lat: number; lng: number };
     description: string;
     locationName?: string;
-    country?: string;
   };
 }
 
@@ -32,19 +31,11 @@ const HintSystem = ({
 
   // Helper to extract just the country name
   const getCountryOnly = (locationName?: string): string => {
-    if (!locationName) {
-      return currentImage.country || "Unknown";
-    }
+    if (!locationName) return "Unknown";
     
     // Split by comma and get the last part which is usually the country
     const parts = locationName.split(',');
     return parts.length > 1 ? parts[parts.length - 1].trim() : parts[0].trim();
-  };
-
-  // Get decade from year (e.g., 1960s)
-  const getDecadeHint = (year: number): string => {
-    const decade = Math.floor(year / 10) * 10;
-    return `${decade}s`;
   };
 
   const handleUseLocationHint = () => {
@@ -52,18 +43,20 @@ const HintSystem = ({
       return;
     }
     
-    const hintUsed = onUseLocationHint();
-    
-    if (hintUsed) {
-      toast({
-        title: "Location hint used",
-        description: "You can now see the country hint",
-      });
-    } else if (hintCoins <= 0) {
+    if (hintCoins < 500) {
       toast({
         title: "Not enough hint coins",
-        description: "You need coins to use a location hint",
+        description: "You need 500 coins to use a location hint",
         variant: "destructive"
+      });
+      return;
+    }
+    
+    const success = onUseLocationHint();
+    if (success) {
+      toast({
+        title: "Location hint used",
+        description: "500 coins deducted from your balance",
       });
     }
   };
@@ -73,18 +66,20 @@ const HintSystem = ({
       return;
     }
     
-    const hintUsed = onUseYearHint();
-    
-    if (hintUsed) {
-      toast({
-        title: "Year hint used",
-        description: "You can now see the decade hint",
-      });
-    } else if (hintCoins <= 0) {
+    if (hintCoins < 500) {
       toast({
         title: "Not enough hint coins",
-        description: "You need coins to use a year hint",
+        description: "You need 500 coins to use a year hint",
         variant: "destructive"
+      });
+      return;
+    }
+    
+    const success = onUseYearHint();
+    if (success) {
+      toast({
+        title: "Year hint used",
+        description: "500 coins deducted from your balance",
       });
     }
   };
@@ -109,7 +104,7 @@ const HintSystem = ({
       </div>
       
       <div className="text-sm mb-4">
-        <p>Use hints to reveal information about this image.</p>
+        <p>Spend your hint coins to reveal information about this image.</p>
         <p className="mt-1 font-semibold">Available coins: {hintCoins}</p>
       </div>
       
@@ -128,9 +123,9 @@ const HintSystem = ({
               variant="outline" 
               size="sm" 
               onClick={handleUseLocationHint}
-              disabled={hintCoins <= 0}
+              disabled={hintCoins < 500}
             >
-              Use (1 coin)
+              Use (500)
             </Button>
           )}
         </div>
@@ -142,16 +137,16 @@ const HintSystem = ({
           </div>
           {yearHintUsed ? (
             <div className="bg-primary/10 text-primary text-xs py-1 px-2 rounded-full">
-              {getDecadeHint(currentImage.year)}
+              {`${currentImage.year.toString().slice(0, -1)}0s`}
             </div>
           ) : (
             <Button 
               variant="outline" 
               size="sm" 
               onClick={handleUseYearHint}
-              disabled={hintCoins <= 0}
+              disabled={hintCoins < 500}
             >
-              Use (1 coin)
+              Use (500)
             </Button>
           )}
         </div>

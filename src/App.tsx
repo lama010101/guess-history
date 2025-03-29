@@ -7,6 +7,7 @@ import AdminPanel from './pages/AdminPanel';
 import Friends from './pages/Friends';
 import Profile from './pages/Profile';
 import Leaderboard from './pages/Leaderboard';
+import Index from './pages/Index';
 
 function App() {
   return (

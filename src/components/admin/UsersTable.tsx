@@ -1,14 +1,18 @@
-
 import { useState, useEffect } from 'react';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Calendar, Trash2, UserMinus, UserPlus, Check, X, Filter, XCircle, Search } from "lucide-react";
 import { format, formatDistance } from 'date-fns';
-import { useAuth } from '@/services/auth.tsx';
+import { useAuth } from '@/services/auth';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = 'https://your-project-url.supabase.co';
+const supabaseKey = 'your-anon-key';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 interface User {
   id: string;
@@ -18,10 +22,11 @@ interface User {
   avatarUrl?: string;
   isAI?: boolean;
   registrationMethod?: 'email' | 'google' | 'guest' | 'system';
+  user_type?: 'real' | 'ai';
 }
 
 export default function UsersTable() {
-  const { user, users } = useAuth();
+  const { user, users: authUsers } = useAuth();
   const { toast } = useToast();
   const [registeredUsers, setRegisteredUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
@@ -33,18 +38,59 @@ export default function UsersTable() {
   });
 
   useEffect(() => {
-    if (users && users.length > 0) {
-      const mappedUsers = users.map(user => ({
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching users from Supabase:', error);
+        fallbackToAuthUsers();
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        const mappedUsers = data.map(user => ({
+          id: user.id,
+          username: user.name || user.email?.split('@')[0] || 'Unknown',
+          email: user.email || 'No email',
+          createdAt: user.created_at ? new Date(user.created_at) : new Date(),
+          avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name || user.email || Math.random()}`,
+          isAI: user.user_type !== 'real',
+          registrationMethod: user.signup_method || 'system',
+          user_type: user.user_type
+        }));
+        
+        setRegisteredUsers(mappedUsers);
+        console.log("Loaded users from Supabase:", mappedUsers);
+      } else {
+        fallbackToAuthUsers();
+      }
+    } catch (error) {
+      console.error('Error fetching Supabase users:', error);
+      fallbackToAuthUsers();
+    }
+  };
+
+  const fallbackToAuthUsers = () => {
+    if (authUsers && authUsers.length > 0) {
+      const mappedUsers = authUsers.map(user => ({
         id: user.id || String(Math.random()),
         username: user.username || user.email?.split('@')[0] || 'Unknown',
         email: user.email || 'No email',
         createdAt: user.createdAt ? new Date(user.createdAt) : new Date(),
         avatarUrl: user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username || Math.random()}`,
         isAI: user.isAI === false ? false : true,
-        registrationMethod: user.registrationMethod || 'system'
+        registrationMethod: user.registrationMethod || 'system',
+        user_type: user.user_type || (user.isAI ? 'ai' : 'real')
       }));
       setRegisteredUsers(mappedUsers);
-      console.log("Setting registered users in UsersTable:", mappedUsers);
+      console.log("Using auth context users:", mappedUsers);
       return;
     }
     
@@ -56,7 +102,8 @@ export default function UsersTable() {
           ...user,
           createdAt: new Date(user.createdAt),
           isAI: user.isAI === false ? false : true,
-          registrationMethod: user.registrationMethod || 'system'
+          registrationMethod: user.registrationMethod || 'system',
+          user_type: user.user_type || (user.isAI ? 'ai' : 'real')
         }));
         setRegisteredUsers(savedUsers);
         console.log("Loaded users from localStorage:", savedUsers);
@@ -67,7 +114,7 @@ export default function UsersTable() {
     } else {
       createSampleUsers();
     }
-  }, [users]);
+  };
 
   const createSampleUsers = () => {
     const sampleUsers: User[] = [
@@ -78,7 +125,8 @@ export default function UsersTable() {
         createdAt: new Date('2023-01-01'),
         avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
         isAI: true,
-        registrationMethod: 'system'
+        registrationMethod: 'system',
+        user_type: 'ai'
       },
       {
         id: '2',
@@ -87,7 +135,8 @@ export default function UsersTable() {
         createdAt: new Date('2023-02-15'),
         avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=test',
         isAI: true,
-        registrationMethod: 'system'
+        registrationMethod: 'system',
+        user_type: 'ai'
       },
       {
         id: '3',
@@ -96,7 +145,8 @@ export default function UsersTable() {
         createdAt: new Date('2023-03-10'),
         avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=john',
         isAI: true,
-        registrationMethod: 'system'
+        registrationMethod: 'system',
+        user_type: 'ai'
       }
     ];
     
@@ -108,13 +158,29 @@ export default function UsersTable() {
         createdAt: new Date(),
         avatarUrl: user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username || Math.random()}`,
         isAI: false,
-        registrationMethod: 'email'
+        registrationMethod: 'email',
+        user_type: 'real'
       });
     }
     
     setRegisteredUsers(sampleUsers);
     localStorage.setItem('registeredUsers', JSON.stringify(sampleUsers));
     console.log("Created sample users:", sampleUsers);
+    
+    sampleUsers.forEach(async (user) => {
+      try {
+        await supabase.from('users').upsert({
+          id: user.id,
+          email: user.email,
+          name: user.username,
+          signup_method: user.registrationMethod,
+          user_type: user.user_type || 'ai',
+          created_at: user.createdAt.toISOString(),
+        });
+      } catch (error) {
+        console.error('Error adding sample user to Supabase:', error);
+      }
+    });
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -134,18 +200,34 @@ export default function UsersTable() {
     }
   };
 
-  const handleBatchDelete = () => {
-    const remainingUsers = registeredUsers.filter(user => !selectedUsers.includes(user.id));
-    setRegisteredUsers(remainingUsers);
-    setSelectedUsers([]);
-    setSelectAll(false);
-    
-    localStorage.setItem('registeredUsers', JSON.stringify(remainingUsers));
-    
-    toast({
-      title: "Users deleted",
-      description: `${selectedUsers.length} users have been removed`
-    });
+  const handleBatchDelete = async () => {
+    try {
+      for (const userId of selectedUsers) {
+        const { error } = await supabase.from('users').delete().eq('id', userId);
+        if (error) {
+          console.error(`Error deleting user ${userId} from Supabase:`, error);
+        }
+      }
+      
+      const remainingUsers = registeredUsers.filter(user => !selectedUsers.includes(user.id));
+      setRegisteredUsers(remainingUsers);
+      setSelectedUsers([]);
+      setSelectAll(false);
+      
+      localStorage.setItem('registeredUsers', JSON.stringify(remainingUsers));
+      
+      toast({
+        title: "Users deleted",
+        description: `${selectedUsers.length} users have been removed`
+      });
+    } catch (error) {
+      console.error('Error deleting users:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete users",
+        variant: "destructive"
+      });
+    }
   };
 
   const getRegistrationMethodLabel = (method?: 'email' | 'google' | 'guest' | 'system') => {
@@ -168,7 +250,6 @@ export default function UsersTable() {
     }
   };
 
-  // Search and filter functions
   const clearSearch = () => {
     setSearchTerm('');
   };
@@ -182,7 +263,6 @@ export default function UsersTable() {
 
   const filteredUsers = registeredUsers
     .filter(user => {
-      // Apply text search
       if (searchTerm) {
         return (
           user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -192,9 +272,9 @@ export default function UsersTable() {
       return true;
     })
     .filter(user => {
-      // Apply user type filter
-      if (!filterOptions.showRealUsers && !user.isAI) return false;
-      if (!filterOptions.showAIUsers && user.isAI) return false;
+      const isAI = user.user_type === 'ai' || user.isAI;
+      if (!filterOptions.showRealUsers && !isAI) return false;
+      if (!filterOptions.showAIUsers && isAI) return false;
       return true;
     });
 
@@ -327,7 +407,7 @@ export default function UsersTable() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {user.isAI ? (
+                    {user.user_type === 'ai' || user.isAI ? (
                       <span className="px-2 py-1 text-xs rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 flex items-center w-fit">
                         <X size={12} className="mr-1" /> AI Sample
                       </span>

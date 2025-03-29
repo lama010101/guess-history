@@ -1,5 +1,6 @@
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import AuthModal from '@/components/auth/AuthModal';
 
 // Define interfaces for our auth types
@@ -15,6 +16,7 @@ interface User {
   avatarUrl?: string;
   isAI?: boolean; // Flag to identify AI-generated users vs real users
   registrationMethod?: 'email' | 'google' | 'guest' | 'system';
+  user_type?: 'real' | 'ai';
 }
 
 interface AuthContextType {
@@ -46,6 +48,11 @@ const AuthContext = createContext<AuthContextType>({
   googleSignIn: async () => {},
 });
 
+// Create Supabase client
+const supabaseUrl = 'https://your-project-url.supabase.co';
+const supabaseKey = 'your-anon-key';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 // Create a hook to use the auth context
 export const useAuth = () => useContext(AuthContext);
 
@@ -59,58 +66,164 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [authView, setAuthView] = useState<'login' | 'signup'>('login');
 
   useEffect(() => {
-    // Load user from localStorage
-    const loadUser = () => {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        try {
-          const user = JSON.parse(storedUser);
-          setUser(user);
-          setIsAuthenticated(!user.isGuest);
-          setIsGuest(user.isGuest || false);
-        } catch (error) {
-          console.error('Error parsing user:', error);
-          // Continue as guest if there's an error
-          handleContinueAsGuest();
-        }
+    // Check for existing session
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        const currentUser = session.user;
+        const userData: User = {
+          id: currentUser.id,
+          email: currentUser.email || '',
+          username: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
+          displayName: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
+          createdAt: currentUser.created_at,
+          avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.id}`,
+          isAI: false,
+          registrationMethod: (currentUser.app_metadata?.provider as 'email' | 'google') || 'email',
+          user_type: 'real'
+        };
+        
+        setUser(userData);
+        setIsAuthenticated(true);
+        setIsGuest(false);
+        
+        // Sync user to database
+        await syncUserToDatabase(currentUser);
       } else {
-        // No stored user, continue as guest
+        // No active session, continue as guest
         handleContinueAsGuest();
       }
+      
+      // Load users from Supabase
+      await fetchUsers();
+      
       setIsLoading(false);
     };
-
-    // Load registered users
-    const loadUsers = () => {
-      const storedUsers = localStorage.getItem('registeredUsers');
-      if (storedUsers) {
-        try {
-          const parsedUsers = JSON.parse(storedUsers);
-          // Ensure all users have the isAI field explicitly set
-          const updatedUsers = parsedUsers.map((user: User) => ({
-            ...user,
-            isAI: user.isAI === undefined ? (user.registrationMethod === 'system') : user.isAI
-          }));
-          setUsers(updatedUsers);
+    
+    checkSession();
+    
+    // Set up auth state change listener
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          const currentUser = session.user;
+          const userData: User = {
+            id: currentUser.id,
+            email: currentUser.email || '',
+            username: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
+            displayName: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
+            createdAt: currentUser.created_at,
+            avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.id}`,
+            isAI: false,
+            registrationMethod: (currentUser.app_metadata?.provider as 'email' | 'google') || 'email',
+            user_type: 'real'
+          };
           
-          // Update localStorage with the explicit isAI field
-          localStorage.setItem('registeredUsers', JSON.stringify(updatedUsers));
-        } catch (error) {
-          console.error('Error parsing users:', error);
-          setUsers([]);
+          setUser(userData);
+          setIsAuthenticated(true);
+          setIsGuest(false);
+          
+          // Sync user to database
+          await syncUserToDatabase(currentUser);
+          
+          // Refresh users list
+          await fetchUsers();
+        } else if (event === 'SIGNED_OUT') {
+          handleContinueAsGuest();
         }
-      } else {
-        // Initialize with sample AI users if no registered users exist
-        createSampleUsers();
       }
+    );
+    
+    return () => {
+      authListener.subscription.unsubscribe();
     };
-
-    loadUser();
-    loadUsers();
   }, []);
 
+  // Fetch users from Supabase
+  const fetchUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching users:', error);
+        loadFallbackUsers();
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        const mappedUsers = data.map(user => ({
+          id: user.id,
+          email: user.email,
+          username: user.name || user.email?.split('@')[0] || 'Unknown',
+          displayName: user.name || user.email?.split('@')[0] || 'Unknown',
+          createdAt: user.created_at,
+          avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
+          isAI: user.user_type !== 'real',
+          registrationMethod: user.signup_method || 'system',
+          user_type: user.user_type
+        }));
+        
+        setUsers(mappedUsers);
+        console.log("Loaded users from Supabase:", mappedUsers);
+      } else {
+        // No users in Supabase yet, create sample data
+        loadFallbackUsers();
+      }
+    } catch (error) {
+      console.error('Error in fetchUsers:', error);
+      loadFallbackUsers();
+    }
+  };
+
+  const loadFallbackUsers = () => {
+    // Load users from localStorage as fallback
+    const storedUsers = localStorage.getItem('registeredUsers');
+    if (storedUsers) {
+      try {
+        let users = JSON.parse(storedUsers);
+        setUsers(users);
+        console.log("Loaded users from localStorage:", users);
+      } catch (error) {
+        console.error('Error parsing users:', error);
+        createSampleUsers();
+      }
+    } else {
+      createSampleUsers();
+    }
+  };
+
+  // Sync user data to Supabase
+  const syncUserToDatabase = async (user: any) => {
+    const { email, user_metadata, id, created_at, app_metadata } = user;
+    const name = user_metadata?.name || '';
+    const signup_method = app_metadata?.provider || 'email';
+
+    try {
+      const { error } = await supabase.from('users').upsert({
+        id,
+        email,
+        name,
+        signup_method,
+        user_type: 'real',
+        created_at: created_at,
+      });
+
+      if (error) {
+        console.error('Failed to sync user to DB:', error);
+      } else {
+        console.log('User synced to DB successfully');
+      }
+    } catch (error) {
+      console.error('Error in syncUserToDatabase:', error);
+    }
+  };
+
   // Create sample AI users for demonstration
-  const createSampleUsers = () => {
+  const createSampleUsers = async () => {
     const sampleUsers: User[] = [
       {
         id: 'ai-1',
@@ -120,7 +233,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         createdAt: new Date('2023-01-01').toISOString(),
         avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
         isAI: true,
-        registrationMethod: 'system'
+        registrationMethod: 'system',
+        user_type: 'ai'
       },
       {
         id: 'ai-2',
@@ -130,7 +244,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         createdAt: new Date('2023-02-15').toISOString(),
         avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=test',
         isAI: true,
-        registrationMethod: 'system'
+        registrationMethod: 'system',
+        user_type: 'ai'
       },
       {
         id: 'ai-3',
@@ -140,153 +255,99 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         createdAt: new Date('2023-03-10').toISOString(),
         avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=john',
         isAI: true,
-        registrationMethod: 'system'
+        registrationMethod: 'system',
+        user_type: 'ai'
       }
     ];
     
     setUsers(sampleUsers);
     localStorage.setItem('registeredUsers', JSON.stringify(sampleUsers));
+    
+    // Also add sample users to Supabase
+    try {
+      for (const user of sampleUsers) {
+        const { error } = await supabase.from('users').upsert({
+          id: user.id,
+          email: user.email,
+          name: user.username,
+          signup_method: user.registrationMethod,
+          user_type: 'ai',
+          created_at: user.createdAt,
+        });
+        
+        if (error) {
+          console.error('Error creating sample user in Supabase:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error creating sample users in Supabase:', error);
+    }
   };
 
   const handleSignIn = async (email: string, password: string) => {
     try {
-      // In a real app, this would make an API call
-      const registeredUsers = localStorage.getItem('registeredUsers');
-      let users = [];
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       
-      if (registeredUsers) {
-        users = JSON.parse(registeredUsers);
-        const user = users.find((u: any) => u.email === email);
-        
-        if (!user) {
-          throw new Error('User not found');
-        }
-        
-        // Simple password check - in a real app this would be done securely
-        // Here we're just checking if the user exists
-        
-        setUser(user);
-        setIsAuthenticated(true);
-        setIsGuest(false);
-        localStorage.setItem('user', JSON.stringify(user));
-        
-        // Make sure to update users list with the latest data
-        setUsers(users);
-        
-        setShowAuthModal(false);
-      } else {
-        throw new Error('No registered users found');
-      }
+      if (error) throw error;
+      
+      // Session is handled by the auth state change listener
+      setShowAuthModal(false);
     } catch (error) {
       console.error('Error signing in:', error);
-      alert('Invalid email or password');
+      throw error;
     }
   };
 
   const handleGoogleSignIn = async () => {
     try {
-      // In a real app, this would use actual Google OAuth
-      // For now, simulate a successful login with a random email
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+      });
       
-      // Generate a dummy email that wouldn't conflict with AI users
-      const randomId = Math.random().toString(36).substring(2, 10);
-      const email = `user${randomId}@gmail.com`;
-      const username = `GoogleUser${randomId}`;
+      if (error) throw error;
       
-      // Create a new user object
-      const newUser: User = {
-        id: `google-${randomId}`,
-        email,
-        username,
-        displayName: username,
-        createdAt: new Date().toISOString(),
-        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${randomId}`,
-        isAI: false, // Explicitly mark as real user
-        registrationMethod: 'google'
-      };
-      
-      // Update the users list
-      const registeredUsers = localStorage.getItem('registeredUsers');
-      let usersList = registeredUsers ? JSON.parse(registeredUsers) : [];
-      
-      // Check if email already exists
-      const existingUser = usersList.find((u: User) => u.email === email);
-      if (!existingUser) {
-        usersList.push(newUser);
-        localStorage.setItem('registeredUsers', JSON.stringify(usersList));
-        setUsers(usersList);
-      }
-      
-      // Set as current user
-      setUser(existingUser || newUser);
-      setIsAuthenticated(true);
-      setIsGuest(false);
-      localStorage.setItem('user', JSON.stringify(existingUser || newUser));
-      
+      // The redirect and session handling will be managed by Supabase
       setShowAuthModal(false);
     } catch (error) {
       console.error('Error signing in with Google:', error);
-      alert('Google sign in failed');
+      throw error;
     }
   };
 
   const handleSignUp = async (email: string, password: string, username: string) => {
     try {
-      // Check if email already exists
-      const registeredUsers = localStorage.getItem('registeredUsers');
-      let users = [];
-      
-      if (registeredUsers) {
-        users = JSON.parse(registeredUsers);
-        const existingUser = users.find((u: any) => u.email === email);
-        
-        if (existingUser) {
-          throw new Error('Email already in use');
-        }
-      }
-      
-      // Generate a unique ID
-      const newUser: User = {
-        id: `user-${Math.random().toString(36).substring(2, 15)}`,
+      const { data, error } = await supabase.auth.signUp({
         email,
-        username,
-        displayName: username,
-        createdAt: new Date().toISOString(),
-        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
-        isAI: false, // Explicitly mark as real user
-        registrationMethod: 'email'
-      };
+        password,
+        options: {
+          data: {
+            name: username,
+          }
+        }
+      });
       
-      // Add to registered users
-      users.push(newUser);
-      localStorage.setItem('registeredUsers', JSON.stringify(users));
+      if (error) throw error;
       
-      // Update the users state immediately to ensure it's available in the admin panel
-      setUsers(users);
-      
-      // Log in the new user
-      setUser(newUser);
-      setIsAuthenticated(true);
-      setIsGuest(false);
-      localStorage.setItem('user', JSON.stringify(newUser));
-      
+      // Session will be handled by auth state change listener
       setShowAuthModal(false);
-      
-      console.log('New user registered and added to users list:', newUser);
-      console.log('Updated users list:', users);
     } catch (error) {
       console.error('Error signing up:', error);
-      alert(error instanceof Error ? error.message : 'Error creating account');
+      throw error;
     }
   };
 
   const handleSignOut = async () => {
-    localStorage.removeItem('user');
-    setUser(null);
-    setIsAuthenticated(false);
-    setIsGuest(false);
-    // Transition to guest mode automatically
-    handleContinueAsGuest();
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      // Auth state change listener will handle the state update
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
   const handleContinueAsGuest = async () => {
@@ -296,7 +357,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       username: 'Guest User',
       isGuest: true,
       createdAt: new Date().toISOString(),
-      registrationMethod: 'guest'
+      registrationMethod: 'guest',
+      user_type: 'ai'
     };
     setUser(guestUser);
     setIsAuthenticated(false);

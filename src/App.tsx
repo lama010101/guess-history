@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
 import GameSection from './components/GameSection';
@@ -7,8 +7,14 @@ import AdminPanel from './pages/AdminPanel';
 import Friends from './pages/Friends';
 import Profile from './pages/Profile';
 import Leaderboard from './pages/Leaderboard';
+import { initializeAuth } from './services/initAuth';
 
 function App() {
+  // Initialize auth with mock users on app start
+  useEffect(() => {
+    initializeAuth();
+  }, []);
+
   return (
     <Router>
       <Routes>

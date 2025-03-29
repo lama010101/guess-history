@@ -8,12 +8,13 @@ export interface User {
   email?: string;
   avatarUrl?: string;
   isGuest: boolean;
-  isAI?: boolean; // Add this optional boolean property
+  isAI?: boolean;
 }
 
 // Define auth store type
 interface AuthState {
   user: User | null;
+  users: User[]; // Add users array property
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
@@ -23,6 +24,8 @@ interface AuthState {
   logout: () => void;
   continueAsGuest: () => void;
   googleLogin: () => Promise<void>;
+  googleSignIn: () => Promise<void>; // Add googleSignIn alias for consistency
+  openAuthModal: (initialView?: 'login' | 'signup') => void; // Add openAuthModal
   updateUserProfile: (userData: Partial<User>) => void;
 }
 
@@ -32,6 +35,7 @@ export const useAuth = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
+      users: [], // Initialize empty users array
       isAuthenticated: false,
       isLoading: false,
       error: null,
@@ -152,6 +156,17 @@ export const useAuth = create<AuthState>()(
             isLoading: false 
           });
         }
+      },
+      
+      googleSignIn: async () => {
+        return get().googleLogin();
+      },
+      
+      openAuthModal: (initialView: 'login' | 'signup' = 'login') => {
+        console.log(`Opening auth modal with view: ${initialView}`);
+        // In a real implementation, this would open a modal
+        // but since we're using zustand, we'll need additional state management
+        // or a separate modal state manager
       },
 
       updateUserProfile: (userData: Partial<User>) => {

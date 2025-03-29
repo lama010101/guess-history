@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,15 +10,15 @@ export interface User {
   avatarUrl?: string;
   isGuest: boolean;
   isAI?: boolean;
-  createdAt?: Date | string; // Add createdAt
-  registrationMethod?: 'email' | 'google' | 'guest' | 'system'; // Add registrationMethod
-  user_type?: 'real' | 'ai'; // Add user_type
+  createdAt?: Date | string; 
+  registrationMethod?: 'email' | 'google' | 'guest' | 'system';
+  user_type?: 'real' | 'ai';
 }
 
 // Define auth store type
 interface AuthState {
   user: User | null;
-  users: User[]; // Add users array property
+  users: User[]; 
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
@@ -29,8 +28,8 @@ interface AuthState {
   logout: () => void;
   continueAsGuest: () => void;
   googleLogin: () => Promise<void>;
-  googleSignIn: () => Promise<void>; // Add googleSignIn alias for consistency
-  openAuthModal: (initialView?: 'login' | 'signup') => void; // Add openAuthModal
+  googleSignIn: () => Promise<void>;
+  openAuthModal: (initialView?: 'login' | 'signup') => void;
   updateUserProfile: (userData: Partial<User>) => void;
   syncUsersFromSupabase: () => Promise<void>;
 }
@@ -41,7 +40,7 @@ export const useAuth = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
-      users: [], // Initialize empty users array
+      users: [],
       isAuthenticated: false,
       isLoading: false,
       error: null,
@@ -57,11 +56,9 @@ export const useAuth = create<AuthState>()(
           
           if (error) throw error;
           
-          // Check if this is an admin user
           const isAdmin = email.toLowerCase() === 'lama010101@gmail.com';
           
           if (data.user) {
-            // Get or create user profile
             const { data: profile } = await supabase
               .from('profiles')
               .select('*')
@@ -84,7 +81,6 @@ export const useAuth = create<AuthState>()(
               isAdmin,
             });
             
-            // Sync users from Supabase
             get().syncUsersFromSupabase();
           }
         } catch (error) {
@@ -110,11 +106,9 @@ export const useAuth = create<AuthState>()(
           
           if (error) throw error;
           
-          // Check if this is an admin user
           const isAdmin = email.toLowerCase() === 'lama010101@gmail.com';
           
           if (data.user) {
-            // Try to create a profile for the user
             await supabase.from('profiles').upsert({
               id: data.user.id,
               username,
@@ -138,7 +132,6 @@ export const useAuth = create<AuthState>()(
               isAdmin,
             });
             
-            // Sync users from Supabase
             get().syncUsersFromSupabase();
           }
         } catch (error) {
@@ -206,9 +199,6 @@ export const useAuth = create<AuthState>()(
       
       openAuthModal: (initialView: 'login' | 'signup' = 'login') => {
         console.log(`Opening auth modal with view: ${initialView}`);
-        // In a real implementation, this would open a modal
-        // but since we're using zustand, we'll need additional state management
-        // or a separate modal state manager
       },
 
       updateUserProfile: (userData: Partial<User>) => {
@@ -225,7 +215,7 @@ export const useAuth = create<AuthState>()(
       syncUsersFromSupabase: async () => {
         try {
           const { data, error } = await supabase
-            .from('users')
+            .from('profiles')
             .select('*')
             .order('created_at', { ascending: false });
           
@@ -235,16 +225,16 @@ export const useAuth = create<AuthState>()(
           }
           
           if (data && data.length > 0) {
-            const mappedUsers = data.map(user => ({
-              id: user.id,
-              username: user.name || user.email?.split('@')[0] || 'Unknown',
-              email: user.email || '',
+            const mappedUsers = data.map(profile => ({
+              id: profile.id,
+              username: profile.username || 'Unknown',
+              email: '',
               isGuest: false,
-              avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name || user.email || Math.random()}`,
-              createdAt: user.created_at,
-              isAI: user.user_type !== 'real',
-              registrationMethod: user.signup_method || 'email',
-              user_type: user.user_type || 'real'
+              avatarUrl: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username || Math.random()}`,
+              createdAt: profile.created_at,
+              isAI: profile.role !== 'admin',
+              registrationMethod: 'email' as const,
+              user_type: profile.role === 'admin' ? 'real' as const : 'ai' as const
             }));
             
             set({ users: mappedUsers });
@@ -256,7 +246,7 @@ export const useAuth = create<AuthState>()(
       }
     }),
     {
-      name: 'auth-storage', // name of the item in localStorage
+      name: 'auth-storage',
       partialize: (state) => ({ 
         user: state.user, 
         isAuthenticated: state.isAuthenticated,
@@ -266,7 +256,6 @@ export const useAuth = create<AuthState>()(
   )
 );
 
-// Initialize auth state with Supabase session
 export const initializeAuthWithSupabase = async () => {
   const { data: { session } } = await supabase.auth.getSession();
   if (session && session.user) {
@@ -293,11 +282,9 @@ export const initializeAuthWithSupabase = async () => {
       isAdmin
     });
     
-    // Sync users from Supabase
     useAuth.getState().syncUsersFromSupabase();
   }
   
-  // Set up auth state change listener
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session?.user) {
       const { data: profile } = await supabase
@@ -323,7 +310,6 @@ export const initializeAuthWithSupabase = async () => {
         isAdmin
       });
       
-      // Sync users from Supabase
       useAuth.getState().syncUsersFromSupabase();
     } else if (event === 'SIGNED_OUT') {
       useAuth.setState({

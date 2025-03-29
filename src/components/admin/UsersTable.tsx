@@ -8,11 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = 'https://your-project-url.supabase.co';
-const supabaseKey = 'your-anon-key';
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { supabase } from '@/integrations/supabase/client';
 
 interface User {
   id: string;
@@ -44,7 +40,7 @@ export default function UsersTable() {
   const fetchUsers = async () => {
     try {
       const { data, error } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
       
@@ -55,15 +51,15 @@ export default function UsersTable() {
       }
       
       if (data && data.length > 0) {
-        const mappedUsers = data.map(user => ({
-          id: user.id,
-          username: user.name || user.email?.split('@')[0] || 'Unknown',
-          email: user.email || 'No email',
-          createdAt: user.created_at ? new Date(user.created_at) : new Date(),
-          avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name || user.email || Math.random()}`,
-          isAI: user.user_type !== 'real',
-          registrationMethod: user.signup_method || 'system',
-          user_type: user.user_type
+        const mappedUsers = data.map(profile => ({
+          id: profile.id,
+          username: profile.username || 'Unknown',
+          email: '',
+          createdAt: profile.created_at ? new Date(profile.created_at) : new Date(),
+          avatarUrl: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username || Math.random()}`,
+          isAI: profile.role !== 'admin',
+          registrationMethod: 'email' as const,
+          user_type: profile.role === 'admin' ? 'real' as const : 'ai' as const
         }));
         
         setRegisteredUsers(mappedUsers);

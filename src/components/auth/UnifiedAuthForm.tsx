@@ -24,19 +24,19 @@ const UnifiedAuthForm = ({ onSuccess, autoFocus = false }: UnifiedAuthFormProps)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Submitting login/signup:", email); // Debugging log
-    
+    console.log("📤 Submitting auth form:", email, password);
     setIsSubmitting(true);
     try {
       await loginOrSignUp(email, password);
       toast({
-        title: "Welcome!",
-        description: "You've successfully signed in.",
+        title: "✅ Welcome!",
+        description: "You're signed in.",
       });
+      console.log("✅ loginOrSignUp completed successfully");
       onSuccess();
       navigate('/');
     } catch (error) {
-      console.error("Authentication error:", error);
+      console.error("❌ Error in loginOrSignUp:", error);
       toast({
         title: "Authentication failed",
         description: error instanceof Error ? error.message : "Something went wrong",

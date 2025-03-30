@@ -198,7 +198,7 @@ export const useAuth = create<AuthState>()(
                 isAdmin,
               });
               
-              get().syncUsersFromSupabase();
+              await get().syncUsersFromSupabase();
             }
           } else if (data.user) {
             // Successful login
@@ -226,7 +226,7 @@ export const useAuth = create<AuthState>()(
               isAdmin,
             });
             
-            get().syncUsersFromSupabase();
+            await get().syncUsersFromSupabase();
           } else if (error) {
             throw error;
           }

@@ -156,6 +156,7 @@ export const useAuth = create<AuthState>()(
           
           // If sign in fails with "invalid credentials" or "user not found", try to sign up
           if (error && (error.message.includes("Invalid login credentials") || error.message.includes("user"))) {
+            console.log("Login failed, attempting signup instead:", error.message);
             // Try to sign up
             const { data: signupData, error: signupError } = await supabase.auth.signUp({
               email,
@@ -167,8 +168,12 @@ export const useAuth = create<AuthState>()(
               }
             });
             
-            if (signupError) throw signupError;
+            if (signupError) {
+              console.error("Signup error:", signupError);
+              throw signupError;
+            }
             
+            console.log("Signup successful:", signupData);
             const isAdmin = email.toLowerCase() === 'lama010101@gmail.com';
             const username = email.split('@')[0];
             
@@ -202,6 +207,7 @@ export const useAuth = create<AuthState>()(
             }
           } else if (data.user) {
             // Successful login
+            console.log("Login successful:", data.user);
             const isAdmin = email.toLowerCase() === 'lama010101@gmail.com';
             
             const { data: profile } = await supabase
@@ -228,9 +234,11 @@ export const useAuth = create<AuthState>()(
             
             await get().syncUsersFromSupabase();
           } else if (error) {
+            console.error("Authentication error:", error);
             throw error;
           }
         } catch (error) {
+          console.error("Authentication failed:", error);
           set({ 
             error: error instanceof Error ? error.message : 'Authentication failed', 
             isLoading: false 
@@ -310,6 +318,7 @@ export const useAuth = create<AuthState>()(
       },
       
       syncUsersFromSupabase: async () => {
+        console.log("Syncing users from Supabase...");
         try {
           const { data, error } = await supabase
             .from('profiles')

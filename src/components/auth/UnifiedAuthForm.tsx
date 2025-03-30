@@ -24,6 +24,7 @@ const UnifiedAuthForm = ({ onSuccess, autoFocus = false }: UnifiedAuthFormProps)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("📤 Submitting email login/signup:", email);
+    setIsSubmitting(true);
 
     try {
       await loginOrSignUp(email, password);
@@ -41,6 +42,8 @@ const UnifiedAuthForm = ({ onSuccess, autoFocus = false }: UnifiedAuthFormProps)
         description: error instanceof Error ? error.message : "Something went wrong",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

@@ -30,6 +30,7 @@ interface AuthContextType {
   continueAsGuest: () => Promise<void>;
   openAuthModal: (initialView?: 'login' | 'signup') => void;
   googleSignIn: () => Promise<void>; // Add Google sign-in method
+  loginOrSignUp: (email: string, password: string) => Promise<void>;
 }
 
 // Create the auth context
@@ -45,6 +46,7 @@ const AuthContext = createContext<AuthContextType>({
   continueAsGuest: async () => {},
   openAuthModal: () => {},
   googleSignIn: async () => {},
+  loginOrSignUp: async () => {},
 });
 
 // Create Supabase client
@@ -365,6 +367,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setShowAuthModal(true);
   };
 
+  const handleLoginOrSignUp = async (email: string, password: string) => {
+    try {
+      console.log("AuthProvider: Attempting loginOrSignUp with email:", email);
+      
+      // First try sign in
+      try {
+        await handleSignIn(email, password);
+        return;
+      } catch (signInError) {
+        console.log("Sign in failed, attempting sign up:", signInError);
+        
+        // If sign in fails, try sign up
+        try {
+          const username = email.split('@')[0];
+          await handleSignUp(email, password, username);
+          return;
+        } catch (signUpError) {
+          console.error("Sign up also failed:", signUpError);
+          throw signUpError;
+        }
+      }
+    } catch (error) {
+      console.error("Error in loginOrSignUp:", error);
+      throw error;
+    }
+  };
+
   const authContextValue: AuthContextType = {
     user,
     users,
@@ -377,6 +406,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     continueAsGuest: handleContinueAsGuest,
     openAuthModal,
     googleSignIn: handleGoogleSignIn,
+    loginOrSignUp: handleLoginOrSignUp,
   };
 
   return (

@@ -6,12 +6,14 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   autoFocus?: boolean;
+  defaultTab?: 'login' | 'signup';
 }
 
 const AuthModal = ({ 
   isOpen, 
   onClose, 
-  autoFocus = false 
+  autoFocus = false,
+  defaultTab = 'login'
 }: AuthModalProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

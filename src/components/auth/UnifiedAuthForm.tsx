@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { useAuth } from '@/services/auth';
@@ -24,26 +23,24 @@ const UnifiedAuthForm = ({ onSuccess, autoFocus = false }: UnifiedAuthFormProps)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("📤 Submitting auth form:", email, password);
-    setIsSubmitting(true);
+    console.log("📤 Submitting email login/signup:", email);
+
     try {
       await loginOrSignUp(email, password);
       toast({
-        title: "✅ Welcome!",
-        description: "You're signed in.",
+        title: "✅ Success",
+        description: "You're signed in!",
       });
-      console.log("✅ loginOrSignUp completed successfully");
+      console.log("✅ loginOrSignUp completed");
       onSuccess();
       navigate('/');
     } catch (error) {
-      console.error("❌ Error in loginOrSignUp:", error);
+      console.error("❌ loginOrSignUp failed:", error);
       toast({
-        title: "Authentication failed",
+        title: "Authentication Failed",
         description: error instanceof Error ? error.message : "Something went wrong",
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 

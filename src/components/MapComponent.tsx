@@ -1,4 +1,3 @@
-
 import { useRef, useEffect, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -50,7 +49,6 @@ const MapComponent = ({
       const { lat, lng } = e.latlng;
       onLocationSelect(lat, lng);
       setShowInstructions(false);
-      // We're not resetting the view or zoom after click
     });
 
     mapRef.current = map;
@@ -81,7 +79,7 @@ const MapComponent = ({
       const marker = L.marker([selectedLocation.lat, selectedLocation.lng]).addTo(map);
       markerRef.current = marker;
       
-      // Don't adjust view after placing marker
+      // Don't adjust view after placing marker - this ensures we maintain the current zoom and position
     }
   }, [selectedLocation, mapLoaded]);
 

@@ -17,12 +17,16 @@ const UnifiedAuthForm = ({ onSuccess, autoFocus = false }: UnifiedAuthFormProps)
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { loginOrSignUp, googleSignIn, continueAsGuest, isLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Submitting login/signup:", email); // Debugging log
+    
+    setIsSubmitting(true);
     try {
       await loginOrSignUp(email, password);
       toast({
@@ -32,11 +36,14 @@ const UnifiedAuthForm = ({ onSuccess, autoFocus = false }: UnifiedAuthFormProps)
       onSuccess();
       navigate('/');
     } catch (error) {
+      console.error("Authentication error:", error);
       toast({
         title: "Authentication failed",
         description: error instanceof Error ? error.message : "Something went wrong",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -50,6 +57,7 @@ const UnifiedAuthForm = ({ onSuccess, autoFocus = false }: UnifiedAuthFormProps)
       onSuccess();
       navigate('/');
     } catch (error) {
+      console.error("Google login error:", error);
       toast({
         title: "Google login failed",
         description: error instanceof Error ? error.message : "Something went wrong",
@@ -114,9 +122,9 @@ const UnifiedAuthForm = ({ onSuccess, autoFocus = false }: UnifiedAuthFormProps)
           <Button
             type="submit"
             className="w-full"
-            disabled={isLoading}
+            disabled={isSubmitting || isLoading}
           >
-            {isLoading ? "Processing..." : "Continue with Email"}
+            {isSubmitting || isLoading ? "Processing..." : "Continue with Email"}
             <LogIn className="ml-2 h-4 w-4" />
           </Button>
           

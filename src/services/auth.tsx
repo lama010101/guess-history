@@ -374,14 +374,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // First try sign in
       try {
         await handleSignIn(email, password);
+        
+        // If there was a pending username, update the user profile
+        const pendingUsername = localStorage.getItem('pendingUsername');
+        if (pendingUsername) {
+          // Get the current user
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            // Update the profile
+            await supabase.from('profiles').update({
+              username: pendingUsername
+            }).eq('id', user.id);
+            
+            // Clear the pending username
+            localStorage.removeItem('pendingUsername');
+          }
+        }
+        
         return;
       } catch (signInError) {
         console.log("Sign in failed, attempting sign up:", signInError);
         
+        // Get username from localStorage or generate from email
+        const pendingUsername = localStorage.getItem('pendingUsername') || email.split('@')[0];
+        
         // If sign in fails, try sign up
         try {
-          const username = email.split('@')[0];
-          await handleSignUp(email, password, username);
+          await handleSignUp(email, password, pendingUsername);
+          
+          // Clear the pending username
+          localStorage.removeItem('pendingUsername');
+          
           return;
         } catch (signUpError) {
           console.error("Sign up also failed:", signUpError);

@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
@@ -157,13 +156,17 @@ export const useAuth = create<AuthState>()(
           // If sign in fails with "invalid credentials" or "user not found", try to sign up
           if (error && (error.message.includes("Invalid login credentials") || error.message.includes("user"))) {
             console.log("Login failed, attempting signup instead:", error.message);
+            
+            // Get the stored username if available
+            const pendingUsername = localStorage.getItem('pendingUsername') || email.split('@')[0];
+            
             // Try to sign up
             const { data: signupData, error: signupError } = await supabase.auth.signUp({
               email,
               password,
               options: {
                 data: {
-                  username: email.split('@')[0]
+                  username: pendingUsername
                 }
               }
             });
@@ -175,25 +178,27 @@ export const useAuth = create<AuthState>()(
             
             console.log("Signup successful:", signupData);
             const isAdmin = email.toLowerCase() === 'lama010101@gmail.com';
-            const username = email.split('@')[0];
             
             if (signupData.user) {
               // Create profile for the new user
               await supabase.from('profiles').upsert({
                 id: signupData.user.id,
-                username,
-                avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
+                username: pendingUsername,
+                avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${pendingUsername}`,
                 role: 'user',
                 created_at: signupData.user.created_at
               });
               
+              // Clear the pending username
+              localStorage.removeItem('pendingUsername');
+              
               set({
                 user: {
                   id: signupData.user.id,
-                  username,
+                  username: pendingUsername,
                   email,
                   isGuest: false,
-                  avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
+                  avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${pendingUsername}`,
                   createdAt: signupData.user.created_at,
                   registrationMethod: 'email',
                   user_type: 'real'
@@ -216,10 +221,24 @@ export const useAuth = create<AuthState>()(
               .eq('id', data.user.id)
               .single();
             
+            // Get the stored username from localStorage if available (in case this is a new user who just verified)
+            const pendingUsername = localStorage.getItem('pendingUsername');
+            
+            // If there's a pending username, update the profile
+            if (pendingUsername) {
+              await supabase.from('profiles').update({
+                username: pendingUsername,
+                avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${pendingUsername}`
+              }).eq('id', data.user.id);
+              
+              // Clear the pending username
+              localStorage.removeItem('pendingUsername');
+            }
+            
             set({
               user: {
                 id: data.user.id,
-                username: profile?.username || email.split('@')[0],
+                username: pendingUsername || profile?.username || email.split('@')[0],
                 email,
                 isGuest: false,
                 avatarUrl: profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,

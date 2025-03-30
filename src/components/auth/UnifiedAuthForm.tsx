@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { useAuth } from '@/services/auth';
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UnifiedAuthFormProps {
   onSuccess: () => void;
@@ -15,11 +17,46 @@ interface UnifiedAuthFormProps {
 const UnifiedAuthForm = ({ onSuccess, autoFocus = false }: UnifiedAuthFormProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isNewUser, setIsNewUser] = useState<boolean | null>(null);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const { loginOrSignUp, googleSignIn, continueAsGuest, isLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const checkIfEmailExists = async (email: string) => {
+    setIsCheckingEmail(true);
+    try {
+      // First check if there are existing users with this email
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('username', email.split('@')[0])
+        .maybeSingle();
+      
+      if (error) {
+        console.error("Error checking if email exists:", error);
+        throw error;
+      }
+      
+      // If no data returned, this is a new user
+      setIsNewUser(!data);
+      return !data;
+    } catch (error) {
+      console.error("Error checking email:", error);
+      toast({
+        title: "Error",
+        description: "Could not verify email status",
+        variant: "destructive",
+      });
+      setIsNewUser(null);
+      return null;
+    } finally {
+      setIsCheckingEmail(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +64,29 @@ const UnifiedAuthForm = ({ onSuccess, autoFocus = false }: UnifiedAuthFormProps)
     setIsSubmitting(true);
 
     try {
+      // If we haven't checked if the user is new yet, do it now
+      if (isNewUser === null) {
+        const isNew = await checkIfEmailExists(email);
+        
+        // If we couldn't determine if the user is new, stop here
+        if (isNew === null) {
+          setIsSubmitting(false);
+          return;
+        }
+        
+        // If the user is new but hasn't entered a username, don't proceed yet
+        if (isNew && !username) {
+          setIsSubmitting(false);
+          return;
+        }
+      }
+      
+      // If the user is new, store the username in localStorage
+      if (isNewUser && username) {
+        localStorage.setItem('pendingUsername', username);
+      }
+
+      // Proceed with login or signup
       await loginOrSignUp(email, password);
       toast({
         title: "✅ Success",
@@ -44,6 +104,12 @@ const UnifiedAuthForm = ({ onSuccess, autoFocus = false }: UnifiedAuthFormProps)
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const checkEmail = async () => {
+    if (email && !isCheckingEmail && isNewUser === null) {
+      await checkIfEmailExists(email);
     }
   };
 
@@ -86,11 +152,32 @@ const UnifiedAuthForm = ({ onSuccess, autoFocus = false }: UnifiedAuthFormProps)
             type="email"
             placeholder="you@example.com"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              // Reset new user check when email changes
+              setIsNewUser(null);
+            }}
+            onBlur={checkEmail}
             autoFocus={autoFocus}
             required
+            disabled={isSubmitting || isCheckingEmail}
           />
         </div>
+        
+        {isNewUser && (
+          <div className="space-y-2">
+            <Label htmlFor="username">Username</Label>
+            <Input
+              id="username"
+              type="text"
+              placeholder="Choose a username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              disabled={isSubmitting}
+            />
+          </div>
+        )}
         
         <div className="space-y-2">
           <div className="flex justify-between">
@@ -107,11 +194,13 @@ const UnifiedAuthForm = ({ onSuccess, autoFocus = false }: UnifiedAuthFormProps)
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              disabled={isSubmitting}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-[50%] transform -translate-y-1/2 text-muted-foreground"
+              disabled={isSubmitting}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -122,9 +211,9 @@ const UnifiedAuthForm = ({ onSuccess, autoFocus = false }: UnifiedAuthFormProps)
           <Button
             type="submit"
             className="w-full"
-            disabled={isSubmitting || isLoading}
+            disabled={isSubmitting || isLoading || isCheckingEmail || (isNewUser === true && !username)}
           >
-            {isSubmitting || isLoading ? "Processing..." : "Continue with Email"}
+            {isSubmitting || isLoading ? "Processing..." : isNewUser ? "Sign Up" : "Continue with Email"}
             <LogIn className="ml-2 h-4 w-4" />
           </Button>
           
@@ -144,6 +233,7 @@ const UnifiedAuthForm = ({ onSuccess, autoFocus = false }: UnifiedAuthFormProps)
             variant="outline"
             className="w-full"
             onClick={handleGoogleLogin}
+            disabled={isSubmitting}
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5 mr-2" aria-hidden="true">
               <path
@@ -171,6 +261,7 @@ const UnifiedAuthForm = ({ onSuccess, autoFocus = false }: UnifiedAuthFormProps)
             variant="outline"
             className="w-full"
             onClick={handleGuestLogin}
+            disabled={isSubmitting}
           >
             Continue as Guest
           </Button>

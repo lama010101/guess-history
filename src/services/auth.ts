@@ -66,21 +66,40 @@ export const useAuth = create<AuthState>()(
               .eq('id', data.user.id)
               .single();
             
-            set({
-              user: {
-                id: data.user.id,
-                username: profile?.username || email.split('@')[0],
-                email,
-                isGuest: false,
-                avatarUrl: profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-                createdAt: data.user.created_at,
-                registrationMethod: 'email',
-                user_type: 'real'
-              },
-              isAuthenticated: true,
-              isLoading: false,
-              isAdmin,
-            });
+            if (profile) {
+              set({
+                user: {
+                  id: data.user.id,
+                  username: profile.username || email.split('@')[0],
+                  email,
+                  isGuest: false,
+                  avatarUrl: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+                  createdAt: data.user.created_at,
+                  registrationMethod: 'email',
+                  user_type: 'real'
+                },
+                isAuthenticated: true,
+                isLoading: false,
+                isAdmin,
+              });
+            } else {
+              console.error("Profile data not found");
+              set({
+                user: {
+                  id: data.user.id,
+                  username: email.split('@')[0],
+                  email,
+                  isGuest: false,
+                  avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+                  createdAt: data.user.created_at,
+                  registrationMethod: 'email',
+                  user_type: 'real'
+                },
+                isAuthenticated: true,
+                isLoading: false,
+                isAdmin,
+              });
+            }
             
             get().syncUsersFromSupabase();
           }
@@ -114,9 +133,8 @@ export const useAuth = create<AuthState>()(
               id: data.user.id,
               username,
               avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
-              created_at: data.user.created_at,
-              role: 'user'
-            });
+              role: 'user',
+            }, { onConflict: 'id' });
             
             set({
               user: {
@@ -186,8 +204,7 @@ export const useAuth = create<AuthState>()(
                 username: pendingUsername,
                 avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${pendingUsername}`,
                 role: 'user',
-                created_at: signupData.user.created_at
-              });
+              }, { onConflict: 'id' });
               
               // Clear the pending username
               localStorage.removeItem('pendingUsername');
@@ -210,7 +227,7 @@ export const useAuth = create<AuthState>()(
               
               await get().syncUsersFromSupabase();
             }
-          } else if (data.user) {
+          } else if (data?.user) {
             // Successful login
             console.log("Login successful:", data.user);
             const isAdmin = email.toLowerCase() === 'lama010101@gmail.com';
@@ -225,7 +242,7 @@ export const useAuth = create<AuthState>()(
             const pendingUsername = localStorage.getItem('pendingUsername');
             
             // If there's a pending username, update the profile
-            if (pendingUsername) {
+            if (pendingUsername && profile) {
               await supabase.from('profiles').update({
                 username: pendingUsername,
                 avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${pendingUsername}`
@@ -235,21 +252,40 @@ export const useAuth = create<AuthState>()(
               localStorage.removeItem('pendingUsername');
             }
             
-            set({
-              user: {
-                id: data.user.id,
-                username: pendingUsername || profile?.username || email.split('@')[0],
-                email,
-                isGuest: false,
-                avatarUrl: profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-                createdAt: data.user.created_at,
-                registrationMethod: 'email',
-                user_type: 'real'
-              },
-              isAuthenticated: true,
-              isLoading: false,
-              isAdmin,
-            });
+            if (profile) {
+              set({
+                user: {
+                  id: data.user.id,
+                  username: pendingUsername || profile.username || email.split('@')[0],
+                  email,
+                  isGuest: false,
+                  avatarUrl: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+                  createdAt: data.user.created_at,
+                  registrationMethod: 'email',
+                  user_type: 'real'
+                },
+                isAuthenticated: true,
+                isLoading: false,
+                isAdmin,
+              });
+            } else {
+              // Handle case when profile is not found
+              set({
+                user: {
+                  id: data.user.id,
+                  username: pendingUsername || email.split('@')[0],
+                  email,
+                  isGuest: false,
+                  avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+                  createdAt: data.user.created_at,
+                  registrationMethod: 'email',
+                  user_type: 'real'
+                },
+                isAuthenticated: true,
+                isLoading: false,
+                isAdmin,
+              });
+            }
             
             await get().syncUsersFromSupabase();
           } else if (error) {
@@ -356,7 +392,6 @@ export const useAuth = create<AuthState>()(
               email: '', // Default empty email since it's not in the column
               isGuest: false,
               avatarUrl: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username || Math.random()}`,
-              createdAt: profile.created_at,
               isAI: profile.role !== 'admin',
               registrationMethod: 'email' as const,
               user_type: profile.role === 'admin' ? 'real' as const : 'ai' as const
@@ -392,20 +427,37 @@ export const initializeAuthWithSupabase = async () => {
     
     const isAdmin = session.user.email?.toLowerCase() === 'lama010101@gmail.com';
     
-    useAuth.setState({
-      user: {
-        id: session.user.id,
-        username: profile?.username || session.user.email?.split('@')[0] || 'User',
-        email: session.user.email,
-        isGuest: false,
-        avatarUrl: profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}`,
-        createdAt: session.user.created_at,
-        registrationMethod: 'email',
-        user_type: 'real'
-      },
-      isAuthenticated: true,
-      isAdmin
-    });
+    if (profile) {
+      useAuth.setState({
+        user: {
+          id: session.user.id,
+          username: profile.username || session.user.email?.split('@')[0] || 'User',
+          email: session.user.email,
+          isGuest: false,
+          avatarUrl: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}`,
+          createdAt: session.user.created_at,
+          registrationMethod: 'email',
+          user_type: 'real'
+        },
+        isAuthenticated: true,
+        isAdmin
+      });
+    } else {
+      useAuth.setState({
+        user: {
+          id: session.user.id,
+          username: session.user.email?.split('@')[0] || 'User',
+          email: session.user.email,
+          isGuest: false,
+          avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}`,
+          createdAt: session.user.created_at,
+          registrationMethod: 'email',
+          user_type: 'real'
+        },
+        isAuthenticated: true,
+        isAdmin
+      });
+    }
     
     useAuth.getState().syncUsersFromSupabase();
   }
@@ -420,20 +472,37 @@ export const initializeAuthWithSupabase = async () => {
       
       const isAdmin = session.user.email?.toLowerCase() === 'lama010101@gmail.com';
       
-      useAuth.setState({
-        user: {
-          id: session.user.id,
-          username: profile?.username || session.user.email?.split('@')[0] || 'User',
-          email: session.user.email,
-          isGuest: false,
-          avatarUrl: profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}`,
-          createdAt: session.user.created_at,
-          registrationMethod: 'email',
-          user_type: 'real'
-        },
-        isAuthenticated: true,
-        isAdmin
-      });
+      if (profile) {
+        useAuth.setState({
+          user: {
+            id: session.user.id,
+            username: profile.username || session.user.email?.split('@')[0] || 'User',
+            email: session.user.email,
+            isGuest: false,
+            avatarUrl: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}`,
+            createdAt: session.user.created_at,
+            registrationMethod: 'email',
+            user_type: 'real'
+          },
+          isAuthenticated: true,
+          isAdmin
+        });
+      } else {
+        useAuth.setState({
+          user: {
+            id: session.user.id,
+            username: session.user.email?.split('@')[0] || 'User',
+            email: session.user.email,
+            isGuest: false,
+            avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}`,
+            createdAt: session.user.created_at,
+            registrationMethod: 'email',
+            user_type: 'real'
+          },
+          isAuthenticated: true,
+          isAdmin
+        });
+      }
       
       useAuth.getState().syncUsersFromSupabase();
     } else if (event === 'SIGNED_OUT') {
@@ -452,7 +521,7 @@ export const syncProfileWithAuth = async (user: any) => {
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('username, avatar_url, email, role')
+      .select('username, avatar_url, role')
       .eq('id', user.id)
       .single();
       
@@ -461,13 +530,17 @@ export const syncProfileWithAuth = async (user: any) => {
       return user;
     }
     
-    // Merge profile data with user object
-    return {
-      ...user,
-      username: data?.username || user.username || user.email?.split('@')[0] || 'User',
-      avatarUrl: data?.avatar_url || user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
-      isAdmin: data?.role === 'admin'
-    };
+    if (data) {
+      // Merge profile data with user object
+      return {
+        ...user,
+        username: data.username || user.username || user.email?.split('@')[0] || 'User',
+        avatarUrl: data.avatar_url || user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
+        isAdmin: data.role === 'admin'
+      };
+    } else {
+      return user;
+    }
   } catch (error) {
     console.error('Error syncing profile with auth:', error);
     return user;

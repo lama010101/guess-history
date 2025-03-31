@@ -29,15 +29,10 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
   const { user, users } = useAuth();
   const navigate = useNavigate();
   
-  // Generate the shareable game link
   const gameLink = `${window.location.origin}/play?invite=${user?.id || 'guest'}&mode=multiplayer`;
   
-  // Load friends list
   useEffect(() => {
-    // In a real app, this would come from a database
-    // For now, we'll use some of the registered users as "friends"
     if (users && users.length > 0) {
-      // Filter out the current user and get up to 5 other users
       const otherUsers = users
         .filter(u => u.id !== user?.id && !u.isGuest)
         .slice(0, 5)
@@ -45,12 +40,11 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
           id: u.id,
           name: u.username || u.email?.split('@')[0] || 'User',
           avatar: u.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.username || Math.random()}`,
-          online: Math.random() > 0.5 // Randomly set some users as online
+          online: Math.random() > 0.5
         }));
       
       setFriends(otherUsers);
     } else {
-      // Generate some fake friends if no users exist
       const fakeFriends: Friend[] = [
         { id: '1', name: 'Alex Smith', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alex', online: true },
         { id: '2', name: 'Jordan Taylor', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=jordan', online: false },
@@ -81,7 +75,6 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
   };
   
   const handleInviteAndStart = () => {
-    // In a real app, this would send invitations to the selected friends
     if (selectedFriends.length > 0) {
       const friendNames = selectedFriends.map(id => 
         friends.find(f => f.id === id)?.name || 'Friend'
@@ -93,13 +86,10 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
       });
     }
     
-    // Navigate to the game page with the multiplayer mode parameter
     navigate(`/play?mode=multiplayer&friends=${selectedFriends.join(',')}`);
     onOpenChange(false);
   };
   
-  // Add this code where a game invite is sent
-  // For example, after a game session is created:
   const sendGameInvite = async (gameId: string, friendId: string) => {
     if (!user) return;
     

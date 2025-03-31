@@ -88,12 +88,13 @@ const Notifications = () => {
     if (!user) return;
     
     try {
-      // Direct table access with join for sender profile info
+      // Since we can't directly access notifications table via TypeScript types,
+      // we'll use a more generic approach with the REST API
       const { data: notificationsData, error: notificationsError } = await supabase
         .from('notifications')
         .select('*')
         .eq('receiver_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }) as any;
         
       if (notificationsError) {
         console.error('Error fetching notifications:', notificationsError);
@@ -111,7 +112,7 @@ const Notifications = () => {
             .from('profiles')
             .select('id, username, avatar_url')
             .eq('id', notification.sender_id)
-            .single();
+            .single() as any;
             
           senderProfile = profileData as SenderProfile;
         }
@@ -140,7 +141,7 @@ const Notifications = () => {
         .from('notifications')
         .update({ read: true })
         .eq('id', notificationId)
-        .eq('receiver_id', user?.id);
+        .eq('receiver_id', user?.id) as any;
         
       if (error) {
         console.error('Error marking notification as read:', error);
@@ -179,7 +180,7 @@ const Notifications = () => {
         .from('notifications')
         .update({ read: true })
         .eq('receiver_id', user.id)
-        .eq('read', false);
+        .eq('read', false) as any;
         
       if (error) {
         console.error('Error marking all notifications as read:', error);

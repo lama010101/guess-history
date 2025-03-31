@@ -54,7 +54,7 @@ const Friends = () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, username, avatar_url')
-        .neq('id', user?.id || '');
+        .neq('id', user?.id || '') as any;
       
       if (error) {
         console.error('Error fetching profiles:', error);
@@ -99,7 +99,7 @@ const Friends = () => {
         setFriends(prev => [...prev, userToAdd]);
         setAvailableUsers(prev => prev.filter(u => u.id !== id));
         
-        // Create a notification for the user
+        // Create a notification for the user using the raw insert approach
         const { error } = await supabase
           .from('notifications')
           .insert({
@@ -107,7 +107,7 @@ const Friends = () => {
             receiver_id: id,
             type: 'friend_request',
             message: `${user?.username || 'Someone'} added you as a friend!`,
-          });
+          }) as any;
           
         if (error) {
           console.error('Error creating notification:', error);

@@ -20,7 +20,7 @@ interface UserProfile {
 }
 
 const Profile = () => {
-  const { user, logout } = useAuth(); // Using logout instead of signOut
+  const { user, signOut } = useAuth(); // Using the hook inside the component
   const navigate = useNavigate();
   const { toast } = useToast();
   const [achievements, setAchievements] = useState({
@@ -187,7 +187,7 @@ const Profile = () => {
   };
 
   const handleLogout = async () => {
-    await logout();
+    await signOut(); // Using signOut rather than logout
     navigate('/');
     toast({
       title: "Logged out",

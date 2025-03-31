@@ -112,7 +112,7 @@ export default function Home() {
       
       <main className="container space-y-8 max-w-6xl mx-auto py-[20px] px-[35px] bg-slate-950">
         <div className="text-center space-y-4 mb-8">
-          <p className="text-xl max-w-3xl mx-0 my-0 text-slate-50">When and where did it happen?</p>
+          <p className="text-xl max-w-3xl my-0 text-slate-50 px-0 mx-0">When and where did it happen?</p>
         </div>
         
         <div className="grid gap-6 md:grid-cols-3">

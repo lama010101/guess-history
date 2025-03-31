@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -9,24 +8,28 @@ import { useToast } from '@/hooks/use-toast';
 import { getUserAchievements } from '@/utils/achievementUtils';
 import AchievementBadge from '@/components/game/AchievementBadge';
 import { Trophy, Medal, Award, Star, User, LogOut } from 'lucide-react';
-
 const Profile = () => {
-  const { isAuthenticated, user, logout } = useAuth();
+  const {
+    isAuthenticated,
+    user,
+    logout
+  } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const [achievements, setAchievements] = useState({
     perfectLocations: 0,
     perfectYears: 0,
     perfectCombos: 0
   });
-  
   const [gameStats, setGameStats] = useState({
     gamesPlayed: 0,
     totalScore: 0,
     avgScore: 0,
     bestScore: 0
   });
-  
+
   // Load user data on mount
   useEffect(() => {
     if (!isAuthenticated) {
@@ -37,11 +40,11 @@ const Profile = () => {
       navigate('/');
       return;
     }
-    
+
     // Load achievements from localStorage
     const userAchievements = getUserAchievements();
     setAchievements(userAchievements);
-    
+
     // Load game stats from localStorage
     try {
       const storedStats = localStorage.getItem('userGameStats');
@@ -60,7 +63,6 @@ const Profile = () => {
       console.error('Error loading game stats', e);
     }
   }, [isAuthenticated, navigate, toast]);
-  
   const handleLogout = () => {
     logout();
     navigate('/');
@@ -69,16 +71,14 @@ const Profile = () => {
       description: "You have been successfully logged out"
     });
   };
-  
+
   // Redirect if not authenticated
   if (!isAuthenticated) {
     return null; // Redirect handled in useEffect
   }
-  
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="container px-4 py-6 max-w-4xl mx-auto">
+      <main className="container px-4 py-6 max-w-4xl mx-auto bg-slate-950">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
           <h1 className="text-3xl font-bold">Your Profile</h1>
           <Button variant="outline" onClick={handleLogout} className="mt-2 sm:mt-0">
@@ -109,10 +109,10 @@ const Profile = () => {
                   <span className="text-muted-foreground">Member since:</span>
                   <span className="font-medium">
                     {new Date().toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric'
-                    })}
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                  })}
                   </span>
                 </div>
               </div>
@@ -225,8 +225,6 @@ const Profile = () => {
           </CardContent>
         </Card>
       </main>
-    </div>
-  );
+    </div>;
 };
-
 export default Profile;

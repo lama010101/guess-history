@@ -1,22 +1,18 @@
 
 import { useState, useEffect } from 'react';
 import { Clock } from 'lucide-react';
-
-interface CountdownTime {
-  hours: number;
-  minutes: number;
-  seconds: number;
-}
+import { useDailyGame } from '@/hooks/useDailyGame';
 
 interface DailyCountdownProps {
   score: number;
-  countdown: CountdownTime;
-  targetDate?: Date;
-  className?: string;
+  targetDate?: Date; // Add targetDate prop
+  className?: string; // Add className prop
 }
 
-const DailyCountdown = ({ score, countdown, targetDate, className }: DailyCountdownProps) => {
-  // Use targetDate if provided, otherwise use the passed countdown values
+const DailyCountdown = ({ score, targetDate, className }: DailyCountdownProps) => {
+  const { countdown } = useDailyGame();
+  
+  // Use targetDate if provided, otherwise use countdown from hook
   const displayCountdown = targetDate ? {
     hours: Math.floor((targetDate.getTime() - Date.now()) / 1000 / 60 / 60) % 24,
     minutes: Math.floor((targetDate.getTime() - Date.now()) / 1000 / 60) % 60,

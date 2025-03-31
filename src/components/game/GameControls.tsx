@@ -1,78 +1,68 @@
 
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import YearSlider from '@/components/YearSlider';
-import { ArrowRightCircle } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowRight, CheckCircle, X } from 'lucide-react';
+import YearSlider from '../YearSlider';
 
 interface GameControlsProps {
   selectedLocation: { lat: number; lng: number } | null;
   selectedYear: number;
   onYearChange: (year: number) => void;
   onSubmit: () => void;
-  showResults?: boolean;
-  onNextRound?: () => void;
-  isLastRound?: boolean;
-  onFinish?: () => void;
-  gameComplete?: boolean;
 }
 
-const GameControls = ({
-  selectedLocation,
-  selectedYear,
-  onYearChange,
-  onSubmit,
-  showResults = false,
-  onNextRound,
-  isLastRound = false,
-  onFinish,
-  gameComplete = false
+const GameControls = ({ 
+  selectedLocation, 
+  selectedYear, 
+  onYearChange, 
+  onSubmit 
 }: GameControlsProps) => {
+  const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
   
+  const handleSubmitClick = () => {
+    if (!selectedLocation) {
+      setHasTriedSubmit(true);
+      return;
+    }
+    onSubmit();
+  };
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg p-4 z-30">
-      <div className="container max-w-5xl mx-auto">
-        <div className="flex flex-col gap-4">
-          {!showResults && !gameComplete && (
-            <>
-              <YearSlider
-                selectedYear={selectedYear}
-                onChange={onYearChange}
-                minYear={1900}
-                maxYear={2020}
-              />
-              
-              <Button 
-                size="lg"
-                onClick={onSubmit}
-                disabled={!selectedLocation}
-                className="w-full"
-              >
-                Submit Guess
-                <ArrowRightCircle className="ml-2 h-4 w-4" />
-              </Button>
-            </>
-          )}
-          
-          {showResults && onNextRound && (
-            <Button 
-              size="lg"
-              onClick={onNextRound}
-              className="w-full"
-            >
-              {isLastRound ? "See Final Results" : "Next Round"}
-            </Button>
-          )}
-          
-          {gameComplete && onFinish && (
-            <Button 
-              size="lg"
-              onClick={onFinish}
-              className="w-full"
-            >
-              Play Again
-            </Button>
+    <div className="p-4 border-t border-border bg-white/50">
+      <div className="mb-4">
+        <YearSlider onChange={onYearChange} />
+      </div>
+      
+      <div className="flex justify-between items-center">
+        <div className="flex items-center text-sm">
+          {selectedLocation ? (
+            <span className="flex items-center text-green-600">
+              <CheckCircle className="h-4 w-4 mr-1" />
+              Location selected
+            </span>
+          ) : hasTriedSubmit ? (
+            <span className="flex items-center text-red-600">
+              <X className="h-4 w-4 mr-1" />
+              No location selected
+            </span>
+          ) : (
+            <span className="flex items-center text-amber-600 opacity-0">
+              <X className="h-4 w-4 mr-1" />
+              No location selected
+            </span>
           )}
         </div>
+        
+        <button
+          onClick={handleSubmitClick}
+          className={`px-5 py-2.5 rounded-lg flex items-center ${
+            selectedLocation
+              ? 'bg-primary text-primary-foreground btn-transition hover:shadow-md hover:brightness-110'
+              : 'bg-muted text-muted-foreground'
+          }`}
+        >
+          Submit Guess
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </button>
       </div>
     </div>
   );

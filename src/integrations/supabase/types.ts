@@ -160,7 +160,6 @@ export type Database = {
       }
       historical_events: {
         Row: {
-          country: string | null
           created_at: string
           deleted: boolean
           description: string
@@ -174,7 +173,6 @@ export type Database = {
           year: number
         }
         Insert: {
-          country?: string | null
           created_at?: string
           deleted?: boolean
           description: string
@@ -188,7 +186,6 @@ export type Database = {
           year: number
         }
         Update: {
-          country?: string | null
           created_at?: string
           deleted?: boolean
           description?: string

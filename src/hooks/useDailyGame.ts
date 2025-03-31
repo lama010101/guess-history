@@ -1,7 +1,5 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/services/auth';
 
 interface CountdownTime {
   hours: number;
@@ -16,8 +14,6 @@ export const useDailyGame = () => {
   const [dailyDate, setDailyDate] = useState("");
   const [countdown, setCountdown] = useState<CountdownTime>({ hours: 0, minutes: 0, seconds: 0 });
   const [nextDailyAvailable, setNextDailyAvailable] = useState<Date | null>(null);
-  const [dailyEvents, setDailyEvents] = useState([]);
-  const { user } = useAuth();
 
   // Calculate time until midnight for the next daily challenge
   const calculateTimeUntilMidnight = () => {
@@ -33,12 +29,6 @@ export const useDailyGame = () => {
     const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
     
     return { hours, minutes, seconds };
-  };
-
-  // Get today's date in YYYY-MM-DD format
-  const getTodayDateString = () => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
   };
 
   // Load daily game state on mount
@@ -59,8 +49,8 @@ export const useDailyGame = () => {
       // Check if played today
       const today = new Date();
       const isSameDay = lastPlayedDate.getDate() === today.getDate() && 
-                        lastPlayedDate.getMonth() === today.getMonth() && 
-                        lastPlayedDate.getFullYear() === today.getFullYear();
+                       lastPlayedDate.getMonth() === today.getMonth() && 
+                       lastPlayedDate.getFullYear() === today.getFullYear();
       
       // Only mark as completed if the daily game was actually completed
       setDailyCompleted(isSameDay && dailyCompleted === 'true');
@@ -80,9 +70,6 @@ export const useDailyGame = () => {
         setCountdown(calculateTimeUntilMidnight());
       }
     }
-    
-    // Try to fetch today's daily challenge events
-    fetchDailyEvents();
   }, []);
   
   // Update countdown timer every second
@@ -95,88 +82,6 @@ export const useDailyGame = () => {
     
     return () => clearInterval(timer);
   }, [dailyCompleted, nextDailyAvailable]);
-
-  // Fetch daily events from Supabase or generate them
-  const fetchDailyEvents = async () => {
-    try {
-      const todayDate = getTodayDateString();
-      
-      // First check if there's already a daily challenge for today
-      const { data: existingGameSession, error: existingError } = await supabase
-        .from('game_sessions')
-        .select('*')
-        .eq('game_mode', 'daily')
-        .eq('created_at', todayDate)
-        .maybeSingle();
-        
-      if (existingError) {
-        console.error('Error checking for existing daily challenge:', existingError);
-      }
-      
-      if (existingGameSession && existingGameSession.events && existingGameSession.events.length > 0) {
-        // Use the existing daily challenge
-        setDailyEvents(existingGameSession.events);
-      } else {
-        // Generate a new daily challenge
-        // First get 5 random events from the historical_events table
-        const { data: eventsData, error: eventsError } = await supabase
-          .from('historical_events')
-          .select('*')
-          .eq('deleted', false)
-          .limit(5)
-          .order('created_at', { ascending: false })
-          .range(0, 4);
-          
-        if (eventsError) {
-          console.error('Error fetching events for daily challenge:', eventsError);
-          return;
-        }
-        
-        if (eventsData && eventsData.length >= 5) {
-          // Transform events data to match our format
-          const transformedEvents = eventsData.map((event, index) => ({
-            id: index + 1,
-            title: event.location_name || '',
-            description: event.description || '',
-            year: typeof event.year === 'string' ? parseInt(event.year) : event.year,
-            location: {
-              lat: parseFloat(event.latitude.toString()),
-              lng: parseFloat(event.longitude.toString())
-            },
-            locationName: event.location_name || '',
-            country: event.country || '',
-            src: event.image_url || 'https://via.placeholder.com/800x500?text=No+Image'
-          }));
-          
-          // Save this as today's daily challenge
-          if (user) {
-            const { error: saveError } = await supabase
-              .from('game_sessions')
-              .insert({
-                game_mode: 'daily',
-                created_at: todayDate,
-                events: transformedEvents,
-                creator_id: user.id,
-                settings: {
-                  gameMode: 'daily',
-                  distanceUnit: 'km',
-                  timerEnabled: true,
-                  timerDuration: 300 // 5 minutes
-                }
-              });
-              
-            if (saveError) {
-              console.error('Error saving daily challenge:', saveError);
-            }
-          }
-          
-          setDailyEvents(transformedEvents);
-        }
-      }
-    } catch (error) {
-      console.error('Error in fetchDailyEvents:', error);
-    }
-  };
 
   const setDailyGame = (active: boolean) => {
     setIsDaily(active);
@@ -192,23 +97,6 @@ export const useDailyGame = () => {
     setDailyScore(score);
     localStorage.setItem('lastDailyScore', score.toString());
     localStorage.setItem('dailyCompleted', 'true');
-    
-    // Save score to Supabase
-    if (user) {
-      supabase
-        .from('game_results')
-        .insert({
-          user_id: user.id,
-          total_score: score,
-          round_results: [],
-          session_id: null
-        })
-        .then(({ error }) => {
-          if (error) {
-            console.error('Error saving daily score:', error);
-          }
-        });
-    }
     
     // Set next daily available time
     const tomorrow = new Date();
@@ -226,7 +114,6 @@ export const useDailyGame = () => {
     dailyScore,
     dailyDate,
     countdown,
-    dailyEvents,
     setDailyGame,
     completeDailyGame
   };

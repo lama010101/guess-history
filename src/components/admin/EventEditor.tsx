@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -9,7 +8,6 @@ import { Check, Image, Upload, FileSpreadsheet, AlertCircle } from "lucide-react
 import { HistoricalImage } from "@/types/game";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { supabase } from "@/integrations/supabase/client";
 
 interface EventEditorProps {
   selectedEvent: HistoricalImage | null;
@@ -36,13 +34,10 @@ const EventEditor = ({
       year: 2000,
       location: { lat: 0, lng: 0 },
       src: "",
-      locationName: "",
-      country: ""
+      locationName: ""
     }
   );
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
 
   // Reset form when selectedEvent changes
   useEffect(() => {
@@ -53,12 +48,10 @@ const EventEditor = ({
         year: 2000,
         location: { lat: 0, lng: 0 },
         src: "",
-        locationName: "",
-        country: ""
+        locationName: ""
       }
     );
     setValidationErrors([]);
-    setImageFile(null);
   }, [selectedEvent]);
 
   const handleChange = (field: string, value: any) => {
@@ -80,20 +73,6 @@ const EventEditor = ({
     setValidationErrors([]);
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setImageFile(file);
-      
-      // Create a local preview URL
-      const previewUrl = URL.createObjectURL(file);
-      setEventData({
-        ...eventData,
-        src: previewUrl
-      });
-    }
-  };
-
   const validateEventData = (): boolean => {
     const errors: string[] = [];
     
@@ -111,65 +90,14 @@ const EventEditor = ({
       errors.push("Valid location coordinates are required");
     }
     
-    if (!eventData.src && !imageFile) {
-      errors.push("Image is required - either upload an image or provide a URL");
-    }
-    
-    if (!eventData.country) {
-      errors.push("Country is required");
+    if (!eventData.src) {
+      errors.push("Image URL is required");
+    } else if (!isWikimediaUrl(eventData.src) && !isValidImageUrl(eventData.src)) {
+      errors.push("Image URL should be from Wikimedia Commons");
     }
     
     setValidationErrors(errors);
     return errors.length === 0;
-  };
-  
-  const uploadImageToSupabase = async (): Promise<string | null> => {
-    if (!imageFile) return null;
-    
-    try {
-      setUploadingImage(true);
-      
-      // Create a unique filename
-      const fileExt = imageFile.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
-      const filePath = `historical_images/${fileName}`;
-      
-      // Check if the bucket exists, create it if not
-      const { data: buckets } = await supabase.storage.listBuckets();
-      if (!buckets?.find(bucket => bucket.name === 'historical_images')) {
-        await supabase.storage.createBucket('historical_images', {
-          public: true
-        });
-      }
-      
-      // Upload the file
-      const { error: uploadError } = await supabase.storage
-        .from('historical_images')
-        .upload(filePath, imageFile);
-        
-      if (uploadError) {
-        console.error('Error uploading image:', uploadError);
-        toast({
-          title: "Upload Failed",
-          description: "Failed to upload image to storage",
-          variant: "destructive"
-        });
-        setUploadingImage(false);
-        return null;
-      }
-      
-      // Get the public URL
-      const { data } = supabase.storage
-        .from('historical_images')
-        .getPublicUrl(filePath);
-        
-      setUploadingImage(false);
-      return data.publicUrl;
-    } catch (error) {
-      console.error('Error in image upload process:', error);
-      setUploadingImage(false);
-      return null;
-    }
   };
   
   const isWikimediaUrl = (url: string): boolean => {
@@ -197,33 +125,21 @@ const EventEditor = ({
     return url;
   };
   
-  const handleSave = async () => {
-    if (!validateEventData()) {
-      toast({
-        title: "Validation Error",
-        description: "Please fix the errors before saving.",
-        variant: "destructive"
-      });
-      return;
+  const handleSave = () => {
+    if (eventData.locationName && !eventData.country) {
+      const parts = eventData.locationName.split(',');
+      if (parts.length > 1) {
+        eventData.country = parts[parts.length - 1].trim();
+      }
     }
     
-    // If there's an image file, upload it to Supabase
-    if (imageFile) {
-      const imageUrl = await uploadImageToSupabase();
-      if (imageUrl) {
-        eventData.src = imageUrl;
-      } else {
-        toast({
-          title: "Image Upload Error",
-          description: "Failed to upload image. Please try again.",
-          variant: "destructive"
-        });
-        return;
-      }
-    } else if (eventData.src && !isWikimediaUrl(eventData.src) && !isValidImageUrl(eventData.src)) {
+    if (eventData.src && !isWikimediaUrl(eventData.src) && !isValidImageUrl(eventData.src)) {
       const fixedUrl = fixWikimediaUrl(eventData.src);
       if (fixedUrl !== eventData.src) {
-        eventData.src = fixedUrl;
+        setEventData({
+          ...eventData,
+          src: fixedUrl
+        });
         toast({
           title: "URL Automatically Fixed",
           description: "The image URL has been converted to a standard Wikimedia format."
@@ -231,8 +147,15 @@ const EventEditor = ({
       }
     }
     
-    // Save the event
-    onSave(eventData);
+    if (validateEventData()) {
+      onSave(eventData);
+    } else {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the errors before saving.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -294,24 +217,14 @@ const EventEditor = ({
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="event-address">Address</Label>
+                <Label htmlFor="event-location-name">Location Name</Label>
                 <Input 
-                  id="event-address"
-                  placeholder="e.g. Eiffel Tower, Paris"
+                  id="event-location-name"
+                  placeholder="e.g. Paris, France"
                   value={eventData.locationName || ""}
                   onChange={(e) => handleChange("locationName", e.target.value)}
                 />
               </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="event-country">Country</Label>
-              <Input 
-                id="event-country"
-                placeholder="e.g. France"
-                value={eventData.country || ""}
-                onChange={(e) => handleChange("country", e.target.value)}
-              />
             </div>
             
             <div className="grid grid-cols-2 gap-4">
@@ -356,23 +269,10 @@ const EventEditor = ({
             <div className="space-y-2">
               <Label>Image Upload</Label>
               <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    onChange={handleImageChange}
-                  />
-                  <Button variant="outline" size="sm" className="w-full">
-                    <Image className="mr-2 h-4 w-4" />
-                    Upload Image
-                  </Button>
-                </div>
-                {imageFile && (
-                  <p className="text-sm text-muted-foreground">
-                    {imageFile.name} ({(imageFile.size / 1024).toFixed(1)} KB)
-                  </p>
-                )}
+                <Button variant="outline" size="sm" className="w-full" onClick={onImageUpload}>
+                  <Image className="mr-2 h-4 w-4" />
+                  Upload Image
+                </Button>
               </div>
             </div>
 
@@ -407,10 +307,10 @@ const EventEditor = ({
               <p className="font-medium mb-1">Excel Format Example:</p>
               <div className="bg-muted p-2 rounded-md">
                 <pre className="whitespace-pre-wrap">
-                  description | year | latitude | longitude | imageUrl | title | locationName | country
-                  ------------|------|----------|-----------|----------|-------|-------------|---------
-                  Eiffel Tower | 1950 | 48.8584 | 2.2945 | https://... | Paris | France | France
-                  Great Wall | 1976 | 40.4319 | 116.5704 | https://... | Beijing | China | China
+                  description | year | latitude | longitude | imageUrl | title | locationName
+                  ------------|------|----------|-----------|----------|-------|-------------
+                  Eiffel Tower | 1950 | 48.8584 | 2.2945 | https://... | Paris | France
+                  Great Wall | 1976 | 40.4319 | 116.5704 | https://... | Beijing | China
                 </pre>
               </div>
             </div>
@@ -422,13 +322,9 @@ const EventEditor = ({
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={uploadingImage}>
-            {uploadingImage ? "Uploading..." : (
-              <>
-                <Check className="mr-2 h-4 w-4" />
-                Save Event
-              </>
-            )}
+          <Button onClick={handleSave}>
+            <Check className="mr-2 h-4 w-4" />
+            Save Event
           </Button>
         </CardFooter>
       )}

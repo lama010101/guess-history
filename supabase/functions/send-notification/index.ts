@@ -7,8 +7,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const ONESIGNAL_APP_ID = 'aa5b64e9-f512-4cd6-9bc7-fac06adab021';
-
 serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -20,92 +18,102 @@ serve(async (req: Request) => {
     
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    const oneSignalAppId = Deno.env.get("ONESIGNAL_APP_ID") || "af6b6df9-9b44-43cc-92a8-f7ec0a7c62fb";
+    const oneSignalApiKey = Deno.env.get("ONESIGNAL_API_KEY") || "";
     
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error("Supabase credentials not configured");
+    if (!oneSignalAppId || !oneSignalApiKey) {
+      throw new Error("OneSignal credentials not configured");
     }
     
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    // First, create the notification in the database
+    // Get recipient's OneSignal player ID
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("onesignal_player_id")
+      .eq("id", recipientId)
+      .single();
+      
+    if (profileError || !profile?.onesignal_player_id) {
+      console.log(`Error getting recipient profile or no OneSignal ID: ${profileError?.message || "No OneSignal ID found"}`);
+      
+      // Even if we can't send a push notification, let's still store it in the database
+      const { data: notification, error: notificationError } = await supabase
+        .from("notifications")
+        .insert({
+          receiver_id: recipientId,
+          message: message,
+          type: data?.type || "general",
+          game_id: data?.game_id,
+          sender_id: data?.sender_id,
+        })
+        .select()
+        .single();
+        
+      if (notificationError) {
+        console.error("Error storing notification:", notificationError);
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: "No OneSignal player ID found for recipient",
+          notification
+        }),
+        { 
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+          status: 200, // Still return 200 since we stored the notification
+        }
+      );
+    }
+    
+    // Send notification via OneSignal
+    const oneSignalResponse = await fetch("https://onesignal.com/api/v1/notifications", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Basic ${oneSignalApiKey}`,
+      },
+      body: JSON.stringify({
+        app_id: oneSignalAppId,
+        include_player_ids: [profile.onesignal_player_id],
+        contents: { en: message },
+        headings: { en: title || "GuessEvents" },
+        data: data || {},
+      }),
+    });
+    
+    const responseData = await oneSignalResponse.json();
+    
+    // Insert notification in the database
     const { data: notification, error: notificationError } = await supabase
       .from("notifications")
       .insert({
         receiver_id: recipientId,
         message: message,
         type: data?.type || "general",
-        game_id: data?.game_id || null,
-        sender_id: data?.sender_id || null,
+        game_id: data?.game_id,
+        sender_id: data?.sender_id,
       })
       .select()
       .single();
       
     if (notificationError) {
       console.error("Error storing notification:", notificationError);
-      throw new Error(`Failed to create notification: ${notificationError.message}`);
     }
     
-    // Get recipient's details
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", recipientId)
-      .single();
-      
-    if (profileError) {
-      console.error(`Error getting recipient profile: ${profileError.message}`);
-    }
-    
-    // Send push notification via OneSignal REST API
-    try {
-      const oneSignalResponse = await fetch("https://onesignal.com/api/v1/notifications", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Basic ${Deno.env.get("ONESIGNAL_REST_API_KEY") || ""}`
-        },
-        body: JSON.stringify({
-          app_id: ONESIGNAL_APP_ID,
-          include_external_user_ids: [recipientId],
-          headings: { en: title || "GuessEvents" },
-          contents: { en: message },
-          data: data || {},
-          channel_for_external_user_ids: "push"
-        })
-      });
-      
-      const pushResult = await oneSignalResponse.json();
-      console.log("OneSignal push notification result:", pushResult);
-      
-      // Even if push fails, we'll return success because the in-app notification was created
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          notification,
-          pushNotification: pushResult
-        }),
-        { 
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-          status: 200
-        }
-      );
-    } catch (pushError) {
-      console.error("Error sending push notification:", pushError);
-      
-      // Return success anyway because the in-app notification was created
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          notification,
-          pushNotification: { error: "Failed to send push notification" }
-        }),
-        { 
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-          status: 200
-        }
-      );
-    }
+    return new Response(
+      JSON.stringify({ 
+        success: oneSignalResponse.ok,
+        oneSignalResponse: responseData,
+        notification
+      }),
+      { 
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+        status: oneSignalResponse.ok ? 200 : 400,
+      }
+    );
   } catch (error) {
     console.error("Error in send-notification function:", error);
     return new Response(

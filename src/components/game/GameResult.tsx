@@ -14,9 +14,9 @@ interface GameResultProps {
   guessedYear: number;
   distanceKm: number;
   yearDifference: number;
-  onNextRound?: () => void;
-  currentRound?: number;
-  maxRounds?: number;
+  onNextRound: () => void;
+  currentRound: number;
+  maxRounds: number;
   locationHintUsed: boolean;
   yearHintUsed: boolean;
   hintPenalty: number;
@@ -25,7 +25,7 @@ interface GameResultProps {
   locationName?: string;
 }
 
-const GameResult: React.FC<GameResultProps> = ({
+const GameResult = ({
   isVisible,
   locationScore,
   yearScore,
@@ -128,16 +128,6 @@ const GameResult: React.FC<GameResultProps> = ({
     return parts.length > 1 ? parts[parts.length - 1].trim() : parts[0].trim();
   };
   
-  // Format year difference text
-  const getYearDifferenceText = () => {
-    if (yearDifference === 0) return "Perfect guess!";
-    
-    const abs = Math.abs(yearDifference);
-    const direction = yearDifference > 0 ? "too early" : "too late";
-    
-    return `You guessed ${guessedYear} (${abs} year${abs !== 1 ? 's' : ''} ${direction})`;
-  };
-  
   return (
     <div className="glass-card p-4 rounded-lg max-w-md w-full bg-white/90 dark:bg-gray-900/90">
       <div className="text-center mb-4">
@@ -205,7 +195,7 @@ const GameResult: React.FC<GameResultProps> = ({
         </div>
         <div className="p-3">
           <p className="text-sm font-medium">
-            {getYearDifferenceText()}
+            You guessed {guessedYear} ({yearDifference} years {guessedYear > actualYear ? 'later' : 'earlier'})
           </p>
           
           {perfectYear && showBadges && (

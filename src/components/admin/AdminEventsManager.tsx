@@ -1,11 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import EventsTable from "./EventsTable";
 import EventsToolbar from "./EventsToolbar";
 import EventEditor from "./EventEditor";
 import { HistoricalImage } from "@/types/game";
-import { supabase } from "@/integrations/supabase/client";
 
 const AdminEventsManager = () => {
   const { toast } = useToast();
@@ -19,57 +17,10 @@ const AdminEventsManager = () => {
   const [isAllSelected, setIsAllSelected] = useState(false);
 
   useEffect(() => {
-    loadEventsFromSupabase();
+    loadEvents();
   }, []);
 
-  const loadEventsFromSupabase = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('historical_events')
-        .select('*')
-        .eq('deleted', false)
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error('Error loading events from Supabase:', error);
-        toast({
-          title: "Error loading events",
-          description: "Could not load events from the database"
-        });
-        
-        // Try loading from local storage as fallback
-        loadEventsFromLocalStorage();
-        return;
-      }
-      
-      if (data && data.length > 0) {
-        // Transform data to match our HistoricalImage interface
-        const transformedEvents: HistoricalImage[] = data.map((item, index) => ({
-          id: index + 1,
-          title: item.location_name || '',
-          description: item.description || '',
-          year: typeof item.year === 'string' ? parseInt(item.year) : item.year,
-          location: { 
-            lat: parseFloat(item.latitude.toString()) || 0, 
-            lng: parseFloat(item.longitude.toString()) || 0 
-          },
-          locationName: item.location_name || '',
-          country: item.country || '',
-          src: item.image_url || 'https://via.placeholder.com/800x500?text=No+Image'
-        }));
-        
-        setEvents(transformedEvents);
-      } else {
-        // No data in Supabase, try loading from local storage
-        loadEventsFromLocalStorage();
-      }
-    } catch (error) {
-      console.error('Error in loadEventsFromSupabase:', error);
-      loadEventsFromLocalStorage();
-    }
-  };
-  
-  const loadEventsFromLocalStorage = () => {
+  const loadEvents = () => {
     const savedEventsJson = localStorage.getItem('savedEvents');
     if (savedEventsJson) {
       try {
@@ -82,99 +33,12 @@ const AdminEventsManager = () => {
     }
   };
 
-  const saveEventsToSupabase = async (eventsToSave: HistoricalImage[]) => {
+  const saveEvents = async (eventsToSave: HistoricalImage[]) => {
     try {
-      setIsSaving(true);
-      
-      // Check if bucket exists, create if not
-      const { data: bucketData } = await supabase.storage.listBuckets();
-      if (!bucketData?.find(b => b.name === 'historical_images')) {
-        await supabase.storage.createBucket('historical_images', {
-          public: true
-        });
-      }
-      
-      // Process each event
-      for (const event of eventsToSave) {
-        // Check if the image is already in Supabase Storage
-        const isStorageUrl = event.src && 
-          (event.src.includes('storage.googleapis.com') || 
-           event.src.includes(window.location.hostname));
-           
-        let finalImageUrl = event.src;
-        
-        // If it's not already in storage and it's a remote URL, download and re-upload
-        if (!isStorageUrl && event.src && event.src.startsWith('http')) {
-          try {
-            // Fetch the image
-            const imageResponse = await fetch(event.src);
-            const imageBlob = await imageResponse.blob();
-            
-            // Create a unique filename
-            const fileName = `event_${event.id}_${Date.now()}.${imageResponse.headers.get('content-type')?.split('/')[1] || 'jpg'}`;
-            const filePath = `historical_images/${fileName}`;
-            
-            // Upload to Supabase Storage
-            const { error: uploadError } = await supabase.storage
-              .from('historical_images')
-              .upload(filePath, imageBlob);
-              
-            if (uploadError) {
-              console.error('Error uploading image to storage:', uploadError);
-              continue;
-            }
-            
-            // Get the public URL
-            const { data: urlData } = supabase.storage
-              .from('historical_images')
-              .getPublicUrl(filePath);
-              
-            finalImageUrl = urlData.publicUrl;
-          } catch (error) {
-            console.error('Error processing image:', error);
-            // Continue with the original URL if there's an error
-          }
-        }
-        
-        // Insert or update in the historical_events table
-        const { error } = await supabase
-          .from('historical_events')
-          .upsert({
-            description: event.description,
-            year: event.year,
-            latitude: event.location.lat,
-            longitude: event.location.lng,
-            location_name: event.locationName,
-            country: event.country || '',
-            image_url: finalImageUrl,
-            deleted: false
-          });
-          
-        if (error) {
-          console.error('Error saving event to Supabase:', error);
-          toast({
-            title: "Error saving event",
-            description: `Could not save event: ${error.message}`,
-            variant: "destructive"
-          });
-        }
-      }
-      
-      setIsSaving(false);
-      toast({
-        title: "Events saved",
-        description: `${eventsToSave.length} events have been saved to the database.`
-      });
-      
-      // Refresh events from database
-      loadEventsFromSupabase();
+      localStorage.setItem('savedEvents', JSON.stringify(eventsToSave));
       return true;
     } catch (error) {
-      console.error('Error saving events to Supabase:', error);
-      setIsSaving(false);
-      
-      // Fall back to localStorage
-      localStorage.setItem('savedEvents', JSON.stringify(eventsToSave));
+      console.error('Error saving events:', error);
       return false;
     }
   };
@@ -189,7 +53,6 @@ const AdminEventsManager = () => {
       year: 2000,
       location: { lat: 0, lng: 0 },
       locationName: '',
-      country: '',
       src: 'https://via.placeholder.com/800x500?text=Select+Image'
     };
     
@@ -205,23 +68,7 @@ const AdminEventsManager = () => {
   const handleDeleteEvent = async (id: number) => {
     const updatedEvents = events.filter(e => e.id !== id);
     setEvents(updatedEvents);
-    
-    // Also mark as deleted in Supabase
-    const eventToDelete = events.find(e => e.id === id);
-    if (eventToDelete) {
-      try {
-        // Soft delete by setting deleted=true
-        await supabase
-          .from('historical_events')
-          .update({ deleted: true })
-          .eq('description', eventToDelete.description)
-          .eq('location_name', eventToDelete.locationName);
-      } catch (error) {
-        console.error('Error deleting event from Supabase:', error);
-      }
-    }
-    
-    localStorage.setItem('savedEvents', JSON.stringify(updatedEvents));
+    await saveEvents(updatedEvents);
     
     toast({
       title: "Event deleted",
@@ -278,8 +125,11 @@ const AdminEventsManager = () => {
       return { valid: false, message: "Image URL is required" };
     }
     
-    if (!event.country) {
-      return { valid: false, message: "Country is required" };
+    if (!event.src.startsWith('https://commons.wikimedia.org/')) {
+      return { 
+        valid: false, 
+        message: "Image URL must be from Wikimedia Commons (https://commons.wikimedia.org/)" 
+      };
     }
     
     return { valid: true };
@@ -310,12 +160,7 @@ const AdminEventsManager = () => {
     }
     
     setEvents(updatedEvents);
-    
-    // Save to Supabase
-    await saveEventsToSupabase([processedEvent]);
-    
-    // Also save to localStorage as backup
-    localStorage.setItem('savedEvents', JSON.stringify(updatedEvents));
+    await saveEvents(updatedEvents);
     
     setIsEditing(false);
     setSelectedEvent(null);
@@ -336,26 +181,7 @@ const AdminEventsManager = () => {
   const handleDeleteSelected = () => {
     const updatedEvents = events.filter(e => !selectedEvents.has(e.id));
     setEvents(updatedEvents);
-    
-    // Save to localStorage
-    localStorage.setItem('savedEvents', JSON.stringify(updatedEvents));
-    
-    // Also mark as deleted in Supabase
-    const eventsToDelete = events.filter(e => selectedEvents.has(e.id));
-    if (eventsToDelete.length > 0) {
-      eventsToDelete.forEach(async (event) => {
-        try {
-          await supabase
-            .from('historical_events')
-            .update({ deleted: true })
-            .eq('description', event.description)
-            .eq('location_name', event.locationName);
-        } catch (error) {
-          console.error('Error deleting event from Supabase:', error);
-        }
-      });
-    }
-    
+    saveEvents(updatedEvents);
     setSelectedEvents(new Set());
     
     toast({
@@ -364,26 +190,14 @@ const AdminEventsManager = () => {
     });
   };
 
-  const handleSaveSelectedToDB = async () => {
-    setIsSaving(true);
+  const handleSaveSelectedToDB = () => {
     const selectedEventsArray = events.filter(e => selectedEvents.has(e.id));
+    saveEvents(selectedEventsArray);
     
-    const success = await saveEventsToSupabase(selectedEventsArray);
-    
-    setIsSaving(false);
-    
-    if (success) {
-      toast({
-        title: "Events saved",
-        description: `${selectedEvents.size} events have been saved to the database.`
-      });
-    } else {
-      toast({
-        title: "Error saving to database",
-        description: "Events saved to local storage as a fallback.",
-        variant: "destructive"
-      });
-    }
+    toast({
+      title: "Events saved",
+      description: `${selectedEvents.size} events have been saved to the database.`
+    });
   };
 
   const handleImportExcel = async (importedEvents: HistoricalImage[]) => {
@@ -434,22 +248,12 @@ const AdminEventsManager = () => {
           id: updatedEvents[existingEventIndex].id
         };
       } else {
-        // Generate new id
-        const newId = updatedEvents.length > 0 ? Math.max(...updatedEvents.map(e => e.id)) + 1 : 1;
-        updatedEvents.push({
-          ...newEvent,
-          id: newId
-        });
+        updatedEvents.push(newEvent);
       }
     });
     
     setEvents(updatedEvents);
-    
-    // Save to Supabase
-    await saveEventsToSupabase(validEvents);
-    
-    // Also save to localStorage as backup
-    localStorage.setItem('savedEvents', JSON.stringify(updatedEvents));
+    await saveEvents(updatedEvents);
     
     setIsUploading(false);
     
@@ -492,17 +296,6 @@ const AdminEventsManager = () => {
     setSearchTerm(term);
   };
 
-  // Filter events based on search term
-  const filteredEvents = searchTerm 
-    ? events.filter(event => 
-        (event.title && event.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (event.description && event.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (event.locationName && event.locationName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (event.country && event.country.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (event.year && event.year.toString().includes(searchTerm))
-      )
-    : events;
-
   return (
     <div className="space-y-6">
       {isEditing ? (
@@ -530,7 +323,7 @@ const AdminEventsManager = () => {
           </div>
           
           <EventsTable 
-            events={filteredEvents} 
+            events={events} 
             onEdit={handleEditEvent} 
             onDelete={handleDeleteEvent}
             selectedEvents={selectedEvents}

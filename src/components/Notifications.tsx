@@ -88,13 +88,12 @@ const Notifications = () => {
     if (!user) return;
     
     try {
-      // Since we can't directly access notifications table via TypeScript types,
-      // we'll use a more generic approach with the REST API
-      const { data: notificationsData, error: notificationsError } = await supabase
-        .from('notifications')
+      // Use type assertion to bypass TypeScript type checking
+      const { data: notificationsData, error: notificationsError } = await (supabase
+        .from('notifications') as any)
         .select('*')
         .eq('receiver_id', user.id)
-        .order('created_at', { ascending: false }) as any;
+        .order('created_at', { ascending: false });
         
       if (notificationsError) {
         console.error('Error fetching notifications:', notificationsError);
@@ -137,11 +136,12 @@ const Notifications = () => {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      const { error } = await supabase
-        .from('notifications')
+      // Use type assertion to bypass TypeScript type checking
+      const { error } = await (supabase
+        .from('notifications') as any)
         .update({ read: true })
         .eq('id', notificationId)
-        .eq('receiver_id', user?.id) as any;
+        .eq('receiver_id', user?.id);
         
       if (error) {
         console.error('Error marking notification as read:', error);
@@ -176,11 +176,12 @@ const Notifications = () => {
     if (!user || notifications.length === 0) return;
     
     try {
-      const { error } = await supabase
-        .from('notifications')
+      // Use type assertion to bypass TypeScript type checking
+      const { error } = await (supabase
+        .from('notifications') as any)
         .update({ read: true })
         .eq('receiver_id', user.id)
-        .eq('read', false) as any;
+        .eq('read', false);
         
       if (error) {
         console.error('Error marking all notifications as read:', error);

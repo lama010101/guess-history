@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -94,6 +95,7 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
     if (!user) return;
     
     try {
+      // Use the edge function to send a notification
       const { data, error } = await supabase.functions.invoke('send-notification', {
         body: {
           recipientId: friendId,

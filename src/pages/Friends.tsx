@@ -99,15 +99,15 @@ const Friends = () => {
         setFriends(prev => [...prev, userToAdd]);
         setAvailableUsers(prev => prev.filter(u => u.id !== id));
         
-        // Create a notification for the user using the raw insert approach
-        const { error } = await supabase
-          .from('notifications')
+        // Create a notification for the user using the raw insert approach with type assertion
+        const { error } = await (supabase
+          .from('notifications') as any)
           .insert({
             sender_id: user?.id,
             receiver_id: id,
             type: 'friend_request',
             message: `${user?.username || 'Someone'} added you as a friend!`,
-          }) as any;
+          });
           
         if (error) {
           console.error('Error creating notification:', error);

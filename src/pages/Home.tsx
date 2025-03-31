@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -15,25 +14,29 @@ import { useGameSettings } from '@/hooks/useGameSettings';
 import { useDailyLimit } from '@/hooks/useDailyLimit';
 import { Clock, HelpCircle, Medal, Share2, Trophy, Users, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
 export default function Home() {
   const navigate = useNavigate();
-  const { isAuthenticated, openAuthModal } = useAuth();
+  const {
+    isAuthenticated,
+    openAuthModal
+  } = useAuth();
   const [showPlayWithFriendsDialog, setShowPlayWithFriendsDialog] = useState(false);
-  const { toast } = useToast();
-  
+  const {
+    toast
+  } = useToast();
+
   // Settings for "Play Now" section
   const [soloTimerEnabled, setSoloTimerEnabled] = useState(false);
   const [soloTimerMinutes, setSoloTimerMinutes] = useState(5);
   const [soloHintsEnabled, setSoloHintsEnabled] = useState(false);
   const [soloHintCount, setSoloHintCount] = useState(5);
-  
+
   // Settings for "Play with Friends" section
   const [friendsTimerEnabled, setFriendsTimerEnabled] = useState(false);
   const [friendsTimerMinutes, setFriendsTimerMinutes] = useState(5);
   const [friendsHintsEnabled, setFriendsHintsEnabled] = useState(false);
   const [friendsHintCount, setFriendsHintCount] = useState(5);
-  
+
   // Get global settings
   const {
     timerEnabled,
@@ -45,7 +48,6 @@ export default function Home() {
     hintCount,
     setHintCount
   } = useGameSettings();
-  
   const {
     canPlayDaily,
     todayScore,
@@ -58,20 +60,17 @@ export default function Home() {
     setSoloTimerMinutes(timerMinutes);
     setSoloHintsEnabled(hintsEnabled);
     setSoloHintCount(hintCount);
-    
     setFriendsTimerEnabled(timerEnabled);
     setFriendsTimerMinutes(timerMinutes);
     setFriendsHintsEnabled(hintsEnabled);
     setFriendsHintCount(hintCount);
   });
-  
   const handlePlayNow = () => {
     // Save solo settings to global game settings
     setTimerEnabled(soloTimerEnabled);
     setTimerMinutes(soloTimerMinutes);
     setHintsEnabled(soloHintsEnabled);
     setHintCount(soloHintCount);
-    
     const gameSettings = {
       timerEnabled: soloTimerEnabled,
       timerMinutes: soloTimerMinutes,
@@ -81,14 +80,12 @@ export default function Home() {
     localStorage.setItem('gameSettings', JSON.stringify(gameSettings));
     navigate('/play');
   };
-  
   const handlePlayWithFriends = () => {
     // Save friends settings to global game settings
     setTimerEnabled(friendsTimerEnabled);
     setTimerMinutes(friendsTimerMinutes);
     setHintsEnabled(friendsHintsEnabled);
     setHintCount(friendsHintCount);
-    
     if (isAuthenticated) {
       setShowPlayWithFriendsDialog(true);
     } else {
@@ -99,7 +96,6 @@ export default function Home() {
       });
     }
   };
-  
   const handlePlayDaily = () => {
     if (!canPlayDaily) {
       toast({
@@ -111,16 +107,12 @@ export default function Home() {
     }
     navigate('/play?mode=daily');
   };
-  
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       <Navbar />
       
       <main className="container px-4 py-6 space-y-8 max-w-6xl mx-auto">
         <div className="text-center space-y-4 mb-8">
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Guess when and where historical events happened. How accurate can you be?
-          </p>
+          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">Guess when and where it happened.</p>
         </div>
         
         <div className="grid gap-6 md:grid-cols-3">
@@ -141,20 +133,12 @@ export default function Home() {
                   <Switch id="solo-timer-toggle" checked={soloTimerEnabled} onCheckedChange={setSoloTimerEnabled} />
                 </div>
                 
-                {soloTimerEnabled && (
-                  <div className="space-y-2">
+                {soloTimerEnabled && <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Game duration: {soloTimerMinutes} min</span>
                     </div>
-                    <Slider 
-                      min={1} 
-                      max={10} 
-                      step={1} 
-                      value={[soloTimerMinutes]} 
-                      onValueChange={value => setSoloTimerMinutes(value[0])} 
-                    />
-                  </div>
-                )}
+                    <Slider min={1} max={10} step={1} value={[soloTimerMinutes]} onValueChange={value => setSoloTimerMinutes(value[0])} />
+                  </div>}
                 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -164,20 +148,12 @@ export default function Home() {
                   <Switch id="solo-hints-toggle" checked={soloHintsEnabled} onCheckedChange={setSoloHintsEnabled} />
                 </div>
                 
-                {soloHintsEnabled && (
-                  <div className="space-y-2">
+                {soloHintsEnabled && <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Hint coins: {soloHintCount}</span>
                     </div>
-                    <Slider 
-                      min={0} 
-                      max={10} 
-                      step={1} 
-                      value={[soloHintCount]} 
-                      onValueChange={value => setSoloHintCount(value[0])} 
-                    />
-                  </div>
-                )}
+                    <Slider min={0} max={10} step={1} value={[soloHintCount]} onValueChange={value => setSoloHintCount(value[0])} />
+                  </div>}
               </div>
             </CardContent>
             <CardFooter>
@@ -204,20 +180,12 @@ export default function Home() {
                   <Switch id="friend-timer-toggle" checked={friendsTimerEnabled} onCheckedChange={setFriendsTimerEnabled} />
                 </div>
                 
-                {friendsTimerEnabled && (
-                  <div className="space-y-2">
+                {friendsTimerEnabled && <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Game duration: {friendsTimerMinutes} min</span>
                     </div>
-                    <Slider 
-                      min={1} 
-                      max={10} 
-                      step={1} 
-                      value={[friendsTimerMinutes]} 
-                      onValueChange={value => setFriendsTimerMinutes(value[0])} 
-                    />
-                  </div>
-                )}
+                    <Slider min={1} max={10} step={1} value={[friendsTimerMinutes]} onValueChange={value => setFriendsTimerMinutes(value[0])} />
+                  </div>}
                 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -227,20 +195,12 @@ export default function Home() {
                   <Switch id="friend-hints-toggle" checked={friendsHintsEnabled} onCheckedChange={setFriendsHintsEnabled} />
                 </div>
                 
-                {friendsHintsEnabled && (
-                  <div className="space-y-2">
+                {friendsHintsEnabled && <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Hint coins: {friendsHintCount}</span>
                     </div>
-                    <Slider 
-                      min={0} 
-                      max={10} 
-                      step={1} 
-                      value={[friendsHintCount]} 
-                      onValueChange={value => setFriendsHintCount(value[0])} 
-                    />
-                  </div>
-                )}
+                    <Slider min={0} max={10} step={1} value={[friendsHintCount]} onValueChange={value => setFriendsHintCount(value[0])} />
+                  </div>}
               </div>
             </CardContent>
             <CardFooter>
@@ -259,8 +219,7 @@ export default function Home() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {canPlayDaily ? (
-                <div className="space-y-2 text-center py-2">
+              {canPlayDaily ? <div className="space-y-2 text-center py-2">
                   <p className="text-sm text-muted-foreground">
                     Each day brings a new event to guess.
                   </p>
@@ -270,9 +229,7 @@ export default function Home() {
                   <p className="text-sm font-medium">
                     Today's challenge is ready!
                   </p>
-                </div>
-              ) : (
-                <div className="space-y-4 text-center py-2">
+                </div> : <div className="space-y-4 text-center py-2">
                   <div className="flex justify-center">
                     <Medal className="h-16 w-16 text-emerald-500" />
                   </div>
@@ -286,20 +243,15 @@ export default function Home() {
                     <p className="text-sm text-muted-foreground">Next challenge in:</p>
                     <DailyCountdown score={todayScore || 0} targetDate={new Date(Date.now() + timeUntilNextReset)} className="text-lg font-mono" />
                   </div>
-                </div>
-              )}
+                </div>}
             </CardContent>
             <CardFooter>
-              {canPlayDaily ? (
-                <Button onClick={handlePlayDaily} variant="outline" className="w-full">
+              {canPlayDaily ? <Button onClick={handlePlayDaily} variant="outline" className="w-full">
                   Play Today's Challenge
-                </Button>
-              ) : (
-                <Button disabled variant="outline" className="w-full">
+                </Button> : <Button disabled variant="outline" className="w-full">
                   <AlertTriangle className="mr-2 h-4 w-4" />
                   Already Played Today
-                </Button>
-              )}
+                </Button>}
             </CardFooter>
           </Card>
         </div>
@@ -322,6 +274,5 @@ export default function Home() {
       </main>
       
       <PlayWithFriendsDialog open={showPlayWithFriendsDialog} onOpenChange={setShowPlayWithFriendsDialog} />
-    </div>
-  );
+    </div>;
 }

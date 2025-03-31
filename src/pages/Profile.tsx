@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -7,7 +8,11 @@ import { useAuth } from '@/services/auth';
 import { useToast } from '@/hooks/use-toast';
 import { getUserAchievements } from '@/utils/achievementUtils';
 import AchievementBadge from '@/components/game/AchievementBadge';
-import { Trophy, Medal, Award, Star, User, LogOut } from 'lucide-react';
+import { Trophy, Medal, Award, Star, User, LogOut, Edit, Save } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+
 const Profile = () => {
   const {
     isAuthenticated,
@@ -29,6 +34,15 @@ const Profile = () => {
     avgScore: 0,
     bestScore: 0
   });
+  
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [username, setUsername] = useState(user?.username || '');
+  const [userProfile, setUserProfile] = useState<{
+    username: string;
+    avatar_url?: string;
+    email?: string;
+    onesignal_player_id?: string;
+  } | null>(null);
 
   // Load user data on mount
   useEffect(() => {
@@ -62,7 +76,134 @@ const Profile = () => {
     } catch (e) {
       console.error('Error loading game stats', e);
     }
-  }, [isAuthenticated, navigate, toast]);
+    
+    // Load user profile from Supabase
+    fetchUserProfile();
+    
+    // Initialize OneSignal
+    initializeOneSignal();
+  }, [isAuthenticated, navigate, toast, user]);
+  
+  const fetchUserProfile = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('username, avatar_url, email, onesignal_player_id')
+        .eq('id', user.id)
+        .single();
+        
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        return;
+      }
+      
+      if (data) {
+        setUserProfile(data);
+        setUsername(data.username || user.username || '');
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
+  
+  const initializeOneSignal = async () => {
+    if (!window.OneSignal) {
+      // Load OneSignal script
+      const script = document.createElement('script');
+      script.src = 'https://cdn.onesignal.com/sdks/OneSignalSDK.js';
+      script.async = true;
+      document.body.appendChild(script);
+      
+      script.onload = () => {
+        setupOneSignal();
+      };
+    } else {
+      setupOneSignal();
+    }
+  };
+  
+  const setupOneSignal = () => {
+    if (!window.OneSignal) return;
+    
+    window.OneSignal = window.OneSignal || [];
+    window.OneSignal.push(function() {
+      window.OneSignal.init({
+        appId: "YOUR_ONESIGNAL_APP_ID", // Replace with your OneSignal App ID
+        notifyButton: {
+          enable: false,
+        },
+        allowLocalhostAsSecureOrigin: true,
+      });
+      
+      // Save OneSignal ID to user profile when available
+      window.OneSignal.getUserId(function(playerId) {
+        if (playerId && user?.id) {
+          savePlayerIdToProfile(playerId);
+        }
+      });
+    });
+  };
+  
+  const savePlayerIdToProfile = async (playerId: string) => {
+    if (!user?.id) return;
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          onesignal_player_id: playerId
+        })
+        .eq('id', user.id);
+        
+      if (error) {
+        console.error('Error saving OneSignal player ID:', error);
+      }
+    } catch (error) {
+      console.error('Error saving OneSignal player ID:', error);
+    }
+  };
+  
+  const handleUpdateUsername = async () => {
+    if (!user?.id || !username.trim()) return;
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          username: username.trim()
+        })
+        .eq('id', user.id);
+        
+      if (error) {
+        console.error('Error updating username:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update username",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setIsEditingUsername(false);
+      toast({
+        title: "Profile updated",
+        description: "Your username has been updated successfully"
+      });
+      
+      // Update userProfile state
+      setUserProfile(prev => prev ? { ...prev, username: username.trim() } : null);
+    } catch (error) {
+      console.error('Error updating username:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update username",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/');
@@ -76,6 +217,9 @@ const Profile = () => {
   if (!isAuthenticated) {
     return null; // Redirect handled in useEffect
   }
+  
+  const avatarUrl = userProfile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${username || Math.random()}`;
+  
   return <div className="min-h-screen bg-background">
       <Navbar />
       <main className="container px-4 py-6 max-w-4xl mx-auto bg-slate-950">
@@ -87,68 +231,97 @@ const Profile = () => {
           </Button>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center">
-                <User className="mr-2 h-5 w-5 text-primary" />
-                User Info
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Username:</span>
-                  <span className="font-medium">{user?.username || 'User'}</span>
+        <div className="flex flex-col md:flex-row gap-6 mb-8">
+          <div className="w-full md:w-1/3">
+            <Card>
+              <CardHeader className="text-center">
+                <div className="flex justify-center mb-4">
+                  <Avatar className="h-24 w-24">
+                    <AvatarImage src={avatarUrl} alt={username} />
+                    <AvatarFallback>{username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Email:</span>
-                  <span className="font-medium">{user?.email || 'user@example.com'}</span>
+                
+                {isEditingUsername ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="Enter username"
+                      className="text-center"
+                    />
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={handleUpdateUsername}
+                    >
+                      <Save className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <CardTitle className="flex items-center justify-center gap-2">
+                    {username}
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => setIsEditingUsername(true)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </CardTitle>
+                )}
+                
+                <CardDescription>
+                  {userProfile?.email || user?.email || 'user@example.com'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Member since:</span>
+                    <span className="font-medium">
+                      {new Date().toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    })}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Member since:</span>
-                  <span className="font-medium">
-                    {new Date().toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                  })}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
           
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center">
-                <Trophy className="mr-2 h-5 w-5 text-primary" />
-                Game Stats
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Games Played:</span>
-                  <span className="font-medium">{gameStats.gamesPlayed}</span>
+          <div className="w-full md:w-2/3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center">
+                  <Trophy className="mr-2 h-5 w-5 text-primary" />
+                  Game Stats
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Games Played:</span>
+                    <span className="font-medium">{gameStats.gamesPlayed}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Total Score:</span>
+                    <span className="font-medium">{gameStats.totalScore.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Avg. Score:</span>
+                    <span className="font-medium">{gameStats.avgScore.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Best Score:</span>
+                    <span className="font-medium">{gameStats.bestScore.toLocaleString()}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total Score:</span>
-                  <span className="font-medium">{gameStats.totalScore.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Avg. Score:</span>
-                  <span className="font-medium">{gameStats.avgScore.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Best Score:</span>
-                  <span className="font-medium">{gameStats.bestScore.toLocaleString()}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          
+              </CardContent>
+            </Card>
+          </div>
         </div>
         
         <Card>
@@ -181,8 +354,6 @@ const Profile = () => {
                 <p className="text-sm text-muted-foreground">Perfect scores (both location & year)</p>
               </div>
             </div>
-            
-            
           </CardContent>
         </Card>
       </main>

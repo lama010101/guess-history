@@ -8,12 +8,16 @@ import Friends from './pages/Friends';
 import Profile from './pages/Profile';
 import Leaderboard from './pages/Leaderboard';
 import { initializeAuth } from './services/initAuth';
+import { initializeOneSignal } from './utils/oneSignalInit';
 
 function App() {
   // Initialize auth with Supabase on app start
   useEffect(() => {
     const init = async () => {
       await initializeAuth();
+      
+      // Initialize OneSignal - Replace with your actual OneSignal App ID
+      initializeOneSignal("YOUR_ONESIGNAL_APP_ID");
     };
     
     init();

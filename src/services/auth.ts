@@ -445,3 +445,31 @@ export const initializeAuthWithSupabase = async () => {
     }
   });
 };
+
+export const syncProfileWithAuth = async (user: any) => {
+  if (!user) return null;
+  
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('username, avatar_url, email, role')
+      .eq('id', user.id)
+      .single();
+      
+    if (error) {
+      console.error('Error fetching user profile:', error);
+      return user;
+    }
+    
+    // Merge profile data with user object
+    return {
+      ...user,
+      username: data?.username || user.username || user.email?.split('@')[0] || 'User',
+      avatarUrl: data?.avatar_url || user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
+      isAdmin: data?.role === 'admin'
+    };
+  } catch (error) {
+    console.error('Error syncing profile with auth:', error);
+    return user;
+  }
+};

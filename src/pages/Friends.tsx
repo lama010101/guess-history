@@ -8,29 +8,25 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/services/auth';
-import { Plus, Search, UserMinus, Users } from 'lucide-react';
+import { Plus, Search, UserMinus, Users, BellRing } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
-// Expanded mock data to ensure "lili" is available for search
-const getRealUsers = () => {
-  // In a real implementation, this would fetch from an API
-  return [
-    { id: '4', username: 'john_doe', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=john' },
-    { id: '5', username: 'jane_smith', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=jane' },
-    { id: '6', username: 'alex_wilson', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alex' },
-    { id: '7', username: 'lili', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=lili' },
-    { id: '8', username: 'emma_johnson', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=emma' },
-    { id: '9', username: 'michael_brown', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=michael' },
-  ];
-};
+interface Profile {
+  id: string;
+  username: string;
+  email?: string;
+  avatar_url?: string;
+}
 
 const Friends = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
-  const [friends, setFriends] = useState([]);
-  const [availableUsers, setAvailableUsers] = useState([]);
+  const [friends, setFriends] = useState<Profile[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<Profile[]>([]);
   const [activeTab, setActiveTab] = useState('friends');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -40,38 +36,99 @@ const Friends = () => {
       });
       navigate('/');
     } else {
-      // Fetch real users
-      const realUsers = getRealUsers();
-      setAvailableUsers(realUsers);
-      
-      // In a real implementation, you would fetch the user's friends from an API
-      // For now, we'll just set an empty friends list
-      setFriends([]);
+      fetchProfiles();
+      fetchFriends();
       
       // Check if there's a query parameter for searching
       const urlParams = new URLSearchParams(window.location.search);
       const searchParam = urlParams.get('search');
       if (searchParam) {
         setSearchTerm(searchParam);
-        // Force the activeTab to 'discover' when searching
         setActiveTab('discover');
       }
     }
   }, [isAuthenticated, navigate, toast]);
 
+  const fetchProfiles = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username, email, avatar_url')
+        .neq('id', user?.id || '');
+      
+      if (error) {
+        console.error('Error fetching profiles:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load user profiles",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Filter out profiles that are already friends
+      const existingFriendIds = friends.map(friend => friend.id);
+      const nonFriendProfiles = data?.filter(profile => 
+        !existingFriendIds.includes(profile.id)
+      ) || [];
+      
+      setAvailableUsers(nonFriendProfiles);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching profiles:', error);
+      setLoading(false);
+    }
+  };
+
+  const fetchFriends = async () => {
+    // In a real implementation, you would fetch the user's friends from an API
+    // For now, we'll just set an empty friends list
+    setFriends([]);
+  };
+
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
   };
 
-  const handleAddFriend = (id) => {
+  const handleAddFriend = async (id) => {
     const userToAdd = availableUsers.find(u => u.id === id);
     if (userToAdd) {
-      setFriends(prev => [...prev, userToAdd]);
-      setAvailableUsers(prev => prev.filter(u => u.id !== id));
-      toast({
-        title: "Friend added",
-        description: `${userToAdd.username} has been added to your friends list`
-      });
+      try {
+        // In a real implementation, you would add the friend relationship in the database
+        // For now, we'll just update the local state
+        setFriends(prev => [...prev, userToAdd]);
+        setAvailableUsers(prev => prev.filter(u => u.id !== id));
+        
+        // Send a notification to the user
+        const { data, error } = await supabase.functions.invoke('send-notification', {
+          body: {
+            recipientId: id,
+            message: `${user?.username || 'Someone'} added you as a friend!`,
+            title: "New Friend Request",
+            data: {
+              type: 'friend_request',
+              sender_id: user?.id
+            }
+          }
+        });
+        
+        if (error) {
+          console.error('Error sending notification:', error);
+        }
+        
+        toast({
+          title: "Friend added",
+          description: `${userToAdd.username} has been added to your friends list`
+        });
+      } catch (error) {
+        console.error('Error adding friend:', error);
+        toast({
+          title: "Error",
+          description: "Failed to add friend",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -87,7 +144,7 @@ const Friends = () => {
     }
   };
 
-  // Filter users with case-insensitive search to make sure "lili" can be found
+  // Filter users with case-insensitive search
   const filteredFriends = friends.filter(friend => 
     friend.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -132,9 +189,9 @@ const Friends = () => {
                     <CardContent className="p-4 flex justify-between items-center">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          {friend.avatarUrl ? (
+                          {friend.avatar_url ? (
                             <img 
-                              src={friend.avatarUrl} 
+                              src={friend.avatar_url} 
                               alt={friend.username} 
                               className="w-10 h-10 rounded-full"
                             />
@@ -173,18 +230,22 @@ const Friends = () => {
           </TabsContent>
           
           <TabsContent value="discover">
-            {filteredUsers.length > 0 ? (
+            {loading ? (
+              <div className="text-center py-12">
+                <p>Loading users...</p>
+              </div>
+            ) : filteredUsers.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredUsers.map(user => (
                   <Card key={user.id}>
                     <CardContent className="p-4 flex justify-between items-center">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          {user.avatarUrl ? (
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                          {user.avatar_url ? (
                             <img 
-                              src={user.avatarUrl} 
+                              src={user.avatar_url} 
                               alt={user.username} 
-                              className="w-10 h-10 rounded-full"
+                              className="w-10 h-10 rounded-full object-cover"
                             />
                           ) : (
                             <Users className="h-5 w-5 text-primary" />

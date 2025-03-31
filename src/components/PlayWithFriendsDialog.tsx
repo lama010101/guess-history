@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -96,6 +95,31 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
     // Navigate to the game page with the multiplayer mode parameter
     navigate(`/play?mode=multiplayer&friends=${selectedFriends.join(',')}`);
     onOpenChange(false);
+  };
+  
+  // Add this code where a game invite is sent
+  // For example, after a game session is created:
+  const sendGameInvite = async (gameId, friendId) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('send-notification', {
+        body: {
+          recipientId: friendId,
+          message: `${user?.username || 'Someone'} invited you to play a game!`,
+          title: "Game Invitation",
+          data: {
+            type: 'invite',
+            game_id: gameId,
+            sender_id: user?.id
+          }
+        }
+      });
+      
+      if (error) {
+        console.error('Error sending game invitation:', error);
+      }
+    } catch (error) {
+      console.error('Error sending game invitation:', error);
+    }
   };
   
   return (

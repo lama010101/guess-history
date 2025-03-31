@@ -30,6 +30,7 @@ import HintDialog from './game/HintDialog';
 import ShareDialog from './ShareDialog';
 import { useNavigationConfirmation } from '@/hooks/useNavigationConfirmation';
 import HintSystem from './game/HintSystem';
+import Notifications from '@/components/Notifications';
 
 interface RoundInfo {
   currentRound: number;
@@ -430,6 +431,7 @@ const Navbar = ({
         open={showShareDialog} 
         onOpenChange={setShowShareDialog} 
       />
+      <Notifications />
     </header>
   );
 };

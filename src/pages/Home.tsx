@@ -116,8 +116,8 @@ export default function Home() {
         </div>
         
         <div className="grid gap-6 md:grid-cols-3">
-          <Card className="md:col-span-1">
-            <CardHeader className="space-y-1">
+          <Card className="md:col-span-1 bg-orange-400">
+            <CardHeader className="space-y-1 bg-orange-400">
               <CardTitle className="text-2xl">Play Now</CardTitle>
               <CardDescription>
                 Start a new game with multiple rounds
@@ -157,14 +157,14 @@ export default function Home() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button onClick={handlePlayNow} className="w-full">
+              <Button onClick={handlePlayNow} className="w-full bg-orange-900 hover:bg-orange-800">
                 Play Now
               </Button>
             </CardFooter>
           </Card>
           
-          <Card className="md:col-span-1">
-            <CardHeader className="space-y-1">
+          <Card className="md:col-span-1 bg-emerald-400">
+            <CardHeader className="space-y-1 bg-emerald-400">
               <CardTitle className="text-2xl">Play with Friends</CardTitle>
               <CardDescription>
                 Invite friends and compete together
@@ -204,15 +204,15 @@ export default function Home() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button onClick={handlePlayWithFriends} className="w-full">
+              <Button onClick={handlePlayWithFriends} className="w-full bg-emerald-900 hover:bg-emerald-800">
                 <Users className="mr-2 h-4 w-4" />
                 Play with Friends
               </Button>
             </CardFooter>
           </Card>
           
-          <Card className="md:col-span-1">
-            <CardHeader className="space-y-1">
+          <Card className="md:col-span-1 bg-violet-400">
+            <CardHeader className="space-y-1 bg-violet-400">
               <CardTitle className="text-2xl">Daily Challenge</CardTitle>
               <CardDescription>
                 One new challenge every day
@@ -222,7 +222,7 @@ export default function Home() {
               {canPlayDaily ? <div className="space-y-2 text-center py-2">
                   
                   <div className="flex justify-center">
-                    <Trophy className="h-16 w-16 text-amber-500" />
+                    <Trophy className="h-16 w-16 text-amber-500 py-0 bg-slate-950 rounded-full px-[20px]" />
                   </div>
                   
                 </div> : <div className="space-y-4 text-center py-2">
@@ -242,7 +242,7 @@ export default function Home() {
                 </div>}
             </CardContent>
             <CardFooter>
-              {canPlayDaily ? <Button onClick={handlePlayDaily} variant="outline" className="w-full">
+              {canPlayDaily ? <Button onClick={handlePlayDaily} variant="outline" className="w-full bg-violet-900 hover:bg-violet-800 text-slate-50 mx-0 my-0 py-0 text-base px-0 rounded-lg">
                   Play Today's Challenge
                 </Button> : <Button disabled variant="outline" className="w-full">
                   <AlertTriangle className="mr-2 h-4 w-4" />

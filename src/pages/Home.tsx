@@ -107,7 +107,7 @@ export default function Home() {
     }
     navigate('/play?mode=daily');
   };
-  return <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-slate-950">
       <Navbar />
       
       <main className="container space-y-8 max-w-6xl mx-auto py-[20px] px-[35px] bg-slate-950">

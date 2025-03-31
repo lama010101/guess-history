@@ -88,47 +88,25 @@ const Notifications = () => {
     if (!user) return;
     
     try {
-      // Use type assertion to bypass TypeScript type checking
-      const { data: notificationsData, error: notificationsError } = await (supabase
-        .from('notifications') as any)
-        .select('*')
-        .eq('receiver_id', user.id)
-        .order('created_at', { ascending: false });
+      // Use a direct REST call to bypass TypeScript type checking
+      const { data: notificationsData, error: notificationsError } = await (supabase as any)
+        .rpc('get_notifications_with_sender', { user_id: user.id });
         
       if (notificationsError) {
         console.error('Error fetching notifications:', notificationsError);
         return;
       }
       
-      // For each notification, fetch sender profile info
-      const notificationsWithSenders: Notification[] = [];
+      // Transform the data to match our interface
+      const formattedNotifications = Array.isArray(notificationsData) 
+        ? notificationsData.map((notification: any) => ({
+            ...notification,
+            sender: notification.sender || { username: 'System' }
+          }))
+        : [];
       
-      for (const notification of notificationsData || []) {
-        let senderProfile: SenderProfile | undefined;
-        
-        if (notification.sender_id) {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('id, username, avatar_url')
-            .eq('id', notification.sender_id)
-            .single() as any;
-            
-          senderProfile = profileData as SenderProfile;
-        }
-        
-        notificationsWithSenders.push({
-          ...notification,
-          sender: senderProfile ? {
-            username: senderProfile.username || 'Unknown',
-            avatar_url: senderProfile.avatar_url
-          } : {
-            username: 'System'
-          }
-        });
-      }
-      
-      setNotifications(notificationsWithSenders);
-      setUnreadCount(notificationsWithSenders.filter(n => !n.read).length || 0);
+      setNotifications(formattedNotifications);
+      setUnreadCount(formattedNotifications.filter((n: Notification) => !n.read).length || 0);
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
@@ -136,12 +114,9 @@ const Notifications = () => {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      // Use type assertion to bypass TypeScript type checking
-      const { error } = await (supabase
-        .from('notifications') as any)
-        .update({ read: true })
-        .eq('id', notificationId)
-        .eq('receiver_id', user?.id);
+      // Use a stored procedure to mark as read
+      const { error } = await (supabase as any)
+        .rpc('mark_notification_as_read', { notification_id: notificationId });
         
       if (error) {
         console.error('Error marking notification as read:', error);
@@ -176,12 +151,9 @@ const Notifications = () => {
     if (!user || notifications.length === 0) return;
     
     try {
-      // Use type assertion to bypass TypeScript type checking
-      const { error } = await (supabase
-        .from('notifications') as any)
-        .update({ read: true })
-        .eq('receiver_id', user.id)
-        .eq('read', false);
+      // Use a stored procedure to mark all as read
+      const { error } = await (supabase as any)
+        .rpc('mark_all_notifications_as_read', { user_id: user.id });
         
       if (error) {
         console.error('Error marking all notifications as read:', error);

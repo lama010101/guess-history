@@ -24,7 +24,7 @@ const YearTimeline = ({
   // Calculate year difference if not provided
   const yearDifference = providedYearDifference !== undefined ? 
     providedYearDifference : 
-    actualYear - guessedYear;
+    Math.abs(actualYear - guessedYear);
   
   return (
     <div className="w-full py-4">

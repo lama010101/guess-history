@@ -138,10 +138,10 @@ export const useDailyGame = () => {
             id: index + 1,
             title: event.location_name || '',
             description: event.description || '',
-            year: parseInt(event.year as string) || 2000,
+            year: typeof event.year === 'string' ? parseInt(event.year) : event.year,
             location: {
-              lat: parseFloat(event.latitude as string) || 0,
-              lng: parseFloat(event.longitude as string) || 0
+              lat: parseFloat(event.latitude.toString()),
+              lng: parseFloat(event.longitude.toString())
             },
             locationName: event.location_name || '',
             country: event.country || '',
@@ -156,7 +156,7 @@ export const useDailyGame = () => {
                 game_mode: 'daily',
                 created_at: todayDate,
                 events: transformedEvents,
-                creator_id: user.id, // Add the creator_id field
+                creator_id: user.id,
                 settings: {
                   gameMode: 'daily',
                   distanceUnit: 'km',

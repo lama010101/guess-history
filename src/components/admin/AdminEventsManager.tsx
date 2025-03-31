@@ -48,10 +48,10 @@ const AdminEventsManager = () => {
           id: index + 1,
           title: item.location_name || '',
           description: item.description || '',
-          year: item.year || 2000,
+          year: typeof item.year === 'string' ? parseInt(item.year) : item.year,
           location: { 
-            lat: parseFloat(item.latitude) || 0, 
-            lng: parseFloat(item.longitude) || 0 
+            lat: parseFloat(item.latitude.toString()) || 0, 
+            lng: parseFloat(item.longitude.toString()) || 0 
           },
           locationName: item.location_name || '',
           country: item.country || '',

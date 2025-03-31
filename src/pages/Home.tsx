@@ -98,6 +98,7 @@ const Home = () => {
                     </div>
                     
                     <DailyCountdown 
+                      score={dailyScore}
                       hours={countdown.hours}
                       minutes={countdown.minutes}
                       seconds={countdown.seconds}
@@ -226,10 +227,12 @@ const Home = () => {
       </Dialog>
       
       {/* Friends Dialog */}
-      <PlayWithFriendsDialog 
-        showDialog={showFriendsDialog}
-        setShowDialog={setShowFriendsDialog}
-      />
+      {showFriendsDialog && (
+        <PlayWithFriendsDialog 
+          open={showFriendsDialog}
+          onOpenChange={setShowFriendsDialog}
+        />
+      )}
     </div>
   );
 };

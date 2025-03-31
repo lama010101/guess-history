@@ -2,22 +2,26 @@
 import { useState, useEffect } from 'react';
 import { Clock } from 'lucide-react';
 
-interface DailyCountdownProps {
-  score: number;
+interface CountdownTime {
   hours: number;
   minutes: number;
   seconds: number;
+}
+
+interface DailyCountdownProps {
+  score: number;
+  countdown: CountdownTime;
   targetDate?: Date;
   className?: string;
 }
 
-const DailyCountdown = ({ score, hours, minutes, seconds, targetDate, className }: DailyCountdownProps) => {
+const DailyCountdown = ({ score, countdown, targetDate, className }: DailyCountdownProps) => {
   // Use targetDate if provided, otherwise use the passed countdown values
   const displayCountdown = targetDate ? {
     hours: Math.floor((targetDate.getTime() - Date.now()) / 1000 / 60 / 60) % 24,
     minutes: Math.floor((targetDate.getTime() - Date.now()) / 1000 / 60) % 60,
     seconds: Math.floor((targetDate.getTime() - Date.now()) / 1000) % 60
-  } : { hours, minutes, seconds };
+  } : countdown;
   
   return (
     <div className={`p-4 border rounded-lg bg-background/50 backdrop-blur-sm space-y-3 ${className || ''}`}>

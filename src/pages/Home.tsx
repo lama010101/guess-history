@@ -61,13 +61,10 @@ const Home = () => {
         />
       )}
       
-      {/* Friends Dialog */}
-      {showFriendsDialog && (
-        <PlayWithFriendsDialog 
-          open={showFriendsDialog}
-          onOpenChange={setShowFriendsDialog}
-        />
-      )}
+      <PlayWithFriendsDialog 
+        open={showFriendsDialog}
+        onOpenChange={setShowFriendsDialog}
+      />
     </div>
   );
 };

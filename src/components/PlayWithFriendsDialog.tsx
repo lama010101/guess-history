@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -20,11 +19,15 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { CheckIcon, SearchIcon, UserPlusIcon, UsersIcon } from 'lucide-react';
 
-export default function PlayWithFriendsDialog() {
+interface PlayWithFriendsDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export default function PlayWithFriendsDialog({ open, onOpenChange }: PlayWithFriendsDialogProps) {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
   const [friends, setFriends] = useState([]);
   const [selectedFriends, setSelectedFriends] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -152,7 +155,7 @@ export default function PlayWithFriendsDialog() {
       });
       
       // Navigate to the game
-      setOpen(false);
+      onOpenChange(false);
       navigate(`/play?game=${gameId}`);
     } catch (error) {
       console.error('Error in invite process:', error);
@@ -169,13 +172,7 @@ export default function PlayWithFriendsDialog() {
   );
   
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="default" className="gap-2 rounded-full" disabled={!isAuthenticated}>
-          <UsersIcon className="h-4 w-4" />
-          Play with Friends
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Invite Friends to Play</DialogTitle>
@@ -260,7 +257,7 @@ export default function PlayWithFriendsDialog() {
                 <Button 
                   variant="outline" 
                   onClick={() => {
-                    setOpen(false);
+                    onOpenChange(false);
                     navigate('/friends');
                   }}
                 >
@@ -273,7 +270,7 @@ export default function PlayWithFriendsDialog() {
         </ScrollArea>
         
         <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button 

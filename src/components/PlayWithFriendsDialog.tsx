@@ -1,228 +1,289 @@
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Copy, Share2, Bell, Users, Copy as CopyIcon } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from '@/services/auth';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/services/auth';
 import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { CheckIcon, SearchIcon, UserPlusIcon, UsersIcon } from 'lucide-react';
 
-interface Friend {
-  id: string;
-  name: string;
-  avatar: string;
-  online?: boolean;
-}
-
-interface PlayWithFriendsDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProps) => {
-  const [copied, setCopied] = useState(false);
-  const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
-  const [friends, setFriends] = useState<Friend[]>([]);
+export default function PlayWithFriendsDialog() {
+  const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
-  const { user, users } = useAuth();
   const navigate = useNavigate();
-  
-  const gameLink = `${window.location.origin}/play?invite=${user?.id || 'guest'}&mode=multiplayer`;
+  const [open, setOpen] = useState(false);
+  const [friends, setFriends] = useState([]);
+  const [selectedFriends, setSelectedFriends] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(false);
   
   useEffect(() => {
-    if (users && users.length > 0) {
-      const otherUsers = users
-        .filter(u => u.id !== user?.id && !u.isGuest)
-        .slice(0, 5)
-        .map(u => ({
-          id: u.id,
-          name: u.username || u.email?.split('@')[0] || 'User',
-          avatar: u.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.username || Math.random()}`,
-          online: Math.random() > 0.5
-        }));
-      
-      setFriends(otherUsers);
-    } else {
-      const fakeFriends: Friend[] = [
-        { id: '1', name: 'Alex Smith', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alex', online: true },
-        { id: '2', name: 'Jordan Taylor', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=jordan', online: false },
-        { id: '3', name: 'Casey Johnson', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=casey', online: true },
-        { id: '4', name: 'Riley Davis', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=riley', online: false },
-        { id: '5', name: 'Taylor Wilson', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=taylor', online: true },
-      ];
-      setFriends(fakeFriends);
+    if (open && isAuthenticated) {
+      fetchFriends();
     }
-  }, [users, user]);
+  }, [open, isAuthenticated]);
   
-  const handleCopy = () => {
-    navigator.clipboard.writeText(gameLink);
-    setCopied(true);
-    toast({
-      title: "Link copied!",
-      description: "Share this link with your friends to play together"
-    });
-    setTimeout(() => setCopied(false), 2000);
-  };
-  
-  const handleFriendSelect = (friendId: string) => {
-    setSelectedFriends(prev => 
-      prev.includes(friendId) 
-        ? prev.filter(id => id !== friendId) 
-        : [...prev, friendId]
-    );
-  };
-  
-  const handleInviteAndStart = () => {
-    if (selectedFriends.length > 0) {
-      const friendNames = selectedFriends.map(id => 
-        friends.find(f => f.id === id)?.name || 'Friend'
-      ).join(', ');
-      
-      toast({
-        title: "Invitations sent!",
-        description: `Game invitations sent to ${friendNames}`
-      });
-    }
-    
-    navigate(`/play?mode=multiplayer&friends=${selectedFriends.join(',')}`);
-    onOpenChange(false);
-  };
-  
-  const sendGameInvite = async (gameId: string, friendId: string) => {
+  const fetchFriends = async () => {
     if (!user) return;
     
+    setLoading(true);
     try {
-      // Use the edge function to send a notification
-      const { data, error } = await supabase.functions.invoke('send-notification', {
-        body: {
-          recipientId: friendId,
-          message: `${user?.username || 'Someone'} invited you to play a game!`,
-          title: "Game Invitation",
-          data: {
-            type: 'invite',
-            game_id: gameId,
-            sender_id: user?.id
+      // Fetch friends from Supabase
+      const { data: friendsData, error: friendsError } = await supabase
+        .from('friends')
+        .select('*, friend_profile:profiles!friend_id(*)')
+        .eq('user_id', user.id);
+      
+      if (friendsError) {
+        console.error('Error fetching friends:', friendsError);
+        toast({
+          title: "Error",
+          description: "Failed to load your friends list",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+      
+      // Filter out test/fake users
+      const realFriends = (friendsData || [])
+        .filter(friend => {
+          const username = friend.friend_profile?.username?.toLowerCase() || '';
+          return !username.includes('test') && 
+                !username.includes('bot') && 
+                !username.includes('admin') &&
+                !username.includes('system');
+        })
+        .map(friend => ({
+          id: friend.friend_id,
+          username: friend.friend_profile?.username || 'Unknown User',
+          avatar: friend.friend_profile?.avatar_url || null
+        }));
+      
+      setFriends(realFriends);
+    } catch (error) {
+      console.error('Error fetching friends:', error);
+    }
+    setLoading(false);
+  };
+  
+  const toggleFriendSelection = (friendId) => {
+    setSelectedFriends(prev => {
+      if (prev.includes(friendId)) {
+        return prev.filter(id => id !== friendId);
+      } else {
+        return [...prev, friendId];
+      }
+    });
+  };
+  
+  const createGameAndInviteFriends = async () => {
+    if (!user || selectedFriends.length === 0) return;
+    
+    try {
+      // Create a new game session
+      const { data: gameData, error: gameError } = await supabase
+        .from('game_sessions')
+        .insert({
+          creator_id: user.id,
+          game_mode: 'multiplayer',
+          settings: {
+            gameMode: 'multiplayer',
+            distanceUnit: 'km',
+            timerEnabled: true,
+            timerDuration: 5
           }
+        })
+        .select();
+        
+      if (gameError) {
+        console.error('Error creating game session:', gameError);
+        toast({
+          title: "Error",
+          description: "Failed to create game session",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      const gameId = gameData[0].id;
+      
+      // Send notifications to each selected friend
+      for (const friendId of selectedFriends) {
+        try {
+          // Use the edge function to send a push notification
+          const { error } = await supabase.functions.invoke('send-notification', {
+            body: {
+              recipientId: friendId,
+              message: `${user.username || 'A friend'} has invited you to play a game!`,
+              title: "Game Invitation",
+              data: {
+                type: 'invite',
+                sender_id: user.id,
+                game_id: gameId
+              }
+            }
+          });
+          
+          if (error) {
+            console.error('Error sending notification:', error);
+          }
+        } catch (error) {
+          console.error('Error sending invite to friend:', error);
         }
+      }
+      
+      toast({
+        title: "Invitations sent",
+        description: `Invited ${selectedFriends.length} friend${selectedFriends.length !== 1 ? 's' : ''} to play`
       });
       
-      if (error) {
-        console.error('Error sending game invitation:', error);
-      }
+      // Navigate to the game
+      setOpen(false);
+      navigate(`/play?game=${gameId}`);
     } catch (error) {
-      console.error('Error sending game invitation:', error);
+      console.error('Error in invite process:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send invitations",
+        variant: "destructive"
+      });
     }
   };
   
+  const filteredFriends = friends.filter(friend => 
+    friend.username.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="default" className="gap-2 rounded-full" disabled={!isAuthenticated}>
+          <UsersIcon className="h-4 w-4" />
+          Play with Friends
+        </Button>
+      </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Play with Friends</DialogTitle>
+          <DialogTitle>Invite Friends to Play</DialogTitle>
           <DialogDescription>
-            Invite friends to play a game together
+            Select friends to invite to a multiplayer game session.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Game link</label>
-            <div className="flex items-center space-x-2">
-              <div className="grid flex-1 gap-2">
-                <Input
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={gameLink}
-                  readOnly
-                />
-              </div>
-              <Button type="submit" size="sm" onClick={handleCopy}>
-                {copied ? "Copied" : "Copy"}
-                <CopyIcon className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Select friends to invite</label>
-              <span className="text-xs text-muted-foreground">
-                {selectedFriends.length} selected
-              </span>
-            </div>
-            
-            <div className="border rounded-md divide-y max-h-[240px] overflow-y-auto">
-              {friends.length > 0 ? (
-                friends.map(friend => (
-                  <div key={friend.id} className="flex items-center p-3 hover:bg-muted/50">
-                    <Checkbox 
-                      id={`friend-${friend.id}`}
-                      checked={selectedFriends.includes(friend.id)}
-                      onCheckedChange={() => handleFriendSelect(friend.id)}
-                      className="mr-3"
-                    />
-                    <label 
-                      htmlFor={`friend-${friend.id}`}
-                      className="flex-1 flex items-center cursor-pointer"
-                    >
-                      <div className="relative">
-                        <img 
-                          src={friend.avatar} 
-                          alt={friend.name} 
-                          className="h-10 w-10 rounded-full mr-3"
-                        />
-                        {friend.online && (
-                          <span className="absolute bottom-0 right-2 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-white"></span>
-                        )}
-                      </div>
-                      <span>{friend.name}</span>
-                    </label>
-                  </div>
-                ))
-              ) : (
-                <div className="p-4 text-center text-muted-foreground">
-                  <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                  <p>No friends found</p>
-                  <p className="text-xs mt-1">Invite friends to play with them</p>
-                </div>
-              )}
-            </div>
-          </div>
+        <div className="relative mb-4">
+          <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search friends..."
+            className="pl-8"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
         
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-0 sm:justify-between mt-2">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-          >
+        {selectedFriends.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {selectedFriends.map(id => {
+              const friend = friends.find(f => f.id === id);
+              return friend ? (
+                <Badge key={id} variant="secondary" className="px-2 py-1">
+                  {friend.username}
+                </Badge>
+              ) : null;
+            })}
+          </div>
+        )}
+        
+        <ScrollArea className="max-h-[280px] pr-4 -mr-4">
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <p className="text-muted-foreground">Loading friends...</p>
+            </div>
+          ) : filteredFriends.length > 0 ? (
+            <div className="space-y-2">
+              {filteredFriends.map(friend => (
+                <Card 
+                  key={friend.id} 
+                  className={`hover:bg-accent cursor-pointer transition-colors ${
+                    selectedFriends.includes(friend.id) ? 'bg-primary/10' : ''
+                  }`}
+                  onClick={() => toggleFriendSelection(friend.id)}
+                >
+                  <CardContent className="p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                        {friend.avatar ? (
+                          <img 
+                            src={friend.avatar} 
+                            alt={friend.username} 
+                            className="w-full h-full object-cover" 
+                          />
+                        ) : (
+                          <UsersIcon className="h-5 w-5 text-primary" />
+                        )}
+                      </div>
+                      <span className="font-medium">{friend.username}</span>
+                    </div>
+                    
+                    {selectedFriends.includes(friend.id) && (
+                      <CheckIcon className="h-5 w-5 text-primary" />
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <UsersIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2">
+                {searchTerm ? "No matches found" : "No friends yet"}
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                {searchTerm 
+                  ? "Try a different search term" 
+                  : "Add some friends to play with them"}
+              </p>
+              {!searchTerm && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setOpen(false);
+                    navigate('/friends');
+                  }}
+                >
+                  <UserPlusIcon className="h-4 w-4 mr-2" />
+                  Find Friends
+                </Button>
+              )}
+            </div>
+          )}
+        </ScrollArea>
+        
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleCopy}
-              className="flex items-center gap-1.5"
-            >
-              <Share2 className="h-4 w-4" />
-              Share Link
-            </Button>
-            
-            <Button
-              onClick={handleInviteAndStart}
-              className="flex items-center gap-1.5"
-              disabled={selectedFriends.length === 0}
-            >
-              <Bell className="h-4 w-4" />
-              Invite & Start
-            </Button>
-          </div>
-        </div>
+          <Button 
+            onClick={createGameAndInviteFriends}
+            disabled={selectedFriends.length === 0}
+          >
+            Start Game & Invite ({selectedFriends.length})
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
-};
-
-export default PlayWithFriendsDialog;
+}

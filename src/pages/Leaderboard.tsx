@@ -145,7 +145,7 @@ const Leaderboard = () => {
         
         <div className="space-y-4">
           {filteredData.length > 0 ? filteredData.map((player, index) => <Card key={player.id} className={index < 3 ? "border-primary/30 bg-primary/5" : ""}>
-                <CardContent className="p-4 flex items-center justify-between bg-slate-50">
+                <CardContent className="p-4 flex items-center justify-between bg-slate-50 rounded-xl py-[15px]">
                   <div className="flex items-center gap-3">
                     <div className="flex-shrink-0 flex items-center justify-center w-8 h-8">
                       {index === 0 ? <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-yellow-400/20 text-yellow-600">

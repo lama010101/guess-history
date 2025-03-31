@@ -80,7 +80,7 @@ const Profile = () => {
       <Navbar />
       <main className="container px-4 py-6 max-w-4xl mx-auto bg-slate-950">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-          <h1 className="text-3xl font-bold">Your Profile</h1>
+          <h1 className="text-3xl font-bold text-slate-50">Your Profile</h1>
           <Button variant="outline" onClick={handleLogout} className="mt-2 sm:mt-0">
             <LogOut className="mr-2 h-4 w-4" />
             Logout
@@ -196,32 +196,7 @@ const Profile = () => {
               </div>
             </div>
             
-            <div className="mt-6">
-              <h3 className="font-medium mb-2 flex items-center">
-                <Star className="mr-2 h-4 w-4 text-yellow-500" />
-                Upcoming Achievements
-              </h3>
-              <ul className="space-y-2">
-                <li className="flex justify-between items-center p-2 bg-muted/30 rounded">
-                  <span>Location Expert</span>
-                  <span className="text-sm">
-                    {achievements.perfectLocations}/10 perfect locations
-                  </span>
-                </li>
-                <li className="flex justify-between items-center p-2 bg-muted/30 rounded">
-                  <span>Time Traveler</span>
-                  <span className="text-sm">
-                    {achievements.perfectYears}/10 perfect years
-                  </span>
-                </li>
-                <li className="flex justify-between items-center p-2 bg-muted/30 rounded">
-                  <span>Master Historian</span>
-                  <span className="text-sm">
-                    {achievements.perfectCombos}/5 perfect combos
-                  </span>
-                </li>
-              </ul>
-            </div>
+            
           </CardContent>
         </Card>
       </main>

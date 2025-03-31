@@ -32,6 +32,12 @@ interface Notification {
   };
 }
 
+interface SenderProfile {
+  id: string;
+  username: string;
+  avatar_url?: string;
+}
+
 const Notifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -51,7 +57,7 @@ const Notifications = () => {
     if (!user) return;
 
     const channel = supabase
-      .channel('public:notifications')
+      .channel('notifications-channel')
       .on(
         'postgres_changes',
         { 
@@ -82,18 +88,47 @@ const Notifications = () => {
     if (!user) return;
     
     try {
-      // Use RPC call instead of direct table access as a workaround for typing issues
-      const { data, error } = await supabase.rpc('get_notifications_with_sender', {
-        user_id: user.id
-      });
+      // Direct table access with join for sender profile info
+      const { data: notificationsData, error: notificationsError } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('receiver_id', user.id)
+        .order('created_at', { ascending: false });
         
-      if (error) {
-        console.error('Error fetching notifications:', error);
+      if (notificationsError) {
+        console.error('Error fetching notifications:', notificationsError);
         return;
       }
       
-      setNotifications(data || []);
-      setUnreadCount(data?.filter(n => !n.read).length || 0);
+      // For each notification, fetch sender profile info
+      const notificationsWithSenders: Notification[] = [];
+      
+      for (const notification of notificationsData || []) {
+        let senderProfile: SenderProfile | undefined;
+        
+        if (notification.sender_id) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('id, username, avatar_url')
+            .eq('id', notification.sender_id)
+            .single();
+            
+          senderProfile = profileData as SenderProfile;
+        }
+        
+        notificationsWithSenders.push({
+          ...notification,
+          sender: senderProfile ? {
+            username: senderProfile.username || 'Unknown',
+            avatar_url: senderProfile.avatar_url
+          } : {
+            username: 'System'
+          }
+        });
+      }
+      
+      setNotifications(notificationsWithSenders);
+      setUnreadCount(notificationsWithSenders.filter(n => !n.read).length || 0);
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
@@ -101,10 +136,11 @@ const Notifications = () => {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      // Use RPC call as a workaround for typing issues
-      const { error } = await supabase.rpc('mark_notification_as_read', {
-        notification_id: notificationId
-      });
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', notificationId)
+        .eq('receiver_id', user?.id);
         
       if (error) {
         console.error('Error marking notification as read:', error);
@@ -136,13 +172,14 @@ const Notifications = () => {
   };
 
   const markAllAsRead = async () => {
-    if (notifications.length === 0) return;
+    if (!user || notifications.length === 0) return;
     
     try {
-      // Use RPC call as a workaround for typing issues
-      const { error } = await supabase.rpc('mark_all_notifications_as_read', {
-        user_id: user?.id
-      });
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('receiver_id', user.id)
+        .eq('read', false);
         
       if (error) {
         console.error('Error marking all notifications as read:', error);

@@ -341,7 +341,7 @@ export const useAuth = create<AuthState>()(
         try {
           const { data, error } = await supabase
             .from('profiles')
-            .select('*')
+            .select('id, username, avatar_url, role')
             .order('created_at', { ascending: false });
           
           if (error) {
@@ -353,7 +353,7 @@ export const useAuth = create<AuthState>()(
             const mappedUsers = data.map(profile => ({
               id: profile.id,
               username: profile.username || 'Unknown',
-              email: '',
+              email: '', // Default empty email since it's not in the column
               isGuest: false,
               avatarUrl: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username || Math.random()}`,
               createdAt: profile.created_at,

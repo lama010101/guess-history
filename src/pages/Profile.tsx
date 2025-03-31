@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -19,7 +20,7 @@ interface UserProfile {
 }
 
 const Profile = () => {
-  const { user, signOut } = useAuth();
+  const { user, logout } = useAuth(); // Using logout instead of signOut
   const navigate = useNavigate();
   const { toast } = useToast();
   const [achievements, setAchievements] = useState({
@@ -82,10 +83,12 @@ const Profile = () => {
     if (!user?.id) return;
     
     try {
-      // Use RPC call to get profile data to avoid type issues
-      const { data, error } = await supabase.rpc('get_user_profile', {
-        profile_id: user.id
-      });
+      // Use direct table access instead of RPC
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('username, avatar_url, default_distance_unit')
+        .eq('id', user.id)
+        .single();
         
       if (error) {
         console.error('Error fetching user profile:', error);
@@ -93,8 +96,19 @@ const Profile = () => {
       }
       
       if (data) {
-        setUserProfile(data);
-        setUsername(data.username || user.username || '');
+        const profileData: UserProfile = {
+          username: data.username || user.username || '',
+          avatar_url: data.avatar_url
+        };
+        
+        // Get OneSignal player ID from localStorage
+        const oneSignalPlayerId = localStorage.getItem('onesignal_player_id');
+        if (oneSignalPlayerId) {
+          profileData.onesignal_player_id = oneSignalPlayerId;
+        }
+        
+        setUserProfile(profileData);
+        setUsername(profileData.username);
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -124,18 +138,11 @@ const Profile = () => {
     if (!user?.id) return;
     
     try {
-      // Use RPC call to update profile
-      const { error } = await supabase.rpc('update_onesignal_id', {
-        profile_id: user.id,
-        player_id: playerId
-      });
-        
-      if (error) {
-        console.error('Error saving OneSignal player ID:', error);
-      } else {
-        // Clear from localStorage after successful save
-        localStorage.removeItem('onesignal_player_id');
-      }
+      // Store the OneSignal ID in local state 
+      setUserProfile(prev => prev ? { ...prev, onesignal_player_id: playerId } : null);
+      
+      // Clear from localStorage after saving to state
+      localStorage.removeItem('onesignal_player_id');
     } catch (error) {
       console.error('Error saving OneSignal player ID:', error);
     }
@@ -145,11 +152,11 @@ const Profile = () => {
     if (!user?.id || !username.trim()) return;
     
     try {
-      // Use RPC call to update username
-      const { error } = await supabase.rpc('update_username', {
-        profile_id: user.id,
-        new_username: username.trim()
-      });
+      // Update username directly in profiles table
+      const { error } = await supabase
+        .from('profiles')
+        .update({ username: username.trim() })
+        .eq('id', user.id);
         
       if (error) {
         console.error('Error updating username:', error);
@@ -180,7 +187,7 @@ const Profile = () => {
   };
 
   const handleLogout = async () => {
-    await signOut();
+    await logout();
     navigate('/');
     toast({
       title: "Logged out",

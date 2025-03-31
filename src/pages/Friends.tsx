@@ -14,7 +14,6 @@ import { supabase } from '@/integrations/supabase/client';
 interface Profile {
   id: string;
   username: string;
-  email?: string;
   avatar_url?: string;
 }
 
@@ -54,7 +53,7 @@ const Friends = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, email, avatar_url')
+        .select('id, username, avatar_url')
         .neq('id', user?.id || '');
       
       if (error) {
@@ -100,21 +99,18 @@ const Friends = () => {
         setFriends(prev => [...prev, userToAdd]);
         setAvailableUsers(prev => prev.filter(u => u.id !== id));
         
-        // Send a notification to the user
-        const { data, error } = await supabase.functions.invoke('send-notification', {
-          body: {
-            recipientId: id,
+        // Create a notification for the user
+        const { error } = await supabase
+          .from('notifications')
+          .insert({
+            sender_id: user?.id,
+            receiver_id: id,
+            type: 'friend_request',
             message: `${user?.username || 'Someone'} added you as a friend!`,
-            title: "New Friend Request",
-            data: {
-              type: 'friend_request',
-              sender_id: user?.id
-            }
-          }
-        });
-        
+          });
+          
         if (error) {
-          console.error('Error sending notification:', error);
+          console.error('Error creating notification:', error);
         }
         
         toast({

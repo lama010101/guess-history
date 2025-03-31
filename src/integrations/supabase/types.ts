@@ -200,6 +200,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string
+          game_id: string | null
+          id: string
+          message: string
+          read: boolean
+          receiver_id: string
+          sender_id: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          game_id?: string | null
+          id?: string
+          message: string
+          read?: boolean
+          receiver_id: string
+          sender_id?: string | null
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          game_id?: string | null
+          id?: string
+          message?: string
+          read?: boolean
+          receiver_id?: string
+          sender_id?: string | null
+          type?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -235,6 +268,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_notifications_with_sender: {
+        Args: {
+          user_id: string
+        }
+        Returns: {
+          id: string
+          sender_id: string
+          receiver_id: string
+          type: string
+          message: string
+          created_at: string
+          read: boolean
+          game_id: string
+          sender: Json
+        }[]
+      }
       get_scraper_logs: {
         Args: Record<PropertyKey, never>
         Returns: Json
@@ -242,6 +291,18 @@ export type Database = {
       get_scraper_settings: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      mark_all_notifications_as_read: {
+        Args: {
+          user_id: string
+        }
+        Returns: undefined
+      }
+      mark_notification_as_read: {
+        Args: {
+          notification_id: string
+        }
+        Returns: undefined
       }
       update_scraper_settings: {
         Args: {

@@ -32,12 +32,6 @@ interface Notification {
   };
 }
 
-interface SenderProfile {
-  id: string;
-  username: string;
-  avatar_url?: string;
-}
-
 const Notifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -67,10 +61,8 @@ const Notifications = () => {
           filter: `receiver_id=eq.${user.id}`
         },
         (payload) => {
-          // Refetch notifications when a new one is inserted
           fetchNotifications();
           
-          // Show a toast notification
           toast({
             title: "New notification",
             description: payload.new.message || "You have a new notification"
@@ -88,7 +80,6 @@ const Notifications = () => {
     if (!user) return;
     
     try {
-      // Use a direct REST call to bypass TypeScript type checking
       const { data: notificationsData, error: notificationsError } = await (supabase as any)
         .rpc('get_notifications_with_sender', { user_id: user.id });
         
@@ -97,7 +88,6 @@ const Notifications = () => {
         return;
       }
       
-      // Transform the data to match our interface
       const formattedNotifications = Array.isArray(notificationsData) 
         ? notificationsData.map((notification: any) => ({
             ...notification,
@@ -114,7 +104,6 @@ const Notifications = () => {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      // Use a stored procedure to mark as read
       const { error } = await (supabase as any)
         .rpc('mark_notification_as_read', { notification_id: notificationId });
         
@@ -123,7 +112,6 @@ const Notifications = () => {
         return;
       }
       
-      // Update local state
       setNotifications(prev => 
         prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
       );
@@ -134,10 +122,8 @@ const Notifications = () => {
   };
 
   const handleNotificationAction = async (notification: Notification) => {
-    // Mark notification as read
     await markAsRead(notification.id);
     
-    // Handle different notification types
     if (notification.type === 'invite' && notification.game_id) {
       navigate(`/play?game=${notification.game_id}`);
       setOpen(false);
@@ -151,7 +137,6 @@ const Notifications = () => {
     if (!user || notifications.length === 0) return;
     
     try {
-      // Use a stored procedure to mark all as read
       const { error } = await (supabase as any)
         .rpc('mark_all_notifications_as_read', { user_id: user.id });
         
@@ -160,7 +145,6 @@ const Notifications = () => {
         return;
       }
       
-      // Update local state
       setNotifications(prev => 
         prev.map(n => ({ ...n, read: true }))
       );

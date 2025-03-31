@@ -148,21 +148,7 @@ const Profile = () => {
             </CardContent>
           </Card>
           
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center">
-                <Medal className="mr-2 h-5 w-5 text-primary" />
-                Achievements
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex justify-around py-2">
-                <AchievementBadge type="location" count={achievements.perfectLocations} size="sm" />
-                <AchievementBadge type="year" count={achievements.perfectYears} size="sm" />
-                <AchievementBadge type="combo" count={achievements.perfectCombos} size="sm" />
-              </div>
-            </CardContent>
-          </Card>
+          
         </div>
         
         <Card>

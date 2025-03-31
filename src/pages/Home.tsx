@@ -110,9 +110,9 @@ export default function Home() {
   return <div className="min-h-screen bg-background">
       <Navbar />
       
-      <main className="container px-4 py-6 space-y-8 max-w-6xl mx-auto">
+      <main className="container space-y-8 max-w-6xl mx-auto py-[20px] px-[35px] bg-slate-950">
         <div className="text-center space-y-4 mb-8">
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">Guess when and where it happened.</p>
+          <p className="text-xl max-w-3xl mx-0 my-0 text-slate-50">When and where did it happen?</p>
         </div>
         
         <div className="grid gap-6 md:grid-cols-3">
@@ -220,15 +220,11 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               {canPlayDaily ? <div className="space-y-2 text-center py-2">
-                  <p className="text-sm text-muted-foreground">
-                    Each day brings a new event to guess.
-                  </p>
+                  
                   <div className="flex justify-center">
                     <Trophy className="h-16 w-16 text-amber-500" />
                   </div>
-                  <p className="text-sm font-medium">
-                    Today's challenge is ready!
-                  </p>
+                  
                 </div> : <div className="space-y-4 text-center py-2">
                   <div className="flex justify-center">
                     <Medal className="h-16 w-16 text-emerald-500" />

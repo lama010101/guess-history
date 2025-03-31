@@ -177,19 +177,19 @@ const Profile = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-muted/50 p-4 rounded-lg text-center">
+              <div className="p-4 rounded-lg text-center bg-slate-300">
                 <AchievementBadge type="location" count={achievements.perfectLocations} className="mx-auto mb-2" />
                 <h3 className="font-semibold text-lg">{achievements.perfectLocations}</h3>
                 <p className="text-sm text-muted-foreground">Times you've picked the exact location</p>
               </div>
               
-              <div className="bg-muted/50 p-4 rounded-lg text-center">
+              <div className="p-4 rounded-lg text-center bg-slate-300">
                 <AchievementBadge type="year" count={achievements.perfectYears} className="mx-auto mb-2" />
                 <h3 className="font-semibold text-lg">{achievements.perfectYears}</h3>
                 <p className="text-sm text-muted-foreground">Times you've guessed the exact year</p>
               </div>
               
-              <div className="bg-muted/50 p-4 rounded-lg text-center">
+              <div className="p-4 rounded-lg text-center bg-slate-300">
                 <AchievementBadge type="combo" count={achievements.perfectCombos} className="mx-auto mb-2" />
                 <h3 className="font-semibold text-lg">{achievements.perfectCombos}</h3>
                 <p className="text-sm text-muted-foreground">Perfect scores (both location & year)</p>

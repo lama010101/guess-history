@@ -65,7 +65,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [authView, setAuthView] = useState<'login' | 'signup'>('login');
 
   useEffect(() => {
-    // Check for existing session
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -87,14 +86,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsAuthenticated(true);
         setIsGuest(false);
         
-        // Sync user to database
         await syncUserToDatabase(currentUser);
       } else {
-        // No active session, continue as guest
         handleContinueAsGuest();
       }
       
-      // Load users from Supabase
       await fetchUsers();
       
       setIsLoading(false);
@@ -102,7 +98,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     checkSession();
     
-    // Set up auth state change listener
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
@@ -123,10 +118,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsAuthenticated(true);
           setIsGuest(false);
           
-          // Sync user to database
           await syncUserToDatabase(currentUser);
           
-          // Refresh users list
           await fetchUsers();
         } else if (event === 'SIGNED_OUT') {
           handleContinueAsGuest();
@@ -139,13 +132,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // Fetch users from Supabase
   const fetchUsers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.rpc('get_real_users');
       
       if (error) {
         console.error('Error fetching users:', error);
@@ -154,22 +143,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (data && data.length > 0) {
-        const mappedUsers = data.map(profile => ({
+        const mappedUsers = data.map((profile: any) => ({
           id: profile.id,
-          email: '',  // No email in profiles table
+          email: profile.email || '',
           username: profile.username || 'Unknown',
           displayName: profile.username || 'Unknown',
           createdAt: profile.created_at,
           avatarUrl: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.id}`,
           isAI: profile.role !== 'admin',
-          registrationMethod: 'email', // Default to email since we don't have this info
+          registrationMethod: 'email',
           user_type: profile.role === 'admin' ? 'real' : 'ai'
         }));
         
         setUsers(mappedUsers);
         console.log("Loaded users from Supabase:", mappedUsers);
       } else {
-        // No users in Supabase yet, create sample data
         loadFallbackUsers();
       }
     } catch (error) {
@@ -179,7 +167,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loadFallbackUsers = () => {
-    // Load users from localStorage as fallback
     const storedUsers = localStorage.getItem('registeredUsers');
     if (storedUsers) {
       try {
@@ -195,18 +182,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Sync user data to Supabase
   const syncUserToDatabase = async (user: any) => {
     const { email, user_metadata, id, created_at, app_metadata } = user;
     const username = user_metadata?.name || email?.split('@')[0] || 'User';
 
     try {
-      const { error } = await supabase.from('profiles').upsert({
-        id,
-        username,
-        avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`,
-        role: 'admin',  // Make the user an admin by default
-        created_at: created_at,
+      const { error } = await supabase.rpc('sync_user_to_database', {
+        user_id: id,
+        user_username: username,
+        user_email: email,
+        user_avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`
       });
 
       if (error) {
@@ -219,7 +204,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Create sample AI users for demonstration
   const createSampleUsers = async () => {
     const sampleUsers: User[] = [
       {
@@ -260,15 +244,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUsers(sampleUsers);
     localStorage.setItem('registeredUsers', JSON.stringify(sampleUsers));
     
-    // Also add sample users to Supabase profiles table
     try {
       for (const user of sampleUsers) {
-        const { error } = await supabase.from('profiles').upsert({
-          id: user.id,
-          username: user.username,
-          avatar_url: user.avatarUrl,
-          role: user.user_type === 'real' ? 'admin' : 'user',
-          created_at: user.createdAt,
+        const { error } = await supabase.rpc('add_sample_user', {
+          sample_id: user.id,
+          sample_username: user.username || '',
+          sample_email: user.email || '',
+          sample_avatar_url: user.avatarUrl || '',
+          sample_role: user.user_type === 'real' ? 'admin' : 'user'
         });
         
         if (error) {
@@ -289,7 +272,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) throw error;
       
-      // Session is handled by the auth state change listener
       setShowAuthModal(false);
     } catch (error) {
       console.error('Error signing in:', error);
@@ -305,7 +287,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) throw error;
       
-      // The redirect and session handling will be managed by Supabase
       setShowAuthModal(false);
     } catch (error) {
       console.error('Error signing in with Google:', error);
@@ -327,7 +308,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) throw error;
       
-      // Session will be handled by auth state change listener
       setShowAuthModal(false);
     } catch (error) {
       console.error('Error signing up:', error);
@@ -339,8 +319,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      
-      // Auth state change listener will handle the state update
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -371,22 +349,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log("AuthProvider: Attempting loginOrSignUp with email:", email);
       
-      // First try sign in
       try {
         await handleSignIn(email, password);
         
-        // If there was a pending username, update the user profile
         const pendingUsername = localStorage.getItem('pendingUsername');
         if (pendingUsername) {
-          // Get the current user
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            // Update the profile
-            await supabase.from('profiles').update({
-              username: pendingUsername
-            }).eq('id', user.id);
-            
-            // Clear the pending username
+            await supabase.rpc('update_username', {
+              profile_id: user.id,
+              new_username: pendingUsername
+            });
             localStorage.removeItem('pendingUsername');
           }
         }
@@ -395,14 +368,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (signInError) {
         console.log("Sign in failed, attempting sign up:", signInError);
         
-        // Get username from localStorage or generate from email
         const pendingUsername = localStorage.getItem('pendingUsername') || email.split('@')[0];
         
-        // If sign in fails, try sign up
         try {
           await handleSignUp(email, password, pendingUsername);
           
-          // Clear the pending username
           localStorage.removeItem('pendingUsername');
           
           return;

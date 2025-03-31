@@ -1,63 +1,65 @@
 
-// Function to initialize OneSignal SDK
 export const initializeOneSignal = (appId: string) => {
-  // Add OneSignal Script to the page if it doesn't exist
-  if (!document.getElementById('onesignal-sdk')) {
-    const script = document.createElement('script');
-    script.id = 'onesignal-sdk';
-    script.src = 'https://cdn.onesignal.com/sdks/OneSignalSDK.js';
-    script.async = true;
-    document.head.appendChild(script);
-    
-    script.onload = () => {
-      setupOneSignal(appId);
-    };
-  } else {
-    setupOneSignal(appId);
-  }
-};
-
-// Function to set up OneSignal with the provided app ID
-const setupOneSignal = (appId: string) => {
-  if (!window.OneSignal) return;
+  if (typeof window === 'undefined') return;
   
-  window.OneSignal = window.OneSignal || [];
-  window.OneSignal.push(function() {
-    window.OneSignal.init({
-      appId: appId,
-      notifyButton: {
-        enable: false,
-      },
-      allowLocalhostAsSecureOrigin: true,
-    });
-  });
-};
-
-// Function to save OneSignal Player ID to user profile
-export const saveOneSignalPlayerId = async (supabase: any, userId: string) => {
-  if (!window.OneSignal || !userId) return;
-  
-  try {
-    window.OneSignal.getUserId(async function(playerId: string) {
-      if (playerId) {
-        const { error } = await supabase
-          .from('profiles')
-          .update({ onesignal_player_id: playerId })
-          .eq('id', userId);
-          
-        if (error) {
-          console.error('Error saving OneSignal player ID:', error);
-        } else {
-          console.log('OneSignal player ID saved:', playerId);
-        }
+  // Load the OneSignal script
+  const loadScript = () => {
+    return new Promise<void>((resolve) => {
+      if (window.OneSignal) {
+        resolve();
+        return;
       }
+      
+      const script = document.createElement('script');
+      script.src = 'https://cdn.onesignal.com/sdks/OneSignalSDK.js';
+      script.async = true;
+      
+      script.onload = () => {
+        resolve();
+      };
+      
+      document.body.appendChild(script);
     });
-  } catch (error) {
-    console.error('Error getting or saving OneSignal player ID:', error);
-  }
+  };
+  
+  const initOneSignal = async () => {
+    await loadScript();
+    
+    if (!window.OneSignal) {
+      console.error('OneSignal failed to load');
+      return;
+    }
+    
+    window.OneSignal = window.OneSignal || [];
+    
+    window.OneSignal.push(function() {
+      window.OneSignal.init({
+        appId: appId,
+        notifyButton: {
+          enable: false,
+        },
+        allowLocalhostAsSecureOrigin: true,
+      });
+    });
+    
+    // Handle OneSignal ID for profile sync
+    if (window.OneSignal.getUserId) {
+      window.OneSignal.getUserId((playerId) => {
+        if (playerId) {
+          // Save to localStorage temporarily
+          localStorage.setItem('onesignal_player_id', playerId);
+          
+          // We'll sync this with the user profile in the Profile component
+          console.log('OneSignal Player ID:', playerId);
+        }
+      });
+    }
+  };
+  
+  initOneSignal();
 };
 
-// Add OneSignal types
+// Declare global OneSignal type
 declare global {
   interface Window {
     OneSignal: any;

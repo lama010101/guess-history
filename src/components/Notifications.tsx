@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 interface Notification {
   id: string;
   sender_id: string;
+  receiver_id: string;
   type: string;
   message: string;
   created_at: string;
@@ -81,18 +82,10 @@ const Notifications = () => {
     if (!user) return;
     
     try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select(`
-          *,
-          sender:sender_id (
-            username,
-            avatar_url
-          )
-        `)
-        .eq('receiver_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
+      // Use RPC call instead of direct table access as a workaround for typing issues
+      const { data, error } = await supabase.rpc('get_notifications_with_sender', {
+        user_id: user.id
+      });
         
       if (error) {
         console.error('Error fetching notifications:', error);
@@ -108,10 +101,10 @@ const Notifications = () => {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('id', notificationId);
+      // Use RPC call as a workaround for typing issues
+      const { error } = await supabase.rpc('mark_notification_as_read', {
+        notification_id: notificationId
+      });
         
       if (error) {
         console.error('Error marking notification as read:', error);
@@ -146,16 +139,10 @@ const Notifications = () => {
     if (notifications.length === 0) return;
     
     try {
-      const unreadIds = notifications
-        .filter(n => !n.read)
-        .map(n => n.id);
-        
-      if (unreadIds.length === 0) return;
-      
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .in('id', unreadIds);
+      // Use RPC call as a workaround for typing issues
+      const { error } = await supabase.rpc('mark_all_notifications_as_read', {
+        user_id: user?.id
+      });
         
       if (error) {
         console.error('Error marking all notifications as read:', error);
@@ -164,7 +151,7 @@ const Notifications = () => {
       
       // Update local state
       setNotifications(prev => 
-        prev.map(n => unreadIds.includes(n.id) ? { ...n, read: true } : n)
+        prev.map(n => ({ ...n, read: true }))
       );
       setUnreadCount(0);
       

@@ -7,6 +7,7 @@ import { Copy, Share2, Bell, Users, Copy as CopyIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/services/auth';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Friend {
   id: string;
@@ -99,7 +100,9 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
   
   // Add this code where a game invite is sent
   // For example, after a game session is created:
-  const sendGameInvite = async (gameId, friendId) => {
+  const sendGameInvite = async (gameId: string, friendId: string) => {
+    if (!user) return;
+    
     try {
       const { data, error } = await supabase.functions.invoke('send-notification', {
         body: {

@@ -18,7 +18,7 @@ serve(async (req: Request) => {
     
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-    const oneSignalAppId = Deno.env.get("ONESIGNAL_APP_ID") || "";
+    const oneSignalAppId = Deno.env.get("ONESIGNAL_APP_ID") || "af6b6df9-9b44-43cc-92a8-f7ec0a7c62fb";
     const oneSignalApiKey = Deno.env.get("ONESIGNAL_API_KEY") || "";
     
     if (!oneSignalAppId || !oneSignalApiKey) {
@@ -36,7 +36,36 @@ serve(async (req: Request) => {
       .single();
       
     if (profileError || !profile?.onesignal_player_id) {
-      throw new Error(`Error getting recipient profile: ${profileError?.message || "No OneSignal ID found"}`);
+      console.log(`Error getting recipient profile or no OneSignal ID: ${profileError?.message || "No OneSignal ID found"}`);
+      
+      // Even if we can't send a push notification, let's still store it in the database
+      const { data: notification, error: notificationError } = await supabase
+        .from("notifications")
+        .insert({
+          receiver_id: recipientId,
+          message: message,
+          type: data?.type || "general",
+          game_id: data?.game_id,
+          sender_id: data?.sender_id,
+        })
+        .select()
+        .single();
+        
+      if (notificationError) {
+        console.error("Error storing notification:", notificationError);
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: "No OneSignal player ID found for recipient",
+          notification
+        }),
+        { 
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+          status: 200, // Still return 200 since we stored the notification
+        }
+      );
     }
     
     // Send notification via OneSignal

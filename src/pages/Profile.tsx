@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -13,16 +12,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 
+interface UserProfile {
+  username: string;
+  avatar_url?: string;
+  onesignal_player_id?: string;
+}
+
 const Profile = () => {
-  const {
-    isAuthenticated,
-    user,
-    logout
-  } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
   const [achievements, setAchievements] = useState({
     perfectLocations: 0,
     perfectYears: 0,
@@ -37,16 +36,11 @@ const Profile = () => {
   
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [username, setUsername] = useState(user?.username || '');
-  const [userProfile, setUserProfile] = useState<{
-    username: string;
-    avatar_url?: string;
-    email?: string;
-    onesignal_player_id?: string;
-  } | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
   // Load user data on mount
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!user) {
       toast({
         title: "Login required",
         description: "You need to be logged in to view your profile"
@@ -82,17 +76,16 @@ const Profile = () => {
     
     // Initialize OneSignal
     initializeOneSignal();
-  }, [isAuthenticated, navigate, toast, user]);
+  }, [user, navigate, toast]);
   
   const fetchUserProfile = async () => {
     if (!user?.id) return;
     
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('username, avatar_url, email, onesignal_player_id')
-        .eq('id', user.id)
-        .single();
+      // Use RPC call to get profile data to avoid type issues
+      const { data, error } = await supabase.rpc('get_user_profile', {
+        profile_id: user.id
+      });
         
       if (error) {
         console.error('Error fetching user profile:', error);
@@ -109,56 +102,39 @@ const Profile = () => {
   };
   
   const initializeOneSignal = async () => {
-    if (!window.OneSignal) {
-      // Load OneSignal script
-      const script = document.createElement('script');
-      script.src = 'https://cdn.onesignal.com/sdks/OneSignalSDK.js';
-      script.async = true;
-      document.body.appendChild(script);
-      
-      script.onload = () => {
-        setupOneSignal();
-      };
-    } else {
-      setupOneSignal();
-    }
-  };
-  
-  const setupOneSignal = () => {
-    if (!window.OneSignal) return;
+    if (!window.OneSignal || !user?.id) return;
     
-    window.OneSignal = window.OneSignal || [];
-    window.OneSignal.push(function() {
-      window.OneSignal.init({
-        appId: "YOUR_ONESIGNAL_APP_ID", // Replace with your OneSignal App ID
-        notifyButton: {
-          enable: false,
-        },
-        allowLocalhostAsSecureOrigin: true,
-      });
-      
-      // Save OneSignal ID to user profile when available
-      window.OneSignal.getUserId(function(playerId) {
+    // Get stored OneSignal player ID
+    const oneSignalPlayerId = localStorage.getItem('onesignal_player_id');
+    
+    if (oneSignalPlayerId) {
+      // Update Supabase profile with OneSignal player ID
+      await savePlayerIdToProfile(oneSignalPlayerId);
+    } else {
+      // Try to get it from OneSignal directly
+      window.OneSignal.getUserId(function(playerId: string) {
         if (playerId && user?.id) {
           savePlayerIdToProfile(playerId);
         }
       });
-    });
+    }
   };
   
   const savePlayerIdToProfile = async (playerId: string) => {
     if (!user?.id) return;
     
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          onesignal_player_id: playerId
-        })
-        .eq('id', user.id);
+      // Use RPC call to update profile
+      const { error } = await supabase.rpc('update_onesignal_id', {
+        profile_id: user.id,
+        player_id: playerId
+      });
         
       if (error) {
         console.error('Error saving OneSignal player ID:', error);
+      } else {
+        // Clear from localStorage after successful save
+        localStorage.removeItem('onesignal_player_id');
       }
     } catch (error) {
       console.error('Error saving OneSignal player ID:', error);
@@ -169,12 +145,11 @@ const Profile = () => {
     if (!user?.id || !username.trim()) return;
     
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          username: username.trim()
-        })
-        .eq('id', user.id);
+      // Use RPC call to update username
+      const { error } = await supabase.rpc('update_username', {
+        profile_id: user.id,
+        new_username: username.trim()
+      });
         
       if (error) {
         console.error('Error updating username:', error);
@@ -204,8 +179,8 @@ const Profile = () => {
     }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await signOut();
     navigate('/');
     toast({
       title: "Logged out",
@@ -214,7 +189,7 @@ const Profile = () => {
   };
 
   // Redirect if not authenticated
-  if (!isAuthenticated) {
+  if (!user) {
     return null; // Redirect handled in useEffect
   }
   
@@ -272,7 +247,7 @@ const Profile = () => {
                 )}
                 
                 <CardDescription>
-                  {userProfile?.email || user?.email || 'user@example.com'}
+                  {user?.email || 'user@example.com'}
                 </CardDescription>
               </CardHeader>
               <CardContent>

@@ -16,8 +16,9 @@ function App() {
     const init = async () => {
       await initializeAuth();
       
-      // Initialize OneSignal - Replace with your actual OneSignal App ID
-      initializeOneSignal("YOUR_ONESIGNAL_APP_ID");
+      // Initialize OneSignal with the correct App ID
+      // You'll need to replace this with your own OneSignal App ID
+      initializeOneSignal("af6b6df9-9b44-43cc-92a8-f7ec0a7c62fb");
     };
     
     init();

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bell, Home, Map, ChevronRight, BarChart3, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ThemeToggle } from './ThemeToggle';
+import { ModeToggle } from './ModeToggle';
 import ProfileButton from './auth/ProfileButton';
 import { useAuth } from '@/services/auth';
 import HintSystem from './game/HintSystem';
@@ -84,11 +84,9 @@ const Navbar = ({
           )}
           
           {/* Add the HintSystem button */}
-          {setHintsOpen && onUseLocationHint && onUseYearHint && (
+          {setHintsOpen && onUseLocationHint && onUseYearHint && currentImage && (
             <HintSystem
               hintCoins={hintCoins}
-              open={hintsOpen}
-              setOpen={setHintsOpen}
               onUseLocationHint={onUseLocationHint}
               onUseYearHint={onUseYearHint}
               locationHintUsed={locationHintUsed}
@@ -114,7 +112,7 @@ const Navbar = ({
             )}
           </nav>
           
-          <ThemeToggle />
+          <ModeToggle />
           <ProfileButton />
           
           <Button

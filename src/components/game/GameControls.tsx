@@ -27,16 +27,6 @@ const GameControls = ({
   onFinish,
   gameComplete = false
 }: GameControlsProps) => {
-  const [year, setYear] = useState(selectedYear);
-  
-  useEffect(() => {
-    setYear(selectedYear);
-  }, [selectedYear]);
-  
-  const handleYearChange = (value: number) => {
-    setYear(value);
-    onYearChange(value);
-  };
   
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg p-4 z-30">
@@ -45,10 +35,10 @@ const GameControls = ({
           {!showResults && !gameComplete && (
             <>
               <YearSlider
-                year={year}
-                onChange={handleYearChange}
-                min={1900}
-                max={2020}
+                selectedYear={selectedYear}
+                onChange={onYearChange}
+                minYear={1900}
+                maxYear={2020}
               />
               
               <Button 

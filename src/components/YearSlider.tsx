@@ -5,11 +5,12 @@ import { Calendar } from 'lucide-react';
 interface YearSliderProps {
   minYear?: number;
   maxYear?: number;
+  selectedYear?: number;
   onChange?: (year: number) => void;
 }
 
-const YearSlider = ({ minYear = 1900, maxYear = 2025, onChange }: YearSliderProps) => {
-  const [selectedYear, setSelectedYear] = useState(Math.floor((minYear + maxYear) / 2));
+const YearSlider = ({ minYear = 1900, maxYear = 2025, selectedYear: initialYear, onChange }: YearSliderProps) => {
+  const [selectedYear, setSelectedYear] = useState(initialYear || Math.floor((minYear + maxYear) / 2));
   const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
@@ -17,6 +18,12 @@ const YearSlider = ({ minYear = 1900, maxYear = 2025, onChange }: YearSliderProp
       onChange(selectedYear);
     }
   }, [selectedYear, onChange]);
+
+  useEffect(() => {
+    if (initialYear !== undefined && initialYear !== selectedYear) {
+      setSelectedYear(initialYear);
+    }
+  }, [initialYear]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newYear = parseInt(e.target.value);

@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/services/auth';
 
 interface CountdownTime {
   hours: number;
@@ -16,6 +17,7 @@ export const useDailyGame = () => {
   const [countdown, setCountdown] = useState<CountdownTime>({ hours: 0, minutes: 0, seconds: 0 });
   const [nextDailyAvailable, setNextDailyAvailable] = useState<Date | null>(null);
   const [dailyEvents, setDailyEvents] = useState([]);
+  const { user } = useAuth();
 
   // Calculate time until midnight for the next daily challenge
   const calculateTimeUntilMidnight = () => {
@@ -136,10 +138,10 @@ export const useDailyGame = () => {
             id: index + 1,
             title: event.location_name || '',
             description: event.description || '',
-            year: event.year || 2000,
+            year: parseInt(event.year as string) || 2000,
             location: {
-              lat: parseFloat(event.latitude) || 0,
-              lng: parseFloat(event.longitude) || 0
+              lat: parseFloat(event.latitude as string) || 0,
+              lng: parseFloat(event.longitude as string) || 0
             },
             locationName: event.location_name || '',
             country: event.country || '',
@@ -147,22 +149,25 @@ export const useDailyGame = () => {
           }));
           
           // Save this as today's daily challenge
-          const { error: saveError } = await supabase
-            .from('game_sessions')
-            .insert({
-              game_mode: 'daily',
-              created_at: todayDate,
-              events: transformedEvents,
-              settings: {
-                gameMode: 'daily',
-                distanceUnit: 'km',
-                timerEnabled: true,
-                timerDuration: 300 // 5 minutes
-              }
-            });
-            
-          if (saveError) {
-            console.error('Error saving daily challenge:', saveError);
+          if (user) {
+            const { error: saveError } = await supabase
+              .from('game_sessions')
+              .insert({
+                game_mode: 'daily',
+                created_at: todayDate,
+                events: transformedEvents,
+                creator_id: user.id, // Add the creator_id field
+                settings: {
+                  gameMode: 'daily',
+                  distanceUnit: 'km',
+                  timerEnabled: true,
+                  timerDuration: 300 // 5 minutes
+                }
+              });
+              
+            if (saveError) {
+              console.error('Error saving daily challenge:', saveError);
+            }
           }
           
           setDailyEvents(transformedEvents);
@@ -189,26 +194,20 @@ export const useDailyGame = () => {
     localStorage.setItem('dailyCompleted', 'true');
     
     // Save score to Supabase
-    if (supabase.auth.getSession()) {
-      supabase.auth.getSession().then(({ data }) => {
-        if (data.session) {
-          const userId = data.session.user.id;
-          
-          supabase
-            .from('game_results')
-            .insert({
-              user_id: userId,
-              total_score: score,
-              round_results: [],
-              session_id: null
-            })
-            .then(({ error }) => {
-              if (error) {
-                console.error('Error saving daily score:', error);
-              }
-            });
-        }
-      });
+    if (user) {
+      supabase
+        .from('game_results')
+        .insert({
+          user_id: user.id,
+          total_score: score,
+          round_results: [],
+          session_id: null
+        })
+        .then(({ error }) => {
+          if (error) {
+            console.error('Error saving daily score:', error);
+          }
+        });
     }
     
     // Set next daily available time

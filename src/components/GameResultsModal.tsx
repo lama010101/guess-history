@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { HistoricalImage } from '@/types/game';
 import GameResult from './game/GameResult';
 import YearTimeline from './game/YearTimeline';
-import { BsGeoAlt, BsCalendarDate } from 'react-icons/bs';
+import { MapPin, Calendar } from 'lucide-react';
 
 interface GameResultsModalProps {
   showResults: boolean;
@@ -62,11 +62,28 @@ const GameResultsModal: React.FC<GameResultsModalProps> = ({
       <DialogContent className="sm:max-w-md p-0 overflow-hidden">
         <div className="relative overflow-hidden">
           <div className="p-6">
-            <GameResult
-              locationScore={locationScore}
-              yearScore={yearScore}
-              hintPenalty={hintPenalty}
-            />
+            {selectedLocation && (
+              <GameResult
+                isVisible={true}
+                locationScore={locationScore}
+                yearScore={yearScore}
+                actualLocation={currentImage.location}
+                guessedLocation={selectedLocation}
+                actualYear={currentImage.year}
+                guessedYear={selectedYear}
+                distanceKm={distanceKm}
+                yearDifference={yearDifference}
+                locationHintUsed={locationHintUsed}
+                yearHintUsed={yearHintUsed}
+                hintPenalty={hintPenalty}
+                onNextRound={onNextRound}
+                currentRound={currentRound}
+                maxRounds={maxRounds}
+                eventTitle={currentImage.title}
+                eventDescription={currentImage.description}
+                locationName={currentImage.locationName}
+              />
+            )}
             
             <div className="space-y-3 mt-6">
               <h3 className="text-lg font-semibold">Result Details</h3>
@@ -74,7 +91,7 @@ const GameResultsModal: React.FC<GameResultsModalProps> = ({
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="space-y-1.5">
                   <div className="flex items-center text-muted-foreground">
-                    <BsGeoAlt className="mr-1.5" />
+                    <MapPin className="mr-1.5 h-4 w-4" />
                     <span>Distance</span>
                   </div>
                   <p className="font-medium">
@@ -89,7 +106,7 @@ const GameResultsModal: React.FC<GameResultsModalProps> = ({
                 
                 <div className="space-y-1.5">
                   <div className="flex items-center text-muted-foreground">
-                    <BsCalendarDate className="mr-1.5" />
+                    <Calendar className="mr-1.5 h-4 w-4" />
                     <span>Year</span>
                   </div>
                   <p className="font-medium">
@@ -105,9 +122,10 @@ const GameResultsModal: React.FC<GameResultsModalProps> = ({
           
           <div className="px-2 pb-2">
             <YearTimeline
-              actualYear={currentImage.year}
               guessedYear={selectedYear}
-              yearDifference={yearDifference}
+              actualYear={currentImage.year}
+              minYear={1900}
+              maxYear={2025}
             />
           </div>
         </div>

@@ -1,274 +1,237 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+
+// src/pages/Home.tsx
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from "@/components/ui/button";
 import Navbar from '@/components/Navbar';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
-import { Slider } from '@/components/ui/slider';
-import { Label } from '@/components/ui/label';
-import DailyCountdown from '@/components/DailyCountdown';
+import Hero from '@/components/Hero';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog';
 import { useAuth } from '@/services/auth';
+import { useDailyGame } from '@/hooks/useDailyGame';
+import DailyCountdown from '@/components/DailyCountdown';
 import PlayWithFriendsDialog from '@/components/PlayWithFriendsDialog';
-import { useGameSettings } from '@/hooks/useGameSettings';
-import { useDailyLimit } from '@/hooks/useDailyLimit';
-import { Clock, HelpCircle, Medal, Share2, Trophy, Users, AlertTriangle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-export default function Home() {
+
+const Home = () => {
   const navigate = useNavigate();
-  const {
-    isAuthenticated,
-    openAuthModal
-  } = useAuth();
-  const [showPlayWithFriendsDialog, setShowPlayWithFriendsDialog] = useState(false);
-  const {
-    toast
-  } = useToast();
+  const { user } = useAuth();
+  const [showInstructions, setShowInstructions] = useState(false);
+  const [showPlayOptions, setShowPlayOptions] = useState(false);
+  const [showFriendsDialog, setShowFriendsDialog] = useState(false);
+  
+  const { 
+    dailyCompleted, 
+    dailyScore, 
+    dailyDate, 
+    countdown, 
+    setDailyGame 
+  } = useDailyGame();
 
-  // Settings for "Play Now" section
-  const [soloTimerEnabled, setSoloTimerEnabled] = useState(false);
-  const [soloTimerMinutes, setSoloTimerMinutes] = useState(5);
-  const [soloHintsEnabled, setSoloHintsEnabled] = useState(false);
-  const [soloHintCount, setSoloHintCount] = useState(5);
+  // Check if this is the user's first visit
+  useEffect(() => {
+    const hasSeenInstructions = localStorage.getItem('hasSeenInstructions');
+    if (!hasSeenInstructions) {
+      setShowInstructions(true);
+    }
+  }, []);
 
-  // Settings for "Play with Friends" section
-  const [friendsTimerEnabled, setFriendsTimerEnabled] = useState(false);
-  const [friendsTimerMinutes, setFriendsTimerMinutes] = useState(5);
-  const [friendsHintsEnabled, setFriendsHintsEnabled] = useState(false);
-  const [friendsHintCount, setFriendsHintCount] = useState(5);
-
-  // Get global settings
-  const {
-    timerEnabled,
-    setTimerEnabled,
-    timerMinutes,
-    setTimerMinutes,
-    hintsEnabled,
-    setHintsEnabled,
-    hintCount,
-    setHintCount
-  } = useGameSettings();
-  const {
-    canPlayDaily,
-    todayScore,
-    timeUntilNextReset
-  } = useDailyLimit();
-
-  // Initialize local state from global settings
-  useState(() => {
-    setSoloTimerEnabled(timerEnabled);
-    setSoloTimerMinutes(timerMinutes);
-    setSoloHintsEnabled(hintsEnabled);
-    setSoloHintCount(hintCount);
-    setFriendsTimerEnabled(timerEnabled);
-    setFriendsTimerMinutes(timerMinutes);
-    setFriendsHintsEnabled(hintsEnabled);
-    setFriendsHintCount(hintCount);
-  });
-  const handlePlayNow = () => {
-    // Save solo settings to global game settings
-    setTimerEnabled(soloTimerEnabled);
-    setTimerMinutes(soloTimerMinutes);
-    setHintsEnabled(soloHintsEnabled);
-    setHintCount(soloHintCount);
-    const gameSettings = {
-      timerEnabled: soloTimerEnabled,
-      timerMinutes: soloTimerMinutes,
-      hintsEnabled: soloHintsEnabled,
-      hintCount: soloHintCount
-    };
-    localStorage.setItem('gameSettings', JSON.stringify(gameSettings));
+  const handleStartGame = () => {
+    setDailyGame(false); // Not a daily game
     navigate('/play');
   };
-  const handlePlayWithFriends = () => {
-    // Save friends settings to global game settings
-    setTimerEnabled(friendsTimerEnabled);
-    setTimerMinutes(friendsTimerMinutes);
-    setHintsEnabled(friendsHintsEnabled);
-    setHintCount(friendsHintCount);
-    if (isAuthenticated) {
-      setShowPlayWithFriendsDialog(true);
-    } else {
-      openAuthModal();
-      toast({
-        title: "Login required",
-        description: "Please login or create an account to play with friends"
-      });
-    }
+
+  const handleStartDailyChallenge = () => {
+    setDailyGame(true); // Set as a daily game
+    navigate('/play');
   };
-  const handlePlayDaily = () => {
-    if (!canPlayDaily) {
-      toast({
-        title: "Already played today",
-        description: "You've already completed today's challenge. Come back tomorrow for a new one!",
-        variant: "destructive"
-      });
-      return;
-    }
-    navigate('/play?mode=daily');
+
+  const handleCloseInstructions = () => {
+    localStorage.setItem('hasSeenInstructions', 'true');
+    setShowInstructions(false);
   };
-  return <div className="min-h-screen bg-slate-950">
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
       
-      <main className="container space-y-8 max-w-6xl mx-auto py-[20px] px-[35px] bg-slate-950">
-        <div className="text-center space-y-4 mb-8">
-          <p className="text-xl max-w-3xl my-0 text-slate-50 px-0 mx-0">When and where did it happen?</p>
-        </div>
+      <main className="flex-1">
+        <Hero />
         
-        <div className="grid gap-6 md:grid-cols-3">
-          <Card className="md:col-span-1 bg-orange-400">
-            <CardHeader className="space-y-1 bg-orange-400">
-              <CardTitle className="text-2xl">Play Now</CardTitle>
-              <CardDescription>
-                Start a new game with multiple rounds
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <Label htmlFor="solo-timer-toggle">Timer</Label>
-                  </div>
-                  <Switch id="solo-timer-toggle" checked={soloTimerEnabled} onCheckedChange={setSoloTimerEnabled} />
-                </div>
-                
-                {soloTimerEnabled && <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Game duration: {soloTimerMinutes} min</span>
-                    </div>
-                    <Slider min={1} max={10} step={1} value={[soloTimerMinutes]} onValueChange={value => setSoloTimerMinutes(value[0])} />
-                  </div>}
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                    <Label htmlFor="solo-hints-toggle">Hints</Label>
-                  </div>
-                  <Switch id="solo-hints-toggle" checked={soloHintsEnabled} onCheckedChange={setSoloHintsEnabled} />
-                </div>
-                
-                {soloHintsEnabled && <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Hint coins: {soloHintCount}</span>
-                    </div>
-                    <Slider min={0} max={10} step={1} value={[soloHintCount]} onValueChange={value => setSoloHintCount(value[0])} />
-                  </div>}
+        <section className="py-16 px-4">
+          <div className="container mx-auto max-w-5xl">
+            <div className="grid gap-8 md:grid-cols-1 lg:grid-cols-2">
+              {/* Regular Game Card */}
+              <div className="glass-card p-6 rounded-xl shadow-md border border-border/50 hover:border-primary/30 transition-all">
+                <h2 className="text-2xl font-bold mb-4">Play Now</h2>
+                <p className="text-muted-foreground mb-6">
+                  Test your knowledge of historical events with a series of 
+                  random images. Guess the location and year to score points!
+                </p>
+                <Button 
+                  size="lg" 
+                  onClick={() => setShowPlayOptions(true)}
+                  className="w-full"
+                >
+                  Start Game
+                </Button>
               </div>
-            </CardContent>
-            <CardFooter>
-              <Button onClick={handlePlayNow} className="w-full bg-orange-900 hover:bg-orange-800">
-                Play Now
-              </Button>
-            </CardFooter>
-          </Card>
-          
-          <Card className="md:col-span-1 bg-emerald-400">
-            <CardHeader className="space-y-1 bg-emerald-400">
-              <CardTitle className="text-2xl">Play with Friends</CardTitle>
-              <CardDescription>
-                Invite friends and compete together
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <Label htmlFor="friend-timer-toggle">Timer</Label>
-                  </div>
-                  <Switch id="friend-timer-toggle" checked={friendsTimerEnabled} onCheckedChange={setFriendsTimerEnabled} />
-                </div>
+              
+              {/* Daily Challenge Card */}
+              <div className="glass-card p-6 rounded-xl shadow-md border border-border/50 hover:border-primary/30 transition-all">
+                <h2 className="text-2xl font-bold mb-4">Daily Challenge</h2>
                 
-                {friendsTimerEnabled && <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Game duration: {friendsTimerMinutes} min</span>
+                {dailyCompleted ? (
+                  <div className="space-y-4">
+                    <p className="text-muted-foreground">
+                      You've completed today's challenge on {dailyDate}
+                    </p>
+                    
+                    <div className="bg-primary/10 p-4 rounded-lg text-center">
+                      <p className="text-lg font-medium">Your score</p>
+                      <p className="text-3xl font-bold">{dailyScore.toLocaleString()}</p>
                     </div>
-                    <Slider min={1} max={10} step={1} value={[friendsTimerMinutes]} onValueChange={value => setFriendsTimerMinutes(value[0])} />
-                  </div>}
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                    <Label htmlFor="friend-hints-toggle">Hints</Label>
+                    
+                    <DailyCountdown 
+                      hours={countdown.hours}
+                      minutes={countdown.minutes}
+                      seconds={countdown.seconds}
+                    />
                   </div>
-                  <Switch id="friend-hints-toggle" checked={friendsHintsEnabled} onCheckedChange={setFriendsHintsEnabled} />
-                </div>
-                
-                {friendsHintsEnabled && <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Hint coins: {friendsHintCount}</span>
-                    </div>
-                    <Slider min={0} max={10} step={1} value={[friendsHintCount]} onValueChange={value => setFriendsHintCount(value[0])} />
-                  </div>}
+                ) : (
+                  <>
+                    <p className="text-muted-foreground mb-6">
+                      Take on today's challenge! Everyone gets the same 5 images.
+                      Compare your scores with friends.
+                    </p>
+                    <Button 
+                      variant="default" 
+                      size="lg" 
+                      onClick={handleStartDailyChallenge}
+                      className="w-full"
+                    >
+                      Play Daily Challenge
+                    </Button>
+                  </>
+                )}
               </div>
-            </CardContent>
-            <CardFooter>
-              <Button onClick={handlePlayWithFriends} className="w-full bg-emerald-900 hover:bg-emerald-800">
-                <Users className="mr-2 h-4 w-4" />
-                Play with Friends
-              </Button>
-            </CardFooter>
-          </Card>
-          
-          <Card className="md:col-span-1 bg-violet-400">
-            <CardHeader className="space-y-1 bg-violet-400">
-              <CardTitle className="text-2xl">Daily Challenge</CardTitle>
-              <CardDescription>
-                One new challenge every day
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {canPlayDaily ? <div className="space-y-2 text-center py-2">
-                  
-                  <div className="flex justify-center">
-                    <Trophy className="h-16 w-16 text-amber-500 py-0 bg-slate-950 rounded-full px-[20px]" />
-                  </div>
-                  
-                </div> : <div className="space-y-4 text-center py-2">
-                  <div className="flex justify-center">
-                    <Medal className="h-16 w-16 text-emerald-500" />
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm font-medium">Today's Score</p>
-                    <p className="text-2xl font-bold">{todayScore?.toLocaleString()}</p>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Next challenge in:</p>
-                    <DailyCountdown score={todayScore || 0} targetDate={new Date(Date.now() + timeUntilNextReset)} className="text-lg font-mono" />
-                  </div>
-                </div>}
-            </CardContent>
-            <CardFooter>
-              {canPlayDaily ? <Button onClick={handlePlayDaily} variant="outline" className="w-full bg-violet-900 hover:bg-violet-800 text-slate-50 mx-0 my-0 py-0 text-base px-0 rounded-lg">
-                  Play Today's Challenge
-                </Button> : <Button disabled variant="outline" className="w-full">
-                  <AlertTriangle className="mr-2 h-4 w-4" />
-                  Already Played Today
-                </Button>}
-            </CardFooter>
-          </Card>
-        </div>
-        
-        <div className="text-center mt-8">
-          <div className="flex flex-wrap justify-center gap-4">
-            <Button variant="outline" asChild>
-              <Link to="/leaderboard">
-                <Trophy className="mr-2 h-4 w-4" />
-                Leaderboard
-              </Link>
-            </Button>
-            
-            <Button variant="outline" onClick={() => setShowPlayWithFriendsDialog(true)}>
-              <Share2 className="mr-2 h-4 w-4" />
-              Share Game
-            </Button>
+            </div>
           </div>
-        </div>
+        </section>
       </main>
       
-      <PlayWithFriendsDialog open={showPlayWithFriendsDialog} onOpenChange={setShowPlayWithFriendsDialog} />
-    </div>;
-}
+      {/* Game Instructions Dialog */}
+      <Dialog open={showInstructions} onOpenChange={setShowInstructions}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>How to Play</DialogTitle>
+            <DialogDescription>
+              Welcome to HistoryHunt! Here's how to play the game:
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 my-4">
+            <div>
+              <h3 className="font-medium">1. View the historical image</h3>
+              <p className="text-sm text-muted-foreground">
+                Each round shows you a historical photo from somewhere in the world.
+              </p>
+            </div>
+            
+            <div>
+              <h3 className="font-medium">2. Make your guesses</h3>
+              <p className="text-sm text-muted-foreground">
+                Place a pin on the map to guess where the photo was taken and use the slider to guess what year it's from.
+              </p>
+            </div>
+            
+            <div>
+              <h3 className="font-medium">3. Score points</h3>
+              <p className="text-sm text-muted-foreground">
+                The closer your guesses are to the actual location and year, the more points you'll earn!
+              </p>
+            </div>
+            
+            <div>
+              <h3 className="font-medium">4. Use hints (optional)</h3>
+              <p className="text-sm text-muted-foreground">
+                If you're stuck, you can use hint coins to reveal the country or decade the photo is from.
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button onClick={handleCloseInstructions}>Got it!</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Play Options Dialog */}
+      <Dialog
+        open={showPlayOptions}
+        onOpenChange={setShowPlayOptions}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Choose Game Mode</DialogTitle>
+            <DialogDescription>
+              Select how you'd like to play HistoryHunt
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <Button 
+              variant="outline" 
+              className="h-20 flex flex-col items-center justify-center"
+              onClick={handleStartGame}
+            >
+              <span className="font-medium">Solo Game</span>
+              <span className="text-xs text-muted-foreground">
+                Play by yourself with random images
+              </span>
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="h-20 flex flex-col items-center justify-center"
+              onClick={() => {
+                setShowPlayOptions(false);
+                setShowFriendsDialog(true);
+              }}
+            >
+              <span className="font-medium">Play with Friends</span>
+              <span className="text-xs text-muted-foreground">
+                Invite a friend to play the same images
+              </span>
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="h-20 flex flex-col items-center justify-center"
+              onClick={handleStartDailyChallenge}
+              disabled={dailyCompleted}
+            >
+              <span className="font-medium">Daily Challenge</span>
+              <span className="text-xs text-muted-foreground">
+                Play today's challenge and compare scores
+              </span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Friends Dialog */}
+      <PlayWithFriendsDialog 
+        showDialog={showFriendsDialog}
+        setShowDialog={setShowFriendsDialog}
+      />
+    </div>
+  );
+};
+
+export default Home;

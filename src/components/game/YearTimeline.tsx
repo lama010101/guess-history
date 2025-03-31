@@ -4,6 +4,7 @@ import { Circle } from 'lucide-react';
 interface YearTimelineProps {
   guessedYear: number;
   actualYear: number;
+  yearDifference?: number;
   minYear?: number;
   maxYear?: number;
 }
@@ -11,6 +12,7 @@ interface YearTimelineProps {
 const YearTimeline = ({ 
   guessedYear, 
   actualYear, 
+  yearDifference: providedYearDifference,
   minYear = 1900, 
   maxYear = 2025 
 }: YearTimelineProps) => {
@@ -18,6 +20,11 @@ const YearTimeline = ({
   const timeRange = maxYear - minYear;
   const actualPosition = ((actualYear - minYear) / timeRange) * 100;
   const guessedPosition = ((guessedYear - minYear) / timeRange) * 100;
+  
+  // Calculate year difference if not provided
+  const yearDifference = providedYearDifference !== undefined ? 
+    providedYearDifference : 
+    actualYear - guessedYear;
   
   return (
     <div className="w-full py-4">

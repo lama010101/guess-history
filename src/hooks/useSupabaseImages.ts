@@ -32,14 +32,15 @@ export const useSupabaseImages = () => {
       try {
         setLoading(true);
         
-        // Only fetch images that are ready for the game
-        const { data, error } = await supabase
+        // Use the more generic query method instead of .from() with a typed table name
+        // This allows us to query tables not defined in the TypeScript types
+        const { data, error: supabaseError } = await supabase
           .from('images')
           .select('*')
-          .eq('ready_for_game', true);
+          .eq('ready_for_game', true) as { data: SupabaseImage[] | null, error: Error | null };
           
-        if (error) {
-          throw new Error(`Error fetching images: ${error.message}`);
+        if (supabaseError) {
+          throw new Error(`Error fetching images: ${supabaseError.message}`);
         }
         
         if (!data || data.length === 0) {

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -8,7 +7,7 @@ import { useAuth } from '@/services/auth';
 import { useToast } from '@/hooks/use-toast';
 import { getUserAchievements } from '@/utils/achievementUtils';
 import AchievementBadge from '@/components/game/AchievementBadge';
-import { Trophy, Medal, Award, Star, User, LogOut, Edit, Save, Camera, Clock } from 'lucide-react';
+import { Trophy, Medal, Award, Star, User, LogOut, Edit, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -204,23 +203,23 @@ const Profile = () => {
   
   return <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="container px-4 py-6 max-w-4xl mx-auto">
+      <main className="container px-4 py-6 max-w-4xl mx-auto bg-slate-950">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-          <h1 className="text-3xl font-bold text-foreground">YOUR PROFILE</h1>
-          <Button variant="glass" onClick={handleLogout} className="mt-2 sm:mt-0">
+          <h1 className="text-3xl font-bold text-slate-50">Your Profile</h1>
+          <Button variant="outline" onClick={handleLogout} className="mt-2 sm:mt-0">
             <LogOut className="mr-2 h-4 w-4" />
-            LOGOUT
+            Logout
           </Button>
         </div>
         
         <div className="flex flex-col md:flex-row gap-6 mb-8">
           <div className="w-full md:w-1/3">
-            <Card className="glass-card border-0">
+            <Card>
               <CardHeader className="text-center">
                 <div className="flex justify-center mb-4">
-                  <Avatar className="h-24 w-24 ring-2 ring-accent/30">
+                  <Avatar className="h-24 w-24">
                     <AvatarImage src={avatarUrl} alt={username} />
-                    <AvatarFallback className="bg-secondary text-secondary-foreground">{username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback>{username.substring(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
                 </div>
                 
@@ -230,39 +229,37 @@ const Profile = () => {
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       placeholder="Enter username"
-                      className="neo-input text-center"
+                      className="text-center"
                     />
                     <Button 
                       variant="ghost" 
                       size="icon"
                       onClick={handleUpdateUsername}
-                      className="text-accent hover:text-accent"
                     >
                       <Save className="h-4 w-4" />
                     </Button>
                   </div>
                 ) : (
-                  <CardTitle className="flex items-center justify-center gap-2 tracking-wider">
-                    {username.toUpperCase()}
+                  <CardTitle className="flex items-center justify-center gap-2">
+                    {username}
                     <Button 
                       variant="ghost" 
                       size="icon"
                       onClick={() => setIsEditingUsername(true)}
-                      className="text-accent/70 hover:text-accent"
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
                   </CardTitle>
                 )}
                 
-                <CardDescription className="text-muted-foreground">
+                <CardDescription>
                   {user?.email || 'user@example.com'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">MEMBER SINCE</span>
+                    <span className="text-muted-foreground">Member since:</span>
                     <span className="font-medium">
                       {new Date().toLocaleDateString('en-US', {
                       year: 'numeric',
@@ -277,29 +274,29 @@ const Profile = () => {
           </div>
           
           <div className="w-full md:w-2/3">
-            <Card className="glass-card border-0">
+            <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="flex items-center tracking-wider">
-                  <Trophy className="mr-2 h-5 w-5 text-accent" />
-                  GAME STATS
+                <CardTitle className="flex items-center">
+                  <Trophy className="mr-2 h-5 w-5 text-primary" />
+                  Game Stats
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">GAMES PLAYED</span>
+                    <span className="text-muted-foreground">Games Played:</span>
                     <span className="font-medium">{gameStats.gamesPlayed}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">TOTAL SCORE</span>
+                    <span className="text-muted-foreground">Total Score:</span>
                     <span className="font-medium">{gameStats.totalScore.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">AVG. SCORE</span>
+                    <span className="text-muted-foreground">Avg. Score:</span>
                     <span className="font-medium">{gameStats.avgScore.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">BEST SCORE</span>
+                    <span className="text-muted-foreground">Best Score:</span>
                     <span className="font-medium">{gameStats.bestScore.toLocaleString()}</span>
                   </div>
                 </div>
@@ -308,11 +305,11 @@ const Profile = () => {
           </div>
         </div>
         
-        <Card className="glass-card border-0">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center tracking-wider">
-              <Award className="mr-2 h-5 w-5 text-accent" />
-              ACHIEVEMENT DETAILS
+            <CardTitle className="flex items-center">
+              <Award className="mr-2 h-5 w-5 text-primary" />
+              Achievement Details
             </CardTitle>
             <CardDescription>
               Track your progress and earn more badges by playing games
@@ -320,37 +317,22 @@ const Profile = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="neo-card text-center p-6">
-                <div className="flex flex-col items-center">
-                  <div className="h-16 w-16 rounded-full bg-black/50 flex items-center justify-center mb-3 ring-2 ring-accent/30">
-                    <Camera className="h-8 w-8 text-accent" />
-                  </div>
-                  <h3 className="text-2xl font-bold">{achievements.perfectLocations}</h3>
-                  <p className="text-muted-foreground text-sm mt-1">PHOTOGRAPHY</p>
-                  <p className="text-xs text-muted-foreground mt-2">Times you've picked the exact location</p>
-                </div>
+              <div className="p-4 rounded-lg text-center bg-slate-300">
+                <AchievementBadge type="location" count={achievements.perfectLocations} className="mx-auto mb-2" />
+                <h3 className="font-semibold text-lg">{achievements.perfectLocations}</h3>
+                <p className="text-sm text-muted-foreground">Times you've picked the exact location</p>
               </div>
               
-              <div className="neo-card text-center p-6">
-                <div className="flex flex-col items-center">
-                  <div className="h-16 w-16 rounded-full bg-black/50 flex items-center justify-center mb-3 ring-2 ring-accent/30">
-                    <Clock className="h-8 w-8 text-accent" />
-                  </div>
-                  <h3 className="text-2xl font-bold">{achievements.perfectYears}</h3>
-                  <p className="text-muted-foreground text-sm mt-1">TIME TRAVEL</p>
-                  <p className="text-xs text-muted-foreground mt-2">Times you've guessed the exact year</p>
-                </div>
+              <div className="p-4 rounded-lg text-center bg-slate-300">
+                <AchievementBadge type="year" count={achievements.perfectYears} className="mx-auto mb-2" />
+                <h3 className="font-semibold text-lg">{achievements.perfectYears}</h3>
+                <p className="text-sm text-muted-foreground">Times you've guessed the exact year</p>
               </div>
               
-              <div className="neo-card text-center p-6">
-                <div className="flex flex-col items-center">
-                  <div className="h-16 w-16 rounded-full bg-black/50 flex items-center justify-center mb-3 ring-2 ring-accent/30">
-                    <Award className="h-8 w-8 text-accent" />
-                  </div>
-                  <h3 className="text-2xl font-bold">{achievements.perfectCombos}</h3>
-                  <p className="text-muted-foreground text-sm mt-1">PERFECTION</p>
-                  <p className="text-xs text-muted-foreground mt-2">Perfect scores (both location & year)</p>
-                </div>
+              <div className="p-4 rounded-lg text-center bg-slate-300">
+                <AchievementBadge type="combo" count={achievements.perfectCombos} className="mx-auto mb-2" />
+                <h3 className="font-semibold text-lg">{achievements.perfectCombos}</h3>
+                <p className="text-sm text-muted-foreground">Perfect scores (both location & year)</p>
               </div>
             </div>
           </CardContent>

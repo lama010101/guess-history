@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -19,7 +20,7 @@ interface UserProfile {
 }
 
 const Profile = () => {
-  const { user, logout } = useAuth(); // Using logout from the auth store
+  const { user, signOut } = useAuth(); // Using the hook inside the component
   const navigate = useNavigate();
   const { toast } = useToast();
   const [achievements, setAchievements] = useState({
@@ -186,7 +187,7 @@ const Profile = () => {
   };
 
   const handleLogout = async () => {
-    await logout(); // Using logout rather than signOut
+    await signOut(); // Using signOut rather than logout
     navigate('/');
     toast({
       title: "Logged out",

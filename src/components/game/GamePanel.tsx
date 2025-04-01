@@ -17,6 +17,13 @@ interface GamePanelProps {
     title?: string;
     locationName?: string;
     country?: string;
+    metadata?: {
+      tag?: 'Real' | 'AI Recreate' | 'AI Imagine';
+      sourceApp?: string;
+      sourceName?: string;
+      confidenceScore?: number;
+      createdAt?: string;
+    };
   };
   onLocationSelect: (lat: number, lng: number) => void;
   selectedLocation: { lat: number; lng: number } | null;
@@ -92,7 +99,11 @@ const GamePanel = ({
       <div className="h-[500px] relative">
         {activeView === 'image' && (
           <div className="absolute inset-0">
-            <HistoricalImage src={currentImage.src} alt={currentImage.description} />
+            <HistoricalImage 
+              src={currentImage.src} 
+              alt={currentImage.description} 
+              metadata={currentImage.metadata}
+            />
           </div>
         )}
         

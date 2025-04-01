@@ -13,6 +13,13 @@ export interface HistoricalImage {
   title?: string;
   locationName?: string;
   country?: string;
+  metadata?: {
+    tag?: 'Real' | 'AI Recreate' | 'AI Imagine';
+    sourceApp?: string;
+    sourceName?: string;
+    confidenceScore?: number;
+    createdAt?: string;
+  };
 }
 
 export interface RoundScore {

@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { HistoricalImage } from '@/types/game';
+import { useSupabaseImages } from './useSupabaseImages';
 
 interface UseGameRoundsOptions {
   images: HistoricalImage[];
@@ -8,6 +9,7 @@ interface UseGameRoundsOptions {
 }
 
 export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameRoundsOptions) => {
+  const { images: supabaseImages, loading: loadingSupabaseImages } = useSupabaseImages();
   const [currentRound, setCurrentRound] = useState(1);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [gameComplete, setGameComplete] = useState(false);
@@ -29,11 +31,36 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
       }
     }
   }, []);
+
+  // Use Supabase images when available, otherwise fall back to default images
+  useEffect(() => {
+    if (!loadingSupabaseImages && supabaseImages.length > 0) {
+      console.log('Using Supabase images for the game:', supabaseImages.length);
+      // Only recreate the game if we haven't already initialized with valid images
+      if (!hasInitialized.current || images.length === 0) {
+        const newImages = selectRandomImages(supabaseImages);
+        setImages(newImages);
+        
+        // Save the selected images to localStorage
+        const currentGameState = localStorage.getItem('currentGameState');
+        if (currentGameState) {
+          try {
+            const gameState = JSON.parse(currentGameState);
+            const updatedGameState = {
+              ...gameState,
+              images: newImages
+            };
+            localStorage.setItem('currentGameState', JSON.stringify(updatedGameState));
+          } catch (error) {
+            console.error('Error updating game state with Supabase images:', error);
+          }
+        }
+      }
+    }
+  }, [supabaseImages, loadingSupabaseImages]);
   
   // Always pick random images when the component mounts or game is reset
-  const selectRandomImages = () => {
-    const availableImages = [...defaultImages];
-    
+  const selectRandomImages = (availableImages: HistoricalImage[]) => {
     if (availableImages.length > configuredMaxRounds.current) {
       // Shuffle array and pick first n elements
       const shuffledImages = availableImages.sort(() => Math.random() - 0.5);
@@ -153,8 +180,11 @@ export const useGameRounds = ({ images: defaultImages, maxRounds = 5 }: UseGameR
     setCurrentImageIndex(0);
     setGameComplete(false);
     
+    // Prioritize Supabase images if available
+    const imagesToUse = supabaseImages.length > 0 ? supabaseImages : defaultImages;
+    
     // Select new random images for the game
-    const newImages = selectRandomImages();
+    const newImages = selectRandomImages(imagesToUse);
     setImages(newImages);
     
     // Update localStorage with the new game state

@@ -5,15 +5,22 @@ import { Image as ImageIcon } from 'lucide-react';
 interface HistoricalImageProps {
   src: string;
   alt?: string;
+  metadata?: {
+    tag?: 'Real' | 'AI Recreate' | 'AI Imagine';
+    sourceApp?: string;
+    sourceName?: string;
+    confidenceScore?: number;
+    createdAt?: string;
+  };
 }
 
-const HistoricalImage = ({ src, alt = "Historical image" }: HistoricalImageProps) => {
+const HistoricalImage = ({ src, alt = "Historical image", metadata }: HistoricalImageProps) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [processedSrc, setProcessedSrc] = useState(src);
 
   useEffect(() => {
-    // Process the source URL to handle Wikimedia Commons links
+    // Process the source URL to handle different image sources
     if (src) {
       let finalSrc = src;
       
@@ -44,6 +51,17 @@ const HistoricalImage = ({ src, alt = "Historical image" }: HistoricalImageProps
     console.error("Failed to load image:", processedSrc);
   };
 
+  // Display a badge for AI-generated images when appropriate
+  const renderImageSourceBadge = () => {
+    if (!metadata?.tag || metadata.tag === 'Real') return null;
+    
+    return (
+      <div className="absolute top-0 right-0 m-2 px-2 py-1 text-xs font-medium rounded bg-gray-900/70 text-white">
+        {metadata.tag}
+      </div>
+    );
+  };
+
   return (
     <div className="w-full h-full relative overflow-hidden rounded-xl shadow-lg">
       {loading && (
@@ -63,6 +81,8 @@ const HistoricalImage = ({ src, alt = "Historical image" }: HistoricalImageProps
           </div>
         </div>
       )}
+
+      {renderImageSourceBadge()}
 
       <img
         src={processedSrc}

@@ -32,12 +32,18 @@ export const useSupabaseImages = () => {
       try {
         setLoading(true);
         
-        // Use the more generic query method instead of .from() with a typed table name
-        // This allows us to query tables not defined in the TypeScript types
-        const { data, error: supabaseError } = await supabase
+        // Use a type assertion to bypass TypeScript's type checking
+        // We're explicitly telling TypeScript that we know what we're doing
+        const response = await supabase
           .from('images')
           .select('*')
-          .eq('ready_for_game', true) as { data: SupabaseImage[] | null, error: Error | null };
+          .eq('ready_for_game', true);
+          
+        // Cast the response to the expected type
+        const { data, error: supabaseError } = response as unknown as { 
+          data: SupabaseImage[] | null; 
+          error: Error | null 
+        };
           
         if (supabaseError) {
           throw new Error(`Error fetching images: ${supabaseError.message}`);

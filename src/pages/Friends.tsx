@@ -53,7 +53,7 @@ const Friends = () => {
     try {
       const { data, error } = await supabase
         .from('friends')
-        .select('friend_id, profiles(id, username, avatar_url)')
+        .select('friend_id')
         .eq('user_id', user.id)
         .eq('status', 'accepted');
 
@@ -62,8 +62,23 @@ const Friends = () => {
         return;
       }
 
-      const friendProfiles = data?.map(f => f.profiles).filter(Boolean) || [];
-      setFriends(friendProfiles);
+      if (data && data.length > 0) {
+        const friendIds = data.map(item => item.friend_id);
+        
+        const { data: friendProfiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, username, avatar_url')
+          .in('id', friendIds);
+          
+        if (profilesError) {
+          console.error('Error fetching friend profiles:', profilesError);
+          return;
+        }
+        
+        setFriends(friendProfiles || []);
+      } else {
+        setFriends([]);
+      }
     } catch (error) {
       console.error('Error fetching friends:', error);
     }
@@ -124,7 +139,6 @@ const Friends = () => {
         return;
       }
 
-      // Trigger notification
       await supabase.functions.invoke('send-notification', {
         body: {
           recipientId: friendId,
@@ -142,7 +156,6 @@ const Friends = () => {
         description: "Your friend request has been sent"
       });
 
-      // Refresh available users and friends list
       fetchProfiles();
       fetchFriends();
     } catch (error) {
@@ -177,19 +190,16 @@ const Friends = () => {
     }
   };
 
-  // Filter users with case-insensitive search
   const filteredFriends = friends.filter(friend => 
     friend.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Make sure search works case-insensitively
   const filteredUsers = availableUsers.filter(user => 
     user.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Redirect if not authenticated
   if (!isAuthenticated) {
-    return null; // Redirect handled in useEffect
+    return null;
   }
 
   return (

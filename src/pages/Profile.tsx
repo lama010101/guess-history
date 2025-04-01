@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -20,7 +19,7 @@ interface UserProfile {
 }
 
 const Profile = () => {
-  const { user, signOut } = useAuth(); // Using the hook inside the component
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [achievements, setAchievements] = useState({
@@ -39,7 +38,6 @@ const Profile = () => {
   const [username, setUsername] = useState(user?.username || '');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
-  // Load user data on mount
   useEffect(() => {
     if (!user) {
       toast({
@@ -50,17 +48,14 @@ const Profile = () => {
       return;
     }
 
-    // Load achievements from localStorage
     const userAchievements = getUserAchievements();
     setAchievements(userAchievements);
 
-    // Load game stats from localStorage
     try {
       const storedStats = localStorage.getItem('userGameStats');
       if (storedStats) {
         setGameStats(JSON.parse(storedStats));
       } else {
-        // Generate mock data for now
         setGameStats({
           gamesPlayed: Math.floor(Math.random() * 10) + 1,
           totalScore: Math.floor(Math.random() * 25000) + 5000,
@@ -72,10 +67,8 @@ const Profile = () => {
       console.error('Error loading game stats', e);
     }
     
-    // Load user profile from Supabase
     fetchUserProfile();
     
-    // Initialize OneSignal
     initializeOneSignal();
   }, [user, navigate, toast]);
   
@@ -83,7 +76,6 @@ const Profile = () => {
     if (!user?.id) return;
     
     try {
-      // Use direct table access instead of RPC
       const { data, error } = await supabase
         .from('profiles')
         .select('username, avatar_url, default_distance_unit')
@@ -101,7 +93,6 @@ const Profile = () => {
           avatar_url: data.avatar_url
         };
         
-        // Get OneSignal player ID from localStorage
         const oneSignalPlayerId = localStorage.getItem('onesignal_player_id');
         if (oneSignalPlayerId) {
           profileData.onesignal_player_id = oneSignalPlayerId;
@@ -118,14 +109,11 @@ const Profile = () => {
   const initializeOneSignal = async () => {
     if (!window.OneSignal || !user?.id) return;
     
-    // Get stored OneSignal player ID
     const oneSignalPlayerId = localStorage.getItem('onesignal_player_id');
     
     if (oneSignalPlayerId) {
-      // Update Supabase profile with OneSignal player ID
       await savePlayerIdToProfile(oneSignalPlayerId);
     } else {
-      // Try to get it from OneSignal directly
       window.OneSignal.getUserId(function(playerId: string) {
         if (playerId && user?.id) {
           savePlayerIdToProfile(playerId);
@@ -138,10 +126,7 @@ const Profile = () => {
     if (!user?.id) return;
     
     try {
-      // Store the OneSignal ID in local state 
       setUserProfile(prev => prev ? { ...prev, onesignal_player_id: playerId } : null);
-      
-      // Clear from localStorage after saving to state
       localStorage.removeItem('onesignal_player_id');
     } catch (error) {
       console.error('Error saving OneSignal player ID:', error);
@@ -152,7 +137,6 @@ const Profile = () => {
     if (!user?.id || !username.trim()) return;
     
     try {
-      // Update username directly in profiles table
       const { error } = await supabase
         .from('profiles')
         .update({ username: username.trim() })
@@ -174,7 +158,6 @@ const Profile = () => {
         description: "Your username has been updated successfully"
       });
       
-      // Update userProfile state
       setUserProfile(prev => prev ? { ...prev, username: username.trim() } : null);
     } catch (error) {
       console.error('Error updating username:', error);
@@ -187,7 +170,7 @@ const Profile = () => {
   };
 
   const handleLogout = async () => {
-    await signOut(); // Using signOut rather than logout
+    await logout();
     navigate('/');
     toast({
       title: "Logged out",
@@ -195,9 +178,8 @@ const Profile = () => {
     });
   };
 
-  // Redirect if not authenticated
   if (!user) {
-    return null; // Redirect handled in useEffect
+    return null;
   }
   
   const avatarUrl = userProfile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${username || Math.random()}`;
@@ -341,4 +323,5 @@ const Profile = () => {
       </main>
     </div>;
 };
+
 export default Profile;

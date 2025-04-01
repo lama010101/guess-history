@@ -13,7 +13,7 @@ interface LeaderboardUser {
   id: string;
   username: string;
   score: number;
-  avatar: string;
+  avatar_url?: string;
 }
 
 const Leaderboard = () => {
@@ -39,29 +39,12 @@ const Leaderboard = () => {
       // For friends tab, we need to ensure the user is authenticated
       if (type === 'friends' && !isAuthenticated) {
         setLeaderboardData([]);
-        return;
-      }
-      
-      // In a real implementation, we would fetch different data for each tab type
-      // For now, we're fetching all profiles and adding random scores for demo purposes
-      
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url')
-        .order('created_at', { ascending: false })
-        .limit(10);
-        
-      console.log('Profiles query response:', profilesData, profilesError);
-      
-      if (profilesError) {
-        console.error('Error fetching profiles:', profilesError);
-        setError('Failed to load leaderboard');
         setLoading(false);
         return;
       }
       
-      // For the friends tab, we need to filter to only include friends
       if (type === 'friends' && user) {
+        // For the friends tab, we need to get the user's friends first
         const { data: friendsData, error: friendsError } = await supabase
           .from('friends')
           .select('friend_id')
@@ -77,32 +60,78 @@ const Leaderboard = () => {
           return;
         }
         
-        // If there are friends, filter the profiles to only include them
+        // If there are friends, fetch their profiles and game scores
         if (friendsData && friendsData.length > 0) {
           const friendIds = friendsData.map(item => item.friend_id);
-          console.log('Friend IDs:', friendIds);
           
-          const friendProfiles = profilesData?.filter(profile => 
-            friendIds.includes(profile.id)
-          ) || [];
+          const { data: profiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, username, avatar_url')
+            .in('id', friendIds);
+            
+          console.log('Friend profiles response:', profiles, profilesError);
           
-          // Convert to leaderboard format
-          const formattedFriends = formatLeaderboardData(friendProfiles);
-          setLeaderboardData(formattedFriends);
+          if (profilesError) {
+            console.error('Error fetching friend profiles:', profilesError);
+            setError('Failed to load friends leaderboard data');
+            setLoading(false);
+            return;
+          }
+          
+          if (profiles && profiles.length > 0) {
+            // For now, use random scores since we might not have game_scores table yet
+            const friendsLeaderboard: LeaderboardUser[] = profiles.map(profile => ({
+              id: profile.id,
+              username: profile.username || 'User',
+              score: Math.floor(Math.random() * 10000) + 30000,
+              avatar_url: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username || Math.random()}`
+            })).sort((a, b) => b.score - a.score);
+            
+            setLeaderboardData(friendsLeaderboard);
+          } else {
+            setLeaderboardData([]);
+          }
         } else {
           // No friends found
           setLeaderboardData([]);
         }
-      } else if (type === 'daily') {
-        // For the daily challenge, we might want to show a different set of users or scores
-        // For now, just use random subset of profiles
-        const randomProfiles = profilesData ? [...profilesData].sort(() => 0.5 - Math.random()).slice(0, 5) : [];
-        const formattedDailyUsers = formatLeaderboardData(randomProfiles);
-        setLeaderboardData(formattedDailyUsers);
       } else {
-        // Global tab - use all profiles
-        const formattedGlobalUsers = formatLeaderboardData(profilesData || []);
-        setLeaderboardData(formattedGlobalUsers);
+        // For global and daily tabs, fetch all profiles
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, username, avatar_url')
+          .order('username');
+          
+        console.log('Global profiles response:', profiles, profilesError);
+        
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
+          setError('Failed to load leaderboard data');
+          setLoading(false);
+          return;
+        }
+        
+        if (profiles && profiles.length > 0) {
+          // Different score ranges based on the tab
+          let scoreMin = 30000;
+          let scoreMax = 40000;
+          
+          if (type === 'daily') {
+            scoreMin = 5000;
+            scoreMax = 10000;
+          }
+          
+          const leaderboard: LeaderboardUser[] = profiles.map(profile => ({
+            id: profile.id,
+            username: profile.username || 'User',
+            score: Math.floor(Math.random() * (scoreMax - scoreMin)) + scoreMin,
+            avatar_url: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username || Math.random()}`
+          })).sort((a, b) => b.score - a.score);
+          
+          setLeaderboardData(leaderboard);
+        } else {
+          setLeaderboardData([]);
+        }
       }
     } catch (err) {
       console.error('Error in fetchLeaderboardData:', err);
@@ -110,19 +139,6 @@ const Leaderboard = () => {
     } finally {
       setLoading(false);
     }
-  };
-  
-  // Helper function to format profiles data as leaderboard data
-  const formatLeaderboardData = (profilesData: any[]): LeaderboardUser[] => {
-    // For demo purposes, assign random scores to users
-    // In a real implementation, we would fetch actual scores from a game_scores table
-    return profilesData.map(profile => ({
-      id: profile.id,
-      username: profile.username || 'User',
-      score: Math.floor(Math.random() * 10000) + 30000, // Random score between 30000-40000
-      avatar: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username || Math.random()}`
-    }))
-    .sort((a, b) => b.score - a.score); // Sort by score descending
   };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -198,7 +214,11 @@ const Leaderboard = () => {
                     </div>
                     
                     <div className="w-10 h-10 rounded-full overflow-hidden mr-3">
-                      <img src={player.avatar} alt={player.username} className="w-full h-full object-cover" />
+                      <img 
+                        src={player.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${player.username}`} 
+                        alt={player.username} 
+                        className="w-full h-full object-cover" 
+                      />
                     </div>
                     <span className="font-medium">{player.username}</span>
                   </div>

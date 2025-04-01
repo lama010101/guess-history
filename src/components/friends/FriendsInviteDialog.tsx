@@ -66,7 +66,7 @@ const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogP
       
       console.log('Profiles query response:', data);
       
-      if (data) {
+      if (data && data.length > 0) {
         const formattedUsers: User[] = data.map(profile => ({
           id: profile.id,
           username: profile.username || 'User',
@@ -102,6 +102,15 @@ const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogP
   };
   
   const handleInviteAndStart = () => {
+    if (selectedFriends.length === 0) {
+      toast({
+        title: "No friends selected",
+        description: "Please select at least one friend to invite",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     onInviteAndStart();
     setDialogOpen(false);
   };
@@ -175,7 +184,9 @@ const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogP
             <div className="text-center py-8 text-muted-foreground">
               <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p>No users found</p>
-              <p className="text-xs mt-1">Make sure profiles exist in database</p>
+              <p className="text-xs mt-1">
+                {searchTerm ? 'Try a different search term' : 'Make sure profiles exist in database'}
+              </p>
             </div>
           )}
         </ScrollArea>

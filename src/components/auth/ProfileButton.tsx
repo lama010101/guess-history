@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/services/auth';
 import { useNavigate, Link } from 'react-router-dom';
@@ -30,12 +29,31 @@ const ProfileButton = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [useMiles, setUseMiles] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
+  const handleLogout = async () => {
+    if (isLoggingOut) return; // Prevent multiple clicks
+    
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      navigate('/');
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out"
+      });
+    } catch (error) {
+      console.error('Error during logout:', error);
+      toast({
+        title: "Logout failed",
+        description: "Please try again",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const handleShare = () => {
@@ -73,7 +91,6 @@ const ProfileButton = () => {
     });
   };
   
-  // Toggle distance format
   const toggleDistanceFormat = (value: boolean) => {
     setUseMiles(value);
     localStorage.setItem('distanceFormat', value ? 'miles' : 'km');
@@ -84,7 +101,6 @@ const ProfileButton = () => {
     });
   };
 
-  // Load distance format preference
   useEffect(() => {
     const distancePref = localStorage.getItem('distanceFormat');
     if (distancePref) {
@@ -178,14 +194,14 @@ const ProfileButton = () => {
           <DropdownMenuItem 
             onClick={handleLogout}
             className="text-red-500 focus:text-red-500 cursor-pointer"
+            disabled={isLoggingOut}
           >
             <LogOut className="mr-2 h-4 w-4" />
-            <span>Log out</span>
+            <span>{isLoggingOut ? 'Logging out...' : 'Log out'}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       
-      {/* Settings Dialog */}
       <Dialog open={showSettingsDialog} onOpenChange={(open) => {
         setShowSettingsDialog(open);
       }}>

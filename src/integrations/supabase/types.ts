@@ -203,6 +203,63 @@ export type Database = {
         }
         Relationships: []
       }
+      images: {
+        Row: {
+          address: string | null
+          ai_description: string | null
+          confidence_score: number | null
+          country: string | null
+          created_at: string
+          date: string | null
+          id: string
+          image_url: string
+          latitude: number | null
+          longitude: number | null
+          prompt: string
+          ready_for_game: boolean
+          source_app: string
+          source_name: string
+          tag: string | null
+          title: string | null
+        }
+        Insert: {
+          address?: string | null
+          ai_description?: string | null
+          confidence_score?: number | null
+          country?: string | null
+          created_at?: string
+          date?: string | null
+          id?: string
+          image_url: string
+          latitude?: number | null
+          longitude?: number | null
+          prompt: string
+          ready_for_game?: boolean
+          source_app: string
+          source_name: string
+          tag?: string | null
+          title?: string | null
+        }
+        Update: {
+          address?: string | null
+          ai_description?: string | null
+          confidence_score?: number | null
+          country?: string | null
+          created_at?: string
+          date?: string | null
+          id?: string
+          image_url?: string
+          latitude?: number | null
+          longitude?: number | null
+          prompt?: string
+          ready_for_game?: boolean
+          source_app?: string
+          source_name?: string
+          tag?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string

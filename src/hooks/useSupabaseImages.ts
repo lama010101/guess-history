@@ -9,15 +9,15 @@ export interface SupabaseImage {
   source_name: string;
   source_app: string;
   prompt: string;
-  ai_description: string;
-  confidence_score: number;
-  tag: 'Real' | 'AI Recreate' | 'AI Imagine';
-  title: string;
-  date: string;
-  country: string;
-  address: string;
-  latitude: number;
-  longitude: number;
+  ai_description: string | null;
+  confidence_score: number | null;
+  tag: 'Real' | 'AI Recreate' | 'AI Imagine' | null;
+  title: string | null;
+  date: string | null;
+  country: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   ready_for_game: boolean;
   created_at: string;
 }
@@ -32,18 +32,19 @@ export const useSupabaseImages = () => {
       try {
         setLoading(true);
         
-        // Use a type assertion to bypass TypeScript's type checking
-        // We're explicitly telling TypeScript that we know what we're doing
-        const response = await supabase
+        // Using the Supabase client directly with the table name as a string
+        // Apply type assertion after the operation to handle the typings
+        const { data, error: supabaseError } = await supabase
           .from('images')
           .select('*')
-          .eq('ready_for_game', true);
-          
-        // Cast the response to the expected type
-        const { data, error: supabaseError } = response as unknown as { 
-          data: SupabaseImage[] | null; 
-          error: Error | null 
-        };
+          .eq('ready_for_game', true)
+          .then(result => {
+            // Cast the result to our expected types
+            return {
+              data: result.data as SupabaseImage[] | null,
+              error: result.error
+            };
+          });
           
         if (supabaseError) {
           throw new Error(`Error fetching images: ${supabaseError.message}`);
@@ -59,10 +60,10 @@ export const useSupabaseImages = () => {
         const transformedImages: HistoricalImage[] = data.map((img: SupabaseImage) => ({
           id: parseInt(img.id.replace(/-/g, '').substring(0, 8), 16), // Convert UUID to number ID
           src: img.image_url,
-          year: new Date(img.date).getFullYear(),
+          year: img.date ? new Date(img.date).getFullYear() : 2000,
           location: {
-            lat: img.latitude,
-            lng: img.longitude
+            lat: img.latitude || 0,
+            lng: img.longitude || 0
           },
           description: img.ai_description || img.prompt || '',
           title: img.title || '',

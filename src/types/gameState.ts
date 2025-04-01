@@ -28,8 +28,8 @@ export interface GameStateActions {
   handleSubmit: () => void;
   handleNextRound: () => void;
   handleNewGame: () => void;
-  handleUseLocationHint: () => void;
-  handleUseYearHint: () => void;
+  handleUseLocationHint: () => boolean;
+  handleUseYearHint: () => boolean;
   setTimerEnabled: React.Dispatch<React.SetStateAction<boolean>>;
   setTimerDuration: React.Dispatch<React.SetStateAction<number>>;
   setTimerPaused: React.Dispatch<React.SetStateAction<boolean>>;
@@ -47,4 +47,5 @@ export interface GameStateReturn extends GameState, GameStateActions {
   };
   sampleImages: HistoricalImage[];
   maxRounds: number;
+  images: HistoricalImage[]; // Added this property to match what we're returning
 }

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -8,8 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/services/auth';
-import { Plus, Search, UserMinus, Users, BellRing } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Plus, Search, UserMinus, Users, BellRing } from 'lucide-react';
 
 interface Profile {
   id: string;
@@ -48,14 +47,39 @@ const Friends = () => {
     }
   }, [isAuthenticated, navigate, toast]);
 
+  const fetchFriends = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('friends')
+        .select('friend_id, profiles(id, username, avatar_url)')
+        .eq('user_id', user.id)
+        .eq('status', 'accepted');
+
+      if (error) {
+        console.error('Error fetching friends:', error);
+        return;
+      }
+
+      const friendProfiles = data?.map(f => f.profiles).filter(Boolean) || [];
+      setFriends(friendProfiles);
+    } catch (error) {
+      console.error('Error fetching friends:', error);
+    }
+  };
+
   const fetchProfiles = async () => {
+    if (!user) return;
+
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('profiles')
         .select('id, username, avatar_url')
-        .neq('id', user?.id || '') as any;
-      
+        .neq('id', user.id)
+        .not('id', 'in', `(SELECT friend_id FROM friends WHERE user_id = "${user.id}")`) as any;
+
       if (error) {
         console.error('Error fetching profiles:', error);
         toast({
@@ -66,13 +90,7 @@ const Friends = () => {
         return;
       }
       
-      // Filter out profiles that are already friends
-      const existingFriendIds = friends.map(friend => friend.id);
-      const nonFriendProfiles = data?.filter(profile => 
-        !existingFriendIds.includes(profile.id)
-      ) || [];
-      
-      setAvailableUsers(nonFriendProfiles);
+      setAvailableUsers(data || []);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching profiles:', error);
@@ -80,66 +98,82 @@ const Friends = () => {
     }
   };
 
-  const fetchFriends = async () => {
-    // In a real implementation, you would fetch the user's friends from an API
-    // For now, we'll just set an empty friends list
-    setFriends([]);
-  };
-
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
   };
 
-  const handleAddFriend = async (id) => {
-    const userToAdd = availableUsers.find(u => u.id === id);
-    if (userToAdd) {
-      try {
-        // In a real implementation, you would add the friend relationship in the database
-        // For now, we'll just update the local state
-        setFriends(prev => [...prev, userToAdd]);
-        setAvailableUsers(prev => prev.filter(u => u.id !== id));
-        
-        // Create a notification for the user using the edge function instead of direct db calls
-        const { error } = await supabase.functions.invoke('send-notification', {
-          body: {
-            recipientId: id,
-            message: `${user?.username || 'Someone'} added you as a friend!`,
-            title: "Friend Request",
-            data: {
-              type: 'friend_request',
-              sender_id: user?.id
-            }
-          }
+  const handleAddFriend = async (friendId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('friends')
+        .insert({
+          user_id: user.id,
+          friend_id: friendId,
+          status: 'pending'
         });
-          
-        if (error) {
-          console.error('Error creating notification:', error);
-        }
-        
-        toast({
-          title: "Friend added",
-          description: `${userToAdd.username} has been added to your friends list`
-        });
-      } catch (error) {
+
+      if (error) {
         console.error('Error adding friend:', error);
         toast({
           title: "Error",
           description: "Failed to add friend",
           variant: "destructive"
         });
+        return;
       }
+
+      // Trigger notification
+      await supabase.functions.invoke('send-notification', {
+        body: {
+          recipientId: friendId,
+          message: `${user.username} wants to be your friend!`,
+          title: "Friend Request",
+          data: {
+            type: 'friend_request',
+            sender_id: user.id
+          }
+        }
+      });
+
+      toast({
+        title: "Friend request sent",
+        description: "Your friend request has been sent"
+      });
+
+      // Refresh available users and friends list
+      fetchProfiles();
+      fetchFriends();
+    } catch (error) {
+      console.error('Error adding friend:', error);
     }
   };
 
-  const handleRemoveFriend = (id) => {
-    const friendToRemove = friends.find(f => f.id === id);
-    if (friendToRemove) {
-      setFriends(prev => prev.filter(f => f.id !== id));
-      setAvailableUsers(prev => [...prev, friendToRemove]);
+  const handleRemoveFriend = async (friendId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('friends')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('friend_id', friendId);
+
+      if (error) {
+        console.error('Error removing friend:', error);
+        return;
+      }
+
       toast({
         title: "Friend removed",
-        description: `${friendToRemove.username} has been removed from your friends list`
+        description: "Friend has been removed from your list"
       });
+
+      fetchFriends();
+      fetchProfiles();
+    } catch (error) {
+      console.error('Error removing friend:', error);
     }
   };
 

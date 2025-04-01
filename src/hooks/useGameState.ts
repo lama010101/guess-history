@@ -10,6 +10,7 @@ import { useGameSettings } from './useGameSettings';
 import { useGameProgress } from './useGameProgress';
 import { useDailyGame } from './useDailyGame';
 import { GameStateReturn } from '@/types/gameState';
+import { isPerfectLocation, isPerfectYear, updateUserAchievements } from '@/utils/achievementUtils';
 
 export const useGameState = (maxRounds = 5): GameStateReturn => {
   const { user } = useAuth();
@@ -33,6 +34,7 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     gameComplete: roundsComplete,
     nextRound,
     resetGame,
+    images,
   } = useGameRounds({ images: sampleImages, maxRounds });
   
   const {
@@ -121,6 +123,19 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
       locationHintUsed,
       yearHintUsed
     );
+    
+    // Check if this round contains any perfect guesses and update achievements
+    if (selectedLocation && currentImage) {
+      const isPerfectLoc = isPerfectLocation(
+        selectedLocation,
+        currentImage.location
+      );
+      const isPerfectYr = isPerfectYear(selectedYear, currentImage.year);
+      
+      if (isPerfectLoc || isPerfectYr) {
+        updateUserAchievements(isPerfectLoc, isPerfectYr);
+      }
+    }
     
     addRoundScore(
       currentImageIndex,
@@ -218,6 +233,7 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     
     sampleImages,
     maxRounds: configuredMaxRounds,
+    images,
     
     setSelectedLocation,
     setSelectedYear,

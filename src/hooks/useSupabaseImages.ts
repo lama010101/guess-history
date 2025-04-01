@@ -32,19 +32,14 @@ export const useSupabaseImages = () => {
       try {
         setLoading(true);
         
-        // Use a more generic approach with the REST API to bypass TypeScript checking
+        // Use direct query with type assertion to work around TypeScript constraints
         const { data, error: supabaseError } = await supabase
-          .rpc('get_approved_images') // Using RPC instead of direct table access
-          .catch(e => {
-            // Fallback to direct query with type assertion if RPC doesn't exist
-            return supabase
-              .from('images')
-              .select('*')
-              .eq('ready_for_game', true) as unknown as {
-                data: SupabaseImage[] | null;
-                error: typeof supabase.PostgrestError | null;
-              };
-          });
+          .from('images')
+          .select('*')
+          .eq('ready_for_game', true) as unknown as {
+            data: SupabaseImage[] | null;
+            error: Error | null;
+          };
           
         if (supabaseError) {
           throw new Error(`Error fetching images: ${supabaseError.message}`);

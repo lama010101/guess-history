@@ -1,9 +1,10 @@
+
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Copy, Share2, Bell, Users, Copy as CopyIcon } from "lucide-react";
+import { Copy, Share2, Bell, Users, Copy as CopyIcon, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/services/auth';
 import { useNavigate } from 'react-router-dom';
@@ -26,6 +27,7 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -42,22 +44,30 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
     if (!user) return;
     
     setLoading(true);
+    setError(null);
+    
     try {
-      // First get friend IDs from the friends table where status is 'accepted'
+      console.log('Fetching friends, current user ID:', user.id);
+      
+      // First try to get friends from 'friends' table
       const { data: friendsData, error: friendsError } = await supabase
         .from('friends')
         .select('friend_id')
         .eq('user_id', user.id)
         .eq('status', 'accepted');
       
+      console.log('Friends query response:', friendsData, friendsError);
+      
       if (friendsError) {
         console.error('Error fetching friends:', friendsError);
+        setError('Failed to fetch friends data');
         setLoading(false);
         return;
       }
       
       if (friendsData && friendsData.length > 0) {
         const friendIds = friendsData.map(item => item.friend_id);
+        console.log('Found friend IDs:', friendIds);
         
         // Then get profiles for those IDs
         const { data: profilesData, error: profilesError } = await supabase
@@ -65,8 +75,11 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
           .select('id, username, avatar_url')
           .in('id', friendIds);
         
+        console.log('Friend profiles query response:', profilesData, profilesError);
+        
         if (profilesError) {
           console.error('Error fetching friend profiles:', profilesError);
+          setError('Failed to fetch friend profiles');
           setLoading(false);
           return;
         }
@@ -75,11 +88,14 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
           id: profile.id,
           name: profile.username || 'User',
           avatar: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username || Math.random()}`,
-          online: Math.random() > 0.5
+          online: Math.random() > 0.5 // This is just for UI demo purposes
         })) || [];
         
+        console.log('Formatted friends:', formattedFriends);
         setFriends(formattedFriends);
       } else {
+        console.log('No accepted friends found, fetching other users instead');
+        
         // If no accepted friends, show other users
         const { data: otherUsers, error: usersError } = await supabase
           .from('profiles')
@@ -87,8 +103,11 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
           .neq('id', user.id)
           .limit(10);
         
+        console.log('Other users query response:', otherUsers, usersError);
+        
         if (usersError) {
           console.error('Error fetching users:', usersError);
+          setError('Failed to fetch other users');
           setLoading(false);
           return;
         }
@@ -100,10 +119,12 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
           online: false
         })) || [];
         
+        console.log('Formatted other users:', formattedUsers);
         setFriends(formattedUsers);
       }
     } catch (error) {
       console.error('Error in fetchFriends:', error);
+      setError('An unexpected error occurred');
     }
     setLoading(false);
   };
@@ -185,22 +206,20 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
     if (!user) return;
     
     try {
-      // Use the edge function to send a notification
-      const { data, error } = await supabase.functions.invoke('send-notification', {
-        body: {
-          recipientId: friendId,
-          message: `${user?.username || 'Someone'} invited you to play a game!`,
-          title: "Game Invitation",
-          data: {
-            type: 'invite',
-            game_id: gameId,
-            sender_id: user?.id
-          }
-        }
-      });
+      // Create notification directly
+      const { data, error } = await supabase
+        .from('notifications')
+        .insert({
+          sender_id: user.id,
+          receiver_id: friendId,
+          type: 'invite',
+          message: `${user.username || 'Someone'} invited you to play a game!`,
+          game_id: gameId
+        });
       
       if (error) {
         console.error('Error sending game invitation:', error);
+        throw error;
       }
       
       return data;
@@ -251,6 +270,11 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
                 <div className="p-4 text-center">
                   <p>Loading friends...</p>
                 </div>
+              ) : error ? (
+                <div className="p-4 text-center text-red-500">
+                  <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                  <p>{error}</p>
+                </div>
               ) : friends.length > 0 ? (
                 friends.map(friend => (
                   <div key={friend.id} className="flex items-center p-3 hover:bg-muted/50">
@@ -282,7 +306,7 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
                 <div className="p-4 text-center text-muted-foreground">
                   <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
                   <p>No friends found</p>
-                  <p className="text-xs mt-1">Add friends to play with them</p>
+                  <p className="text-xs mt-1">Add friends to play with them or check database for profiles</p>
                 </div>
               )}
             </div>

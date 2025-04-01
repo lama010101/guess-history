@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Users, Search, UserPlus, Check } from "lucide-react";
+import { Users, Search, UserPlus, Check, AlertCircle } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/services/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -27,6 +27,7 @@ const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogP
   const [dialogOpen, setDialogOpen] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -42,6 +43,9 @@ const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogP
     
     try {
       setLoading(true);
+      setError(null);
+      
+      console.log('Fetching users, current user ID:', user.id);
       
       // Fetch users from profiles table (excluding current user)
       const { data, error } = await supabase
@@ -51,6 +55,7 @@ const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogP
       
       if (error) {
         console.error('Error fetching users:', error);
+        setError('Failed to load users list');
         toast({
           title: 'Error',
           description: 'Failed to load users list',
@@ -58,6 +63,8 @@ const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogP
         });
         return;
       }
+      
+      console.log('Profiles query response:', data);
       
       if (data) {
         const formattedUsers: User[] = data.map(profile => ({
@@ -67,10 +74,14 @@ const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogP
         }));
         
         setUsers(formattedUsers);
-        console.log(`Fetched ${formattedUsers.length} users`);
+        console.log(`Fetched ${formattedUsers.length} users:`, formattedUsers);
+      } else {
+        console.log('No users found in profiles table');
+        setUsers([]);
       }
     } catch (err) {
       console.error('Error fetching users:', err);
+      setError('Unexpected error occurred');
     } finally {
       setLoading(false);
     }
@@ -124,6 +135,11 @@ const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogP
               <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p>Loading users...</p>
             </div>
+          ) : error ? (
+            <div className="text-center py-8 text-red-500">
+              <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+              <p>{error}</p>
+            </div>
           ) : filteredUsers.length > 0 ? (
             <div className="space-y-2">
               {filteredUsers.map(user => (
@@ -159,6 +175,7 @@ const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogP
             <div className="text-center py-8 text-muted-foreground">
               <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p>No users found</p>
+              <p className="text-xs mt-1">Make sure profiles exist in database</p>
             </div>
           )}
         </ScrollArea>

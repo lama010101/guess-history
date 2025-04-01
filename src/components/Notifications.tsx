@@ -80,7 +80,7 @@ const Notifications = () => {
     if (!user) return;
     
     try {
-      const { data: notificationsData, error: notificationsError } = await (supabase as any)
+      const { data: notificationsData, error: notificationsError } = await supabase
         .rpc('get_notifications_with_sender', { user_id: user.id });
         
       if (notificationsError) {
@@ -104,7 +104,7 @@ const Notifications = () => {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .rpc('mark_notification_as_read', { notification_id: notificationId });
         
       if (error) {
@@ -137,7 +137,7 @@ const Notifications = () => {
     if (!user || notifications.length === 0) return;
     
     try {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .rpc('mark_all_notifications_as_read', { user_id: user.id });
         
       if (error) {

@@ -34,7 +34,7 @@ export const initializeOneSignal = (appId: string) => {
     
     window.OneSignal.push(function() {
       window.OneSignal.init({
-        appId: appId,
+        appId: appId || 'aa5b64e9-f512-4cd6-9bc7-fac06adab021', // Use provided App ID as default
         notifyButton: {
           enable: false,
         },

@@ -18,7 +18,7 @@ serve(async (req: Request) => {
     
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-    const oneSignalAppId = Deno.env.get("ONESIGNAL_APP_ID") || "af6b6df9-9b44-43cc-92a8-f7ec0a7c62fb";
+    const oneSignalAppId = Deno.env.get("ONESIGNAL_APP_ID") || "aa5b64e9-f512-4cd6-9bc7-fac06adab021";
     const oneSignalApiKey = Deno.env.get("ONESIGNAL_API_KEY") || "";
     
     if (!oneSignalAppId || !oneSignalApiKey) {
@@ -85,6 +85,7 @@ serve(async (req: Request) => {
     });
     
     const responseData = await oneSignalResponse.json();
+    console.log("OneSignal push notification result:", JSON.stringify(responseData));
     
     // Insert notification in the database
     const { data: notification, error: notificationError } = await supabase

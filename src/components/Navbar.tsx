@@ -183,6 +183,8 @@ const Navbar = ({
             )}
             
             <div className="flex items-center gap-2 ml-auto">
+              <Notifications />
+              
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -323,10 +325,12 @@ const Navbar = ({
             
             <div className="flex items-center gap-2 ml-auto">
               <div className="flex-1 flex justify-center mx-4">
+                <Notifications />
+                
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="flex items-center gap-1"
+                  className="flex items-center gap-1 ml-2"
                   onClick={toggleHints}
                 >
                   <span>Hints: {hintCoins}</span>

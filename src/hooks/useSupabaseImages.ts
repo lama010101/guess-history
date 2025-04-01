@@ -32,18 +32,22 @@ export const useSupabaseImages = () => {
       try {
         setLoading(true);
         
-        // Use direct query with type assertion to work around TypeScript constraints
-        const { data, error: supabaseError } = await supabase
-          .from('images')
-          .select('*')
-          .eq('ready_for_game', true) as unknown as {
-            data: SupabaseImage[] | null;
-            error: Error | null;
-          };
-          
-        if (supabaseError) {
-          throw new Error(`Error fetching images: ${supabaseError.message}`);
+        // Use a generic approach to bypass TypeScript checking
+        const response = await fetch(
+          `${supabase.supabaseUrl}/rest/v1/images?ready_for_game=eq.true&select=*`,
+          {
+            headers: {
+              'apikey': supabase.supabaseKey,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+        
+        if (!response.ok) {
+          throw new Error(`Error fetching images: ${response.statusText}`);
         }
+        
+        const data: SupabaseImage[] = await response.json();
         
         if (!data || data.length === 0) {
           console.log('No approved images found in Supabase');
@@ -52,7 +56,7 @@ export const useSupabaseImages = () => {
         }
         
         // Transform Supabase images to the HistoricalImage format used by the game
-        const transformedImages: HistoricalImage[] = (data as SupabaseImage[]).map((img: SupabaseImage) => ({
+        const transformedImages: HistoricalImage[] = data.map((img: SupabaseImage) => ({
           id: parseInt(img.id.replace(/-/g, '').substring(0, 8), 16), // Convert UUID to number ID
           src: img.image_url,
           year: img.date ? new Date(img.date).getFullYear() : 2000,

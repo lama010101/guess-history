@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -34,8 +35,8 @@ const Friends = () => {
       });
       navigate('/');
     } else {
-      fetchProfiles();
       fetchFriends();
+      fetchAvailableUsers();
       
       // Check if there's a query parameter for searching
       const urlParams = new URLSearchParams(window.location.search);
@@ -51,6 +52,8 @@ const Friends = () => {
     if (!user) return;
 
     try {
+      setLoading(true);
+      // First get friend IDs
       const { data, error } = await supabase
         .from('friends')
         .select('friend_id')
@@ -59,12 +62,14 @@ const Friends = () => {
 
       if (error) {
         console.error('Error fetching friends:', error);
+        setLoading(false);
         return;
       }
 
       if (data && data.length > 0) {
         const friendIds = data.map(item => item.friend_id);
         
+        // Then get profiles for those IDs
         const { data: friendProfiles, error: profilesError } = await supabase
           .from('profiles')
           .select('id, username, avatar_url')
@@ -72,6 +77,7 @@ const Friends = () => {
           
         if (profilesError) {
           console.error('Error fetching friend profiles:', profilesError);
+          setLoading(false);
           return;
         }
         
@@ -79,36 +85,46 @@ const Friends = () => {
       } else {
         setFriends([]);
       }
+      setLoading(false);
     } catch (error) {
       console.error('Error fetching friends:', error);
+      setLoading(false);
     }
   };
 
-  const fetchProfiles = async () => {
+  const fetchAvailableUsers = async () => {
     if (!user) return;
 
     try {
       setLoading(true);
+      
+      // Get all profiles except current user and already added friends
+      const { data: friendsData } = await supabase
+        .from('friends')
+        .select('friend_id')
+        .eq('user_id', user.id);
+      
+      const friendIds = friendsData ? friendsData.map(f => f.friend_id) : [];
+      
+      // Add current user ID to exclusion list
+      const excludeIds = [user.id, ...friendIds];
+      
+      // Query profiles excluding the IDs in excludeIds
       const { data, error } = await supabase
         .from('profiles')
         .select('id, username, avatar_url')
-        .neq('id', user.id)
-        .not('id', 'in', `(SELECT friend_id FROM friends WHERE user_id = "${user.id}")`) as any;
+        .not('id', 'in', `(${excludeIds.map(id => `'${id}'`).join(',')})`);
 
       if (error) {
-        console.error('Error fetching profiles:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load user profiles",
-          variant: "destructive"
-        });
+        console.error('Error fetching available users:', error);
+        setLoading(false);
         return;
       }
       
       setAvailableUsers(data || []);
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching profiles:', error);
+      console.error('Error fetching available users:', error);
       setLoading(false);
     }
   };
@@ -142,7 +158,7 @@ const Friends = () => {
       await supabase.functions.invoke('send-notification', {
         body: {
           recipientId: friendId,
-          message: `${user.username} wants to be your friend!`,
+          message: `${user.username || 'A user'} wants to be your friend!`,
           title: "Friend Request",
           data: {
             type: 'friend_request',
@@ -156,8 +172,8 @@ const Friends = () => {
         description: "Your friend request has been sent"
       });
 
-      fetchProfiles();
-      fetchFriends();
+      // Refetch available users to remove the one we just added
+      fetchAvailableUsers();
     } catch (error) {
       console.error('Error adding friend:', error);
     }
@@ -183,8 +199,9 @@ const Friends = () => {
         description: "Friend has been removed from your list"
       });
 
+      // Refetch friends and available users
       fetchFriends();
-      fetchProfiles();
+      fetchAvailableUsers();
     } catch (error) {
       console.error('Error removing friend:', error);
     }
@@ -225,7 +242,11 @@ const Friends = () => {
           </TabsList>
           
           <TabsContent value="friends">
-            {filteredFriends.length > 0 ? (
+            {loading ? (
+              <div className="text-center py-8">
+                <p>Loading friends...</p>
+              </div>
+            ) : filteredFriends.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredFriends.map(friend => (
                   <Card key={friend.id}>

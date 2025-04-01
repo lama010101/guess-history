@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -44,7 +43,7 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
     
     setLoading(true);
     try {
-      // First get friend IDs
+      // First get friend IDs from the friends table where status is 'accepted'
       const { data: friendsData, error: friendsError } = await supabase
         .from('friends')
         .select('friend_id')
@@ -76,12 +75,32 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
           id: profile.id,
           name: profile.username || 'User',
           avatar: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username || Math.random()}`,
-          online: Math.random() > 0.5 // Random online status for demo purposes
+          online: Math.random() > 0.5
         })) || [];
         
         setFriends(formattedFriends);
       } else {
-        setFriends([]);
+        // If no accepted friends, show other users
+        const { data: otherUsers, error: usersError } = await supabase
+          .from('profiles')
+          .select('id, username, avatar_url')
+          .neq('id', user.id)
+          .limit(10);
+        
+        if (usersError) {
+          console.error('Error fetching users:', usersError);
+          setLoading(false);
+          return;
+        }
+        
+        const formattedUsers = otherUsers?.map(profile => ({
+          id: profile.id,
+          name: profile.username || 'User',
+          avatar: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username || Math.random()}`,
+          online: false
+        })) || [];
+        
+        setFriends(formattedUsers);
       }
     } catch (error) {
       console.error('Error in fetchFriends:', error);

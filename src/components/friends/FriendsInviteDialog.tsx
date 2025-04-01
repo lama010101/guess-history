@@ -1,17 +1,20 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Users, Search, UserPlus, Check } from "lucide-react";
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/services/auth';
+import { useToast } from '@/hooks/use-toast';
 
-// Mock user data - would come from an API in a real app
-const mockUsers = [
-  { id: '1', username: 'user1', email: 'user1@example.com', avatar: null },
-  { id: '2', username: 'user2', email: 'user2@example.com', avatar: null },
-  { id: '3', username: 'user3', email: 'user3@example.com', avatar: null },
-];
+interface User {
+  id: string;
+  username: string;
+  email?: string;
+  avatar_url?: string;
+}
 
 interface FriendsInviteDialogProps {
   trigger: React.ReactNode;
@@ -22,11 +25,61 @@ const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogP
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
+  // Fetch users when dialog opens
+  useEffect(() => {
+    if (dialogOpen && user) {
+      fetchUsers();
+    }
+  }, [dialogOpen, user]);
+  
+  const fetchUsers = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      
+      // Fetch users from profiles table (excluding current user)
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .neq('id', user.id);
+      
+      if (error) {
+        console.error('Error fetching users:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load users list',
+          variant: 'destructive'
+        });
+        return;
+      }
+      
+      if (data) {
+        const formattedUsers: User[] = data.map(profile => ({
+          id: profile.id,
+          username: profile.username || 'User',
+          avatar_url: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username || Math.random()}`
+        }));
+        
+        setUsers(formattedUsers);
+        console.log(`Fetched ${formattedUsers.length} users`);
+      }
+    } catch (err) {
+      console.error('Error fetching users:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
   
   // Filter users based on search term
-  const filteredUsers = mockUsers.filter(user => 
+  const filteredUsers = users.filter(user => 
     user.username.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
   
   const toggleFriendSelection = (userId: string) => {
@@ -62,12 +115,16 @@ const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogP
             className="pl-8"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            // Remove autoFocus here
           />
         </div>
         
         <ScrollArea className="max-h-[280px] pr-4 -mr-4">
-          {filteredUsers.length > 0 ? (
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p>Loading users...</p>
+            </div>
+          ) : filteredUsers.length > 0 ? (
             <div className="space-y-2">
               {filteredUsers.map(user => (
                 <div 
@@ -78,11 +135,19 @@ const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogP
                   onClick={() => toggleFriendSelection(user.id)}
                 >
                   <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary mr-3">
-                    <Users className="h-5 w-5" />
+                    {user.avatar_url ? (
+                      <img 
+                        src={user.avatar_url} 
+                        alt={user.username} 
+                        className="h-10 w-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <Users className="h-5 w-5" />
+                    )}
                   </div>
                   <div className="flex-1">
                     <p className="font-medium">{user.username}</p>
-                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                    {user.email && <p className="text-sm text-muted-foreground">{user.email}</p>}
                   </div>
                   {selectedFriends.includes(user.id) && (
                     <Check className="h-5 w-5 text-primary" />

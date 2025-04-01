@@ -32,12 +32,12 @@ export const useSupabaseImages = () => {
       try {
         setLoading(true);
         
-        // Use a generic approach to bypass TypeScript checking
+        // Use a fetch directly to the Supabase REST API without accessing protected properties
         const response = await fetch(
-          `${supabase.supabaseUrl}/rest/v1/images?ready_for_game=eq.true&select=*`,
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://yonlkixpgeiiqiexengg.supabase.co'}/rest/v1/images?ready_for_game=eq.true&select=*`,
           {
             headers: {
-              'apikey': supabase.supabaseKey,
+              'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvbmxraXhwZ2VpaXFpZXhlbmdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE2ODQ5MDcsImV4cCI6MjA1NzI2MDkwN30.PAj_4trbj-y37eHFC7yVPI7oYcUeWwhwo2iGadoI5oY',
               'Content-Type': 'application/json',
             },
           }
@@ -47,7 +47,7 @@ export const useSupabaseImages = () => {
           throw new Error(`Error fetching images: ${response.statusText}`);
         }
         
-        const data: SupabaseImage[] = await response.json();
+        const data = await response.json() as SupabaseImage[];
         
         if (!data || data.length === 0) {
           console.log('No approved images found in Supabase');

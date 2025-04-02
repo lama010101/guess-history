@@ -32,22 +32,15 @@ export const useSupabaseImages = () => {
       try {
         setLoading(true);
         
-        // Use a fetch directly to the Supabase REST API without accessing protected properties
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://yonlkixpgeiiqiexengg.supabase.co'}/rest/v1/images?ready_for_game=eq.true&select=*`,
-          {
-            headers: {
-              'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvbmxraXhwZ2VpaXFpZXhlbmdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE2ODQ5MDcsImV4cCI6MjA1NzI2MDkwN30.PAj_4trbj-y37eHFC7yVPI7oYcUeWwhwo2iGadoI5oY',
-              'Content-Type': 'application/json',
-            },
-          }
-        );
+        // Directly use the supabase client to query images
+        const { data, error } = await supabase
+          .from('images')
+          .select('id, image_url, title, date, country, address, latitude, longitude, ai_description, tag, source_app, source_name, confidence_score, created_at')
+          .eq('ready_for_game', true);
         
-        if (!response.ok) {
-          throw new Error(`Error fetching images: ${response.statusText}`);
+        if (error) {
+          throw new Error(`Error fetching images: ${error.message}`);
         }
-        
-        const data = await response.json() as SupabaseImage[];
         
         if (!data || data.length === 0) {
           console.log('No approved images found in Supabase');

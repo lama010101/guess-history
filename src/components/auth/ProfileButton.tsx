@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { supabase } from '@/integrations/supabase/client';
 
 const ProfileButton = () => {
   const { isAuthenticated, user, logout, isAdmin } = useAuth();

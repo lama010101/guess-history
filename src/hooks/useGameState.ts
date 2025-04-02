@@ -233,7 +233,7 @@ export const useGameState = (maxRounds = 5): GameStateReturn => {
     
     sampleImages,
     maxRounds: configuredMaxRounds,
-    images,
+    images, // Add images to the return object
     
     setSelectedLocation,
     setSelectedYear,

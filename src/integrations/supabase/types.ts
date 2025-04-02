@@ -328,6 +328,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_game_with_participants: {
+        Args: {
+          creator_id: string
+          config: Json
+          participant_ids: string[]
+        }
+        Returns: string
+      }
+      get_accepted_friends: {
+        Args: {
+          user_id: string
+        }
+        Returns: {
+          friend_id: string
+          username: string
+          avatar_url: string
+          friendship_start: string
+        }[]
+      }
       get_notifications_with_sender: {
         Args: {
           user_id: string

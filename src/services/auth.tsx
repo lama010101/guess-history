@@ -1,6 +1,8 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import AuthModal from '@/components/auth/AuthModal';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 // Define interfaces for our auth types
 interface User {
@@ -18,15 +20,20 @@ interface User {
   user_type?: 'real' | 'ai';
 }
 
-interface AuthContextType {
+interface AuthState {
   user: User | null;
   users: User[];
   isAuthenticated: boolean;
   isGuest: boolean;
   isLoading: boolean;
+  isAdmin: boolean;
+}
+
+interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, username: string) => Promise<void>;
   signOut: () => Promise<void>;
+  logout: () => Promise<void>; // Alias for signOut
   continueAsGuest: () => Promise<void>;
   openAuthModal: (initialView?: 'login' | 'signup') => void;
   googleSignIn: () => Promise<void>; // Add Google sign-in method
@@ -40,97 +47,144 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   isGuest: false,
   isLoading: true,
+  isAdmin: false,
   signIn: async () => {},
   signUp: async () => {},
   signOut: async () => {},
+  logout: async () => {},
   continueAsGuest: async () => {},
   openAuthModal: () => {},
   googleSignIn: async () => {},
   loginOrSignUp: async () => {},
 });
 
-// Create Supabase client
-import { supabase } from '@/integrations/supabase/client';
-
 // Create a hook to use the auth context
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isGuest, setIsGuest] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [authState, setAuthState] = useState<AuthState>({
+    user: null,
+    users: [],
+    isAuthenticated: false,
+    isGuest: false,
+    isLoading: true,
+    isAdmin: false
+  });
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authView, setAuthView] = useState<'login' | 'signup'>('login');
+  const toast = useToast ? useToast() : { toast: () => {} };
+
+  // Update auth state in one place to avoid inconsistencies
+  const updateAuthState = (updates: Partial<AuthState>) => {
+    setAuthState(prev => ({ ...prev, ...updates }));
+  };
 
   useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        const currentUser = session.user;
-        const userData: User = {
-          id: currentUser.id,
-          email: currentUser.email || '',
-          username: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
-          displayName: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
-          createdAt: currentUser.created_at,
-          avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.id}`,
-          isAI: false,
-          registrationMethod: (currentUser.app_metadata?.provider as 'email' | 'google') || 'email',
-          user_type: 'real'
-        };
+    const loadInitialAuth = async () => {
+      try {
+        // First set up auth state listener to avoid missing events during initialization
+        const { data: authListener } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            console.log('Auth state change:', event, session?.user?.id);
+            
+            if (event === 'SIGNED_IN' && session?.user) {
+              await handleSignedIn(session.user);
+            } else if (event === 'SIGNED_OUT') {
+              handleSignedOut();
+            } else if (event === 'USER_UPDATED' && session?.user) {
+              await handleUserUpdated(session.user);
+            }
+          }
+        );
         
-        setUser(userData);
-        setIsAuthenticated(true);
-        setIsGuest(false);
+        // Then check for existing session
+        const { data: { session } } = await supabase.auth.getSession();
         
-        await syncUserToDatabase(currentUser);
-      } else {
-        handleContinueAsGuest();
-      }
-      
-      await fetchUsers();
-      
-      setIsLoading(false);
-    };
-    
-    checkSession();
-    
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
-          const currentUser = session.user;
-          const userData: User = {
-            id: currentUser.id,
-            email: currentUser.email || '',
-            username: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
-            displayName: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
-            createdAt: currentUser.created_at,
-            avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.id}`,
-            isAI: false,
-            registrationMethod: (currentUser.app_metadata?.provider as 'email' | 'google') || 'email',
-            user_type: 'real'
-          };
-          
-          setUser(userData);
-          setIsAuthenticated(true);
-          setIsGuest(false);
-          
-          await syncUserToDatabase(currentUser);
-          
-          await fetchUsers();
-        } else if (event === 'SIGNED_OUT') {
+        if (session) {
+          await handleSignedIn(session.user);
+        } else {
           handleContinueAsGuest();
         }
+        
+        await fetchUsers();
+        
+        updateAuthState({ isLoading: false });
+        
+        return () => {
+          authListener.subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error('Error in loadInitialAuth:', error);
+        handleContinueAsGuest();
+        updateAuthState({ isLoading: false });
       }
-    );
-    
-    return () => {
-      authListener.subscription.unsubscribe();
     };
+    
+    loadInitialAuth();
   }, []);
+
+  const handleSignedIn = async (authUser: any) => {
+    try {
+      // Get profile data if available
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username, avatar_url, role')
+        .eq('id', authUser.id)
+        .single();
+      
+      const userData: User = {
+        id: authUser.id,
+        email: authUser.email || '',
+        username: profile?.username || authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+        displayName: profile?.username || authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+        createdAt: authUser.created_at,
+        avatarUrl: profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${authUser.id}`,
+        isAI: false,
+        registrationMethod: (authUser.app_metadata?.provider as 'email' | 'google') || 'email',
+        user_type: 'real'
+      };
+      
+      updateAuthState({
+        user: userData,
+        isAuthenticated: true,
+        isGuest: false,
+        isAdmin: profile?.role === 'admin'
+      });
+      
+      localStorage.removeItem('guestUser');
+      await syncUserToDatabase(authUser);
+    } catch (error) {
+      console.error('Error in handleSignedIn:', error);
+      // Fallback to basic user data if profile fetch fails
+      const userData: User = {
+        id: authUser.id,
+        email: authUser.email || '',
+        username: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+        displayName: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+        createdAt: authUser.created_at,
+        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${authUser.id}`,
+        isAI: false,
+        registrationMethod: (authUser.app_metadata?.provider as 'email' | 'google') || 'email',
+        user_type: 'real'
+      };
+      
+      updateAuthState({
+        user: userData,
+        isAuthenticated: true,
+        isGuest: false,
+        isAdmin: false
+      });
+    }
+  };
+
+  const handleUserUpdated = async (authUser: any) => {
+    // Similar to handleSignedIn but for updates
+    await handleSignedIn(authUser);
+  };
+
+  const handleSignedOut = () => {
+    handleContinueAsGuest();
+  };
 
   const fetchUsers = async () => {
     try {
@@ -155,7 +209,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           user_type: profile.role === 'admin' ? 'real' : 'ai'
         }));
         
-        setUsers(mappedUsers);
+        updateAuthState({ users: mappedUsers });
         console.log("Loaded users from Supabase:", mappedUsers);
       } else {
         loadFallbackUsers();
@@ -171,7 +225,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (storedUsers) {
       try {
         let users = JSON.parse(storedUsers);
-        setUsers(users);
+        updateAuthState({ users });
         console.log("Loaded users from localStorage:", users);
       } catch (error) {
         console.error('Error parsing users:', error);
@@ -183,21 +237,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const syncUserToDatabase = async (user: any) => {
-    const { email, user_metadata, id, created_at, app_metadata } = user;
+    const { email, user_metadata, id, created_at } = user;
     const username = user_metadata?.name || email?.split('@')[0] || 'User';
 
     try {
-      const { error } = await supabase.rpc('sync_user_to_database', {
-        user_id: id,
-        user_username: username,
-        user_email: email,
-        user_avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`
-      });
-
-      if (error) {
-        console.error('Failed to sync user to DB:', error);
+      // Check if profile exists
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (!existingProfile) {
+        // Create profile if it doesn't exist
+        const { error } = await supabase
+          .from('profiles')
+          .insert({
+            id,
+            username,
+            avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`
+          });
+  
+        if (error) {
+          console.error('Failed to create user profile:', error);
+        } else {
+          console.log('User profile created successfully');
+        }
       } else {
-        console.log('User synced to DB successfully');
+        // Update profile if it exists and username is different
+        if (existingProfile.username !== username) {
+          const { error } = await supabase
+            .from('profiles')
+            .update({ username })
+            .eq('id', id);
+  
+          if (error) {
+            console.error('Failed to update user profile:', error);
+          } else {
+            console.log('User profile updated successfully');
+          }
+        }
+      }
+      
+      // Create hints wallet if it doesn't exist
+      const { data: existingWallet } = await supabase
+        .from('hints_wallet')
+        .select('*')
+        .eq('user_id', id)
+        .single();
+      
+      if (!existingWallet) {
+        await supabase
+          .from('hints_wallet')
+          .insert({
+            user_id: id,
+            hint_coins: 10
+          });
       }
     } catch (error) {
       console.error('Error in syncUserToDatabase:', error);
@@ -241,7 +336,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     ];
     
-    setUsers(sampleUsers);
+    updateAuthState({ users: sampleUsers });
     localStorage.setItem('registeredUsers', JSON.stringify(sampleUsers));
     
     try {
@@ -254,7 +349,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           sample_role: user.user_type === 'real' ? 'admin' : 'user'
         });
         
-        if (error) {
+        if (error && error.code !== '42883') { // Ignore function not found errors
           console.error('Error creating sample user in Supabase:', error);
         }
       }
@@ -273,6 +368,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       
       setShowAuthModal(false);
+      return data;
     } catch (error) {
       console.error('Error signing in:', error);
       throw error;
@@ -288,6 +384,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       
       setShowAuthModal(false);
+      return data;
     } catch (error) {
       console.error('Error signing in with Google:', error);
       throw error;
@@ -308,7 +405,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) throw error;
       
+      // Store username in localStorage to be retrieved after email verification
+      localStorage.setItem('pendingUsername', username);
+      
       setShowAuthModal(false);
+      return data;
     } catch (error) {
       console.error('Error signing up:', error);
       throw error;
@@ -317,27 +418,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const handleSignOut = async () => {
     try {
+      // Start with clearing local storage to prevent state inconsistencies
+      localStorage.removeItem('currentGameState');
+      localStorage.removeItem('guestUser');
+      
+      // Then sign out from Supabase
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      
+      // Use setTimeout to ensure other cleanup happens even if signOut is slow
+      setTimeout(() => {
+        handleContinueAsGuest();
+      }, 100);
     } catch (error) {
       console.error('Error signing out:', error);
+      // Force logout by clearing everything
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.reload();
     }
   };
 
-  const handleContinueAsGuest = async () => {
-    const guestUser: User = {
-      id: 'guest-' + Math.random().toString(36).substring(2, 15),
-      displayName: 'Guest User',
-      username: 'Guest User',
+  const handleContinueAsGuest = () => {
+    // Check for existing guest user in localStorage
+    const storedGuestUser = localStorage.getItem('guestUser');
+    let guestUser: User;
+    
+    if (storedGuestUser) {
+      guestUser = JSON.parse(storedGuestUser);
+    } else {
+      // Create new guest user
+      guestUser = {
+        id: 'guest-' + Math.random().toString(36).substring(2, 15),
+        displayName: 'Guest User',
+        username: 'Guest User',
+        isGuest: true,
+        createdAt: new Date().toISOString(),
+        registrationMethod: 'guest',
+        user_type: 'ai',
+        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=guest-${Math.random()}`
+      };
+      localStorage.setItem('guestUser', JSON.stringify(guestUser));
+    }
+    
+    updateAuthState({
+      user: guestUser,
+      isAuthenticated: false,
       isGuest: true,
-      createdAt: new Date().toISOString(),
-      registrationMethod: 'guest',
-      user_type: 'ai'
-    };
-    setUser(guestUser);
-    setIsAuthenticated(false);
-    setIsGuest(true);
-    localStorage.setItem('user', JSON.stringify(guestUser));
+      isAdmin: false
+    });
   };
 
   const openAuthModal = (initialView: 'login' | 'signup' = 'login') => {
@@ -356,10 +485,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (pendingUsername) {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            await supabase.rpc('update_username', {
-              profile_id: user.id,
-              new_username: pendingUsername
-            });
+            await supabase
+              .from('profiles')
+              .update({ username: pendingUsername })
+              .eq('id', user.id);
+              
             localStorage.removeItem('pendingUsername');
           }
         }
@@ -372,9 +502,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         try {
           await handleSignUp(email, password, pendingUsername);
-          
           localStorage.removeItem('pendingUsername');
-          
           return;
         } catch (signUpError) {
           console.error("Sign up also failed:", signUpError);
@@ -388,14 +516,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const authContextValue: AuthContextType = {
-    user,
-    users,
-    isAuthenticated,
-    isGuest,
-    isLoading,
+    ...authState,
     signIn: handleSignIn,
     signUp: handleSignUp,
     signOut: handleSignOut,
+    logout: handleSignOut, // Alias for signOut
     continueAsGuest: handleContinueAsGuest,
     openAuthModal,
     googleSignIn: handleGoogleSignIn,

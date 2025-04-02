@@ -1,21 +1,15 @@
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Copy, Share2, Bell, Users, Copy as CopyIcon, AlertCircle } from "lucide-react";
+import { Copy, Share2, Bell, Users, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/services/auth';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-
-interface Friend {
-  id: string;
-  name: string;
-  avatar: string;
-  online?: boolean;
-}
+import { useFriends, Friend } from '@/hooks/useFriends';
+import { useGameSession, GameConfig } from '@/hooks/useGameSession';
 
 interface PlayWithFriendsDialogProps {
   open: boolean;
@@ -25,109 +19,21 @@ interface PlayWithFriendsDialogProps {
 const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProps) => {
   const [copied, setCopied] = useState(false);
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
-  const [friends, setFriends] = useState<Friend[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isCreatingGame, setIsCreatingGame] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { friends, loading: loadingFriends } = useFriends();
+  const { createMultiplayerGame } = useGameSession();
   const navigate = useNavigate();
   
   const gameLink = `${window.location.origin}/play?invite=${user?.id || 'guest'}&mode=multiplayer`;
   
+  // Reset selection when dialog opens
   useEffect(() => {
-    if (open && user) {
-      fetchFriends();
+    if (open) {
+      setSelectedFriends([]);
     }
-  }, [open, user]);
-
-  const fetchFriends = async () => {
-    if (!user) return;
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      console.log('Fetching friends, current user ID:', user.id);
-      
-      // First try to get friends from 'friends' table
-      const { data: friendsData, error: friendsError } = await supabase
-        .from('friends')
-        .select('friend_id')
-        .eq('user_id', user.id)
-        .eq('status', 'accepted');
-      
-      console.log('Friends query response:', friendsData, friendsError);
-      
-      if (friendsError) {
-        console.error('Error fetching friends:', friendsError);
-        setError('Failed to fetch friends data');
-        setLoading(false);
-        return;
-      }
-      
-      if (friendsData && friendsData.length > 0) {
-        const friendIds = friendsData.map(item => item.friend_id);
-        console.log('Found friend IDs:', friendIds);
-        
-        // Then get profiles for those IDs
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url')
-          .in('id', friendIds);
-        
-        console.log('Friend profiles query response:', profilesData, profilesError);
-        
-        if (profilesError) {
-          console.error('Error fetching friend profiles:', profilesError);
-          setError('Failed to fetch friend profiles');
-          setLoading(false);
-          return;
-        }
-        
-        const formattedFriends = profilesData?.map(profile => ({
-          id: profile.id,
-          name: profile.username || 'User',
-          avatar: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username || Math.random()}`,
-          online: Math.random() > 0.5 // This is just for UI demo purposes
-        })) || [];
-        
-        console.log('Formatted friends:', formattedFriends);
-        setFriends(formattedFriends);
-      } else {
-        console.log('No accepted friends found, fetching other users instead');
-        
-        // If no accepted friends, show other users
-        const { data: otherUsers, error: usersError } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url')
-          .neq('id', user.id)
-          .limit(10);
-        
-        console.log('Other users query response:', otherUsers, usersError);
-        
-        if (usersError) {
-          console.error('Error fetching users:', usersError);
-          setError('Failed to fetch other users');
-          setLoading(false);
-          return;
-        }
-        
-        const formattedUsers = otherUsers?.map(profile => ({
-          id: profile.id,
-          name: profile.username || 'User',
-          avatar: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username || Math.random()}`,
-          online: false
-        })) || [];
-        
-        console.log('Formatted other users:', formattedUsers);
-        setFriends(formattedUsers);
-      }
-    } catch (error) {
-      console.error('Error in fetchFriends:', error);
-      setError('An unexpected error occurred');
-    }
-    setLoading(false);
-  };
+  }, [open]);
   
   const handleCopy = () => {
     navigator.clipboard.writeText(gameLink);
@@ -156,76 +62,35 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
       return;
     }
     
-    // Create a game session
-    const { data: gameSession, error: gameSessionError } = await supabase
-      .from('game_sessions')
-      .insert({
-        creator_id: user?.id,
-        game_mode: 'multiplayer',
-        settings: {
-          gameMode: 'multiplayer',
-          distanceUnit: 'km',
-          timerEnabled: false,
-          timerDuration: 60
-        }
-      })
-      .select()
-      .single();
-    
-    if (gameSessionError || !gameSession) {
-      console.error('Error creating game session:', gameSessionError);
-      toast({
-        title: "Error",
-        description: "Failed to create game session",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Send invitations to selected friends
-    for (const friendId of selectedFriends) {
-      const friendName = friends.find(f => f.id === friendId)?.name || 'Friend';
-      
-      try {
-        await sendGameInvite(gameSession.id, friendId);
-        
-        toast({
-          title: "Invitation sent!",
-          description: `Game invitation sent to ${friendName}`
-        });
-      } catch (error) {
-        console.error(`Error sending invitation to ${friendName}:`, error);
-      }
-    }
-    
-    navigate(`/play?game=${gameSession.id}&mode=multiplayer`);
-    onOpenChange(false);
-  };
-  
-  const sendGameInvite = async (gameId: string, friendId: string) => {
-    if (!user) return;
+    setIsCreatingGame(true);
     
     try {
-      // Create notification directly
-      const { data, error } = await supabase
-        .from('notifications')
-        .insert({
-          sender_id: user.id,
-          receiver_id: friendId,
-          type: 'invite',
-          message: `${user.username || 'Someone'} invited you to play a game!`,
-          game_id: gameId
-        });
+      // Create game config
+      const gameConfig: GameConfig = {
+        gameMode: 'multiplayer',
+        distanceUnit: localStorage.getItem('distanceFormat') === 'miles' ? 'miles' : 'km',
+        timerEnabled: false,
+        timerDuration: 60,
+        maxRounds: 5
+      };
       
-      if (error) {
-        console.error('Error sending game invitation:', error);
-        throw error;
+      // Create multiplayer game with selected friends
+      const gameId = await createMultiplayerGame(selectedFriends, gameConfig);
+      
+      if (gameId) {
+        // Navigate to the game
+        navigate(`/play?game=${gameId}&mode=multiplayer`);
+        onOpenChange(false); // Close the dialog
       }
-      
-      return data;
     } catch (error) {
-      console.error('Error sending game invitation:', error);
-      throw error;
+      console.error('Error creating multiplayer game:', error);
+      toast({
+        title: "Failed to create game",
+        description: "There was an error creating your multiplayer game",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreatingGame(false);
     }
   };
   
@@ -252,7 +117,7 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
               </div>
               <Button type="submit" size="sm" onClick={handleCopy}>
                 {copied ? "Copied" : "Copy"}
-                <CopyIcon className="ml-2 h-4 w-4" />
+                <Copy className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -266,14 +131,9 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
             </div>
             
             <div className="border rounded-md divide-y max-h-[240px] overflow-y-auto">
-              {loading ? (
+              {loadingFriends ? (
                 <div className="p-4 text-center">
                   <p>Loading friends...</p>
-                </div>
-              ) : error ? (
-                <div className="p-4 text-center text-red-500">
-                  <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-                  <p>{error}</p>
                 </div>
               ) : friends.length > 0 ? (
                 friends.map(friend => (
@@ -291,14 +151,11 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
                       <div className="relative">
                         <img 
                           src={friend.avatar} 
-                          alt={friend.name} 
+                          alt={friend.username} 
                           className="h-10 w-10 rounded-full mr-3"
                         />
-                        {friend.online && (
-                          <span className="absolute bottom-0 right-2 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-white"></span>
-                        )}
                       </div>
-                      <span>{friend.name}</span>
+                      <span>{friend.username}</span>
                     </label>
                   </div>
                 ))
@@ -306,7 +163,7 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
                 <div className="p-4 text-center text-muted-foreground">
                   <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
                   <p>No friends found</p>
-                  <p className="text-xs mt-1">Add friends to play with them or check database for profiles</p>
+                  <p className="text-xs mt-1">Add friends in the Friends tab to play with them</p>
                 </div>
               )}
             </div>
@@ -334,10 +191,10 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
             <Button
               onClick={handleInviteAndStart}
               className="flex items-center gap-1.5"
-              disabled={selectedFriends.length === 0}
+              disabled={selectedFriends.length === 0 || isCreatingGame}
             >
               <Bell className="h-4 w-4" />
-              Invite & Start
+              {isCreatingGame ? "Creating..." : "Invite & Start"}
             </Button>
           </div>
         </div>

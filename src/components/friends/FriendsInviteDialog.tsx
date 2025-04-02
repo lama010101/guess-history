@@ -5,116 +5,36 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Users, Search, UserPlus, Check, AlertCircle } from "lucide-react";
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/services/auth';
 import { useToast } from '@/hooks/use-toast';
-
-interface User {
-  id: string;
-  username: string;
-  email?: string;
-  avatar_url?: string;
-}
+import { useFriends } from '@/hooks/useFriends';
 
 interface FriendsInviteDialogProps {
   trigger: React.ReactNode;
-  onInviteAndStart: () => void;
+  onInviteAndStart: (selectedFriends: string[]) => void;
 }
 
 const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
+  const { friends, availableUsers, loading, fetchAvailableUsers } = useFriends();
   
   // Fetch users when dialog opens
   useEffect(() => {
     if (dialogOpen && user) {
-      fetchUsers();
+      fetchAvailableUsers();
     }
-  }, [dialogOpen, user]);
+  }, [dialogOpen, user, fetchAvailableUsers]);
   
-  const fetchUsers = async () => {
-    if (!user) return;
-    
-    try {
-      setLoading(true);
-      setError(null);
-      
-      console.log('Fetching users, current user ID:', user.id);
-      
-      // First try to fetch friends
-      const { data: friendsData, error: friendsError } = await supabase
-        .from('friends')
-        .select('friend_id, profiles:profiles!friends_friend_id_fkey(id, username, avatar_url)')
-        .eq('user_id', user.id)
-        .eq('status', 'accepted');
-      
-      if (friendsError) {
-        console.error('Error fetching friends:', friendsError);
-      }
-      
-      // If we have friends, use them
-      if (friendsData && friendsData.length > 0) {
-        console.log('Found friends:', friendsData);
-        const formattedUsers: User[] = friendsData.map(friend => ({
-          id: friend.friend_id,
-          username: friend.profiles?.username || 'User',
-          avatar_url: friend.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${friend.profiles?.username || Math.random()}`
-        }));
-        setUsers(formattedUsers);
-      } else {
-        // If no friends found, fetch all users except current user
-        console.log('No friends found, fetching all profiles');
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url')
-          .neq('id', user.id);
-        
-        if (profilesError) {
-          console.error('Error fetching profiles:', profilesError);
-          setError('Failed to load users list');
-          toast({
-            title: 'Error',
-            description: 'Failed to load users list',
-            variant: 'destructive'
-          });
-          setLoading(false);
-          return;
-        }
-        
-        console.log('Profiles query response:', profilesData);
-        
-        if (profilesData && profilesData.length > 0) {
-          const formattedUsers: User[] = profilesData.map(profile => ({
-            id: profile.id,
-            username: profile.username || 'User',
-            avatar_url: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username || Math.random()}`
-          }));
-          
-          setUsers(formattedUsers);
-          console.log(`Fetched ${formattedUsers.length} users:`, formattedUsers);
-        } else {
-          console.log('No users found in profiles table');
-          setUsers([]);
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching users:', err);
-      setError('Unexpected error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Choose which users to display - friends if available, otherwise all users
+  const usersToDisplay = friends.length > 0 ? friends : availableUsers;
   
   // Filter users based on search term
-  const filteredUsers = users.filter(user => 
-    user.username.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredUsers = usersToDisplay.filter(user => 
+    user.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
   
   const toggleFriendSelection = (userId: string) => {
@@ -135,7 +55,7 @@ const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogP
       return;
     }
     
-    onInviteAndStart();
+    onInviteAndStart(selectedFriends);
     setDialogOpen(false);
   };
   
@@ -168,11 +88,6 @@ const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogP
               <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p>Loading users...</p>
             </div>
-          ) : error ? (
-            <div className="text-center py-8 text-red-500">
-              <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-              <p>{error}</p>
-            </div>
           ) : filteredUsers.length > 0 ? (
             <div className="space-y-2">
               {filteredUsers.map(user => (
@@ -184,9 +99,9 @@ const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogP
                   onClick={() => toggleFriendSelection(user.id)}
                 >
                   <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary mr-3">
-                    {user.avatar_url ? (
+                    {user.avatar ? (
                       <img 
-                        src={user.avatar_url} 
+                        src={user.avatar} 
                         alt={user.username} 
                         className="h-10 w-10 rounded-full object-cover"
                       />
@@ -196,7 +111,6 @@ const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogP
                   </div>
                   <div className="flex-1">
                     <p className="font-medium">{user.username}</p>
-                    {user.email && <p className="text-sm text-muted-foreground">{user.email}</p>}
                   </div>
                   {selectedFriends.includes(user.id) && (
                     <Check className="h-5 w-5 text-primary" />

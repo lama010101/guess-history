@@ -47,12 +47,13 @@ const Friends = () => {
   // Ensure we have users to display in discover tab even if friends list is empty
   useEffect(() => {
     if (isAuthenticated && user) {
+      console.log('Friends page: refreshing data');
       refreshFriends();
-      if (availableUsers.length === 0) {
-        fetchAvailableUsers();
-      }
+      
+      // Always fetch available users for the discover tab
+      fetchAvailableUsers();
     }
-  }, [isAuthenticated, user, refreshFriends, fetchAvailableUsers, availableUsers.length]);
+  }, [isAuthenticated, user, refreshFriends, fetchAvailableUsers]);
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);

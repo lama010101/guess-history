@@ -31,13 +31,9 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
   useEffect(() => {
     if (open) {
       setSelectedFriends([]);
-      
-      // If no friends are available, fetch all users
-      if (friends.length === 0 && availableUsers.length === 0) {
-        fetchAvailableUsers();
-      }
+      fetchAvailableUsers();
     }
-  }, [open, friends.length, availableUsers.length, fetchAvailableUsers]);
+  }, [open, fetchAvailableUsers]);
   
   const handleCopy = () => {
     navigator.clipboard.writeText(gameLink);
@@ -95,7 +91,7 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
     }
   };
   
-  // Determine which users to display - friends or available users if no friends
+  // Determine which users to display - always show some users if available
   const usersToDisplay = friends.length > 0 ? friends : availableUsers;
   
   return (

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/services/auth';
@@ -71,11 +72,8 @@ export const useFriends = () => {
         setPendingRequests(pendingList);
       }
 
-      // If we have no friends, fetch all available users as potential friends
-      if ((!acceptedFriends || acceptedFriends.length === 0) && (!pendingFriends || pendingFriends.length === 0)) {
-        console.log('Friend fetch returned empty, fetching all users as fallback');
-        await fetchAvailableUsers();
-      }
+      // Always fetch all available users regardless of whether we have friends or not
+      await fetchAvailableUsers();
     } catch (error) {
       console.error('Error in refreshFriends:', error);
     }
@@ -86,6 +84,8 @@ export const useFriends = () => {
     if (!user) return [];
     
     try {
+      console.log('Fetching all available users for potential friends...');
+      
       // Get all profiles except current user
       const { data, error } = await supabase
         .from('profiles')
@@ -103,6 +103,7 @@ export const useFriends = () => {
         avatar: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username || Math.random()}`
       })) || [];
       
+      console.log(`Found ${usersList.length} available users:`, usersList);
       setAvailableUsers(usersList);
       return usersList;
     } catch (error) {

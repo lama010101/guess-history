@@ -25,12 +25,22 @@ const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogP
   // Fetch users when dialog opens
   useEffect(() => {
     if (dialogOpen && user) {
+      console.log('FriendsInviteDialog: Dialog opened, fetching available users');
       fetchAvailableUsers();
     }
   }, [dialogOpen, user, fetchAvailableUsers]);
   
   // Choose which users to display - friends if available, otherwise all users
   const usersToDisplay = friends.length > 0 ? friends : availableUsers;
+  
+  // If we still have no users to display, log this for debugging
+  useEffect(() => {
+    if (dialogOpen && usersToDisplay.length === 0 && !loading) {
+      console.log('FriendsInviteDialog: No users available to display after fetching');
+    } else if (dialogOpen && usersToDisplay.length > 0) {
+      console.log(`FriendsInviteDialog: Displaying ${usersToDisplay.length} users`);
+    }
+  }, [dialogOpen, usersToDisplay, loading]);
   
   // Filter users based on search term
   const filteredUsers = usersToDisplay.filter(user => 
@@ -123,7 +133,7 @@ const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogP
               <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p>No users found</p>
               <p className="text-xs mt-1">
-                {searchTerm ? 'Try a different search term' : 'Make sure profiles exist in database'}
+                {searchTerm ? 'Try a different search term' : 'Unable to find any users. Please try refreshing.'}
               </p>
             </div>
           )}

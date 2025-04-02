@@ -30,10 +30,19 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
   
   useEffect(() => {
     if (open) {
+      console.log('PlayWithFriendsDialog: Dialog opened, fetching users');
       setSelectedFriends([]);
       fetchAvailableUsers();
     }
   }, [open, fetchAvailableUsers]);
+  
+  // Debug log to see if we're getting any users
+  useEffect(() => {
+    if (open) {
+      console.log('PlayWithFriendsDialog: Friends count:', friends.length);
+      console.log('PlayWithFriendsDialog: Available users count:', availableUsers.length);
+    }
+  }, [open, friends, availableUsers]);
   
   const handleCopy = () => {
     navigator.clipboard.writeText(gameLink);
@@ -166,10 +175,7 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
                   <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
                   <p>No users found</p>
                   <p className="text-xs mt-1">
-                    {friends.length === 0 
-                      ? "No other users are available to play with at the moment" 
-                      : "Add friends in the Friends tab to play with them"
-                    }
+                    There seems to be an issue loading other users. Please try refreshing the page.
                   </p>
                 </div>
               )}

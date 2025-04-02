@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/services/auth';
@@ -30,6 +29,8 @@ export const useFriends = () => {
 
     setLoading(true);
     try {
+      console.log('Fetching friends for user:', user.id);
+      
       // Get accepted friends using a direct query
       const { data: acceptedFriends, error: friendsError } = await supabase
         .from('friends')
@@ -45,12 +46,16 @@ export const useFriends = () => {
           variant: "destructive"
         });
       } else {
+        console.log('Raw friends data:', acceptedFriends);
+        
         const friendsList = acceptedFriends?.map(friend => ({
           id: friend.friend_id,
           username: friend.profiles?.username || 'User',
           avatar: friend.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${friend.profiles?.username || Math.random()}`,
           since: undefined // We don't have this information in this query
         })) || [];
+        
+        console.log('Processed friends list:', friendsList);
         setFriends(friendsList);
       }
 
@@ -80,7 +85,7 @@ export const useFriends = () => {
     setLoading(false);
   }, [user, isAuthenticated, toast]);
 
-  const fetchAvailableUsers = async () => {
+  const fetchAvailableUsers = useCallback(async () => {
     if (!user) return [];
     
     try {
@@ -105,12 +110,19 @@ export const useFriends = () => {
       
       console.log(`Found ${usersList.length} available users:`, usersList);
       setAvailableUsers(usersList);
+      
+      // If we have no friends yet, use available users as the displayed list
+      if (friends.length === 0) {
+        console.log('No friends found, using available users as fallback');
+        setFriends(usersList);
+      }
+      
       return usersList;
     } catch (error) {
       console.error('Error in fetchAvailableUsers:', error);
       return [];
     }
-  };
+  }, [user, friends.length]);
 
   const sendFriendRequest = async (friendId: string) => {
     if (!user) return false;
@@ -255,6 +267,7 @@ export const useFriends = () => {
   useEffect(() => {
     if (!user) return;
     
+    console.log('Setting up friends subscription for user:', user.id);
     refreshFriends();
     
     // Subscribe to changes on the friends table that involve this user
@@ -265,13 +278,19 @@ export const useFriends = () => {
         schema: 'public',
         table: 'friends',
         filter: `user_id=eq.${user.id}` 
-      }, () => refreshFriends())
+      }, () => {
+        console.log('Friend change detected for user_id');
+        refreshFriends();
+      })
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'friends',
         filter: `friend_id=eq.${user.id}`
-      }, () => refreshFriends())
+      }, () => {
+        console.log('Friend change detected for friend_id');
+        refreshFriends();
+      })
       .subscribe();
     
     return () => {

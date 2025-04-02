@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/services/auth';
 import { useNavigate, Link } from 'react-router-dom';
@@ -40,7 +41,11 @@ const ProfileButton = () => {
     setIsLoggingOut(true);
     try {
       // Sign out from Supabase
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Error during Supabase logout:', error);
+        throw error;
+      }
       
       // Clear all game-related local storage
       localStorage.removeItem('currentGameState');
@@ -52,8 +57,8 @@ const ProfileButton = () => {
       // Call the logout function from useAuth which handles the rest
       await logout();
       
-      // Redirect to homepage
-      navigate('/');
+      // Force a redirect to homepage to ensure UI is refreshed
+      window.location.href = '/';
       
       toast({
         title: "Logged out",
@@ -66,6 +71,9 @@ const ProfileButton = () => {
         description: "Please try again",
         variant: "destructive"
       });
+      
+      // Force a clean logout anyway
+      window.location.href = '/';
     } finally {
       setIsLoggingOut(false);
     }

@@ -52,8 +52,17 @@ const Friends = () => {
       
       // Always fetch available users for the discover tab
       fetchAvailableUsers();
+      
+      // Debug log
+      console.log('Friends page loaded - auth state:', { isAuthenticated, userId: user?.id });
     }
   }, [isAuthenticated, user, refreshFriends, fetchAvailableUsers]);
+
+  // Debug log to check if we're getting users
+  useEffect(() => {
+    console.log('Friends count:', friends.length);
+    console.log('Available users count:', availableUsers.length);
+  }, [friends, availableUsers]);
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
@@ -74,6 +83,9 @@ const Friends = () => {
   const filteredUsers = availableUsers.filter(user => 
     user.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Choose which users to display - if friends is empty, use available users
+  const usersToDisplay = friends.length > 0 ? filteredFriends : filteredUsers;
 
   if (!isAuthenticated) {
     return null;
@@ -106,9 +118,9 @@ const Friends = () => {
               <div className="text-center py-8">
                 <p>Loading friends...</p>
               </div>
-            ) : filteredFriends.length > 0 ? (
+            ) : usersToDisplay.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredFriends.map(friend => (
+                {usersToDisplay.map(friend => (
                   <Card key={friend.id}>
                     <CardContent className="p-4 flex justify-between items-center">
                       <div className="flex items-center gap-3">

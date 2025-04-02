@@ -32,7 +32,7 @@ export const useSupabaseImages = () => {
       try {
         setLoading(true);
         
-        // Directly use the supabase client to query images
+        // Directly use the supabase client to query approved images
         const { data, error } = await supabase
           .from('images')
           .select('id, image_url, title, date, country, address, latitude, longitude, ai_description, tag, source_app, source_name, confidence_score, created_at')

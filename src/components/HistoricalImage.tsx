@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Image as ImageIcon } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface HistoricalImageProps {
   src: string;
@@ -32,6 +33,26 @@ const HistoricalImage = ({ src, alt = "Historical image", metadata }: Historical
           const fileName = fileNameMatch[1];
           // Convert to direct image URL using Wikimedia thumbnail API
           finalSrc = `https://commons.wikimedia.org/wiki/Special:FilePath/${fileName}?width=800`;
+        }
+      }
+      // Handle Supabase Storage URLs - ensure they're public URLs
+      else if (src.includes('supabase') && src.includes('storage') && !src.includes('public')) {
+        try {
+          // Extract bucket and path from URL if it's not a public URL
+          const urlParts = src.split('/storage/v1/object/');
+          if (urlParts.length > 1) {
+            const pathParts = urlParts[1].split('/');
+            const bucket = pathParts[0];
+            const filePath = pathParts.slice(1).join('/');
+            
+            // Get the public URL
+            const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
+            if (data && data.publicUrl) {
+              finalSrc = data.publicUrl;
+            }
+          }
+        } catch (err) {
+          console.error('Error processing Supabase storage URL:', err);
         }
       }
       

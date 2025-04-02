@@ -38,8 +38,22 @@ const ProfileButton = () => {
     
     setIsLoggingOut(true);
     try {
+      // Sign out from Supabase
+      await supabase.auth.signOut();
+      
+      // Clear all game-related local storage
+      localStorage.removeItem('currentGameState');
+      localStorage.removeItem('userGameStats');
+      localStorage.removeItem('savedEvents');
+      localStorage.removeItem('gameSettings');
+      localStorage.removeItem('achievements');
+      
+      // Call the logout function from useAuth which handles the rest
       await logout();
+      
+      // Redirect to homepage
       navigate('/');
+      
       toast({
         title: "Logged out",
         description: "You have been successfully logged out"

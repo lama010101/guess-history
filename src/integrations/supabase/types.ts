@@ -216,6 +216,7 @@ export type Database = {
           latitude: number | null
           longitude: number | null
           prompt: string
+          raw_context: string | null
           ready_for_game: boolean
           source_app: string
           source_name: string
@@ -234,6 +235,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           prompt: string
+          raw_context?: string | null
           ready_for_game?: boolean
           source_app: string
           source_name: string
@@ -252,6 +254,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           prompt?: string
+          raw_context?: string | null
           ready_for_game?: boolean
           source_app?: string
           source_name?: string

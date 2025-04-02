@@ -8,24 +8,24 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/services/auth';
-import { supabase } from '@/integrations/supabase/client';
+import { useFriends } from '@/hooks/useFriends';
 import { Plus, Search, UserMinus, Users, BellRing } from 'lucide-react';
-
-interface Profile {
-  id: string;
-  username: string;
-  avatar_url?: string;
-}
 
 const Friends = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
-  const [friends, setFriends] = useState<Profile[]>([]);
-  const [availableUsers, setAvailableUsers] = useState<Profile[]>([]);
+  const { 
+    friends, 
+    availableUsers, 
+    loading, 
+    sendFriendRequest, 
+    removeFriend, 
+    refreshFriends,
+    fetchAvailableUsers
+  } = useFriends();
   const [activeTab, setActiveTab] = useState('friends');
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -35,10 +35,6 @@ const Friends = () => {
       });
       navigate('/');
     } else {
-      fetchFriends();
-      fetchAvailableUsers();
-      
-      // Check if there's a query parameter for searching
       const urlParams = new URLSearchParams(window.location.search);
       const searchParam = urlParams.get('search');
       if (searchParam) {
@@ -48,163 +44,26 @@ const Friends = () => {
     }
   }, [isAuthenticated, navigate, toast]);
 
-  const fetchFriends = async () => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-      // First get friend IDs
-      const { data, error } = await supabase
-        .from('friends')
-        .select('friend_id')
-        .eq('user_id', user.id)
-        .eq('status', 'accepted');
-
-      if (error) {
-        console.error('Error fetching friends:', error);
-        setLoading(false);
-        return;
+  // Ensure we have users to display in discover tab even if friends list is empty
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      refreshFriends();
+      if (availableUsers.length === 0) {
+        fetchAvailableUsers();
       }
-
-      if (data && data.length > 0) {
-        const friendIds = data.map(item => item.friend_id);
-        
-        // Then get profiles for those IDs
-        const { data: friendProfiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url')
-          .in('id', friendIds);
-          
-        if (profilesError) {
-          console.error('Error fetching friend profiles:', profilesError);
-          setLoading(false);
-          return;
-        }
-        
-        setFriends(friendProfiles || []);
-      } else {
-        setFriends([]);
-      }
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching friends:', error);
-      setLoading(false);
     }
-  };
-
-  const fetchAvailableUsers = async () => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-      
-      // Get all profiles except current user and already added friends
-      const { data: friendsData } = await supabase
-        .from('friends')
-        .select('friend_id')
-        .eq('user_id', user.id);
-      
-      const friendIds = friendsData ? friendsData.map(f => f.friend_id) : [];
-      
-      // Add current user ID to exclusion list
-      const excludeIds = [user.id, ...friendIds];
-      
-      // Query profiles excluding the IDs in excludeIds
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url')
-        .not('id', 'in', `(${excludeIds.map(id => `'${id}'`).join(',')})`);
-
-      if (error) {
-        console.error('Error fetching available users:', error);
-        setLoading(false);
-        return;
-      }
-      
-      setAvailableUsers(data || []);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching available users:', error);
-      setLoading(false);
-    }
-  };
+  }, [isAuthenticated, user, refreshFriends, fetchAvailableUsers, availableUsers.length]);
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
   };
 
   const handleAddFriend = async (friendId: string) => {
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('friends')
-        .insert({
-          user_id: user.id,
-          friend_id: friendId,
-          status: 'pending'
-        });
-
-      if (error) {
-        console.error('Error adding friend:', error);
-        toast({
-          title: "Error",
-          description: "Failed to add friend",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      await supabase.functions.invoke('send-notification', {
-        body: {
-          recipientId: friendId,
-          message: `${user.username || 'A user'} wants to be your friend!`,
-          title: "Friend Request",
-          data: {
-            type: 'friend_request',
-            sender_id: user.id
-          }
-        }
-      });
-
-      toast({
-        title: "Friend request sent",
-        description: "Your friend request has been sent"
-      });
-
-      // Refetch available users to remove the one we just added
-      fetchAvailableUsers();
-    } catch (error) {
-      console.error('Error adding friend:', error);
-    }
+    await sendFriendRequest(friendId);
   };
 
   const handleRemoveFriend = async (friendId: string) => {
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('friends')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('friend_id', friendId);
-
-      if (error) {
-        console.error('Error removing friend:', error);
-        return;
-      }
-
-      toast({
-        title: "Friend removed",
-        description: "Friend has been removed from your list"
-      });
-
-      // Refetch friends and available users
-      fetchFriends();
-      fetchAvailableUsers();
-    } catch (error) {
-      console.error('Error removing friend:', error);
-    }
+    await removeFriend(friendId);
   };
 
   const filteredFriends = friends.filter(friend => 
@@ -253,9 +112,9 @@ const Friends = () => {
                     <CardContent className="p-4 flex justify-between items-center">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          {friend.avatar_url ? (
+                          {friend.avatar ? (
                             <img 
-                              src={friend.avatar_url} 
+                              src={friend.avatar} 
                               alt={friend.username} 
                               className="w-10 h-10 rounded-full"
                             />
@@ -305,9 +164,9 @@ const Friends = () => {
                     <CardContent className="p-4 flex justify-between items-center">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
-                          {user.avatar_url ? (
+                          {user.avatar ? (
                             <img 
-                              src={user.avatar_url} 
+                              src={user.avatar} 
                               alt={user.username} 
                               className="w-10 h-10 rounded-full object-cover"
                             />

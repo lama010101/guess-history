@@ -13,6 +13,7 @@ export interface Friend {
 export const useFriends = () => {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [pendingRequests, setPendingRequests] = useState<Friend[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
@@ -21,14 +22,14 @@ export const useFriends = () => {
     if (!user || !isAuthenticated) {
       setFriends([]);
       setPendingRequests([]);
+      setAvailableUsers([]);
       setLoading(false);
       return;
     }
 
     setLoading(true);
     try {
-      // Get accepted friends using a direct query instead of the RPC function
-      // since the RPC function is not in the TypeScript types
+      // Get accepted friends using a direct query
       const { data: acceptedFriends, error: friendsError } = await supabase
         .from('friends')
         .select('friend_id, profiles:profiles!friends_friend_id_fkey(username, avatar_url)')
@@ -69,11 +70,46 @@ export const useFriends = () => {
         })) || [];
         setPendingRequests(pendingList);
       }
+
+      // If we have no friends, fetch all available users as potential friends
+      if ((!acceptedFriends || acceptedFriends.length === 0) && (!pendingFriends || pendingFriends.length === 0)) {
+        console.log('Friend fetch returned empty, fetching all users as fallback');
+        await fetchAvailableUsers();
+      }
     } catch (error) {
       console.error('Error in refreshFriends:', error);
     }
     setLoading(false);
   }, [user, isAuthenticated, toast]);
+
+  const fetchAvailableUsers = async () => {
+    if (!user) return [];
+    
+    try {
+      // Get all profiles except current user
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .neq('id', user.id);
+      
+      if (error) {
+        console.error('Error fetching available users:', error);
+        return [];
+      }
+      
+      const usersList = data?.map(profile => ({
+        id: profile.id,
+        username: profile.username || 'User',
+        avatar: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username || Math.random()}`
+      })) || [];
+      
+      setAvailableUsers(usersList);
+      return usersList;
+    } catch (error) {
+      console.error('Error in fetchAvailableUsers:', error);
+      return [];
+    }
+  };
 
   const sendFriendRequest = async (friendId: string) => {
     if (!user) return false;
@@ -245,11 +281,13 @@ export const useFriends = () => {
   return {
     friends,
     pendingRequests,
+    availableUsers,
     loading,
     sendFriendRequest,
     acceptFriendRequest,
     rejectFriendRequest,
     removeFriend,
-    refreshFriends
+    refreshFriends,
+    fetchAvailableUsers
   };
 };

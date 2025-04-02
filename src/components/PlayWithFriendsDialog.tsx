@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -21,7 +22,7 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
   const [isCreatingGame, setIsCreatingGame] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
-  const { friends, loading: loadingFriends } = useFriends();
+  const { friends, availableUsers, loading: loadingFriends, fetchAvailableUsers } = useFriends();
   const { createMultiplayerGame } = useGameSession();
   const navigate = useNavigate();
   
@@ -30,8 +31,13 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
   useEffect(() => {
     if (open) {
       setSelectedFriends([]);
+      
+      // If no friends are available, fetch all users
+      if (friends.length === 0 && availableUsers.length === 0) {
+        fetchAvailableUsers();
+      }
     }
-  }, [open]);
+  }, [open, friends.length, availableUsers.length, fetchAvailableUsers]);
   
   const handleCopy = () => {
     navigator.clipboard.writeText(gameLink);
@@ -89,6 +95,9 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
     }
   };
   
+  // Determine which users to display - friends or available users if no friends
+  const usersToDisplay = friends.length > 0 ? friends : availableUsers;
+  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -119,7 +128,9 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
           
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Select friends to invite</label>
+              <label className="text-sm font-medium">
+                {friends.length > 0 ? "Select friends to invite" : "Select users to invite"}
+              </label>
               <span className="text-xs text-muted-foreground">
                 {selectedFriends.length} selected
               </span>
@@ -128,37 +139,42 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
             <div className="border rounded-md divide-y max-h-[240px] overflow-y-auto">
               {loadingFriends ? (
                 <div className="p-4 text-center">
-                  <p>Loading friends...</p>
+                  <p>Loading users...</p>
                 </div>
-              ) : friends.length > 0 ? (
-                friends.map(friend => (
-                  <div key={friend.id} className="flex items-center p-3 hover:bg-muted/50">
+              ) : usersToDisplay.length > 0 ? (
+                usersToDisplay.map(person => (
+                  <div key={person.id} className="flex items-center p-3 hover:bg-muted/50">
                     <Checkbox 
-                      id={`friend-${friend.id}`}
-                      checked={selectedFriends.includes(friend.id)}
-                      onCheckedChange={() => handleFriendSelect(friend.id)}
+                      id={`friend-${person.id}`}
+                      checked={selectedFriends.includes(person.id)}
+                      onCheckedChange={() => handleFriendSelect(person.id)}
                       className="mr-3"
                     />
                     <label 
-                      htmlFor={`friend-${friend.id}`}
+                      htmlFor={`friend-${person.id}`}
                       className="flex-1 flex items-center cursor-pointer"
                     >
                       <div className="relative">
                         <img 
-                          src={friend.avatar} 
-                          alt={friend.username} 
+                          src={person.avatar} 
+                          alt={person.username} 
                           className="h-10 w-10 rounded-full mr-3"
                         />
                       </div>
-                      <span>{friend.username}</span>
+                      <span>{person.username}</span>
                     </label>
                   </div>
                 ))
               ) : (
                 <div className="p-4 text-center text-muted-foreground">
                   <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                  <p>No friends found</p>
-                  <p className="text-xs mt-1">Add friends in the Friends tab to play with them</p>
+                  <p>No users found</p>
+                  <p className="text-xs mt-1">
+                    {friends.length === 0 
+                      ? "No other users are available to play with at the moment" 
+                      : "Add friends in the Friends tab to play with them"
+                    }
+                  </p>
                 </div>
               )}
             </div>

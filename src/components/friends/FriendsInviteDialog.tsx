@@ -47,37 +47,61 @@ const FriendsInviteDialog = ({ trigger, onInviteAndStart }: FriendsInviteDialogP
       
       console.log('Fetching users, current user ID:', user.id);
       
-      // Fetch users from profiles table (excluding current user)
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url')
-        .neq('id', user.id);
+      // First try to fetch friends
+      const { data: friendsData, error: friendsError } = await supabase
+        .from('friends')
+        .select('friend_id, profiles:profiles!friends_friend_id_fkey(id, username, avatar_url)')
+        .eq('user_id', user.id)
+        .eq('status', 'accepted');
       
-      if (error) {
-        console.error('Error fetching users:', error);
-        setError('Failed to load users list');
-        toast({
-          title: 'Error',
-          description: 'Failed to load users list',
-          variant: 'destructive'
-        });
-        return;
+      if (friendsError) {
+        console.error('Error fetching friends:', friendsError);
       }
       
-      console.log('Profiles query response:', data);
-      
-      if (data && data.length > 0) {
-        const formattedUsers: User[] = data.map(profile => ({
-          id: profile.id,
-          username: profile.username || 'User',
-          avatar_url: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username || Math.random()}`
+      // If we have friends, use them
+      if (friendsData && friendsData.length > 0) {
+        console.log('Found friends:', friendsData);
+        const formattedUsers: User[] = friendsData.map(friend => ({
+          id: friend.friend_id,
+          username: friend.profiles?.username || 'User',
+          avatar_url: friend.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${friend.profiles?.username || Math.random()}`
         }));
-        
         setUsers(formattedUsers);
-        console.log(`Fetched ${formattedUsers.length} users:`, formattedUsers);
       } else {
-        console.log('No users found in profiles table');
-        setUsers([]);
+        // If no friends found, fetch all users except current user
+        console.log('No friends found, fetching all profiles');
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, username, avatar_url')
+          .neq('id', user.id);
+        
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
+          setError('Failed to load users list');
+          toast({
+            title: 'Error',
+            description: 'Failed to load users list',
+            variant: 'destructive'
+          });
+          setLoading(false);
+          return;
+        }
+        
+        console.log('Profiles query response:', profilesData);
+        
+        if (profilesData && profilesData.length > 0) {
+          const formattedUsers: User[] = profilesData.map(profile => ({
+            id: profile.id,
+            username: profile.username || 'User',
+            avatar_url: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.username || Math.random()}`
+          }));
+          
+          setUsers(formattedUsers);
+          console.log(`Fetched ${formattedUsers.length} users:`, formattedUsers);
+        } else {
+          console.log('No users found in profiles table');
+          setUsers([]);
+        }
       }
     } catch (err) {
       console.error('Error fetching users:', err);

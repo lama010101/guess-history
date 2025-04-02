@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Copy, Share2, Bell, Users, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/services/auth';
-import { useFriends, Friend } from '@/hooks/useFriends';
+import { useFriends } from '@/hooks/useFriends';
 import { useGameSession, GameConfig } from '@/hooks/useGameSession';
 
 interface PlayWithFriendsDialogProps {
@@ -28,7 +27,6 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
   
   const gameLink = `${window.location.origin}/play?invite=${user?.id || 'guest'}&mode=multiplayer`;
   
-  // Reset selection when dialog opens
   useEffect(() => {
     if (open) {
       setSelectedFriends([]);
@@ -65,7 +63,6 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
     setIsCreatingGame(true);
     
     try {
-      // Create game config
       const gameConfig: GameConfig = {
         gameMode: 'multiplayer',
         distanceUnit: localStorage.getItem('distanceFormat') === 'miles' ? 'miles' : 'km',
@@ -74,13 +71,11 @@ const PlayWithFriendsDialog = ({ open, onOpenChange }: PlayWithFriendsDialogProp
         maxRounds: 5
       };
       
-      // Create multiplayer game with selected friends
       const gameId = await createMultiplayerGame(selectedFriends, gameConfig);
       
       if (gameId) {
-        // Navigate to the game
         navigate(`/play?game=${gameId}&mode=multiplayer`);
-        onOpenChange(false); // Close the dialog
+        onOpenChange(false);
       }
     } catch (error) {
       console.error('Error creating multiplayer game:', error);

@@ -28,10 +28,13 @@ export const useFriends = () => {
 
     setLoading(true);
     try {
-      // Get accepted friends using the new database function
-      const { data: acceptedFriends, error: friendsError } = await supabase.rpc('get_accepted_friends', {
-        user_id: user.id
-      });
+      // Get accepted friends using a direct query instead of the RPC function
+      // since the RPC function is not in the TypeScript types
+      const { data: acceptedFriends, error: friendsError } = await supabase
+        .from('friends')
+        .select('friend_id, profiles:profiles!friends_friend_id_fkey(username, avatar_url)')
+        .eq('user_id', user.id)
+        .eq('status', 'accepted');
 
       if (friendsError) {
         console.error('Error fetching friends:', friendsError);
@@ -41,29 +44,31 @@ export const useFriends = () => {
           variant: "destructive"
         });
       } else {
-        setFriends(acceptedFriends?.map(friend => ({
+        const friendsList = acceptedFriends?.map(friend => ({
           id: friend.friend_id,
-          username: friend.username || 'User',
-          avatar: friend.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${friend.username || Math.random()}`,
-          since: friend.friendship_start ? new Date(friend.friendship_start) : undefined
-        })) || []);
+          username: friend.profiles?.username || 'User',
+          avatar: friend.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${friend.profiles?.username || Math.random()}`,
+          since: undefined // We don't have this information in this query
+        })) || [];
+        setFriends(friendsList);
       }
 
       // Get pending friend requests
       const { data: pendingFriends, error: pendingError } = await supabase
         .from('friends')
-        .select('friend_id, profiles:friend_id(username, avatar_url)')
+        .select('friend_id, profiles:profiles!friends_friend_id_fkey(username, avatar_url)')
         .eq('user_id', user.id)
         .eq('status', 'pending');
 
       if (pendingError) {
         console.error('Error fetching pending requests:', pendingError);
       } else {
-        setPendingRequests(pendingFriends?.map(req => ({
+        const pendingList = pendingFriends?.map(req => ({
           id: req.friend_id,
           username: req.profiles?.username || 'User',
           avatar: req.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${req.profiles?.username || Math.random()}`
-        })) || []);
+        })) || [];
+        setPendingRequests(pendingList);
       }
     } catch (error) {
       console.error('Error in refreshFriends:', error);

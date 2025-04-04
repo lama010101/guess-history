@@ -1,7 +1,8 @@
-
 import * as React from "react"
 import useEmblaCarousel, {
   type UseEmblaCarouselType,
+  type EmblaCarouselType,
+  type EmblaViewportRef
 } from "embla-carousel-react"
 import { ArrowLeft, ArrowRight } from "lucide-react"
 
@@ -61,8 +62,7 @@ const Carousel = React.forwardRef<
     const isMobile = useIsMobile();
     const defaultOpts = isMobile ? {
       loop: true,
-      // Use a valid alignment option
-      align: "center" as const, // TypeScript fix: explicitly type as const
+      align: "center" as const,
       skipSnaps: false,
     } : {};
     
@@ -107,7 +107,6 @@ const Carousel = React.forwardRef<
       [scrollPrev, scrollNext]
     )
 
-    // Touch swipe detection for mobile
     React.useEffect(() => {
       const handleTouchStart = (event: TouchEvent) => {
         const touch = event.touches[0];
@@ -121,7 +120,6 @@ const Carousel = React.forwardRef<
           const deltaX = touch.clientX - startX;
           const deltaY = touch.clientY - startY;
           
-          // Only handle horizontal swipes if the orientation is horizontal
           if (orientation === "horizontal" && Math.abs(deltaX) > Math.abs(deltaY)) {
             if (deltaX > 50) {
               scrollPrev();
@@ -134,10 +132,8 @@ const Carousel = React.forwardRef<
         document.addEventListener("touchmove", handleTouchMove, { once: true });
       };
       
-      // Only add touch events for mobile devices
-      if (isMobile && carouselRef) {
-        // Access the DOM element through the ref object
-        const element = carouselRef.current as HTMLElement | null;
+      if (isMobile) {
+        const element = carouselRef?.current as HTMLElement | null;
         
         if (element) {
           element.addEventListener("touchstart", handleTouchStart);

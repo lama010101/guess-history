@@ -1,3 +1,4 @@
+
 import * as React from "react"
 import useEmblaCarousel, {
   type UseEmblaCarouselType,
@@ -6,6 +7,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 type CarouselApi = UseEmblaCarouselType[1]
 type UseCarouselParameters = Parameters<typeof useEmblaCarousel>
@@ -56,8 +58,16 @@ const Carousel = React.forwardRef<
     },
     ref
   ) => {
+    const isMobile = useIsMobile();
+    const defaultOpts = isMobile ? {
+      loop: true,
+      align: "center",
+      skipSnaps: false,
+    } : {};
+    
     const [carouselRef, api] = useEmblaCarousel(
       {
+        ...defaultOpts,
         ...opts,
         axis: orientation === "horizontal" ? "x" : "y",
       },
@@ -95,6 +105,45 @@ const Carousel = React.forwardRef<
       },
       [scrollPrev, scrollNext]
     )
+
+    // Touch swipe detection for mobile
+    React.useEffect(() => {
+      const handleTouchStart = (event: TouchEvent) => {
+        const touch = event.touches[0];
+        const startX = touch.clientX;
+        const startY = touch.clientY;
+        
+        const handleTouchMove = (event: TouchEvent) => {
+          if (!event.touches[0]) return;
+          
+          const touch = event.touches[0];
+          const deltaX = touch.clientX - startX;
+          const deltaY = touch.clientY - startY;
+          
+          // Only handle horizontal swipes if the orientation is horizontal
+          if (orientation === "horizontal" && Math.abs(deltaX) > Math.abs(deltaY)) {
+            if (deltaX > 50) {
+              scrollPrev();
+            } else if (deltaX < -50) {
+              scrollNext();
+            }
+          }
+        };
+        
+        document.addEventListener("touchmove", handleTouchMove, { once: true });
+      };
+      
+      // Only add touch events for mobile devices
+      if (isMobile && carouselRef.current) {
+        carouselRef.current.addEventListener("touchstart", handleTouchStart);
+        
+        return () => {
+          if (carouselRef.current) {
+            carouselRef.current.removeEventListener("touchstart", handleTouchStart);
+          }
+        };
+      }
+    }, [carouselRef, scrollNext, scrollPrev, orientation, isMobile]);
 
     React.useEffect(() => {
       if (!api || !setApi) {
@@ -197,6 +246,7 @@ const CarouselPrevious = React.forwardRef<
   React.ComponentProps<typeof Button>
 >(({ className, variant = "outline", size = "icon", ...props }, ref) => {
   const { orientation, scrollPrev, canScrollPrev } = useCarousel()
+  const isMobile = useIsMobile();
 
   return (
     <Button
@@ -204,10 +254,12 @@ const CarouselPrevious = React.forwardRef<
       variant={variant}
       size={size}
       className={cn(
-        "absolute  h-8 w-8 rounded-full",
-        orientation === "horizontal"
-          ? "-left-12 top-1/2 -translate-y-1/2"
-          : "-top-12 left-1/2 -translate-x-1/2 rotate-90",
+        "h-8 w-8 rounded-full",
+        isMobile 
+          ? "relative" 
+          : orientation === "horizontal"
+            ? "-left-12 top-1/2 -translate-y-1/2 absolute"
+            : "-top-12 left-1/2 -translate-x-1/2 rotate-90 absolute",
         className
       )}
       disabled={!canScrollPrev}
@@ -226,6 +278,7 @@ const CarouselNext = React.forwardRef<
   React.ComponentProps<typeof Button>
 >(({ className, variant = "outline", size = "icon", ...props }, ref) => {
   const { orientation, scrollNext, canScrollNext } = useCarousel()
+  const isMobile = useIsMobile();
 
   return (
     <Button
@@ -233,10 +286,12 @@ const CarouselNext = React.forwardRef<
       variant={variant}
       size={size}
       className={cn(
-        "absolute h-8 w-8 rounded-full",
-        orientation === "horizontal"
-          ? "-right-12 top-1/2 -translate-y-1/2"
-          : "-bottom-12 left-1/2 -translate-x-1/2 rotate-90",
+        "h-8 w-8 rounded-full",
+        isMobile 
+          ? "relative" 
+          : orientation === "horizontal"
+            ? "-right-12 top-1/2 -translate-y-1/2 absolute"
+            : "-bottom-12 left-1/2 -translate-x-1/2 rotate-90 absolute",
         className
       )}
       disabled={!canScrollNext}

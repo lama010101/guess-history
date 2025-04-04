@@ -65,6 +65,17 @@
     --input: 0 0% 15%;
     --ring: 213 0% 84%;
   }
+  
+  /* Glass theme styles */
+  .glass-theme.dark {
+    --card: 240 10% 10% / 0.7;
+    --popover: 240 10% 10% / 0.7;
+    --primary: 210 0% 80%;
+    --secondary: 240 3.7% 15.9% / 0.5;
+    --muted: 240 3.7% 15.9% / 0.5;
+    --accent: 240 3.7% 15.9% / 0.5;
+    --border: 240 3.7% 45.9% / 0.2;
+  }
 }
 
 @layer base {
@@ -83,6 +94,12 @@
 
   .glass-card {
     @apply rounded-2xl glass-morphism transition-all duration-300 hover:shadow-xl;
+  }
+  
+  /* Glass theme card styling */
+  .glass-theme .card,
+  .glass-theme .glass-card {
+    @apply backdrop-blur-lg bg-black/30 border border-white/10 shadow-lg;
   }
 
   .text-balance {

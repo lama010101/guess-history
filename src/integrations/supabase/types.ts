@@ -9,6 +9,131 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      agent_instructions: {
+        Row: {
+          agent: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          instruction: string | null
+          priority: string | null
+          status: string
+          title: string | null
+        }
+        Insert: {
+          agent: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          instruction?: string | null
+          priority?: string | null
+          status: string
+          title?: string | null
+        }
+        Update: {
+          agent?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          instruction?: string | null
+          priority?: string | null
+          status?: string
+          title?: string | null
+        }
+        Relationships: []
+      }
+      app_builds: {
+        Row: {
+          app_name: string
+          budget_usage: number | null
+          build_log: Json | null
+          code: string | null
+          export_url: string | null
+          id: string
+          preview_url: string | null
+          production_url: string | null
+          prompt: string
+          spec: string | null
+          status: string
+          timestamp: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          app_name: string
+          budget_usage?: number | null
+          build_log?: Json | null
+          code?: string | null
+          export_url?: string | null
+          id?: string
+          preview_url?: string | null
+          production_url?: string | null
+          prompt: string
+          spec?: string | null
+          status?: string
+          timestamp?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          app_name?: string
+          budget_usage?: number | null
+          build_log?: Json | null
+          code?: string | null
+          export_url?: string | null
+          id?: string
+          preview_url?: string | null
+          production_url?: string | null
+          prompt?: string
+          spec?: string | null
+          status?: string
+          timestamp?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      app_components: {
+        Row: {
+          app_id: string | null
+          content: string | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          name: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          app_id?: string | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          name: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          app_id?: string | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          name?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_components_app_id_fkey"
+            columns: ["app_id"]
+            isOneToOne: false
+            referencedRelation: "generated_apps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       friends: {
         Row: {
           created_at: string
@@ -127,6 +252,56 @@ export type Database = {
             columns: ["creator_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      generated_apps: {
+        Row: {
+          build_id: string | null
+          created_at: string
+          deployment_url: string | null
+          description: string | null
+          id: string
+          is_public: boolean | null
+          monthly_cost: number | null
+          name: string
+          repository_url: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          build_id?: string | null
+          created_at?: string
+          deployment_url?: string | null
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          monthly_cost?: number | null
+          name: string
+          repository_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          build_id?: string | null
+          created_at?: string
+          deployment_url?: string | null
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          monthly_cost?: number | null
+          name?: string
+          repository_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_apps_build_id_fkey"
+            columns: ["build_id"]
+            isOneToOne: false
+            referencedRelation: "app_builds"
             referencedColumns: ["id"]
           },
         ]

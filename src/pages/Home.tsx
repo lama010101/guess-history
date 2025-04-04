@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
@@ -14,8 +15,18 @@ import { useGameSettings } from '@/hooks/useGameSettings';
 import { useDailyLimit } from '@/hooks/useDailyLimit';
 import { Clock, HelpCircle, Medal, Share2, Trophy, Users, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { 
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from '@/components/ui/carousel';
+import { useIsMobile } from '@/hooks/use-mobile';
+
 export default function Home() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const {
     isAuthenticated,
     openAuthModal
@@ -65,6 +76,7 @@ export default function Home() {
     setFriendsHintsEnabled(hintsEnabled);
     setFriendsHintCount(hintCount);
   });
+  
   const handlePlayNow = () => {
     // Save solo settings to global game settings
     setTimerEnabled(soloTimerEnabled);
@@ -80,6 +92,7 @@ export default function Home() {
     localStorage.setItem('gameSettings', JSON.stringify(gameSettings));
     navigate('/play');
   };
+  
   const handlePlayWithFriends = () => {
     // Save friends settings to global game settings
     setTimerEnabled(friendsTimerEnabled);
@@ -96,6 +109,7 @@ export default function Home() {
       });
     }
   };
+  
   const handlePlayDaily = () => {
     if (!canPlayDaily) {
       toast({
@@ -107,7 +121,152 @@ export default function Home() {
     }
     navigate('/play?mode=daily');
   };
-  return <div className="min-h-screen bg-slate-950">
+
+  // Prepare the cards data for the carousel
+  const gameCards = [
+    {
+      id: "play-now",
+      title: "Play Now",
+      description: "Start a new game with multiple rounds",
+      color: "bg-orange-400",
+      buttonColor: "bg-orange-900 hover:bg-orange-800",
+      buttonAction: handlePlayNow,
+      buttonText: "Play Now",
+      content: (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <Label htmlFor="solo-timer-toggle">Timer</Label>
+            </div>
+            <Switch id="solo-timer-toggle" checked={soloTimerEnabled} onCheckedChange={setSoloTimerEnabled} />
+          </div>
+          
+          {soloTimerEnabled && <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Game duration: {soloTimerMinutes} min</span>
+              </div>
+              <Slider min={1} max={10} step={1} value={[soloTimerMinutes]} onValueChange={value => setSoloTimerMinutes(value[0])} />
+            </div>}
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <HelpCircle className="h-4 w-4 text-muted-foreground" />
+              <Label htmlFor="solo-hints-toggle">Hints</Label>
+            </div>
+            <Switch id="solo-hints-toggle" checked={soloHintsEnabled} onCheckedChange={setSoloHintsEnabled} />
+          </div>
+          
+          {soloHintsEnabled && <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Hint coins: {soloHintCount}</span>
+              </div>
+              <Slider min={0} max={10} step={1} value={[soloHintCount]} onValueChange={value => setSoloHintCount(value[0])} />
+            </div>}
+        </div>
+      )
+    },
+    {
+      id: "play-with-friends",
+      title: "Play with Friends",
+      description: "Invite friends and compete together",
+      color: "bg-emerald-400",
+      buttonColor: "bg-emerald-900 hover:bg-emerald-800",
+      buttonAction: handlePlayWithFriends,
+      buttonText: (
+        <>
+          <Users className="mr-2 h-4 w-4" />
+          Play with Friends
+        </>
+      ),
+      content: (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <Label htmlFor="friend-timer-toggle">Timer</Label>
+            </div>
+            <Switch id="friend-timer-toggle" checked={friendsTimerEnabled} onCheckedChange={setFriendsTimerEnabled} />
+          </div>
+          
+          {friendsTimerEnabled && <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Game duration: {friendsTimerMinutes} min</span>
+              </div>
+              <Slider min={1} max={10} step={1} value={[friendsTimerMinutes]} onValueChange={value => setFriendsTimerMinutes(value[0])} />
+            </div>}
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <HelpCircle className="h-4 w-4 text-muted-foreground" />
+              <Label htmlFor="friend-hints-toggle">Hints</Label>
+            </div>
+            <Switch id="friend-hints-toggle" checked={friendsHintsEnabled} onCheckedChange={setFriendsHintsEnabled} />
+          </div>
+          
+          {friendsHintsEnabled && <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Hint coins: {friendsHintCount}</span>
+              </div>
+              <Slider min={0} max={10} step={1} value={[friendsHintCount]} onValueChange={value => setFriendsHintCount(value[0])} />
+            </div>}
+        </div>
+      )
+    },
+    {
+      id: "daily-challenge",
+      title: "Daily Challenge",
+      description: "One new challenge every day",
+      color: "bg-violet-400",
+      buttonColor: "bg-violet-900 hover:bg-violet-800",
+      buttonAction: handlePlayDaily,
+      buttonText: canPlayDaily ? "Play Today's Challenge" : (
+        <>
+          <AlertTriangle className="mr-2 h-4 w-4" />
+          Already Played Today
+        </>
+      ),
+      buttonDisabled: !canPlayDaily,
+      content: canPlayDaily ? (
+        <div className="space-y-2 text-center py-2">
+          <div className="flex justify-center">
+            <Trophy className="h-16 w-16 text-amber-500 py-0 bg-slate-950 rounded-full px-[20px]" />
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4 text-center py-2">
+          <div className="flex justify-center">
+            <Medal className="h-16 w-16 text-emerald-500" />
+          </div>
+          
+          <div>
+            <p className="text-sm font-medium">Today's Score</p>
+            <p className="text-2xl font-bold">{todayScore?.toLocaleString()}</p>
+          </div>
+          
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">Next challenge in:</p>
+            <DailyCountdown score={todayScore || 0} targetDate={new Date(Date.now() + timeUntilNextReset)} className="text-lg font-mono" />
+          </div>
+        </div>
+      )
+    }
+  ];
+
+  // Apply theme effect
+  useEffect(() => {
+    const themePref = localStorage.getItem('themeStyle');
+    if (themePref === 'glass') {
+      document.documentElement.classList.add('glass-theme');
+    }
+    
+    return () => {
+      document.documentElement.classList.remove('glass-theme');
+    };
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-slate-950">
       <Navbar />
       
       <main className="container space-y-8 max-w-6xl mx-auto py-[20px] px-[35px] bg-slate-950">
@@ -115,142 +274,69 @@ export default function Home() {
           <p className="text-xl max-w-3xl my-0 text-slate-50 px-0 mx-0">When and where did it happen?</p>
         </div>
         
-        <div className="grid gap-6 md:grid-cols-3">
-          <Card className="md:col-span-1 bg-orange-400">
-            <CardHeader className="space-y-1 bg-orange-400">
-              <CardTitle className="text-2xl">Play Now</CardTitle>
-              <CardDescription>
-                Start a new game with multiple rounds
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <Label htmlFor="solo-timer-toggle">Timer</Label>
-                  </div>
-                  <Switch id="solo-timer-toggle" checked={soloTimerEnabled} onCheckedChange={setSoloTimerEnabled} />
-                </div>
-                
-                {soloTimerEnabled && <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Game duration: {soloTimerMinutes} min</span>
-                    </div>
-                    <Slider min={1} max={10} step={1} value={[soloTimerMinutes]} onValueChange={value => setSoloTimerMinutes(value[0])} />
-                  </div>}
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                    <Label htmlFor="solo-hints-toggle">Hints</Label>
-                  </div>
-                  <Switch id="solo-hints-toggle" checked={soloHintsEnabled} onCheckedChange={setSoloHintsEnabled} />
-                </div>
-                
-                {soloHintsEnabled && <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Hint coins: {soloHintCount}</span>
-                    </div>
-                    <Slider min={0} max={10} step={1} value={[soloHintCount]} onValueChange={value => setSoloHintCount(value[0])} />
-                  </div>}
+        {isMobile ? (
+          <div className="w-full px-4">
+            <Carousel className="w-full">
+              <CarouselContent>
+                {gameCards.map((card) => (
+                  <CarouselItem key={card.id}>
+                    <Card className={`h-full ${card.color}`}>
+                      <CardHeader className={`space-y-1 ${card.color}`}>
+                        <CardTitle className="text-2xl">{card.title}</CardTitle>
+                        <CardDescription>
+                          {card.description}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {card.content}
+                      </CardContent>
+                      <CardFooter>
+                        <Button 
+                          onClick={card.buttonAction} 
+                          className={`w-full ${card.buttonColor}`}
+                          disabled={card.buttonDisabled}
+                          variant={card.buttonDisabled ? "outline" : "default"}
+                        >
+                          {card.buttonText}
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <div className="flex justify-center gap-2 mt-4">
+                <CarouselPrevious className="relative static" />
+                <CarouselNext className="relative static" />
               </div>
-            </CardContent>
-            <CardFooter>
-              <Button onClick={handlePlayNow} className="w-full bg-orange-900 hover:bg-orange-800">
-                Play Now
-              </Button>
-            </CardFooter>
-          </Card>
-          
-          <Card className="md:col-span-1 bg-emerald-400">
-            <CardHeader className="space-y-1 bg-emerald-400">
-              <CardTitle className="text-2xl">Play with Friends</CardTitle>
-              <CardDescription>
-                Invite friends and compete together
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <Label htmlFor="friend-timer-toggle">Timer</Label>
-                  </div>
-                  <Switch id="friend-timer-toggle" checked={friendsTimerEnabled} onCheckedChange={setFriendsTimerEnabled} />
-                </div>
-                
-                {friendsTimerEnabled && <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Game duration: {friendsTimerMinutes} min</span>
-                    </div>
-                    <Slider min={1} max={10} step={1} value={[friendsTimerMinutes]} onValueChange={value => setFriendsTimerMinutes(value[0])} />
-                  </div>}
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                    <Label htmlFor="friend-hints-toggle">Hints</Label>
-                  </div>
-                  <Switch id="friend-hints-toggle" checked={friendsHintsEnabled} onCheckedChange={setFriendsHintsEnabled} />
-                </div>
-                
-                {friendsHintsEnabled && <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Hint coins: {friendsHintCount}</span>
-                    </div>
-                    <Slider min={0} max={10} step={1} value={[friendsHintCount]} onValueChange={value => setFriendsHintCount(value[0])} />
-                  </div>}
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button onClick={handlePlayWithFriends} className="w-full bg-emerald-900 hover:bg-emerald-800">
-                <Users className="mr-2 h-4 w-4" />
-                Play with Friends
-              </Button>
-            </CardFooter>
-          </Card>
-          
-          <Card className="md:col-span-1 bg-violet-400">
-            <CardHeader className="space-y-1 bg-violet-400">
-              <CardTitle className="text-2xl">Daily Challenge</CardTitle>
-              <CardDescription>
-                One new challenge every day
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {canPlayDaily ? <div className="space-y-2 text-center py-2">
-                  
-                  <div className="flex justify-center">
-                    <Trophy className="h-16 w-16 text-amber-500 py-0 bg-slate-950 rounded-full px-[20px]" />
-                  </div>
-                  
-                </div> : <div className="space-y-4 text-center py-2">
-                  <div className="flex justify-center">
-                    <Medal className="h-16 w-16 text-emerald-500" />
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm font-medium">Today's Score</p>
-                    <p className="text-2xl font-bold">{todayScore?.toLocaleString()}</p>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Next challenge in:</p>
-                    <DailyCountdown score={todayScore || 0} targetDate={new Date(Date.now() + timeUntilNextReset)} className="text-lg font-mono" />
-                  </div>
-                </div>}
-            </CardContent>
-            <CardFooter>
-              {canPlayDaily ? <Button onClick={handlePlayDaily} variant="outline" className="w-full bg-violet-900 hover:bg-violet-800 text-slate-50 mx-0 my-0 py-0 text-base px-0 rounded-lg">
-                  Play Today's Challenge
-                </Button> : <Button disabled variant="outline" className="w-full">
-                  <AlertTriangle className="mr-2 h-4 w-4" />
-                  Already Played Today
-                </Button>}
-            </CardFooter>
-          </Card>
-        </div>
+            </Carousel>
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-3">
+            {gameCards.map((card) => (
+              <Card key={card.id} className={`md:col-span-1 ${card.color}`}>
+                <CardHeader className={`space-y-1 ${card.color}`}>
+                  <CardTitle className="text-2xl">{card.title}</CardTitle>
+                  <CardDescription>
+                    {card.description}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {card.content}
+                </CardContent>
+                <CardFooter>
+                  <Button 
+                    onClick={card.buttonAction} 
+                    className={`w-full ${card.buttonColor}`}
+                    disabled={card.buttonDisabled}
+                    variant={card.buttonDisabled ? "outline" : "default"}
+                  >
+                    {card.buttonText}
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        )}
         
         <div className="text-center mt-8">
           <div className="flex flex-wrap justify-center gap-4">
@@ -270,5 +356,6 @@ export default function Home() {
       </main>
       
       <PlayWithFriendsDialog open={showPlayWithFriendsDialog} onOpenChange={setShowPlayWithFriendsDialog} />
-    </div>;
+    </div>
+  );
 }

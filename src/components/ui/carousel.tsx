@@ -135,12 +135,13 @@ const Carousel = React.forwardRef<
       };
       
       // Only add touch events for mobile devices
-      if (isMobile && carouselRef) {
-        carouselRef.addEventListener("touchstart", handleTouchStart);
+      if (isMobile && carouselRef && carouselRef.current) {
+        const viewportElement = carouselRef.current;
+        viewportElement.addEventListener("touchstart", handleTouchStart);
         
         return () => {
-          if (carouselRef) {
-            carouselRef.removeEventListener("touchstart", handleTouchStart);
+          if (viewportElement) {
+            viewportElement.removeEventListener("touchstart", handleTouchStart);
           }
         };
       }

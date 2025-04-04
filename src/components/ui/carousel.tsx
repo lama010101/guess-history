@@ -61,7 +61,8 @@ const Carousel = React.forwardRef<
     const isMobile = useIsMobile();
     const defaultOpts = isMobile ? {
       loop: true,
-      align: "center",
+      // Use a valid alignment option
+      align: "center" as const, // TypeScript fix: explicitly type as const
       skipSnaps: false,
     } : {};
     
@@ -134,12 +135,12 @@ const Carousel = React.forwardRef<
       };
       
       // Only add touch events for mobile devices
-      if (isMobile && carouselRef.current) {
-        carouselRef.current.addEventListener("touchstart", handleTouchStart);
+      if (isMobile && carouselRef) {
+        carouselRef.addEventListener("touchstart", handleTouchStart);
         
         return () => {
-          if (carouselRef.current) {
-            carouselRef.current.removeEventListener("touchstart", handleTouchStart);
+          if (carouselRef) {
+            carouselRef.removeEventListener("touchstart", handleTouchStart);
           }
         };
       }

@@ -1,9 +1,7 @@
-
 import * as React from "react"
 import useEmblaCarousel, {
   type UseEmblaCarouselType,
-  type EmblaPluginType,
-  type EmblaViewportRefType 
+  type EmblaPluginType 
 } from "embla-carousel-react"
 import { ArrowLeft, ArrowRight } from "lucide-react"
 
@@ -133,10 +131,8 @@ const Carousel = React.forwardRef<
         document.addEventListener("touchmove", handleTouchMove, { once: true });
       };
       
-      if (isMobile) {
-        // Access the DOM element by using the containerRef from EmblaViewportRefType
-        // which has the element property to get the DOM node
-        const element = carouselRef?.viewport?.element || null;
+      if (isMobile && carouselRef) {
+        const element = carouselRef.viewport as HTMLElement | null;
         
         if (element) {
           element.addEventListener("touchstart", handleTouchStart);

@@ -1,4 +1,3 @@
-
 import * as React from "react"
 import useEmblaCarousel, {
   type UseEmblaCarouselType,
@@ -134,10 +133,8 @@ const Carousel = React.forwardRef<
       };
       
       if (isMobile && carouselRef && api) {
-        // Get the container element using the API instead of DOM manipulation
-        const emblaRoot = carouselRef.current;
-        if (emblaRoot) {
-          const container = emblaRoot.querySelector('.embla__container');
+        if (carouselRef) {
+          const container = carouselRef.querySelector('.embla__container');
           if (container) {
             container.addEventListener("touchstart", handleTouchStart);
             

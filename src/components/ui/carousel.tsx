@@ -133,20 +133,21 @@ const Carousel = React.forwardRef<
         document.addEventListener("touchmove", handleTouchMove, { once: true });
       };
       
-      if (isMobile && carouselRef) {
-        // Access the DOM element safely using the ref's current value
-        const container = carouselRef as unknown as HTMLElement;
-        const element = container.querySelector('.embla__container') as HTMLElement;
-        
-        if (element) {
-          element.addEventListener("touchstart", handleTouchStart);
-          
-          return () => {
-            element.removeEventListener("touchstart", handleTouchStart);
-          };
+      if (isMobile && carouselRef && api) {
+        // Get the container element using the API instead of DOM manipulation
+        const emblaRoot = carouselRef.current;
+        if (emblaRoot) {
+          const container = emblaRoot.querySelector('.embla__container');
+          if (container) {
+            container.addEventListener("touchstart", handleTouchStart);
+            
+            return () => {
+              container.removeEventListener("touchstart", handleTouchStart);
+            };
+          }
         }
       }
-    }, [carouselRef, scrollNext, scrollPrev, orientation, isMobile]);
+    }, [carouselRef, api, scrollNext, scrollPrev, orientation, isMobile]);
 
     React.useEffect(() => {
       if (!api || !setApi) {

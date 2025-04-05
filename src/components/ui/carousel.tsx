@@ -134,9 +134,11 @@ const Carousel = React.forwardRef<
       };
       
       if (isMobile && carouselRef && api) {
-        // Access the DOM element using the carouselRef function
-        const viewportElement = carouselRef();
+        // Get the actual DOM element from the ref function
+        const viewportElement = carouselRef;
+        
         if (viewportElement) {
+          // Find the container inside the carousel viewport
           const container = viewportElement.querySelector('.embla__container');
           if (container) {
             container.addEventListener("touchstart", handleTouchStart);

@@ -1,4 +1,3 @@
-
 import * as React from "react"
 import useEmblaCarousel, {
   type UseEmblaCarouselType,
@@ -134,19 +133,14 @@ const Carousel = React.forwardRef<
       };
       
       if (isMobile && carouselRef && api) {
-        // Get the actual DOM element from the ref function
-        const viewportElement = carouselRef;
+        const emblaRoot = document.querySelector('[data-embla-container]');
         
-        if (viewportElement) {
-          // Find the container inside the carousel viewport
-          const container = viewportElement.querySelector('.embla__container');
-          if (container) {
-            container.addEventListener("touchstart", handleTouchStart);
-            
-            return () => {
-              container.removeEventListener("touchstart", handleTouchStart);
-            };
-          }
+        if (emblaRoot) {
+          emblaRoot.addEventListener("touchstart", handleTouchStart);
+          
+          return () => {
+            emblaRoot.removeEventListener("touchstart", handleTouchStart);
+          };
         }
       }
     }, [carouselRef, api, scrollNext, scrollPrev, orientation, isMobile]);
@@ -210,7 +204,7 @@ const CarouselContent = React.forwardRef<
   const { carouselRef, orientation } = useCarousel()
 
   return (
-    <div ref={carouselRef} className="overflow-hidden">
+    <div ref={carouselRef} className="overflow-hidden" data-embla-container>
       <div
         ref={ref}
         className={cn(

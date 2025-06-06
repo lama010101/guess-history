@@ -1,0 +1,119 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light mode */
+    --background: 0 0% 100%; /* White background */
+    --foreground: 0 0% 10%; /* Black text */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 0 0% 20%; /* Dark gray for primary */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 25 95% 53%; /* Orange for secondary/highlight */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 10%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 20%;
+    --radius: 0.75rem;
+    
+    /* Custom background colors for theme */
+    --light-background: 0 0% 98%; /* Very light gray/white background */
+    --dark-background: 0 0% 10%; /* Very dark gray/black background */
+  }
+ 
+  .dark {
+    /* Dark mode */
+    --background: 0 0% 10%; /* Black background */
+    --foreground: 0 0% 98%; /* White text */
+    --card: 0 0% 15%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 15%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 50%; /* Medium gray for primary */
+    --primary-foreground: 0 0% 98%;
+    --secondary: 25 95% 53%; /* Orange for secondary/highlight */
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 0 0% 25%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 65% 45%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 0 0% 80%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-serif;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/30 dark:bg-black/30 backdrop-blur-md border border-white/20 dark:border-white/10;
+  }
+  
+  .glass-card {
+    @apply bg-white/70 dark:bg-black/70 backdrop-blur-md border border-white/20 dark:border-white/10 shadow-lg;
+  }
+  
+  .history-card {
+    @apply bg-gradient-to-br from-history-light to-white dark:from-history-dark dark:to-gray-900 border border-history-secondary/20 shadow-md;
+  }
+
+  .time-slider {
+    @apply appearance-none bg-gray-300 dark:bg-gray-700 h-2 rounded-full cursor-pointer;
+  }
+
+  .time-slider::-webkit-slider-thumb {
+    @apply appearance-none w-6 h-6 bg-history-secondary rounded-full;
+  }
+
+  .map-container {
+    @apply rounded-lg border-2 border-history-primary/20 overflow-hidden shadow-lg;
+  }
+
+  .game-button {
+    @apply px-6 py-3 rounded-full bg-history-primary text-white font-medium shadow-md hover:shadow-lg transition-all duration-300 active:scale-95;
+  }
+
+  .badge {
+    @apply rounded-full flex items-center justify-center bg-history-secondary text-white;
+  }
+}
+
+.map-placeholder {
+  background-color: #e0e0e0;
+  background-image: radial-gradient(circle, #d0d0d0 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+#root {
+  @apply min-h-screen w-full max-w-none p-0 m-0;
+}
+
+.app {
+  @apply w-full text-left;
+}

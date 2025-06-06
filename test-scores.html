@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Scores Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background-color: #f5f5f5;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #output {
+            margin-top: 20px;
+            white-space: pre-wrap;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            min-height: 100px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 8px 12px;
+            border-bottom: 1px solid #2d3748;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            word-break: break-word;
+            background-color: rgba(255, 255, 255, 0.03);
+            border-radius: 4px;
+        }
+        
+        .log-entry:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .run-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            transition: background-color 0.3s;
+        }
+        
+        .run-button:hover {
+            background-color: #45a049;
+        }
+        
+        .clear-button {
+            background-color: #f44336;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        .clear-button:hover {
+            background-color: #d32f2f;
+        }
+        
+        #output {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            background-color: #1a202c;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid #2d3748;
+        }
+        
+        /* Custom scrollbar */
+        #output::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        #output::-webkit-scrollbar-track {
+            background: #2d3748;
+            border-radius: 4px;
+        }
+        
+        #output::-webkit-scrollbar-thumb {
+            background: #4a5568;
+            border-radius: 4px;
+        }
+        
+        #output::-webkit-scrollbar-thumb:hover {
+            background: #718096;
+        }
+    </style>
+</head>
+<body>
+    <h1>Global Scores Test</h1>
+    <div class="container">
+        <p>This test will check if global scores are updating correctly.</p>
+        <p>Open your browser's developer console (F12) to see detailed logs.</p>
+        <button id="runTest" class="run-button">Run Test</button>
+        <button id="clearLogs" class="clear-button">Clear Logs</button>
+        <h3>Test Output:</h3>
+        <div id="output"></div>
+    </div>
+
+    <script src="test-scores.js"></script>
+    <script>
+        // Override console.log to display in the page
+        (function() {
+            const oldLog = console.log;
+            const oldError = console.error;
+            const output = document.getElementById('output');
+            
+            function addToOutput(level, args) {
+                const logEntry = document.createElement('div');
+                logEntry.className = 'log-entry';
+                
+                // Add emoji for different log levels
+                let prefix = '';
+                if (level === 'error') {
+                    logEntry.style.color = '#ff6b6b';
+                    prefix = '❌ ';
+                } else if (level === 'success') {
+                    logEntry.style.color = '#51cf66';
+                    prefix = '✅ ';
+                } else if (level === 'info') {
+                    prefix = 'ℹ️ ';
+                }
+                
+                // Format the message
+                let message = Array.from(args).map(arg => {
+                    if (typeof arg === 'object' && arg !== null) {
+                        try {
+                            return JSON.stringify(arg, null, 2);
+                        } catch (e) {
+                            return String(arg);
+                        }
+                    }
+                    return String(arg);
+                }).join(' ');
+                
+                // Add timestamp
+                const now = new Date();
+                const timestamp = `[${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}]`;
+                
+                logEntry.innerHTML = `<span style="opacity: 0.6; font-size: 0.8em;">${timestamp}</span> ${prefix}${message.replace(/\n/g, '<br>')}`;
+                output.appendChild(logEntry);
+                output.scrollTop = output.scrollHeight;
+            }
+            
+            console.log = function() {
+                oldLog.apply(console, arguments);
+                addToOutput('log', arguments);
+            };
+            
+            console.error = function() {
+                oldError.apply(console, arguments);
+                addToOutput('error', arguments);
+            };
+            
+            // Add a success log function
+            console.success = function() {
+                oldLog.apply(console, arguments);
+                addToOutput('success', arguments);
+            };
+            
+            // Add an info log function
+            console.info = function() {
+                oldLog.apply(console, arguments);
+                addToOutput('info', arguments);
+            };
+        })();
+
+        // Run test when button is clicked
+        document.getElementById('runTest').addEventListener('click', async () => {
+            const output = document.getElementById('output');
+            output.innerHTML = 'Running test...\n';
+            
+            try {
+                await testScores();
+            } catch (error) {
+                console.error('Test failed:', error);
+            }
+        });
+        
+        // Clear logs button
+        document.getElementById('clearLogs').addEventListener('click', () => {
+            const output = document.getElementById('output');
+            output.innerHTML = '';
+            console.log('Logs cleared');
+        });
+        
+        // Run test automatically when the page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('Page loaded. Click the "Run Test" button to start testing global scores.');
+            
+            // Check if Supabase is loaded
+            if (typeof supabase === 'undefined') {
+                console.error('Supabase client not loaded. Please check your internet connection.');
+                return;
+            }
+            
+            console.log('Supabase client initialized successfully.');
+        });
+    </script>
+</body>
+</html>

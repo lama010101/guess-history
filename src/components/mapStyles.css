@@ -1,0 +1,132 @@
+
+/* Base map container */
+.leaflet-container {
+  background-color: hsl(var(--background));
+  transition: all 0.3s ease;
+}
+
+/* Fullscreen mode */
+.leaflet-fullscreen-on {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 9999 !important; /* Ensure map is above all other elements */
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* When in fullscreen mode, hide any overflow and all elements except map */
+body:has(.leaflet-fullscreen-on) {
+  overflow: hidden !important;
+}
+
+/* Hide all elements except the map container and fullscreen control */
+body:has(.leaflet-fullscreen-on) > :not(.leaflet-container) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  z-index: -1000 !important;
+}
+
+/* Ensure the map container takes full viewport */
+.leaflet-fullscreen-on {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 9999 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Hide all HUD elements and overlays */
+.leaflet-fullscreen-on ~ *,
+.leaflet-fullscreen-on + *,
+.leaflet-fullscreen-on ~ [class*="hud"],
+.leaflet-fullscreen-on ~ [class*="HUD"],
+.leaflet-fullscreen-on ~ [class*="game"],
+.leaflet-fullscreen-on ~ [class*="Game"],
+.leaflet-fullscreen-on ~ [class*="overlay"],
+.leaflet-fullscreen-on ~ [class*="Overlay"],
+.leaflet-fullscreen-on ~ header,
+.leaflet-fullscreen-on ~ footer,
+.leaflet-fullscreen-on ~ nav,
+.leaflet-fullscreen-on ~ [class*="header"],
+.leaflet-fullscreen-on ~ [class*="footer"],
+.leaflet-fullscreen-on ~ [class*="navigation"],
+.leaflet-fullscreen-on ~ [class*="Header"],
+.leaflet-fullscreen-on ~ [class*="Footer"],
+.leaflet-fullscreen-on ~ [class*="Navigation"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  z-index: -1000 !important;
+}
+
+/* Ensure the fullscreen control is always visible */
+.leaflet-control-fullscreen {
+  z-index: 10000 !important;
+  position: fixed !important;
+  top: 10px !important;
+  right: 10px !important;
+}
+
+/* Ensure map controls stay visible in fullscreen */
+.leaflet-fullscreen-on .leaflet-control {
+  z-index: 10000 !important;
+}
+
+.leaflet-control-fullscreen a {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  border-radius: 0.5rem !important;
+  padding: 0.5rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: opacity 0.2s !important;
+}
+
+.leaflet-control-fullscreen a:hover {
+  opacity: 0.9 !important;
+}
+
+/* Custom marker styling */
+.custom-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Circle radius styling */
+.leaflet-circle-radius {
+  position: absolute;
+  display: none;
+}

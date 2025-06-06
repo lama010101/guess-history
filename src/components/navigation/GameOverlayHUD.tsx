@@ -69,14 +69,16 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
         {/* Left side - Timer */}
         <div className="pointer-events-auto">
           {rawRemainingTime > 0 && (
-            <div className="bg-black/30 backdrop-blur-sm p-1.5 rounded-full">
-              <TimerDisplay
-                remainingTime={rawRemainingTime}
-                setRemainingTime={setRemainingTime}
-                isActive={isTimerActive}
-                onTimeout={onTimeout}
-                roundTimerSec={rawRemainingTime}
-              />
+            <div className="bg-black/30 backdrop-blur-sm p-2 rounded-full">
+              <div className="h-10 w-10 flex items-center justify-center">
+                <TimerDisplay
+                  remainingTime={rawRemainingTime}
+                  setRemainingTime={setRemainingTime}
+                  isActive={isTimerActive}
+                  onTimeout={onTimeout}
+                  roundTimerSec={rawRemainingTime}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -101,30 +103,20 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
           </Badge>
         </div>
         
-        {/* Right side - Home button */}
+        {/* Right side - Fullscreen button */}
         <div className="flex pointer-events-auto">
-          <div className="flex space-x-2">
+          {onFullscreen && (
             <Button 
               size="icon"
               variant="outline"
-              onClick={onFullscreen ? onFullscreen : undefined}
+              onClick={onFullscreen}
               className="h-9 w-9 bg-white/70 hover:bg-white text-black rounded-full"
               aria-label="Full Screen"
               type="button"
             >
               <Maximize className="h-4 w-4" />
             </Button>
-            <Button 
-              size="icon"
-              variant="outline"
-              onClick={onFullscreen ? onFullscreen : undefined}
-              className="h-9 w-9 bg-white/70 hover:bg-white text-black rounded-full"
-              aria-label="Full Screen"
-              type="button"
-            >
-              <Maximize className="h-4 w-4" />
-            </Button>
-          </div>
+          )}
         </div>
       </div>
 

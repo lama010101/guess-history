@@ -127,7 +127,7 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
     <div
       className={`relative flex items-center justify-center select-none`}
       aria-live="polite"
-      style={{ width: 56, height: 32 }}
+      style={{ width: 40, height: 24 }}
     >
       <div
         className={`absolute inset-0 rounded-full flex items-center justify-center ${textClass}`}
@@ -138,7 +138,7 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
         }}
       >
         <span
-          className="font-bold text-white text-xl md:text-2xl"
+          className="font-bold text-white text-sm"
           style={{
             textShadow: '0 0 2px #000, 0 0 2px #000, 0 1px 2px #000',
             letterSpacing: '0.03em',

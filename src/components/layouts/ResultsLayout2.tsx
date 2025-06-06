@@ -292,11 +292,17 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
               <h2 className="text-2xl font-bold mb-6 text-history-primary dark:text-history-light">Your Score</h2>
               
               <div className="flex justify-center items-center gap-6 mb-4">
-                <div className="flex items-center justify-center bg-blue-100 dark:bg-blue-900/30 rounded-full w-16 h-16">
-                  <div className="text-blue-600 dark:text-blue-400 font-bold">{totalAccuracy}%</div>
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center justify-center bg-blue-100 dark:bg-blue-900/30 rounded-full w-16 h-16 mb-2">
+                    <div className="text-blue-600 dark:text-blue-400 font-bold">{totalAccuracy}%</div>
+                  </div>
+                  <div className="text-xs text-muted-foreground">Accuracy</div>
                 </div>
-                <div className="flex items-center justify-center bg-green-100 dark:bg-green-900/30 rounded-full w-16 h-16">
-                  <div className="text-green-600 dark:text-green-400 font-bold flex items-center">+{result.xpTotal}</div>
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center justify-center bg-green-100 dark:bg-green-900/30 rounded-full w-16 h-16 mb-2">
+                    <div className="text-green-600 dark:text-green-400 font-bold">+{result.xpTotal}</div>
+                  </div>
+                  <div className="text-xs text-muted-foreground">Experience (XP)</div>
                 </div>
               </div>
               
@@ -399,9 +405,9 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
               
               <div className="p-4 border-b border-border">
                 <div className="flex justify-end text-sm mb-4">
-                  <div>
-                    <span className="text-foreground">Correct: </span>
-                    <Badge variant="selectedValue" className="ml-1 text-xl">
+                  <div className="text-center">
+                    <div className="text-foreground mb-1">Correct: </div>
+                    <Badge variant="selectedValue" className="text-xl block mx-auto">
                       {result.locationName}
                     </Badge>
                   </div>

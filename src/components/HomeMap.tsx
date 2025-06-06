@@ -118,7 +118,7 @@ const HomeMap: React.FC<HomeMapProps> = ({
         <MapContainer 
           id="game-map"
           className="game-map-container leaflet-container"
-          center={[0, 0]} 
+          center={[36.1408, -5.3536]} 
           zoom={2} 
           style={{ height: '100%', width: '100%', zIndex: 0 }}
           zoomControl={false}

@@ -30,7 +30,7 @@ const badgeVariants = cva(
         accuracy: 
           "border-transparent bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 font-medium",
         selectedValue:
-          "border-transparent bg-history-secondary/20 text-history-secondary font-medium text-sm",
+          "border-transparent bg-history-secondary/20 text-history-secondary font-medium text-base",
         hint:
           "border-transparent bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-medium",
         perfect:

@@ -106,9 +106,11 @@ const App = () => {
     <React.StrictMode>
       <ThemeProvider 
         attribute="class" 
-        defaultTheme="light" 
+        defaultTheme="light"
         enableSystem={false}
         disableTransitionOnChange
+        storageKey="gh-theme"
+        enableColorScheme={false}
       >
         <QueryClientProvider client={queryClient}>
           <LogProvider>

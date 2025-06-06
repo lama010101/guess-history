@@ -103,6 +103,8 @@ const SubmitGuessButton: React.FC<SubmitGuessButtonProps> = ({
                      !guessData || 
                      typeof guessData.guessLat !== 'number' || 
                      typeof guessData.guessLng !== 'number';
+                     
+  const hasLocation = !isDisabled; // True when a location is selected
 
   return (
     <div className="relative pb-24">
@@ -110,7 +112,7 @@ const SubmitGuessButton: React.FC<SubmitGuessButtonProps> = ({
       <Button 
         onClick={handleSubmit}
         disabled={isDisabled}
-          className="w-full py-6 text-lg font-semibold rounded-xl bg-history-primary hover:bg-history-primary/90 text-white shadow-lg"
+          className={`w-full py-6 text-lg font-semibold rounded-xl text-white shadow-lg transition-colors ${hasLocation ? 'bg-orange-500 hover:bg-orange-600' : 'bg-history-primary hover:bg-history-primary/90'}`}
       >
         <span>{isSubmitting ? 'Submitting...' : 'Submit Guess'}</span>
         <ChevronRight className="ml-2 h-5 w-5" />

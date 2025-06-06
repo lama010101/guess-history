@@ -4,6 +4,119 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  /* Custom styles for the time slider */
+  .time-slider {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 30px; /* Increased height to fully show the thumb */
+    background: transparent;
+    outline: none;
+    cursor: pointer;
+    position: relative;
+  }
+
+  /* WebKit (Chrome, Safari, new Edge) Thumb */
+  .time-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #f97316; /* Tailwind orange-500 */
+    cursor: pointer;
+    margin-top: -10px; /* Centers the thumb on the track */
+  }
+  
+  /* Hide the default track fill */
+  .time-slider::-webkit-slider-container {
+    -webkit-appearance: none;
+    background: none;
+  }
+
+  /* WebKit Track */
+  .time-slider::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    background: #e5e7eb; /* Tailwind gray-200 */
+    border-radius: 2px;
+    border: none; /* Remove any default border */
+  }
+
+  /* Firefox Track */
+  .time-slider::-moz-range-track {
+    width: 100%;
+    height: 4px;
+    background: #e5e7eb; /* Tailwind gray-200 */
+    border-radius: 2px;
+    border: none;
+    background-clip: padding-box; /* Prevent background from showing through */
+  }
+
+  /* Firefox Thumb */
+  .time-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: #f97316; /* Tailwind orange-500 */
+    border-radius: 50%;
+    border: none;
+  }
+
+  /* Microsoft Edge (Legacy EdgeHTML) Track */
+  .time-slider::-ms-track {
+    width: 100%;
+    height: 4px;
+    cursor: pointer;
+    background: transparent; /* Track itself is transparent */
+    border-color: transparent;
+    color: transparent; /* Hide the default tick marks */
+    /* Vertical space for thumb, (thumb_height - track_height) / 2 on each side */
+    border-width: 8px 0;
+  }
+  
+  /* Hide the default track fill in Edge */
+  .time-slider::-ms-fill-lower,
+  .time-slider::-ms-fill-upper {
+    background: transparent;
+  }
+
+  /* Microsoft Edge Thumb */
+  .time-slider::-ms-thumb {
+    width: 20px;
+    height: 20px;
+    background: #f97316; /* Tailwind orange-500 */
+    border-radius: 50%;
+    margin-top: 0; /* Centered by track's border-width */
+  }
+
+  /* Microsoft Edge Fill Styles */
+  .time-slider::-ms-fill-lower {
+    background: #e5e7eb; /* Tailwind gray-200 */
+    border-radius: 2px;
+  }
+
+  .time-slider::-ms-fill-upper {
+    background: #e5e7eb; /* Tailwind gray-200 */
+    border-radius: 2px;
+  }
+
+  /* Focus styles for accessibility */
+  .time-slider:focus::-webkit-slider-thumb {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+  }
+  .time-slider:focus::-moz-range-thumb {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+  }
+  .time-slider:focus::-ms-thumb {
+    /* MS Edge does not support outline on thumb directly, consider other focus indication if needed */
+    /* For example, a box-shadow or slightly larger thumb */
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

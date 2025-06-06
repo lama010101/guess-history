@@ -132,9 +132,7 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
       <div
         className={`absolute inset-0 rounded-full flex items-center justify-center ${textClass}`}
         style={{
-          background: bgColor,
-          boxShadow: isRed ? '0 0 0 4px rgba(239,68,68,0.15)' : undefined,
-          transition: 'background 0.2s',
+          boxShadow: isRed ? '0 0 0 4px rgba(239,68,68,0.15)' : undefined
         }}
       >
         <span

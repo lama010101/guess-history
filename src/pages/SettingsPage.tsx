@@ -6,6 +6,9 @@ import { SunIcon, MoonIcon } from "lucide-react";
 // Rename component
 const SettingsPage = () => {
   const { theme, setTheme } = useTheme();
+  
+  // This ensures we always have a valid theme
+  const currentTheme = theme === 'system' ? 'light' : theme || 'light';
 
   return (
     // ... (rest of JSX)
@@ -15,7 +18,11 @@ const SettingsPage = () => {
         <div className="space-y-6">
           <div>
             <h2 className="text-lg font-semibold mb-4 text-history-primary">Theme</h2>
-            <RadioGroup defaultValue={theme} onValueChange={setTheme} className="grid grid-cols-2 gap-4">
+            <RadioGroup 
+              value={currentTheme} 
+              onValueChange={setTheme} 
+              className="grid grid-cols-2 gap-4"
+            >
               {/* Light Theme Option */}
               <div>
                 <RadioGroupItem value="light" id="theme-light" className="peer sr-only" />

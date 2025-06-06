@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import FullscreenZoomableImage from './FullscreenZoomableImage';
+import HomeMap from '../HomeMap';
 import GlobalSettingsModal from '@/components/settings/GlobalSettingsModal'; // Import the global settings modal
 import { useHint, type HintType } from '@/hooks/useHint';
 import HintModal from '@/components/HintModal';
@@ -166,7 +167,8 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           alt={image.title}
           className="w-full h-full object-cover"
         />
-        <div className={`hud-element ${isFullScreen ? 'hidden' : ''}`}>
+        {/* Hide HUD when map is full screen */}
+        <div className={`hud-element${isFullScreen ? ' hidden' : ''}`}>
           <GameOverlayHUD 
             selectedHintType={selectedHintType}
             remainingTime={formatTime(remainingTime)}
@@ -188,12 +190,18 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
         </div>
       </div>
       
-      {/* Full screen image overlay */}
+      {/* Full screen map overlay */}
       {isFullScreen && (
-        <FullscreenZoomableImage image={image} onExit={() => {
-          if (document.exitFullscreen) document.exitFullscreen();
-          setIsFullScreen(false);
-        }} />
+        <div className="map-fullscreen-overlay">
+          <HomeMap 
+            onLocationSelect={() => {}}
+            onCoordinatesSelect={handleCoordinatesSelect}
+          />
+          <button className="exit-fullscreen-btn" onClick={() => {
+            if (document.exitFullscreen) document.exitFullscreen();
+            setIsFullScreen(false);
+          }}>Exit Full Screen</button>
+        </div>
       )}
 
       <div className="flex-grow p-4 md:p-8">

@@ -352,51 +352,45 @@ export const updateUserMetrics = async (
   },
   gameId?: string // Optional gameId for tracking
 ): Promise<boolean> => {
-  console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] updateUserMetrics called with:`, {
+  console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] updateUserMetrics START called with:`, {
     userId,
     gameMetrics,
     timestamp: new Date().toISOString()
   });
-  
+
+  if (!userId) {
+    console.error(`[ProfileService] [GameID: ${gameId || 'N/A'}] Invalid userId:`, userId);
+    return false;
+  }
   if (typeof gameMetrics.gameXP !== 'number' || isNaN(gameMetrics.gameXP)) {
     console.error(`[ProfileService] [GameID: ${gameId || 'N/A'}] Invalid gameXP (NaN or not a number):`, gameMetrics.gameXP);
     return false;
   }
+  if (typeof gameMetrics.gameAccuracy !== 'number' || isNaN(gameMetrics.gameAccuracy)) {
+    console.error(`[ProfileService] [GameID: ${gameId || 'N/A'}] Invalid gameAccuracy (NaN or not a number):`, gameMetrics.gameAccuracy);
+    return false;
+  }
 
-  // Validate game metrics
-  const MAX_XP_PER_GAME = 1000; // Maximum XP that can be earned in a single game (5 rounds * 200 XP max per round)
-  
-  // Ensure game metrics are valid numbers and within reasonable bounds
-  let gameXP = Math.max(0, Math.min(Number(gameMetrics.gameXP) || 0, MAX_XP_PER_GAME));
-  let gameAccuracy = Math.max(0, Math.min(Number(gameMetrics.gameAccuracy) || 0, 100));
-  let locationAccuracy = Math.max(0, Math.min(Number(gameMetrics.locationAccuracy) || 0, 100));
-  let timeAccuracy = Math.max(0, Math.min(Number(gameMetrics.timeAccuracy) || 0, 100));
-  
-  console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] Validated metrics:`, {
-    originalXP: gameMetrics.gameXP,
-    validatedXP: gameXP,
-    gameAccuracy: gameMetrics.gameAccuracy,
-    locationAccuracy: gameMetrics.locationAccuracy,
-    timeAccuracy: gameMetrics.timeAccuracy,
-    isPerfectGame: gameMetrics.isPerfectGame
+  // Validate game metrics (use these validated values throughout the function)
+  const MAX_XP_PER_GAME = 1000; // Max XP for a 5-round game (5 * 200)
+  const validatedGameXP = Math.max(0, Math.min(Number(gameMetrics.gameXP) || 0, MAX_XP_PER_GAME));
+  const validatedGameAccuracy = Math.max(0, Math.min(Number(gameMetrics.gameAccuracy) || 0, 100));
+  const validatedLocationAccuracy = Math.max(0, Math.min(Number(gameMetrics.locationAccuracy) || 0, 100));
+  const validatedTimeAccuracy = Math.max(0, Math.min(Number(gameMetrics.timeAccuracy) || 0, 100));
+
+  console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] Validated game input:`, {
+    userId,
+    gameId,
+    originalGameXP: gameMetrics.gameXP,
+    validatedGameXP,
+    originalGameAccuracy: gameMetrics.gameAccuracy,
+    validatedGameAccuracy,
+    isPerfectGame: gameMetrics.isPerfectGame,
+    locationAccuracy: validatedLocationAccuracy,
+    timeAccuracy: validatedTimeAccuracy,
   });
+
   try {
-    // Check if this is a guest user first
-    const guestSession = localStorage.getItem('guestSession');
-    let isGuestUser = false;
-    
-    if (guestSession) {
-      try {
-        const guestUser = JSON.parse(guestSession);
-        if (guestUser.id === userId) {
-          isGuestUser = true;
-        }
-      } catch (e) {
-        console.error(`[ProfileService] [GameID: ${gameId || 'N/A'}] Error parsing guest session:`, e);
-      }
-    }
-    
-    // Define a type that includes all possible metrics fields
     type UserMetricsUpsert = {
       user_id: string;
       xp_total: number;
@@ -405,173 +399,16 @@ export const updateUserMetrics = async (
       updated_at: string;
       best_accuracy?: number;
       perfect_games?: number;
-      global_rank?: number;
+      // global_rank is typically calculated by a separate process or view, not set here
       time_accuracy?: number;
       location_accuracy?: number;
-      challenge_accuracy?: number;
+      challenge_accuracy?: number; // Assuming this might be used later
       year_bullseye?: number;
       location_bullseye?: number;
     };
-    
-    // Initialize metrics object with required fields
-    let metrics: UserMetricsUpsert = {
-      user_id: userId,
-      xp_total: 0,
-      overall_accuracy: 0,
-      games_played: 0,
-      updated_at: new Date().toISOString()
-    };
-    
-    // For guest users, get existing metrics from localStorage
-    if (isGuestUser) {
-      console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] Updating metrics for GUEST user:`, { userId, gameMetrics });
-      const storageKey = `user_metrics_${userId}`;
-      const storedMetricsJson = localStorage.getItem(storageKey);
-      
-      if (storedMetricsJson) {
-        try {
-          const storedMetrics = JSON.parse(storedMetricsJson);
-          const currentGamesPlayed = storedMetrics.games_played || 0;
-          const gamesPlayed = currentGamesPlayed + 1;
-          
-          // Calculate new averages with detailed logging for debugging
-          console.log('===== GLOBAL SCORE CALCULATION =====');
-          
-          // Get current stats with proper defaults
-          const currentGames = Math.max(0, Number(storedMetrics.games_played) || 0);
-          const currentAccuracy = Math.max(0, Math.min(Number(storedMetrics.overall_accuracy) || 0, 100));
-          const currentXP = Math.max(0, Number(storedMetrics.xp_total) || 0);
-          
-          // Calculate new games played
-          const totalGames = currentGames + 1;
-          
-          // Calculate new accuracy as a weighted average
-          const newAccuracy = Math.min(100, Math.round(
-            (currentAccuracy * currentGames + gameAccuracy) / totalGames
-          ));
-            
-          // Calculate new XP (simple addition with bounds checking)
-          const newXPTotal = Math.min(
-            currentXP + gameXP,
-            Number.MAX_SAFE_INTEGER
-          );
-          
-          // Calculate new time and location accuracies
-          const currentTimeTotal = (storedMetrics.time_accuracy || 0) * currentGames;
-          const newTimeAccuracy = Math.min(100, Math.round(
-            (currentTimeTotal + timeAccuracy) / totalGames
-          ));
-          
-          const currentLocationTotal = (storedMetrics.location_accuracy || 0) * currentGames;
-          const newLocationAccuracy = Math.min(100, Math.round(
-            (currentLocationTotal + locationAccuracy) / totalGames
-          ));
-          
-          // Calculate best accuracy (max of current best and this game's accuracy)
-          const bestAccuracy = Math.max(
-            Math.min(Number(storedMetrics.best_accuracy) || 0, 100),
-            gameAccuracy
-          );
-          
-          // Debug logging
-          console.log('===== GUEST USER STATS UPDATE =====');
-          console.log('Previous Games:', currentGames);
-          console.log('Current Game Accuracy:', gameAccuracy);
-          console.log('Current Game XP:', gameXP);
-          console.log('New Accuracy:', newAccuracy);
-          console.log('New XP Total:', newXPTotal);
-          console.log('New Time Accuracy:', newTimeAccuracy);
-          console.log('New Location Accuracy:', newLocationAccuracy);
-          console.log('Best Accuracy:', bestAccuracy);
-          console.log('==================================');
 
-          // Sanity checks with error logging
-          if (newXPTotal < currentXP) {
-            console.error(`[ProfileService] [GameID: ${gameId || 'N/A'}] Guest XP Sanity Check FAILED: newTotalXP (${newXPTotal}) < previousTotalXP (${currentXP})`);
-          }
-          
-          if (gameXP > 0 && newXPTotal <= currentXP) {
-            console.error(`[ProfileService] [GameID: ${gameId || 'N/A'}] Guest XP Sanity Check FAILED: Added XP (${gameXP}) but total didn't increase (${currentXP} -> ${newXPTotal})`);
-          }
-          
-          // Create the updated metrics object with validated values
-          metrics = {
-            ...metrics,
-            games_played: totalGames,
-            overall_accuracy: newAccuracy,
-            best_accuracy: bestAccuracy,
-            perfect_games: (storedMetrics.perfect_games || 0) + (gameMetrics.isPerfectGame ? 1 : 0),
-            xp_total: newXPTotal,
-            time_accuracy: newTimeAccuracy,
-            location_accuracy: newLocationAccuracy,
-            challenge_accuracy: Math.min(100, Number(storedMetrics.challenge_accuracy) || 0),
-            year_bullseye: (storedMetrics.year_bullseye || 0) + (gameMetrics.yearBullseye ? 1 : 0),
-            location_bullseye: (storedMetrics.location_bullseye || 0) + (gameMetrics.locationBullseye ? 1 : 0)
-          };
-          
-          console.log('Final metrics to save:', {
-            games_played: metrics.games_played,
-            overall_accuracy: metrics.overall_accuracy,
-            xp_total: metrics.xp_total
-          });
-        } catch (e) {
-          console.error('Error parsing stored metrics for guest user:', e);
-          // Initialize new metrics for this guest starting from 0
-          metrics = {
-            ...metrics,
-            games_played: 1,
-            overall_accuracy: gameMetrics.gameAccuracy,
-            best_accuracy: gameMetrics.gameAccuracy,
-            perfect_games: gameMetrics.isPerfectGame ? 1 : 0,
-            // For new guest users, just use the current game's XP directly
-            xp_total: Number(gameMetrics.gameXP || 0),
-            time_accuracy: gameMetrics.timeAccuracy,
-            location_accuracy: gameMetrics.locationAccuracy,
-            challenge_accuracy: 0,
-            global_rank: 0,
-            year_bullseye: gameMetrics.yearBullseye ? 1 : 0,
-            location_bullseye: gameMetrics.locationBullseye ? 1 : 0
-          };
-          console.log('Creating new guest metrics with initial XP:', gameMetrics.gameXP);
-        }
-      } else {
-        // No stored metrics found, create new metrics
-        metrics = {
-          ...metrics,
-          games_played: 1,
-          overall_accuracy: gameMetrics.gameAccuracy,
-          best_accuracy: gameMetrics.gameAccuracy,
-          perfect_games: gameMetrics.isPerfectGame ? 1 : 0,
-          xp_total: gameMetrics.gameXP,
-          time_accuracy: gameMetrics.timeAccuracy,
-          location_accuracy: gameMetrics.locationAccuracy,
-          challenge_accuracy: 0,
-          global_rank: 0,
-          year_bullseye: gameMetrics.yearBullseye ? 1 : 0,
-          location_bullseye: gameMetrics.locationBullseye ? 1 : 0
-        };
-      }
-      
-      // Save updated metrics to localStorage for guest users
-      if (isGuestUser) {
-        try {
-          const storageKey = `user_metrics_${userId}`;
-          localStorage.setItem(storageKey, JSON.stringify(metrics));
-          console.log('Saved updated metrics to localStorage for guest user:', metrics);
-          
-          // Force a trigger event to ensure localStorage change is detected
-          window.dispatchEvent(new Event('storage'));
-          
-          return true;
-        } catch (error) {
-          console.error('Error saving metrics to localStorage:', error);
-          return false;
-        }
-      }
-    }
-    
-    // For regular users, get existing metrics from Supabase
-    console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] Updating metrics for registered user:`, userId);
+    let metricsToUpsert: UserMetricsUpsert;
+
     const { data: existingData, error: fetchError } = await supabase
       .from('user_metrics')
       .select('*')
@@ -579,156 +416,114 @@ export const updateUserMetrics = async (
       .single();
 
     if (fetchError && fetchError.code === 'PGRST116') {
-      // No existing record, create new metrics starting from 0
-      const initialXP = Math.max(0, Math.min(Number(gameMetrics.gameXP) || 0, MAX_XP_PER_GAME));
-      metrics = {
-        ...metrics,
+      // New user: No existing record found
+      console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] No existing metrics for user ${userId}. Creating new record.`);
+      metricsToUpsert = {
+        user_id: userId,
+        xp_total: validatedGameXP,
+        overall_accuracy: validatedGameAccuracy,
         games_played: 1,
-        overall_accuracy: gameMetrics.gameAccuracy,
-        best_accuracy: gameMetrics.gameAccuracy,
+        updated_at: new Date().toISOString(),
+        best_accuracy: validatedGameAccuracy,
         perfect_games: gameMetrics.isPerfectGame ? 1 : 0,
-        xp_total: initialXP,
-        time_accuracy: gameMetrics.timeAccuracy,
-        location_accuracy: gameMetrics.locationAccuracy,
-        challenge_accuracy: 0,
-        global_rank: 0,
+        time_accuracy: validatedTimeAccuracy,
+        location_accuracy: validatedLocationAccuracy,
+        challenge_accuracy: 0, // Default for new users
         year_bullseye: gameMetrics.yearBullseye ? 1 : 0,
         location_bullseye: gameMetrics.locationBullseye ? 1 : 0,
-        updated_at: new Date().toISOString()
       };
-      
-      console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] New User Metrics:`, {
-        userId,
-        initialXP,
-        gameXP: gameMetrics.gameXP,
-        gameAccuracy: gameMetrics.gameAccuracy,
-        isPerfectGame: gameMetrics.isPerfectGame,
-        source: 'new-user-creation',
-        timestamp: new Date().toISOString()
-      });
+      console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] Prepared new user metrics:`, metricsToUpsert);
     } else if (fetchError) {
-      console.error(`[ProfileService] [GameID: ${gameId || 'N/A'}] Error fetching existing metrics:`, fetchError);
+      // An error occurred fetching existing metrics (not 'PGRST116')
+      console.error(`[ProfileService] [GameID: ${gameId || 'N/A'}] Error fetching existing metrics for user ${userId}:`, fetchError);
       return false;
     } else {
-      // Update existing metrics
+      // Existing user: Record found
       const existingMetrics = existingData as UserMetricsTable;
-      
-      // Calculate new averages with detailed logging
-      console.log('===== REGISTERED USER SCORE CALCULATION =====');
-      
-      // Get current stats with proper defaults and validation
+      console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] Found existing metrics for user ${userId}:`, existingMetrics);
+
       const currentGames = Math.max(0, Number(existingMetrics.games_played) || 0);
-      const currentAccuracy = Math.max(0, Math.min(Number(existingMetrics.overall_accuracy) || 0, 100));
-      const currentXP = Math.max(0, Number(existingMetrics.xp_total) || 0);
+      const currentOverallAccuracy = Math.max(0, Math.min(Number(existingMetrics.overall_accuracy) || 0, 100));
+      const currentXPTotal = Math.max(0, Number(existingMetrics.xp_total) || 0);
+      const currentTimeAccuracy = Math.max(0, Math.min(Number(existingMetrics.time_accuracy) || 0, 100));
+      const currentLocationAccuracy = Math.max(0, Math.min(Number(existingMetrics.location_accuracy) || 0, 100));
+      const currentBestAccuracy = Math.max(0, Math.min(Number(existingMetrics.best_accuracy) || 0, 100));
+      const currentPerfectGames = Math.max(0, Number(existingMetrics.perfect_games) || 0);
+      const currentYearBullseyes = Math.max(0, Number(existingMetrics.year_bullseye) || 0);
+      const currentLocBullseyes = Math.max(0, Number(existingMetrics.location_bullseye) || 0);
+
+      const newGamesPlayed = currentGames + 1;
+      const newXPTotal = currentXPTotal + validatedGameXP;
       
-      // Calculate new games played
-      const totalGames = currentGames + 1;
+      // Weighted average for overall accuracy
+      const newOverallAccuracy = parseFloat(((currentOverallAccuracy * currentGames + validatedGameAccuracy) / newGamesPlayed).toFixed(2));
+      // Weighted average for time accuracy
+      const newTimeAccuracy = parseFloat(((currentTimeAccuracy * currentGames + validatedTimeAccuracy) / newGamesPlayed).toFixed(2));
+      // Weighted average for location accuracy
+      const newLocationAccuracy = parseFloat(((currentLocationAccuracy * currentGames + validatedLocationAccuracy) / newGamesPlayed).toFixed(2));
       
-      // Calculate new accuracy as a weighted average (capped at 100)
-      const newAccuracy = Math.min(100, Math.round(
-        (currentAccuracy * currentGames + gameMetrics.gameAccuracy) / totalGames
-      ));
-      
-      // Calculate new XP (simple addition with bounds checking)
-      const newXPTotal = Math.min(
-        currentXP + gameMetrics.gameXP,
-        Number.MAX_SAFE_INTEGER
-      );
-      
-      // Calculate new time and location accuracies (weighted averages)
-      const currentTimeTotal = (existingMetrics.time_accuracy || 0) * currentGames;
-      const newTimeAccuracy = Math.min(100, Math.round(
-        (currentTimeTotal + gameMetrics.timeAccuracy) / totalGames
-      ));
-      
-      const currentLocationTotal = (existingMetrics.location_accuracy || 0) * currentGames;
-      const newLocationAccuracy = Math.min(100, Math.round(
-        (currentLocationTotal + gameMetrics.locationAccuracy) / totalGames
-      ));
-      
-      // Calculate best accuracy (max of current best and this game's accuracy)
-      const bestAccuracy = Math.max(
-        Math.min(Number(existingMetrics.best_accuracy) || 0, 100),
-        gameMetrics.gameAccuracy
-      );
-      
-      // Debug logging
-      console.log('===== REGISTERED USER STATS UPDATE =====');
-      console.log('Previous Games:', currentGames);
-      console.log('Current Game Accuracy:', gameMetrics.gameAccuracy);
-      console.log('Current Game XP:', gameMetrics.gameXP);
-      console.log('New Accuracy:', newAccuracy);
-      console.log('New XP Total:', newXPTotal);
-      console.log('New Time Accuracy:', newTimeAccuracy);
-      console.log('New Location Accuracy:', newLocationAccuracy);
-      console.log('Best Accuracy:', bestAccuracy);
-      console.log('======================================');
-      
-      // Sanity checks with error logging
-      if (newXPTotal < currentXP) {
-        console.error(`[ProfileService] [GameID: ${gameId || 'N/A'}] Registered User XP Sanity Check FAILED: newTotalXP (${newXPTotal}) < previousTotalXP (${currentXP})`);
-      }
-      
-      if (gameMetrics.gameXP > 0 && newXPTotal <= currentXP) {
-        console.error(`[ProfileService] [GameID: ${gameId || 'N/A'}] Registered User XP Sanity Check FAILED: Added XP (${gameMetrics.gameXP}) but total didn't increase (${currentXP} -> ${newXPTotal})`);
-      }
-      
-      // Update the metrics object with validated values
-      metrics = {
-        ...metrics,
-        games_played: totalGames,
-        overall_accuracy: newAccuracy,
-        best_accuracy: bestAccuracy,
-        perfect_games: (existingMetrics.perfect_games || 0) + (gameMetrics.isPerfectGame ? 1 : 0),
+      const newBestAccuracy = Math.max(currentBestAccuracy, validatedGameAccuracy);
+      const newPerfectGames = currentPerfectGames + (gameMetrics.isPerfectGame ? 1 : 0);
+      const newYearBullseyes = currentYearBullseyes + (gameMetrics.yearBullseye ? 1 : 0);
+      const newLocBullseyes = currentLocBullseyes + (gameMetrics.locationBullseye ? 1 : 0);
+
+      metricsToUpsert = {
+        user_id: userId,
         xp_total: newXPTotal,
+        overall_accuracy: newOverallAccuracy,
+        games_played: newGamesPlayed,
+        updated_at: new Date().toISOString(),
+        best_accuracy: newBestAccuracy,
+        perfect_games: newPerfectGames,
         time_accuracy: newTimeAccuracy,
         location_accuracy: newLocationAccuracy,
-        challenge_accuracy: Math.min(100, Number(existingMetrics.challenge_accuracy) || 0),
-        year_bullseye: (existingMetrics.year_bullseye || 0) + (gameMetrics.yearBullseye ? 1 : 0),
-        location_bullseye: (existingMetrics.location_bullseye || 0) + (gameMetrics.locationBullseye ? 1 : 0),
-        updated_at: new Date().toISOString()
+        challenge_accuracy: existingMetrics.challenge_accuracy || 0, // Preserve existing or default
+        year_bullseye: newYearBullseyes,
+        location_bullseye: newLocBullseyes,
       };
+      console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] Prepared updated metrics for user ${userId}:`, metricsToUpsert);
       
-      try {
-        // Upsert the metrics to Supabase
-        console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] Upserting metrics for user ${userId}:`, metrics);
-        
-        const { error: upsertError } = await supabase
-          .from('user_metrics')
-          .upsert(metrics, { onConflict: 'user_id' });
-
-        if (upsertError) {
-          console.error(`[ProfileService] [GameID: ${gameId || 'N/A'}] Error upserting user metrics:`, upsertError);
-          return false;
-        }
-
-        // Verify the update by fetching the latest metrics
-        const { data: verifyData, error: verifyError } = await supabase
-          .from('user_metrics')
-          .select('*')
-          .eq('user_id', userId)
-          .single();
-          
-        if (verifyError) {
-          console.error(`[ProfileService] [GameID: ${gameId || 'N/A'}] Error verifying metrics update:`, verifyError);
-        } else {
-          console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] Successfully updated metrics for user ${userId}. Verified data from DB:`, verifyData);
-          console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] Verified xp_total from DB after update:`, verifyData?.xp_total);
-        }
-        
-        return true;
-      } catch (error) {
-        console.error(`[ProfileService] [GameID: ${gameId || 'N/A'}] Unexpected error in updateUserMetrics:`, error);
-        return false;
+      // Sanity checks
+      if (newXPTotal < currentXPTotal) {
+        console.warn(`[ProfileService] [GameID: ${gameId || 'N/A'}] XP Sanity Check WARN: newTotalXP (${newXPTotal}) < previousTotalXP (${currentXPTotal}) for user ${userId}. This might happen if validatedGameXP was negative, which should be prevented by Math.max(0, ...).`);
+      }
+      if (validatedGameXP > 0 && newXPTotal <= currentXPTotal) {
+         console.warn(`[ProfileService] [GameID: ${gameId || 'N/A'}] XP Sanity Check WARN: Added XP (${validatedGameXP}) but total didn't increase or decreased (${currentXPTotal} -> ${newXPTotal}) for user ${userId}.`);
       }
     }
-    
-    // If we reach here, something went wrong
-    console.error(`[ProfileService] [GameID: ${gameId || 'N/A'}] No metrics were updated for user ${userId}`);
-    return false;
-    
+
+    // Perform the upsert operation
+    console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] Attempting to upsert metrics for user ${userId}:`, metricsToUpsert);
+    const { error: upsertError } = await supabase
+      .from('user_metrics')
+      .upsert(metricsToUpsert, { onConflict: 'user_id' });
+
+    if (upsertError) {
+      console.error(`[ProfileService] [GameID: ${gameId || 'N/A'}] Error upserting metrics for user ${userId}:`, upsertError);
+      return false;
+    }
+
+    console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] Successfully upserted metrics for user ${userId}.`);
+
+    // Optional: Verify update by fetching (can be removed in production for performance if logs are sufficient)
+    const { data: verifyData, error: verifyError } = await supabase
+      .from('user_metrics')
+      .select('xp_total, overall_accuracy, games_played')
+      .eq('user_id', userId)
+      .single();
+
+    if (verifyError) {
+      console.warn(`[ProfileService] [GameID: ${gameId || 'N/A'}] Warning: Error verifying metrics update for user ${userId}, but upsert reported success. Error:`, verifyError);
+    } else {
+      console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] Verified metrics post-upsert for user ${userId}:`, verifyData);
+      if (verifyData && verifyData.xp_total !== metricsToUpsert.xp_total) {
+        console.warn(`[ProfileService] [GameID: ${gameId || 'N/A'}] XP Mismatch after upsert for user ${userId}. Expected: ${metricsToUpsert.xp_total}, Got: ${verifyData.xp_total}`);
+      }
+    }
+    return true;
+
   } catch (error) {
-    console.error(`[ProfileService] [GameID: ${gameId || 'N/A'}] Error in updateUserMetrics:`, error);
+    console.error(`[ProfileService] [GameID: ${gameId || 'N/A'}] UNEXPECTED ERROR in updateUserMetrics for user ${userId}:`, error);
     return false;
   }
 }

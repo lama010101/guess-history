@@ -55,12 +55,14 @@ interface GameContextState {
   totalGameXP: number; // Current game XP
   globalAccuracy: number; // Average accuracy across all games
   globalXP: number; // Total XP earned across all games
+  gamesPlayedForAvg: number; // Total games played, used for averaging accuracy
   setHintsAllowed: (hints: number) => void; // Function to update hints allowed
   setRoundTimerSec: (seconds: number) => void; // Function to update round timer
   startGame: () => Promise<void>;
   recordRoundResult: (result: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'>, currentRoundIndex: number) => void; // Function to record results
   resetGame: () => void;
-  fetchGlobalMetrics: () => Promise<void>; // Function to fetch global metrics from Supabase or localStorage
+  fetchGlobalMetrics: () => Promise<void>; // Function to fetch global metrics from Supabase
+  setProvisionalGlobalMetrics: (gameXP: number, gameAccuracy: number) => void; // Function to optimistically update global metrics
 }
 
 // Create the context
@@ -122,6 +124,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   const [totalGameXP, setTotalGameXP] = useState<number>(0);
   const [globalAccuracy, setGlobalAccuracy] = useState<number>(0);
   const [globalXP, setGlobalXP] = useState<number>(0);
+  const [gamesPlayedForAvg, setGamesPlayedForAvg] = useState<number>(0);
   const navigate = useNavigate();
 
   // Save game state to localStorage whenever it changes
@@ -179,112 +182,106 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     localStorage.removeItem('gh_current_game');
   }, []);
 
-  // Function to fetch global metrics from Supabase or localStorage
+  // Function to fetch global metrics from Supabase
   const fetchGlobalMetrics = useCallback(async () => {
     try {
-      console.log('Fetching global metrics...');
-      // First check for guest session in localStorage
-      const guestSession = localStorage.getItem('guestSession');
-      if (guestSession) {
-        try {
-          const guestUser = JSON.parse(guestSession);
-          const storageKey = `guest_metrics_${guestUser.id}`;
-          const storedMetrics = localStorage.getItem(storageKey);
-          
-          if (storedMetrics) {
-            const metrics = JSON.parse(storedMetrics);
-            // Ensure we have valid numbers
-            const accuracyValue = typeof metrics.overall_accuracy === 'number' ? metrics.overall_accuracy : 0;
-            const xpValue = typeof metrics.xp_total === 'number' ? metrics.xp_total : 0;
-            
-            // Set state with verified numeric values
-            console.log(`[GameContext] [GameID: ${gameId || 'N/A'}] Updating global metrics for guest user:`, { 
-              previousAccuracy: globalAccuracy,
-              newAccuracy: accuracyValue,
-              previousXP: globalXP,
-              newXP: xpValue,
-              source: 'guest-local-storage',
-              timestamp: new Date().toISOString()
-            });
-            
-            setGlobalAccuracy(accuracyValue);
-            setGlobalXP(xpValue);
-            return;
-          } else {
-            console.log(`[GameContext] [GameID: ${gameId || 'N/A'}] Initializing new guest metrics`);
-            setGlobalAccuracy(0);
-            setGlobalXP(0);
-            const initialMetrics = {
-              user_id: guestUser.id,
-              xp_total: 0,
-              overall_accuracy: 0,
-              games_played: 0,
-              updated_at: new Date().toISOString()
-            };
-            localStorage.setItem(storageKey, JSON.stringify(initialMetrics));
-            return;
-          }
-        } catch (e) {
-          console.error(`[GameContext] [GameID: ${gameId || 'N/A'}] Error parsing guest metrics:`, e);
-        }
-      }
-
-      // If no guest session or error parsing it, try authenticated user
-      console.log(`[GameContext] [GameID: ${gameId || 'N/A'}] Fetching metrics for authenticated user`);
+      console.log('[GameContext] Fetching global metrics from Supabase...');
+      
+      // Get the current user (works for both authenticated and anonymous users)
       const { data: { user } } = await supabase.auth.getUser();
+      
       if (!user) {
-        console.log(`[GameContext] [GameID: ${gameId || 'N/A'}] No authenticated user found, setting metrics to 0`);
+        console.log('[GameContext] No user found (not even anonymous), setting metrics to 0');
         setGlobalAccuracy(0);
         setGlobalXP(0);
         return;
       }
       
       console.log(`[GameContext] [GameID: ${gameId || 'N/A'}] Fetching metrics for user ${user.id}`);
+
+      // Fetch metrics from Supabase
       const { data: metrics, error: fetchError } = await supabase
         .from('user_metrics')
-        .select('overall_accuracy, xp_total')
+        .select('xp_total, overall_accuracy, games_played')
         .eq('user_id', user.id)
         .single();
-        
+
       if (fetchError) {
         if (fetchError.code === 'PGRST116') {
-          // No metrics found for user
-          console.log(`[GameContext] [GameID: ${gameId || 'N/A'}] No metrics found for user, initializing to 0`);
+          // No metrics found for user - this is normal for new users
+          console.log(`[GameContext] No metrics found for user ${user.id}, initializing to 0`);
           setGlobalAccuracy(0);
           setGlobalXP(0);
+          setGamesPlayedForAvg(0);
         } else {
-          console.error(`[GameContext] [GameID: ${gameId || 'N/A'}] Error fetching user metrics:`, fetchError);
+          console.error('[GameContext] Error fetching user metrics:', fetchError);
+          // Optionally, keep existing values or reset, for now resetting
+          setGlobalAccuracy(0);
+          setGlobalXP(0);
+          setGamesPlayedForAvg(0);
         }
         return;
       }
-      
+
+      // Update state with the fetched metrics
       if (metrics) {
         const newAccuracy = metrics.overall_accuracy || 0;
         const newXP = metrics.xp_total || 0;
-        
-        console.log(`[GameContext] [GameID: ${gameId || 'N/A'}] Updating global metrics for user:`, {
+        const newGamesPlayed = metrics.games_played || 0;
+
+        console.log('[GameContext] Updating global metrics from fetch:', {
           userId: user.id,
-          previousAccuracy: globalAccuracy,
           newAccuracy,
-          previousXP: globalXP,
           newXP,
-          source: 'supabase-fetch',
+          newGamesPlayed,
           timestamp: new Date().toISOString()
         });
-        
+
         setGlobalAccuracy(newAccuracy);
         setGlobalXP(newXP);
+        setGamesPlayedForAvg(newGamesPlayed);
       } else {
-        console.log(`[GameContext] [GameID: ${gameId || 'N/A'}] No metrics data returned from Supabase`);
+        console.log('[GameContext] No metrics data returned from Supabase for user:', user.id);
         setGlobalAccuracy(0);
         setGlobalXP(0);
+        setGamesPlayedForAvg(0);
       }
     } catch (err) {
       console.error(`[GameContext] [GameID: ${gameId || 'N/A'}] Error in fetchGlobalMetrics:`, err);
       setGlobalAccuracy(0);
       setGlobalXP(0);
+      setGamesPlayedForAvg(0);
     }
-  }, []);
+  }, [gameId, globalAccuracy, globalXP]); // Added gameId, globalAccuracy, globalXP to dependencies as they are used in logging or implicitly affect the outcome of re-fetch logic
+
+  // Function to optimistically update global metrics for immediate UI feedback
+  const setProvisionalGlobalMetrics = useCallback((gameXP: number, gameAccuracy: number) => {
+    console.log(`[GameContext] Setting provisional global metrics. Game XP: ${gameXP}, Game Acc: ${gameAccuracy}`);
+    console.log(`[GameContext] Current global XP: ${globalXP}, Global Acc: ${globalAccuracy}, Games Played (for avg): ${gamesPlayedForAvg}`);
+
+    const newProvisionalXP = globalXP + gameXP;
+    // Ensure gamesPlayedForAvg is a non-negative integer before incrementing
+    const currentGamesCount = Math.max(0, gamesPlayedForAvg || 0);
+    const newTotalGamesForAvg = currentGamesCount + 1;
+    
+    let newProvisionalAccuracy;
+    if (newTotalGamesForAvg === 1) {
+      newProvisionalAccuracy = gameAccuracy;
+    } else {
+      // Weighted average: (current_avg * old_games_count + new_game_accuracy) / new_total_games_count
+      // Ensure globalAccuracy is a number before using in calculation
+      const currentAvgAccuracy = Number(globalAccuracy) || 0;
+      newProvisionalAccuracy = ((currentAvgAccuracy * currentGamesCount) + gameAccuracy) / newTotalGamesForAvg;
+    }
+    // Clamp accuracy between 0 and 100 and round to a reasonable number of decimals
+    newProvisionalAccuracy = Math.max(0, Math.min(100, parseFloat(newProvisionalAccuracy.toFixed(2))));
+
+    setGlobalXP(newProvisionalXP);
+    setGlobalAccuracy(newProvisionalAccuracy);
+    setGamesPlayedForAvg(newTotalGamesForAvg); // Update games played count for next provisional update
+
+    console.log(`[GameContext] Provisional metrics updated: New Global XP: ${newProvisionalXP}, New Global Acc: ${newProvisionalAccuracy}, New Games Played (for avg): ${newTotalGamesForAvg}`);
+  }, [globalXP, globalAccuracy, gamesPlayedForAvg]);
 
   // Update game accuracy and XP whenever round results change
   useEffect(() => {
@@ -318,7 +315,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       
       // Check if xpWhere and xpWhen are available
       if (result.xpWhere !== undefined && result.xpWhen !== undefined) {
-        // Use the formula: roundPct = Math.min(100, Math.round(((xpWhere + xpWhen)/200)*100))
         roundPct = Math.min(100, Math.round(((result.xpWhere + result.xpWhen) / 200) * 100));
         console.log(`[GameContext] [GameID: ${gameId || 'N/A'}] Round ${index + 1} percentage (from xpWhere/xpWhen):`, {
           xpWhere: result.xpWhere,
@@ -326,13 +322,13 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           calculatedPct: roundPct
         });
       } else {
-        // Fallback to previous calculation method using score
-        const maxRoundScore = 1000;
-        roundPct = result.score ? Math.round((result.score / maxRoundScore) * 100) : 0;
+        const maxRoundScore = 1000; // This seems to be a legacy or incorrect max score for percentage calculation
+        // Assuming score is out of 200 for percentage calculation similar to xpWhere/xpWhen logic
+        roundPct = result.score ? Math.round((result.score / 200) * 100) : 0; 
         roundPct = Math.min(100, roundPct); // Cap at 100%
-        console.log(`[GameContext] [GameID: ${gameId || 'N/A'}] Round ${index + 1} percentage (from score):`, {
+        console.log(`[GameContext] [GameID: ${gameId || 'N/A'}] Round ${index + 1} percentage (from score/200):`, {
           score: result.score,
-          maxScore: maxRoundScore,
+          maxScore: 200, // Corrected for percentage
           calculatedPct: roundPct
         });
       }
@@ -340,12 +336,10 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       return roundPct;
     });
     
-    // Calculate average of all round percentages
     const avgPercentage = roundPercentages.length > 0
       ? roundPercentages.reduce((sum, pct) => sum + pct, 0) / roundPercentages.length
       : 0;
     
-    // Round and cap at 100%
     const finalAccuracy = Math.min(100, Math.round(avgPercentage));
     
     console.log(`[GameContext] [GameID: ${gameId || 'N/A'}] Final game accuracy calculation:`, {
@@ -357,9 +351,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     
     setTotalGameAccuracy(finalAccuracy);
     
-  }, [roundResults]);
+  }, [roundResults, gameId]);
   
-  // Add a refreshGlobalMetrics function to force a metrics refresh
   const refreshGlobalMetrics = useCallback(async () => {
     console.log(`[GameContext] [GameID: ${gameId || 'N/A'}] refreshGlobalMetrics called`);
     const startTime = performance.now();
@@ -368,11 +361,11 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       console.log(`[GameContext] [GameID: ${gameId || 'N/A'}] refreshGlobalMetrics completed in ${performance.now() - startTime}ms`);
     } catch (error) {
       console.error(`[GameContext] [GameID: ${gameId || 'N/A'}] Error in refreshGlobalMetrics:`, error);
-      throw error;
+      // Not re-throwing, allow app to continue
     }
-  }, [fetchGlobalMetrics]);
+  }, [fetchGlobalMetrics, gameId]);
 
-  // Fetch global metrics on initial load
+  // Initial fetch of global metrics when the provider mounts
   useEffect(() => {
     fetchGlobalMetrics();
   }, [fetchGlobalMetrics]);
@@ -416,24 +409,17 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     applyGameSettings(settings);
     
     try {
-      // Generate a simple unique room ID for this session
       const newRoomId = `room_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      const newGameId = uuidv4(); // Generate unique game ID
+      const newGameId = uuidv4();
       setGameId(newGameId);
       console.log(`[GameContext] [GameID: ${newGameId}] Starting new game, roomId: ${newRoomId}`);
       setRoomId(newRoomId);
-      console.log(`Generated Room ID: ${newRoomId}`);
 
-      // Fetch a larger batch of images (e.g., 20) without specific ordering
-      console.log("Fetching batch of images from Supabase...");
       const { data: imageBatch, error: fetchError } = await supabase
         .from('images')
-        // Select fields that exist in the DB schema
         .select('id, title, description, latitude, longitude, year, image_url, location_name') 
-        // Only fetch production-ready images
         .eq('ready', true)
-        // Remove the .order() clause
-        .limit(20); // Fetch more images than needed
+        .limit(20);
         
       if (fetchError) {
         console.error("Error fetching images:", fetchError);
@@ -441,31 +427,21 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       }
 
       if (!imageBatch || imageBatch.length < 5) {
-        // Handle case where not enough images are found (even in the larger batch)
         console.warn("Could not fetch at least 5 images, fetched:", imageBatch?.length);
         throw new Error(`Database only contains ${imageBatch?.length || 0} images. Need 5 to start.`);
       }
 
-      console.log(`Fetched ${imageBatch.length} images initially.`);
-
-      // Shuffle the fetched images
       const shuffledBatch = shuffleArray(imageBatch);
-
-      // Select the first 5 images from the shuffled batch
       const selectedImages = shuffledBatch.slice(0, 5);
-      console.log(`Selected 5 images after shuffling.`);
 
-
-      // Process the selected 5 images
       const processedImages = await Promise.all(
         selectedImages.map(async (img) => {
           let finalUrl = img.image_url;
           if (finalUrl && !finalUrl.startsWith('http')) {
-            // Assume image_url is a path in Supabase storage
             const { data: urlData } = supabase.storage.from('images').getPublicUrl(finalUrl);
-            finalUrl = urlData?.publicUrl || 'placeholder.jpg'; // Use placeholder if URL fails
+            finalUrl = urlData?.publicUrl || 'placeholder.jpg';
           } else if (!finalUrl) {
-              finalUrl = 'placeholder.jpg'; // Use placeholder if image_url is null/empty
+              finalUrl = 'placeholder.jpg';
           }
           
           return {
@@ -475,9 +451,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             latitude: img.latitude || 0,
             longitude: img.longitude || 0,
             year: img.year || 0,
-            image_url: img.image_url, // Keep original image_url if needed elsewhere
+            image_url: img.image_url,
             location_name: img.location_name || 'Unknown Location',
-            url: finalUrl // Final processed URL for display
+            url: finalUrl
           } as GameImage;
         })
       );
@@ -485,7 +461,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       setImages(processedImages);
       console.log("Selected 5 images stored in context:", processedImages);
 
-      // Save game settings to local storage for persistence
       localStorage.setItem('gh_game_settings', JSON.stringify({
         hintsAllowed,
         roundTimerSec
@@ -493,12 +468,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
       console.log(`Game settings: ${hintsAllowed} hints, ${roundTimerSec}s timer`);
       
-      // Set loading to false before navigation to prevent UI issues
       setIsLoading(false);
       
-      // Navigate to the first round - ensure this matches the route in App.tsx
-      console.log(`[GameContext] [GameID: ${gameId || newGameId}] Navigating to round 1 for room ${newRoomId}`);
-      // Use a setTimeout to ensure state updates have completed before navigation
       setTimeout(() => {
         navigate(`/test/game/room/${newRoomId}/round/1`);
       }, 100);
@@ -507,11 +478,11 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       console.error("Error in startGame:", err);
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
       setIsLoading(false);
-      alert('Failed to start game. Please try again.');
+      // Consider a more user-friendly error display than alert
+      // alert('Failed to start game. Please try again.'); 
     }
   }, [navigate, hintsAllowed, roundTimerSec, clearSavedGameState]);
 
-  // Function to record the result of a round
   const recordRoundResult = useCallback((resultData: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'>, currentRoundIndex: number) => {
     if (currentRoundIndex < 0 || currentRoundIndex >= images.length) {
         console.error("Cannot record result for invalid round index:", currentRoundIndex);
@@ -519,15 +490,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     }
     const currentImage = images[currentRoundIndex];
     
-    // Calculate xpWhere and xpWhen if score is available but they aren't
     let xpWhere = resultData.xpWhere;
     let xpWhen = resultData.xpWhen;
     
     if (resultData.score && (xpWhere === undefined || xpWhen === undefined)) {
-        // Use 70% of score for xpWhere and 30% for xpWhen, as seen in RoundResultsPage.tsx
-        xpWhere = Math.round(resultData.score * 0.7);
-        xpWhen = Math.round(resultData.score * 0.3);
-        console.log(`Calculated xpWhere (${xpWhere}) and xpWhen (${xpWhen}) from score ${resultData.score}`);
+        xpWhere = Math.round(resultData.score * 0.7); // Example split
+        xpWhen = Math.round(resultData.score * 0.3); // Example split
     }
     
     const fullResult: RoundResult = {
@@ -540,11 +508,11 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         guessYear: resultData.guessYear,
         xpWhere,
         xpWhen,
+        hintsUsed: resultData.hintsUsed || 0
     };
 
     console.log(`[GameContext] [GameID: ${gameId || 'N/A'}] Recording result for round ${currentRoundIndex + 1}:`, fullResult);
     setRoundResults(prevResults => {
-        // Avoid duplicates - replace if already exists for this index
         const existingIndex = prevResults.findIndex(r => r.roundIndex === currentRoundIndex);
         if (existingIndex !== -1) {
             const updatedResults = [...prevResults];
@@ -554,25 +522,21 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             return [...prevResults, fullResult];
         }
     });
-  }, [images]); // Dependency on images to get actual coordinates
+  }, [images, gameId]);
 
-  // Function to reset game state
   const resetGame = useCallback(() => {
     console.log(`[GameContext] [GameID: ${gameId || 'N/A'}] Resetting game state...`);
     clearSavedGameState();
     setRoomId(null);
-    setGameId(null); // Reset gameId
+    setGameId(null);
     setImages([]);
-    setRoundResults([]); // Clear results on reset
+    setRoundResults([]);
     setError(null);
     setIsLoading(false);
-    // Optionally navigate home or to a new game setup screen
-    // navigate('/'); // Example: navigate home
-  }, [clearSavedGameState]);
+  }, [clearSavedGameState, gameId]);
 
-  // Value provided by the context
   const value: GameContextState = {
-    gameId, // Provide gameId in context
+    gameId,
     roomId,
     images,
     roundResults,
@@ -584,19 +548,19 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     totalGameXP,
     globalAccuracy,
     globalXP,
+    gamesPlayedForAvg,
     setHintsAllowed,
     setRoundTimerSec: handleSetRoundTimerSec,
     startGame,
     recordRoundResult,
     resetGame,
     fetchGlobalMetrics,
-    refreshGlobalMetrics // Add this line
+    refreshGlobalMetrics,
+    setProvisionalGlobalMetrics,
   };
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
 };
-
-// Custom hook to use the GameContext
 export const useGame = (): GameContextState => { // Ensure hook returns the full state type
   const context = useContext(GameContext);
   if (context === undefined) {

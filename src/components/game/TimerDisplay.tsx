@@ -125,30 +125,20 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
 
   return (
     <div
-      className={`relative flex items-center justify-center select-none`}
+      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${isRed ? 'bg-red-500 text-white animate-pulse' : 'bg-black/60 text-white'}`}
       aria-live="polite"
-      style={{ width: 40, height: 24 }}
+      style={{
+        boxShadow: isRed ? '0 0 0 4px rgba(239,68,68,0.15)' : undefined,
+        borderColor: 'transparent',
+        height: '24px',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minWidth: '24px'
+      }}
     >
-      <div
-        className={`absolute inset-0 rounded-full flex items-center justify-center ${textClass}`}
-        style={{
-          boxShadow: isRed ? '0 0 0 4px rgba(239,68,68,0.15)' : undefined
-        }}
-      >
-        <span
-          className="font-bold text-white text-sm"
-          style={{
-            textShadow: '0 0 2px #000, 0 0 2px #000, 0 1px 2px #000',
-            letterSpacing: '0.03em',
-            lineHeight: 1,
-            userSelect: 'none',
-          }}
-          aria-atomic="true"
-        >
-          <span className="sr-only">Time remaining: </span>
-          {formatTime(remainingTime)}
-        </span>
-      </div>
+      <span className="sr-only">Time remaining: </span>
+      {formatTime(remainingTime)}
     </div>
   );
 };

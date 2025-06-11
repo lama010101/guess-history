@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Share2, Loader, Home, MapPin, Calendar, ArrowLeft, Target, Zap } from "lucide-react";
 import { useGame } from "@/contexts/GameContext";
 import { Badge } from "@/components/ui/badge";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import Logo from "@/components/Logo";
 import { NavProfile } from "@/components/NavProfile";
 import { formatInteger } from '@/utils/format';
@@ -30,8 +30,10 @@ const FinalResultsPage = () => {
     refreshGlobalMetrics,
     globalXP = 0,
     globalAccuracy = 0,
-    gameId // Get gameId from context
+    gameId, // Get gameId from context
+    setProvisionalGlobalMetrics // Add this for optimistic updates
   } = useGame();
+  const submittedGameIdRef = useRef<string | null>(null);
   
   // Update user metrics and fetch global scores when the final results page is loaded
   useEffect(() => {
@@ -113,96 +115,61 @@ const FinalResultsPage = () => {
         locationBullseye
       };
       
-      console.log('Updating user metrics with:', {
-        ...metricsUpdate,
-        // Log the raw values for debugging
+      console.log('[FinalResultsPage] Preparing to update user metrics with:', {
+        metrics: metricsUpdate,
         rawXP: finalXP,
-        hintPenalty: totalHintPenalty
+        hintPenalty: totalHintPenalty,
+        gameId: gameId || 'N/A'
       });
 
-      // Always call updateUserMetrics for both guest and registered users
-      const userId = user?.id || (JSON.parse(localStorage.getItem('guestSession') || '{}').id);
-      // Update user metrics and then refresh global metrics to ensure navbar is up to date
-      console.log('[FinalResultsPage] Calling updateUserMetrics with:', {
-        userId,
-        metrics: metricsUpdate,
-        timestamp: new Date().toISOString()
-      });
-      
-      const metricsUpdated = await updateUserMetrics(userId, metricsUpdate, gameId);
-      console.log(`[FinalResultsPage] [GameID: ${gameId || 'N/A'}] updateUserMetrics called with:`, {
-        userId,
-        metrics: metricsUpdate,
-        gameId,
-        timestamp: new Date().toISOString()
-      });
-      console.log('[FinalResultsPage] updateUserMetrics result:', {
-        success: metricsUpdated,
-        userId,
-        timestamp: new Date().toISOString()
-      });
-      
-      console.log(`[FinalResultsPage] [GameID: ${gameId || 'N/A'}] updateUserMetrics result:`, {
-        success: metricsUpdated,
-        userId,
-        gameId,
-        timestamp: new Date().toISOString()
-      });
+      // Get current user ID from Supabase auth (user object is already fetched earlier in this function)
+      const userId = user?.id;
 
-      if (metricsUpdated) {
-        console.log('[FinalResultsPage] Refreshing global metrics...');
-        await refreshGlobalMetrics();
-        console.log('[FinalResultsPage] Global metrics refreshed');
-      }
       if (!userId) {
-        console.error('No user ID found for updating metrics');
-        return;
+        console.error('[FinalResultsPage] No user ID available from Supabase session. Cannot update metrics.');
+        return; // Exit if no user ID
       }
+      
+      // Safeguard against multiple submissions for the same gameId
+      if (!gameId) {
+        console.warn('[FinalResultsPage] gameId is not available. Cannot ensure single submission or set provisional metrics.');
+        return; 
+      }
+      
+      if (submittedGameIdRef.current === gameId) {
+        console.log(`[FinalResultsPage] Metrics for gameId ${gameId} already submitted or being processed by this instance. Skipping further actions.`);
+        return; // Skip update
+      }
+
+      // Mark this gameId as being processed by this instance *before* any async calls or UI updates
+      submittedGameIdRef.current = gameId;
+
+      // Optimistically update UI with provisional metrics
+      // metricsUpdate contains gameXP (netFinalXP) and gameAccuracy (finalPercent)
+      console.log(`[FinalResultsPage] Calling setProvisionalGlobalMetrics for gameId: ${gameId} with XP: ${metricsUpdate.gameXP}, Accuracy: ${metricsUpdate.gameAccuracy}`);
+      setProvisionalGlobalMetrics(metricsUpdate.gameXP, metricsUpdate.gameAccuracy);
       
       try {
-        // The updateUserMetrics call is already made above, this is redundant
-        // const updateSuccess = await updateUserMetrics(userId, metricsUpdate, gameId);
-        const updateSuccess = metricsUpdated; // Use the result from the call above
-        if (updateSuccess) {
-          console.log('Successfully updated user metrics');
-          
-          // CRITICAL FIX: Immediately refresh global metrics to update the navbar
-          // Don't use setTimeout which can be unreliable
-          await refreshGlobalMetrics();
-          console.log('Immediately refreshed global metrics after update');
-          
-          // For guest users, directly update localStorage and the game context
-          if (user?.id || localStorage.getItem('guestSession')) {
-            // If guest user, manually update the localStorage copy to ensure it's updated
-            const isGuest = !!localStorage.getItem('guestSession');
-            if (isGuest) {
-              const storageKey = `user_metrics_${userId}`;
-              const storedMetricsJson = localStorage.getItem(storageKey);
-              if (storedMetricsJson) {
-                try {
-                  // Don't manually set the metrics here - they should already be properly calculated by updateUserMetrics
-                  // This was causing the global accuracy to always be set to the most recent game's accuracy
-                  // Just refresh the metrics to ensure the UI is updated
-                  console.log('Ensuring metrics are properly reflected in the UI');
-                  
-                  // Refresh again to ensure UI is updated
-                  await refreshGlobalMetrics();
-                } catch (e) {
-                  console.error('Error updating guest metrics in localStorage:', e);
-                }
-              }
-            }
-          }
+        console.log(`[FinalResultsPage] Calling updateUserMetrics for user: ${userId}, gameId: ${gameId || 'N/A'}`);
+        const success = await updateUserMetrics(userId, metricsUpdate, gameId);
+        console.log(`[FinalResultsPage] updateUserMetrics result: { success: ${success}, userId: ${userId}, gameId: ${gameId || 'N/A'} }`);
+
+        if (success) {
+          // The logic for submittedGameIdRef.current = gameId has been moved earlier, before the try block.
+          console.log('[FinalResultsPage] User metrics updated successfully in Supabase.');
+          console.log('[FinalResultsPage] Refreshing global metrics to update UI...');
+          await refreshGlobalMetrics(); // Single refresh call after successful update
+          console.log('[FinalResultsPage] Global metrics refreshed.');
         } else {
-          console.error('Failed to update user metrics');
+          console.error(`[FinalResultsPage] Failed to update user metrics in Supabase for user: ${userId}.`);
         }
       } catch (error) {
-        console.error('Error while updating metrics:', error);
+        console.error(`[FinalResultsPage] Error during metrics update process for user: ${userId}:`, error);
       }
     };
     
     updateMetricsAndFetchGlobal();
-  }, [roundResults, images, refreshGlobalMetrics]);
+  }, [roundResults, images, refreshGlobalMetrics, gameId, setProvisionalGlobalMetrics]);
   
   // Additional effect to ensure global metrics are always refreshed when this page is viewed
   useEffect(() => {

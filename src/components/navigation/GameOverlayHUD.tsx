@@ -69,17 +69,13 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
         {/* Left side - Timer */}
         <div className="pointer-events-auto">
           {rawRemainingTime > 0 && (
-            <div className="bg-black/30 backdrop-blur-sm p-2 rounded-full">
-              <div className="h-10 w-10 flex items-center justify-center">
-                <TimerDisplay
-                  remainingTime={rawRemainingTime}
-                  setRemainingTime={setRemainingTime}
-                  isActive={isTimerActive}
-                  onTimeout={onTimeout}
-                  roundTimerSec={rawRemainingTime}
-                />
-              </div>
-            </div>
+            <TimerDisplay
+              remainingTime={rawRemainingTime}
+              setRemainingTime={setRemainingTime}
+              isActive={isTimerActive}
+              onTimeout={onTimeout}
+              roundTimerSec={rawRemainingTime}
+            />
           )}
         </div>
         

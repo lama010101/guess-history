@@ -6,9 +6,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from '@/components/ui/use-toast';
-import { Slider } from "@/components/ui/slider";
 import { supabase } from '@/integrations/supabase/client';
-import { Settings as SettingsIcon, Moon, Sun, Monitor, Clock } from "lucide-react";
+import { Settings as SettingsIcon, Moon, Sun, Monitor } from "lucide-react";
 import { useSettingsStore } from '@/lib/useSettingsStore';
 
 interface SettingsTabProps {
@@ -26,16 +25,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
 }) => {
   const [updatedSettings, setUpdatedSettings] = useState<UserSettings>(settings);
   const [saving, setSaving] = useState(false);
-  const { timerSeconds, setTimerSeconds } = useSettingsStore();
-  const [localTimerSeconds, setLocalTimerSeconds] = useState(timerSeconds || 60);
-  
-  // Update timer setting in store when local value changes
-  useEffect(() => {
-    // Only update the store if the value has changed
-    if (localTimerSeconds !== timerSeconds) {
-      setTimerSeconds(localTimerSeconds);
-    }
-  }, [localTimerSeconds, setTimerSeconds, timerSeconds]);
+  const { setTimerSeconds } = useSettingsStore();
 
   const handleSaveSettings = async () => {
     if (saving) return;
@@ -43,17 +33,11 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
     try {
       setSaving(true);
       
-      // Also save timer setting
-      const settingsToSave = {
-        ...updatedSettings,
-        timerSeconds: localTimerSeconds
-      };
-      
       const { error } = await supabase
         .from('settings')
         .upsert({ 
           id: `user_settings_${userId}`,
-          value: settingsToSave,
+          value: updatedSettings as any, // Type assertion to handle the JSON type
           updated_at: new Date().toISOString()
         });
       
@@ -166,39 +150,6 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
               <Label htmlFor="miles">Miles (mi)</Label>
             </div>
           </RadioGroup>
-        </div>
-        
-        {/* Timer Duration Setting */}
-        <div>
-          <Label className="mb-3 block text-history-primary dark:text-history-light flex items-center">
-            <Clock className="h-4 w-4 mr-2" />
-            Round Timer: {localTimerSeconds} seconds
-          </Label>
-          <div className="pt-2 pb-6">
-            <Slider 
-              defaultValue={[localTimerSeconds]} 
-              max={300} 
-              step={30}
-              min={0}
-              onValueChange={(value) => setLocalTimerSeconds(value[0])}
-              className="w-full sm:w-[240px]"
-            />
-            <div className="flex justify-between text-xs text-muted-foreground mt-1 w-full sm:w-[240px]">
-              <span>Off</span>
-              <span>1min</span>
-              <span>2min</span>
-              <span>3min</span>
-              <span>4min</span>
-              <span>5min</span>
-            </div>
-          </div>
-          <div className="text-sm text-muted-foreground mb-2">
-            {localTimerSeconds === 0 ? (
-              "Timer is disabled. No time limit for rounds."
-            ) : (
-              `${Math.floor(localTimerSeconds / 60)}:${(localTimerSeconds % 60).toString().padStart(2, '0')} per round`
-            )}
-          </div>
         </div>
         
         {/* Language Setting */}

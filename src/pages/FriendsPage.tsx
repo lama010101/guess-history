@@ -9,7 +9,17 @@ import { Search, UserPlus, UserMinus, Mail, Loader, AlertCircle, User } from "lu
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog"; // Assuming Dialog components are available
 import { toast } from '@/components/ui/sonner';
+
+// Interface for raw profile data from Supabase
+interface ProfileFromSupabase {
+  id: string;
+  display_name: string | null;
+  email: string | null;
+  avatar_url: string | null;
+  avatar_image_url?: string | null;
+}
 
 type Friend = {
   id: string;
@@ -38,22 +48,47 @@ const FriendsPage = () => {
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [activeTab, setActiveTab] = useState('friends');
   const navigate = useNavigate();
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [selectedUserForProfile, setSelectedUserForProfile] = useState<User | Friend | null>(null);
 
-  useEffect(() => {
-    if (user) {
+  // Access Control: Check if user is registered
+  if (!user || !('email' in user) || !user.email) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <AlertCircle className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
+        <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+        <p className="mb-6">This page is for registered users only. Please log in or create an account to view your friends.</p>
+        <Button onClick={() => navigate('/login')}>Login / Register</Button> {/* Adjust '/login' to your actual auth route */}
+      </div>
+    );
+  }
+
+  useEffect(() => { // For loadAllUsers
+    if (activeTab === 'search' && user && 'email' in user && user.email && allUsers.length === 0) {
+      loadAllUsers();
+    }
+  }, [activeTab, user, allUsers.length]); // Added allUsers.length to dependency array for correctness
+
+  useEffect(() => { // Moved this useEffect after the main user email check
+    // The main component guard ensures 'user' is valid and has 'email'.
+    // This check is for TypeScript's benefit within this specific scope.
+    if (user && 'email' in user && user.email) {
       loadFriends();
+    } else {
+      // This case should ideally not be hit if the main guard is effective
+      // and user state updates correctly.
+      setFriends([]);
     }
   }, [user]);
 
-  useEffect(() => {
-    if (activeTab === 'search' && user && allUsers.length === 0) {
-      loadAllUsers();
-    }
-  }, [activeTab, user]);
+  const openProfileModal = (userData: User | Friend) => {
+    setSelectedUserForProfile(userData);
+    setIsProfileModalOpen(true);
+  };
 
   const loadFriends = async () => {
-    if (!user) return;
-    
+    if (!user || !('email' in user) || !user.email) return; // Ensure user is registered
+
     setIsLoading(true);
     try {
       // Get friends from the friends table
@@ -61,29 +96,37 @@ const FriendsPage = () => {
         .from('friends')
         .select('friend_id')
         .eq('user_id', user.id);
-      
+
       if (friendsError) throw friendsError;
-      
+
       if (friendsData && friendsData.length > 0) {
-        const friendIds = friendsData.map(f => f.friend_id);
-        
+        const friendIds = friendsData.map((f) => f.friend_id);
+
         // Get friend profiles
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select('id, display_name, avatar_url, avatar_image_url')
+          .select('id, display_name, email, avatar_url')
           .in('id', friendIds);
-        
-        if (profilesError) throw profilesError;
-        
-        if (profilesData) {
-          const friendsList = profilesData.map(profile => ({
+
+        if (profilesError) {
+          console.error('Error loading friend profiles:', profilesError);
+          toast.error('Failed to load friend details.');
+          throw profilesError;
+        }
+
+        const allFetchedProfiles = (profilesData as unknown as ProfileFromSupabase[] | null) || [];
+
+        if (allFetchedProfiles.length > 0) {
+          const friendsList = allFetchedProfiles.map((profile) => ({
             id: profile.id,
             username: profile.display_name || 'User',
-            email: '', // Email is usually not publicly accessible
-            avatar_url: profile.avatar_url || profile.avatar_image_url
+            email: profile.email || undefined,
+            avatar_url: profile.avatar_url || undefined,
+            display_name: profile.display_name || 'User',
           }));
-          
           setFriends(friendsList);
+        } else {
+          setFriends([]); // Ensure friends list is cleared if no registered friends found
         }
       } else {
         setFriends([]);
@@ -97,48 +140,48 @@ const FriendsPage = () => {
   };
 
   const loadAllUsers = async () => {
-    if (!user) return;
-    
+    if (!user || !('email' in user) || !user.email) return; // Ensure user is registered
+
     setIsLoadingUsers(true);
     try {
-      // Get all profiles except current user
       const { data: usersData, error: usersError } = await supabase
         .from('profiles')
-        .select('id, display_name, avatar_url, avatar_image_url')
-        .neq('id', user.id)
+        .select('id, display_name, email, avatar_url') // Ensure email is selected
+        .neq('id', user.id) // user.id is safe here due to the function guard
         .order('display_name', { ascending: true })
         .limit(50);
-      
-      if (usersError) throw usersError;
-      
-      if (usersData) {
-        // Filter out existing friends
-        const friendIds = friends.map(f => f.id);
-        
-        // Process users to ensure unique display names
+
+      if (usersError) {
+        console.error('Error loading all users:', usersError);
+        toast.error('Failed to load users.');
+        throw usersError;
+      }
+
+      const allFetchedUsers = (usersData as unknown as ProfileFromSupabase[] | null) || [];
+
+      if (allFetchedUsers.length > 0) {
+        const friendIds = friends.map((f) => f.id);
         const nameCount: Record<string, number> = {};
-        const filteredUsers = usersData
-          .filter(u => !friendIds.includes(u.id))
-          .map(profile => {
+        const processedUsers = allFetchedUsers
+          .filter((u) => !friendIds.includes(u.id))
+          .map((profile) => {
             const baseName = profile.display_name || 'User';
-            
-            // Track name occurrences and add suffix if needed
             nameCount[baseName] = (nameCount[baseName] || 0) + 1;
-            
-            // Only add suffix if this is not the first occurrence of the name
-            const displayName = nameCount[baseName] > 1 
-              ? `${baseName} ${nameCount[baseName] - 1}`
-              : baseName;
-            
+            const displayName =
+              nameCount[baseName] > 1
+                ? `${baseName} ${nameCount[baseName] - 1}`
+                : baseName;
             return {
               id: profile.id,
               display_name: displayName,
-              original_name: baseName, // Keep original for reference
-              avatar_url: profile.avatar_url || profile.avatar_image_url
-            };
+              original_name: baseName,
+              avatar_url: profile.avatar_url || undefined,
+              email: profile.email || undefined,
+            } as User; // Cast to User type
           });
-        
-        setAllUsers(filteredUsers);
+        setAllUsers(processedUsers);
+      } else {
+        setAllUsers([]);
       }
     } catch (error) {
       console.error('Error loading users:', error);
@@ -149,48 +192,48 @@ const FriendsPage = () => {
   };
 
   const searchUsers = async () => {
-    if (!searchTerm.trim() || !user) return;
-    
+    if (!searchTerm.trim() || !user || !('email' in user) || !user.email) return; // Ensure user is registered
+
     setIsSearching(true);
     try {
-      // Search for users by display name (partial match)
       const { data: usersData, error: usersError } = await supabase
         .from('profiles')
-        .select('id, display_name, avatar_url, avatar_image_url')
+        .select('id, display_name, email, avatar_url') // Ensure email is selected
         .ilike('display_name', `%${searchTerm}%`)
-        .neq('id', user.id)
+        .neq('id', user.id) // user.id is safe here due to the function guard
         .limit(20);
-      
-      if (usersError) throw usersError;
-      
-      if (usersData) {
-        // Filter out existing friends
-        const friendIds = friends.map(f => f.id);
-        
-        // Process users to ensure unique display names
+
+      if (usersError) {
+        console.error('Error searching users:', usersError);
+        toast.error('Failed to search users.');
+        throw usersError;
+      }
+
+      const allSearchedUsers = (usersData as unknown as ProfileFromSupabase[] | null) || [];
+
+      if (allSearchedUsers.length > 0) {
+        const friendIds = friends.map((f) => f.id);
         const nameCount: Record<string, number> = {};
-        const filteredUsers = usersData
-          .filter(u => !friendIds.includes(u.id))
-          .map(profile => {
+        const processedUsers = allSearchedUsers
+          .filter((u) => !friendIds.includes(u.id))
+          .map((profile) => {
             const baseName = profile.display_name || 'User';
-            
-            // Track name occurrences and add suffix if needed
             nameCount[baseName] = (nameCount[baseName] || 0) + 1;
-            
-            // Only add suffix if this is not the first occurrence of the name
-            const displayName = nameCount[baseName] > 1 
-              ? `${baseName} ${nameCount[baseName] - 1}`
-              : baseName;
-            
+            const displayName =
+              nameCount[baseName] > 1
+                ? `${baseName} ${nameCount[baseName] - 1}`
+                : baseName;
             return {
               id: profile.id,
               display_name: displayName,
-              original_name: baseName, // Keep original for reference
-              avatar_url: profile.avatar_url || profile.avatar_image_url
-            };
+              original_name: baseName,
+              avatar_url: profile.avatar_url || undefined,
+              email: profile.email || undefined,
+            } as User; // Cast to User type
           });
-        
-        setSearchResults(filteredUsers);
+        setSearchResults(processedUsers);
+      } else {
+        setSearchResults([]);
       }
     } catch (error) {
       console.error('Error searching users:', error);
@@ -302,6 +345,11 @@ const FriendsPage = () => {
   // Get the list of users to display based on search state
   const displayUsers = searchTerm.trim() ? searchResults : allUsers;
 
+  const closeProfileModal = () => {
+    setIsProfileModalOpen(false);
+    setSelectedUserForProfile(null);
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6 text-history-primary dark:text-history-light">Friends</h1>
@@ -340,7 +388,7 @@ const FriendsPage = () => {
                   className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow flex items-center justify-between"
                 >
                   <div className="flex items-center">
-                    <Avatar className="h-10 w-10 mr-4">
+                    <Avatar className="h-10 w-10 mr-4 cursor-pointer" onClick={() => openProfileModal(friend)}>
                       {friend.avatar_url ? (
                         <AvatarImage src={friend.avatar_url} alt={friend.username} />
                       ) : (
@@ -348,7 +396,7 @@ const FriendsPage = () => {
                       )}
                     </Avatar>
                     <div>
-                      <div className="font-medium">{friend.username}</div>
+                      <div className="font-medium cursor-pointer" onClick={() => openProfileModal(friend)}>{friend.username}</div>
                       {friend.email && <div className="text-sm text-muted-foreground">{friend.email}</div>}
                     </div>
                   </div>
@@ -450,15 +498,15 @@ const FriendsPage = () => {
                     className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow flex items-center justify-between"
                   >
                     <div className="flex items-center">
-                      <Avatar className="h-10 w-10 mr-4">
-                        {user.avatar_url ? (
-                          <AvatarImage src={user.avatar_url} alt={user.display_name || 'User'} />
-                        ) : (
-                          <AvatarFallback>{getInitial(user.display_name || '')}</AvatarFallback>
-                        )}
-                      </Avatar>
+                      <Avatar className="h-10 w-10 mr-4 cursor-pointer" onClick={() => openProfileModal(user)}>
+                      {user.avatar_url ? (
+                        <AvatarImage src={user.avatar_url} alt={user.display_name || 'User'} />
+                      ) : (
+                        <AvatarFallback>{getInitial(user.display_name || 'User')}</AvatarFallback>
+                      )}
+                    </Avatar>
                       <div>
-                        <div className="font-medium">{user.display_name || 'User'}</div>
+                        <div className="font-medium cursor-pointer" onClick={() => openProfileModal(user)}>{user.display_name || 'User'}</div>
                       </div>
                     </div>
                     
@@ -478,8 +526,49 @@ const FriendsPage = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Profile Modal */}
+      {selectedUserForProfile && (() => {
+        const profileName = selectedUserForProfile.display_name || 
+                            (('username' in selectedUserForProfile && (selectedUserForProfile as Friend).username) ? (selectedUserForProfile as Friend).username : 'User');
+        return (
+          <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>User Profile</DialogTitle>
+                <DialogDescription>
+                  Viewing profile for {profileName}.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="flex items-center space-x-4">
+                  <Avatar className="h-16 w-16">
+                    {selectedUserForProfile.avatar_url ? (
+                      <AvatarImage src={selectedUserForProfile.avatar_url} alt={profileName} />
+                    ) : (
+                      <AvatarFallback>{getInitial(profileName || 'U')}</AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div>
+                    <h3 className="text-lg font-semibold">{profileName}</h3>
+                    {selectedUserForProfile.email && <p className="text-sm text-muted-foreground">{selectedUserForProfile.email}</p>}
+                    {/* TODO: Add more profile details here, e.g., XP, games played, etc. */}
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button type="button" variant="secondary" onClick={closeProfileModal}>
+                    Close
+                  </Button>
+                </DialogClose>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 };
 
-export default FriendsPage; 
+export default FriendsPage;

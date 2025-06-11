@@ -3,6 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ListOrdered } from "lucide-react";
 
+interface ProfileFromSupabase {
+  id: string;
+  display_name: string | null;
+}
+
 interface LeaderboardEntry {
   user_id: string;
   xp: number;
@@ -46,28 +51,60 @@ const LeaderboardPage = () => {
         const userIds = metrics.map((m: any) => m.user_id);
         console.log('Fetching profiles for user IDs:', userIds);
         
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, display_name')
-          .in('id', userIds);
-        
+        let profilesResponse;
+        if (userIds && userIds.length > 0) {
+          if (userIds.length === 1) {
+            profilesResponse = await supabase
+              .from('profiles')
+              .select('id, display_name')
+              .eq('id', userIds[0]);
+          } else { // userIds.length > 1
+            profilesResponse = await supabase
+              .from('profiles')
+              .select('id, display_name')
+              .in('id', userIds);
+          }
+        } else {
+          // No user IDs to fetch, so simulate an empty successful response
+          profilesResponse = { data: [], error: null };
+        }
+
+        const { data: rawProfiles, error: profilesError } = profilesResponse;
+
         if (profilesError) {
           console.error('Error fetching profiles:', profilesError);
+          setLeaderboard([]); // Clear leaderboard or show error state
+          setLoading(false);
+          return; // Stop processing if profiles can't be fetched
         }
+
+        // Ensure rawProfiles is not null before using; default to empty array if it is.
+        // Assert the type of rawProfiles after checking profilesError to satisfy TypeScript,
+        // as Supabase's 'data' type can be complex if the select string implies a potential column error.
+        // Using 'as unknown as ...' per TypeScript's suggestion for more complex/less direct assertions.
+        const profiles: ProfileFromSupabase[] = (rawProfiles as unknown as ProfileFromSupabase[] | null) || [];
         
         console.log('Profiles data:', profiles);
         
-        // Merge metrics and profiles
-        const leaderboardData: LeaderboardEntry[] = metrics.map((m: any, idx: number) => {
-          const profile = profiles?.find((p: any) => p.id === m.user_id);
-          return {
-            user_id: m.user_id,
-            xp: m.xp_total || 0,
-            games_played: m.games_played || 0,
-            accuracy: m.overall_accuracy || 0,
-            display_name: profile?.display_name || `User ${m.user_id.substring(0, 6)}`,
-          };
-        });
+        // Merge metrics with profile data if available
+        const leaderboardData: LeaderboardEntry[] = [];
+        for (const m of (metrics as any[])) { // Assuming metrics items are { user_id: string, ... }
+          const currentProfile = profiles.find((p: ProfileFromSupabase) => p.id === m.user_id);
+          
+          // Determine display name - use profile name if available, otherwise generate a default
+          const displayName = currentProfile?.display_name || `User ${m.user_id.substring(0, 6)}`;
+          
+          // Skip users with display names starting with 'User ' or empty/null
+          if (displayName && !displayName.startsWith('User ')) {
+            leaderboardData.push({
+              user_id: m.user_id,
+              xp: m.xp_total || 0,
+              games_played: m.games_played || 0,
+              accuracy: m.overall_accuracy || 0,
+              display_name: displayName,
+            });
+          }
+        }
         
         console.log('Leaderboard data:', leaderboardData);
         setLeaderboard(leaderboardData);

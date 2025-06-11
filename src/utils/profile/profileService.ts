@@ -8,7 +8,6 @@ export interface UserProfile {
   email?: string;
   created_at: string;
   updated_at?: string;
-  avatar_image_url: string;
 }
 
 export interface Avatar {
@@ -98,8 +97,7 @@ export async function fetchUserProfile(userId: string): Promise<UserProfile | nu
         return {
           id: guestUser.id,
           display_name: guestUser.display_name,
-          avatar_url: guestUser.avatar_url || 'guest',
-          avatar_image_url: guestUser.avatar_url || 'https://api.dicebear.com/6.x/adventurer/svg?seed=' + userId,
+          avatar_url: guestUser.avatar_url || 'https://api.dicebear.com/6.x/adventurer/svg?seed=' + userId,
           created_at: new Date().toISOString()
         } as UserProfile;
       }
@@ -199,9 +197,8 @@ export async function updateUserAvatar(userId: string, avatarId: string, customI
     const { error } = await supabase
       .from('profiles')
       .update({ 
-        avatar_url: avatarId,
-        avatar_image_url: imageUrl,
-        updated_at: new Date().toISOString()
+        avatar_url: imageUrl,
+        updated_at: new Date().toISOString(),
       })
       .eq('id', userId);
       
@@ -248,7 +245,7 @@ export async function createUserProfileIfNotExists(userId: string, displayName: 
     const profileData: any = {
       id: userId,
       display_name: displayName,
-      avatar_image_url: defaultAvatarUrl,
+      avatar_url: defaultAvatarUrl,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };

@@ -16,22 +16,18 @@ import { toast } from '@/components/ui/sonner';
 interface ProfileFromSupabase {
   id: string;
   display_name: string | null;
-  email: string | null;
   avatar_url: string | null;
-  avatar_image_url?: string | null;
 }
 
 type Friend = {
   id: string;
   username: string;
-  email?: string;
   avatar_url?: string;
   display_name?: string;
 };
 
 type User = {
   id: string;
-  email?: string;
   avatar_url?: string;
   display_name?: string;
   original_name?: string;
@@ -52,7 +48,7 @@ const FriendsPage = () => {
   const [selectedUserForProfile, setSelectedUserForProfile] = useState<User | Friend | null>(null);
 
   // Access Control: Check if user is registered
-  if (!user || !('email' in user) || !user.email) {
+  if (!user) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
         <AlertCircle className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
@@ -64,15 +60,15 @@ const FriendsPage = () => {
   }
 
   useEffect(() => { // For loadAllUsers
-    if (activeTab === 'search' && user && 'email' in user && user.email && allUsers.length === 0) {
+    if (activeTab === 'search' && user && allUsers.length === 0) {
       loadAllUsers();
     }
   }, [activeTab, user, allUsers.length]); // Added allUsers.length to dependency array for correctness
 
   useEffect(() => { // Moved this useEffect after the main user email check
-    // The main component guard ensures 'user' is valid and has 'email'.
+    // The main component guard ensures 'user' is valid.
     // This check is for TypeScript's benefit within this specific scope.
-    if (user && 'email' in user && user.email) {
+    if (user) {
       loadFriends();
     } else {
       // This case should ideally not be hit if the main guard is effective
@@ -87,7 +83,7 @@ const FriendsPage = () => {
   };
 
   const loadFriends = async () => {
-    if (!user || !('email' in user) || !user.email) return; // Ensure user is registered
+    if (!user) return; // Ensure user is registered
 
     setIsLoading(true);
     try {
@@ -105,7 +101,7 @@ const FriendsPage = () => {
         // Get friend profiles
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select('id, display_name, email, avatar_url')
+          .select('id, display_name, avatar_url')
           .in('id', friendIds);
 
         if (profilesError) {
@@ -120,7 +116,6 @@ const FriendsPage = () => {
           const friendsList = allFetchedProfiles.map((profile) => ({
             id: profile.id,
             username: profile.display_name || 'User',
-            email: profile.email || undefined,
             avatar_url: profile.avatar_url || undefined,
             display_name: profile.display_name || 'User',
           }));
@@ -140,13 +135,13 @@ const FriendsPage = () => {
   };
 
   const loadAllUsers = async () => {
-    if (!user || !('email' in user) || !user.email) return; // Ensure user is registered
+    if (!user) return; // Ensure user is registered
 
     setIsLoadingUsers(true);
     try {
       const { data: usersData, error: usersError } = await supabase
         .from('profiles')
-        .select('id, display_name, email, avatar_url') // Ensure email is selected
+        .select('id, display_name, avatar_url')
         .neq('id', user.id) // user.id is safe here due to the function guard
         .order('display_name', { ascending: true })
         .limit(50);
@@ -192,13 +187,13 @@ const FriendsPage = () => {
   };
 
   const searchUsers = async () => {
-    if (!searchTerm.trim() || !user || !('email' in user) || !user.email) return; // Ensure user is registered
+    if (!searchTerm.trim() || !user) return; // Ensure user is registered
 
     setIsSearching(true);
     try {
       const { data: usersData, error: usersError } = await supabase
         .from('profiles')
-        .select('id, display_name, email, avatar_url') // Ensure email is selected
+        .select('id, display_name, avatar_url')
         .ilike('display_name', `%${searchTerm}%`)
         .neq('id', user.id) // user.id is safe here due to the function guard
         .limit(20);
@@ -397,7 +392,7 @@ const FriendsPage = () => {
                     </Avatar>
                     <div>
                       <div className="font-medium cursor-pointer" onClick={() => openProfileModal(friend)}>{friend.username}</div>
-                      {friend.email && <div className="text-sm text-muted-foreground">{friend.email}</div>}
+
                     </div>
                   </div>
                   

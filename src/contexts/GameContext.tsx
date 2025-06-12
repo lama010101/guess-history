@@ -196,6 +196,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         console.log('[GameContext] No user found (not even anonymous), setting metrics to 0');
         setGlobalAccuracy(0);
         setGlobalXP(0);
+        setGamesPlayedForAvg(0);
         return;
       }
       
@@ -281,6 +282,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     setGlobalXP(newProvisionalXP);
     setGlobalAccuracy(newProvisionalAccuracy);
     setGamesPlayedForAvg(newTotalGamesForAvg); // Update games played count for next provisional update
+    
+    // We don't need to do anything special for guest users here
+    // The database update will be handled by updateUserMetrics in FinalResultsPage
 
     console.log(`[GameContext] Provisional metrics updated: New Global XP: ${newProvisionalXP}, New Global Acc: ${newProvisionalAccuracy}, New Games Played (for avg): ${newTotalGamesForAvg}`);
   }, [globalXP, globalAccuracy, gamesPlayedForAvg]);

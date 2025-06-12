@@ -102,7 +102,32 @@ const FinalResultsPage = () => {
       const locationBullseye = roundResults.some(result => (result.distanceKm || 0) < 10);
       
       // Get current user (may be guest or registered)
-      const { data: { user } } = await supabase.auth.getUser();
+      let { data: { user } } = await supabase.auth.getUser();
+      let userId = user?.id;
+      
+      // If no user is found, sign in anonymously to ensure guest users have a persistent ID
+      if (!userId) {
+        console.log('[FinalResultsPage] No user found, creating anonymous session for guest user');
+        try {
+          // Create an anonymous session
+          const { data, error } = await supabase.auth.signInAnonymously();
+          if (error) {
+            console.error('[FinalResultsPage] Error creating anonymous session:', error);
+          } else if (data?.user) {
+            console.log('[FinalResultsPage] Successfully created anonymous session for guest user');
+            user = data.user;
+            userId = user.id;
+          }
+        } catch (signInError) {
+          console.error('[FinalResultsPage] Exception during anonymous sign-in:', signInError);
+        }
+      }
+
+      // Double-check that we have a userId after potential anonymous sign-in
+      if (!userId) {
+        console.error('[FinalResultsPage] Still no user ID available after anonymous sign-in attempt. Cannot update metrics.');
+        return; // Exit if still no user ID after anonymous sign-in attempt
+      }
 
       // Prepare metrics update with final XP (after hint penalties)
       const metricsUpdate = {
@@ -119,16 +144,10 @@ const FinalResultsPage = () => {
         metrics: metricsUpdate,
         rawXP: finalXP,
         hintPenalty: totalHintPenalty,
-        gameId: gameId || 'N/A'
+        gameId: gameId || 'N/A',
+        userId: userId, // Log the userId being used
+        isAnonymous: user?.app_metadata?.provider === 'anonymous' // Log if this is an anonymous user
       });
-
-      // Get current user ID from Supabase auth (user object is already fetched earlier in this function)
-      const userId = user?.id;
-
-      if (!userId) {
-        console.error('[FinalResultsPage] No user ID available from Supabase session. Cannot update metrics.');
-        return; // Exit if no user ID
-      }
       
       // Safeguard against multiple submissions for the same gameId
       if (!gameId) {
@@ -158,8 +177,22 @@ const FinalResultsPage = () => {
           // The logic for submittedGameIdRef.current = gameId has been moved earlier, before the try block.
           console.log('[FinalResultsPage] User metrics updated successfully in Supabase.');
           console.log('[FinalResultsPage] Refreshing global metrics to update UI...');
-          await refreshGlobalMetrics(); // Single refresh call after successful update
-          console.log('[FinalResultsPage] Global metrics refreshed.');
+          // Force a refresh of global metrics to update UI
+          await refreshGlobalMetrics();
+          
+          // Try multiple refreshes in case of database replication lag
+          setTimeout(async () => {
+            await refreshGlobalMetrics();
+            console.log('[FinalResultsPage] Global metrics refreshed (first delay refresh).');
+            
+            // One more refresh after another delay to ensure UI is updated
+            setTimeout(async () => {
+              await refreshGlobalMetrics();
+              console.log('[FinalResultsPage] Global metrics refreshed (second delay refresh).');
+            }, 1000);
+          }, 1000);
+          
+          console.log('[FinalResultsPage] Global metrics refresh scheduled.');
         } else {
           console.error(`[FinalResultsPage] Failed to update user metrics in Supabase for user: ${userId}.`);
         }

@@ -4,7 +4,8 @@ import { toast } from '@/components/ui/use-toast';
 
 export interface GameImage {
   id: string;
-  url: string; // This will be populated from either mobile_image_url or desktop_image_url
+  url: string; 
+  placeholderUrl: string; // URL for the low-quality blurred placeholder
   title: string;
   description: string;
   year: number;
@@ -96,13 +97,37 @@ export function useGameImages(gameId?: string) {
             return null;
           }
 
-          // If we have a Supabase storage path, get the public URL
+          // If we have a Supabase storage path, get the public URLs for both placeholder and full image
+          let fullUrl = null;
+          let placeholderUrl = null;
+
           if (url && !url.startsWith('http')) {
-            const { data: publicUrl } = supabase.storage
+            // Generate placeholder URL (tiny, low-quality)
+            const { data: placeholderPublicUrl } = supabase.storage
               .from('images')
-              .getPublicUrl(url);
-            url = publicUrl.publicUrl;
+              .getPublicUrl(url, { transform: { width: 40, quality: 30, resize: 'contain' } });
+            placeholderUrl = placeholderPublicUrl.publicUrl;
+
+            // Generate full-size optimized URL
+            const { data: fullPublicUrl } = supabase.storage
+              .from('images')
+              .getPublicUrl(url, { transform: { width: isMobile ? 800 : 1600, quality: 85, resize: 'contain' } });
+            fullUrl = fullPublicUrl.publicUrl;
+            
+            console.log(`[Image URLs] Full: ${fullUrl}, Placeholder: ${placeholderUrl}`);
+          } else if (url) {
+            // If the URL is already a full http path, use it directly (fallback, no optimization)
+            fullUrl = url;
+            placeholderUrl = url; // No separate placeholder available
           }
+
+          // If for some reason we still don't have a URL, skip this image
+          if (!fullUrl || !placeholderUrl) {
+            console.warn(`Failed to get public URL for ${imageField} of image ${image.id}, skipping`);
+            return null;
+          }
+
+          url = fullUrl; // For consistency, though we'll use the new variables
 
           // If for some reason we still don't have a URL, skip this image
           if (!url) {
@@ -112,7 +137,8 @@ export function useGameImages(gameId?: string) {
 
           return {
             id: image.id,
-            url: url,
+            url: fullUrl,
+            placeholderUrl: placeholderUrl,
             title: image.title || 'Historical Image',
             description: image.description || 'No description available',
             year: image.year || 1900,

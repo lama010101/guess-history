@@ -395,7 +395,9 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
                   Where
                 </h2>
                 <div className="px-3 py-1 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm">
-                  {result.distanceKm === 0 ? (
+                  {result.guessLat === null || result.guessLng === null ? (
+                    <span className="text-gray-600 dark:text-gray-400 font-medium">No guess</span>
+                  ) : result.distanceKm === 0 ? (
                     <span className="text-green-600 dark:text-green-400 font-medium">Perfect!</span>
                   ) : (
                     `${formatInteger(result.distanceKm)} km off`

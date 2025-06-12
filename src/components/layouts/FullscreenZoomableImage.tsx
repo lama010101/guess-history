@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from "react";
 
 interface FullscreenZoomableImageProps {
-  image: { url: string; title: string };
+  image: { url: string; placeholderUrl: string; title: string };
   onExit: () => void;
 }
 
@@ -14,6 +14,9 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
+  const [imgSrc, setImgSrc] = useState(image.placeholderUrl);
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastTouchDist = useRef<number | null>(null);
@@ -67,14 +70,48 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
     lastTouchDist.current = null;
   };
   const getTouchDist = (e: React.TouchEvent) => {
-    const [a, b] = e.touches;
-    return Math.sqrt(Math.pow(a.clientX - b.clientX, 2) + Math.pow(a.clientY - b.clientY, 2));
+    // Fix for TypeScript error: TouchList must have Symbol.iterator
+    if (e.touches.length >= 2) {
+      const a = e.touches[0];
+      const b = e.touches[1];
+      return Math.sqrt(Math.pow(a.clientX - b.clientX, 2) + Math.pow(a.clientY - b.clientY, 2));
+    }
+    return 0;
   };
 
-  // Reset pan/zoom on open/close
+  // Reset pan/zoom on open/close and handle image preloading
   useEffect(() => {
     setZoom(1);
     setOffset({ x: 0, y: 0 });
+    setIsLoading(true);
+    setImageError(false);
+    
+    // Set initial state with placeholder
+    setImgSrc(image.placeholderUrl);
+    setIsLoading(true);
+    setImageError(false);
+
+    // Load full-resolution image
+    const fullImage = new Image();
+    fullImage.src = image.url;
+
+    fullImage.onload = () => {
+      setImgSrc(image.url);
+      setIsLoading(false);
+    };
+
+    fullImage.onerror = () => {
+      console.error(`Failed to load full image: ${image.url}`);
+      setImageError(true);
+      setIsLoading(false);
+      setImgSrc('/assets/placeholder.jpg'); // Fallback to a generic placeholder
+    };
+    
+    return () => {
+      // Clean up event listeners
+      fullImage.onload = null;
+      fullImage.onerror = null;
+    };
   }, [image.url]);
 
   return (
@@ -89,6 +126,12 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
       onTouchCancel={handleTouchEnd}
       style={{ touchAction: "none" }}
     >
+      {/* Loading Spinner */}
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center z-[10001]">
+          <div className="w-16 h-16 border-4 border-gray-300 border-t-history-primary rounded-full animate-spin"></div>
+        </div>
+      )}
       {/* Zoom Controls - styled like map controls, vertical, top left */}
       <div className="absolute top-6 left-6 z-[10001] flex flex-col rounded-lg bg-white/90 border border-gray-300 shadow-md overflow-hidden select-none">
         <button
@@ -111,23 +154,38 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
         </button>
       </div>
       {/* Image */}
-      <img
-        ref={imgRef}
-        src={image.url}
-        alt={image.title}
-        className="max-w-none max-h-none object-contain cursor-grab"
-        style={{
-          background: "black",
-          transform: `scale(${zoom}) translate(${offset.x / zoom}px,${offset.y / zoom}px)`,
-          transition: dragging ? "none" : "transform 0.2s cubic-bezier(.23,1.01,.32,1)",
-          touchAction: "none",
-          userSelect: "none",
-          pointerEvents: "auto"
-        }}
-        onMouseDown={handleMouseDown}
-        draggable={false}
-        onTouchStart={handleTouchStart}
-      />
+      <div className="relative w-full h-full flex items-center justify-center">
+        {/* Placeholder Image */}
+        <img
+          src={image.placeholderUrl}
+          alt={`${image.title} placeholder`}
+          className={`absolute inset-0 w-full h-full object-contain filter blur-lg scale-105 transition-opacity duration-300`}
+          style={{ opacity: isLoading ? 1 : 0 }}
+          aria-hidden="true"
+        />
+        {/* Full-Resolution Image */}
+        <img
+          ref={imgRef}
+          src={imgSrc}
+          alt={image.title}
+          className={`max-w-none max-h-none object-contain cursor-grab transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+          style={{
+            background: "black",
+            transform: `scale(${zoom}) translate(${offset.x / zoom}px,${offset.y / zoom}px)`,
+            transition: dragging ? "none" : "transform 0.2s cubic-bezier(.23,1.01,.32,1)",
+            touchAction: "none",
+            userSelect: "none",
+            pointerEvents: "auto"
+          }}
+          onMouseDown={handleMouseDown}
+          draggable={false}
+          onTouchStart={handleTouchStart}
+          onError={() => {
+            setImageError(true);
+            setImgSrc('/assets/placeholder.jpg');
+          }}
+        />
+      </div>
       {/* Exit Button */}
       <button
         onClick={onExit}

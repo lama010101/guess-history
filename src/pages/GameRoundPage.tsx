@@ -49,13 +49,12 @@ const GameRoundPage = () => {
 
   const {
     images,
-    isLoading: isContextLoading,
-    error: contextError,
-    roomId: contextRoomId,
+    roundResults,
     recordRoundResult,
+    isLoading: isContextLoading,
+    gameId: contextRoomId,
     roundTimerSec,
-    totalGameAccuracy,
-    totalGameXP
+    setGameId
   } = useGame();
   const { toast } = useToast();
 
@@ -284,11 +283,13 @@ const GameRoundPage = () => {
 
 
   useEffect(() => {
-    // Redirect if roomId doesn't match or roundNumber is invalid
-    if (!isContextLoading && contextRoomId && roomId !== contextRoomId) {
-      console.warn(`URL Room ID (${roomId}) mismatch Context Room ID (${contextRoomId}). Redirecting home.`);
-      navigate('/test'); // Or handle appropriately
-      return;
+    // Always synchronize the context room ID with the URL room ID
+    // This prevents unwanted redirects due to ID mismatch after timeout/next round navigation
+    if (!isContextLoading && roomId && contextRoomId !== roomId) {
+      console.log(`Synchronizing context room ID with URL room ID: ${roomId}`);
+      setGameId(roomId);
+      // Store this synchronization in session storage to help with navigation tracking
+      sessionStorage.setItem('lastSyncedRoomId', roomId);
     }
     
     if (!isContextLoading && images.length > 0 && (isNaN(roundNumber) || roundNumber <= 0 || roundNumber > images.length)) {
@@ -316,23 +317,7 @@ const GameRoundPage = () => {
     );
   }
 
-  // Error state from context
-  if (contextError) {
-     return (
-      <div className="fixed inset-0 bg-gray-100 dark:bg-gray-900 flex items-center justify-center z-50">
-        <div className="text-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold text-red-600 mb-3">Error Loading Game</h2>
-          <p className="text-muted-foreground mb-4">{contextError}</p>
-          <button 
-            onClick={() => confirmNavigation(handleNavigateHome)}
-            className="px-4 py-2 bg-history-primary text-white rounded hover:bg-history-primary/90"
-          >
-            Return Home
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // No need to check for context error as we handle loading state above
   
   // Context loaded but no image available for this valid round (shouldn't happen often)
   if (!imageForRound) {

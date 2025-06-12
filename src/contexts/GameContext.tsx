@@ -43,6 +43,7 @@ export interface GameImage {
 interface GameContextState {
   // ... existing properties ...
   gameId: string | null; // Unique ID for the current game session
+  setGameId: (id: string) => void; // Function to update gameId
   refreshGlobalMetrics: () => Promise<void>; // Add this line
   roomId: string | null;
   images: GameImage[];
@@ -60,6 +61,7 @@ interface GameContextState {
   setRoundTimerSec: (seconds: number) => void; // Function to update round timer
   startGame: () => Promise<void>;
   recordRoundResult: (result: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'>, currentRoundIndex: number) => void; // Function to record results
+  handleTimeUp?: (currentRoundIndex: number) => void; // Function to handle round timeout
   resetGame: () => void;
   fetchGlobalMetrics: () => Promise<void>; // Function to fetch global metrics from Supabase
   setProvisionalGlobalMetrics: (gameXP: number, gameAccuracy: number) => void; // Function to optimistically update global metrics
@@ -524,6 +526,51 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     });
   }, [images, gameId]);
 
+  const handleTimeUp = useCallback(async (currentRoundIndex: number) => {
+    console.log(`[GameContext] Time is up for round ${currentRoundIndex + 1}`);
+    
+    if (!images || images.length === 0 || !images[currentRoundIndex]) {
+      console.error(`[GameContext] handleTimeUp: Images array is empty or current image not found for index ${currentRoundIndex}. Cannot record result.`);
+      return; 
+    }
+
+    const currentImage = images[currentRoundIndex];
+    const hintsUsedForRound = (roundResults && roundResults[currentRoundIndex]?.hintsUsed !== undefined) 
+                              ? roundResults[currentRoundIndex].hintsUsed 
+                              : 0;
+    
+    // Get the current year guess if it exists (from partial round result), or use default year (1932)
+    // This preserves the user's selected year rather than setting it to null or the correct answer
+    const currentYearGuess = (roundResults && roundResults[currentRoundIndex]?.guessYear) || 1932;
+
+    const resultDataForTimeout: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'> = {
+      guessCoordinates: null, // No guess made as time is up
+      distanceKm: null,       // No distance calculated for location
+      score: 0,               // Score for a timed-out round is 0
+      guessYear: currentYearGuess, // Preserve user's selected year or use default
+      xpWhere: 0,             // Location XP is 0 as per requirement
+      xpWhen: 0,              // Time/Year XP is 0
+      accuracy: 0,            // Overall accuracy for this round is 0
+      hintsUsed: hintsUsedForRound, // Preserve hints used if any, otherwise 0
+    };
+
+    console.log('[GameContext] handleTimeUp: Recording result for timed-out round:', resultDataForTimeout);
+    recordRoundResult(resultDataForTimeout, currentRoundIndex);
+    
+    // Explicitly navigate to the round results page
+    // Use the URL room ID from the browser if available, otherwise use gameId
+    // This ensures consistency between URL and context room IDs
+    const urlParams = new URLSearchParams(window.location.pathname);
+    const urlRoomId = window.location.pathname.split('/room/')[1]?.split('/')[0] || null;
+    
+    // Use URL room ID if available, otherwise fall back to context gameId
+    const roomId = urlRoomId || gameId || 'default';
+    
+    const roundNumber = currentRoundIndex + 1; // Convert 0-based index to 1-based round number
+    console.log(`[GameContext] handleTimeUp: Navigating to results page for round ${roundNumber} with roomId ${roomId}`);
+    navigate(`/test/game/room/${roomId}/round/${roundNumber}/results`);
+  }, [images, recordRoundResult, roundResults, navigate, gameId]);
+
   const resetGame = useCallback(() => {
     console.log(`[GameContext] [GameID: ${gameId || 'N/A'}] Resetting game state...`);
     clearSavedGameState();
@@ -535,8 +582,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     setIsLoading(false);
   }, [clearSavedGameState, gameId]);
 
-  const value: GameContextState = {
+  const contextValue = {
     gameId,
+    setGameId, // Add setGameId to the context value
     roomId,
     images,
     roundResults,
@@ -553,13 +601,14 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     setRoundTimerSec: handleSetRoundTimerSec,
     startGame,
     recordRoundResult,
+    handleTimeUp,
     resetGame,
     fetchGlobalMetrics,
     refreshGlobalMetrics,
     setProvisionalGlobalMetrics,
   };
 
-  return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
+  return <GameContext.Provider value={contextValue}>{children}</GameContext.Provider>;
 };
 export const useGame = (): GameContextState => { // Ensure hook returns the full state type
   const context = useContext(GameContext);

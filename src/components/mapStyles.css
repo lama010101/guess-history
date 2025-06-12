@@ -14,7 +14,7 @@
   bottom: 0 !important;
   width: 100% !important;
   height: 100% !important;
-  z-index: 9999 !important; /* Ensure map is above all other elements */
+  z-index: 10002 !important; /* Ensure map is above all other elements */
   margin: 0 !important;
   padding: 0 !important;
 }
@@ -51,7 +51,7 @@ body:has(.leaflet-fullscreen-on) > :not(.leaflet-container) {
   bottom: 0 !important;
   width: 100% !important;
   height: 100% !important;
-  z-index: 9999 !important;
+  z-index: 10002 !important;
   margin: 0 !important;
   padding: 0 !important;
 }
@@ -92,7 +92,7 @@ body:has(.leaflet-fullscreen-on) > :not(.leaflet-container) {
 
 /* Ensure the fullscreen control is always visible */
 .leaflet-control-fullscreen {
-  z-index: 10000 !important;
+  z-index: 10003 !important;
   position: fixed !important;
   top: 10px !important;
   right: 10px !important;
@@ -100,7 +100,7 @@ body:has(.leaflet-fullscreen-on) > :not(.leaflet-container) {
 
 /* Ensure map controls stay visible in fullscreen */
 .leaflet-fullscreen-on .leaflet-control {
-  z-index: 10000 !important;
+  z-index: 10003 !important;
 }
 
 .leaflet-control-fullscreen a {

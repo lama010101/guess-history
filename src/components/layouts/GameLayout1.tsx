@@ -48,41 +48,47 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   onNavigateHome,
   onConfirmNavigation,
 }) => {
-  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isImageFullScreen, setIsImageFullScreen] = useState(false);
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
 
-  const handleFullscreen = () => {
-    setIsFullScreen(true);
-    setTimeout(() => {
-      const el = document.getElementById('game-fullscreen-img');
-      if (el && el.requestFullscreen) el.requestFullscreen();
-    }, 0);
+  const handleImageFullscreen = () => {
+    setIsImageFullScreen(true);
   };
 
-  // Exit full screen on escape or fullscreenchange
-  useEffect(() => {
-    const exitHandler = () => {
-      if (!document.fullscreenElement) setIsFullScreen(false);
-    };
-    document.addEventListener('fullscreenchange', exitHandler);
-    return () => document.removeEventListener('fullscreenchange', exitHandler);
-  }, []);
+  const handleExitImageFullscreen = () => {
+    setIsImageFullScreen(false);
+  };
   const [isHintModalOpen, setIsHintModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const { totalGameAccuracy, totalGameXP, roundTimerSec } = useGame();
+  const game = useGame();
+  const { totalGameAccuracy, totalGameXP, roundTimerSec } = game;
   
   // Handle timer timeout
-  const handleTimeout = () => {
-    // If no guess was made, submit a default guess at 0,0
-    if (!currentGuess) {
-      onMapGuess(0, 0);
-    }
+  const handleTimeout = useCallback(() => {
+    console.log(`[GameLayout1] Timer expired for round ${currentRound}`);
     
-    // Always call onComplete to proceed to the next round
-    if (onComplete) {
-      onComplete();
+    // Call the handleTimeUp function from the GameContext
+    if (game.handleTimeUp) {
+      // Convert 1-based currentRound to 0-based index for the context
+      game.handleTimeUp(currentRound - 1);
+      
+      // Note: We don't call onComplete here because handleTimeUp handles navigation
+      // This prevents double navigation that could cause issues
+    } else {
+      console.error('[GameLayout1] game.handleTimeUp is not available on context');
+      
+      // Fallback behavior if handleTimeUp is not available
+      // If no guess was made, submit a default guess at 0,0 (but don't show toast)
+      if (!currentGuess) {
+        onMapGuess(0, 0);
+      }
+      
+      // Only call onComplete in the fallback case
+      if (onComplete) {
+        onComplete();
+      }
     }
-  };
+  }, [game, currentRound, currentGuess, onMapGuess, onComplete]);
   
   // Memoize the imageData object passed to useHint
   const memoizedImageData = useMemo(() => {
@@ -167,8 +173,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           alt={image.title}
           className="w-full h-full object-cover"
         />
-        {/* Hide HUD when map is full screen */}
-        <div className={`hud-element${isFullScreen ? ' hidden' : ''}`}>
+        <div className={`hud-element`}>
           <GameOverlayHUD 
             selectedHintType={selectedHintType}
             remainingTime={formatTime(remainingTime)}
@@ -182,7 +187,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             onConfirmNavigation={onConfirmNavigation}
             onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
             imageUrl={image.url}
-            onFullscreen={handleFullscreen}
+            onFullscreen={handleImageFullscreen}
             isTimerActive={isTimerActive}
             onTimeout={handleTimeout}
             setRemainingTime={setRemainingTime}
@@ -190,18 +195,11 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
         </div>
       </div>
       
-      {/* Full screen map overlay */}
-      {isFullScreen && (
-        <div className="map-fullscreen-overlay">
-          <HomeMap 
-            onLocationSelect={() => {}}
-            onCoordinatesSelect={handleCoordinatesSelect}
-          />
-          <button className="exit-fullscreen-btn" onClick={() => {
-            if (document.exitFullscreen) document.exitFullscreen();
-            setIsFullScreen(false);
-          }}>Exit Full Screen</button>
-        </div>
+      {isImageFullScreen && image && (
+        <FullscreenZoomableImage
+          image={{ url: image.url, title: image.title }}
+          onExit={handleExitImageFullscreen}
+        />
       )}
 
       <div className="flex-grow p-4 md:p-8">

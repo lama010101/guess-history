@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Clock, Award, User } from "lucide-react";
 import GlobalSettingsModal from '@/components/GlobalSettingsModal';
 import FriendsGameModal from '@/components/FriendsGameModal';
@@ -50,7 +50,7 @@ const HomePage = () => {
 
   const { toast } = useToast();
 
-  const handleStartGame = async (mode: string) => {
+  const handleStartGame = useCallback(async (mode: string) => {
     // Check if user is authenticated (either guest or registered)
     if (!user) {
       setPendingMode(mode);
@@ -86,9 +86,9 @@ const HomePage = () => {
         });
       }
     }
-  };
+  }, [user, gameContext, startGame, isLoading, navigate, toast, setPendingMode, setShowAuthModal, setIsFriendsModalOpen]);
   
-  const handleStartFriendsGame = (settings: { timerSeconds: number; hintsPerGame: number }) => {
+  const handleStartFriendsGame = useCallback(async (settings: { timerSeconds: number; hintsPerGame: number }) => {
     setIsFriendsModalOpen(false);
     
     // Check if user is authenticated (either guest or registered)
@@ -110,7 +110,8 @@ const HomePage = () => {
     
     if (!isLoading) {
       try {
-        startGame?.(settings);
+        // Call startGame without parameters since it doesn't accept any
+        await startGame?.();
         navigate('/game');
       } catch (error) {
         console.error('Error starting friends game:', error);
@@ -121,24 +122,32 @@ const HomePage = () => {
         });
       }
     }
+  }, [user, gameContext, startGame, isLoading, navigate, toast, setPendingMode, setShowAuthModal, setIsFriendsModalOpen]);
+
+
+  useEffect(() => {
+    if (user && pendingMode && gameContext && startGame) {
+      handleStartGame(pendingMode);
+      setPendingMode(null); // Reset pendingMode after attempting to start
+    } else if (user && pendingMode && !gameContext) {
+      console.error('Game context not available when trying to start game from useEffect');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Game resources not ready. Please try again.",
+      });
+      setPendingMode(null); // Reset to avoid loops
+    }
+  }, [user, pendingMode, handleStartGame, gameContext, startGame, toast]);
+
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+    // useEffect will handle starting the game with pendingMode
   };
 
-
-  const handleAuthSuccess = async () => {
+  const handleGuestContinue = () => {
     setShowAuthModal(false);
-    if (pendingMode) {
-      await handleStartGame(pendingMode);
-      setPendingMode(null);
-    }
-  };
-
-  const handleGuestContinue = async () => {
-    setShowAuthModal(false);
-    if (pendingMode) {
-      // After guest login, start the game using the pending mode
-      await handleStartGame(pendingMode);
-      setPendingMode(null);
-    }
+    // useEffect will handle starting the game with pendingMode
   };
 
 
@@ -213,10 +222,7 @@ const HomePage = () => {
           setShowAuthModal(false);
           setPendingMode(null);
         }}
-        onAuthSuccess={() => {
-          // This will be handled by the pending mode logic in handleAuthSuccess
-          setShowAuthModal(false);
-        }}
+        onAuthSuccess={handleAuthSuccess}
         onGuestContinue={handleGuestContinue}
       />
 </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Clock, Award, User } from "lucide-react";
+import { Clock, Award, User, Timer } from "lucide-react";
 import GlobalSettingsModal from '@/components/GlobalSettingsModal';
 import FriendsGameModal from '@/components/FriendsGameModal';
 import { AuthModal } from '@/components/AuthModal';
@@ -9,6 +9,9 @@ import { GameModeCard } from "@/components/GameModeCard";
 import { useGame } from "@/contexts/GameContext";
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { Slider } from "@/components/ui/slider";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 const HomePage = () => {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -19,9 +22,19 @@ const HomePage = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingMode, setPendingMode] = useState<string | null>(null);
   const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false);
+  const [isSoloTimerEnabled, setIsSoloTimerEnabled] = useState(false);
+  const [soloTimerSeconds, setSoloTimerSeconds] = useState(300); // Default to 5 minutes
   const navigate = useNavigate();
   const gameContext = useGame();
   const { startGame, isLoading } = gameContext || {};
+  
+  // Timer options in seconds with 5-second intervals
+  const timerOptions = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 120, 180, 240, 300]; // 5s to 5m
+  
+  const formatTime = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`;
+    return `${Math.floor(seconds / 60)}m`;
+  };
 
   useEffect(() => {
     const loadUserSettings = async () => {
@@ -75,7 +88,15 @@ const HomePage = () => {
     
     if (!isLoading) {
       try {
-        await startGame?.();
+        // Pass timer settings to startGame if it's a solo game with timer enabled
+        // When timer is disabled, pass timerEnabled: false to ensure it doesn't show in the HUD
+        const gameSettings = mode === 'classic'
+          ? isSoloTimerEnabled 
+              ? { timerSeconds: soloTimerSeconds, timerEnabled: true }
+              : { timerEnabled: false }
+          : {};
+          
+        await startGame?.(gameSettings);
         navigate('/game');
       } catch (error) {
         console.error('Error starting game:', error);
@@ -86,7 +107,7 @@ const HomePage = () => {
         });
       }
     }
-  }, [user, gameContext, startGame, isLoading, navigate, toast, setPendingMode, setShowAuthModal, setIsFriendsModalOpen]);
+  }, [user, gameContext, startGame, isLoading, navigate, toast, isSoloTimerEnabled, soloTimerSeconds, setPendingMode, setShowAuthModal, setIsFriendsModalOpen]);
   
   const handleStartFriendsGame = useCallback(async (settings: { timerSeconds: number; hintsPerGame: number }) => {
     setIsFriendsModalOpen(false);
@@ -167,7 +188,47 @@ const HomePage = () => {
             icon={User}
             onStartGame={handleStartGame}
             isLoading={isLoading}
-          />
+          >
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-1">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="solo-timer-toggle" 
+                    checked={isSoloTimerEnabled}
+                    onCheckedChange={setIsSoloTimerEnabled}
+                    className="data-[state=checked]:bg-orange-500 h-4 w-8"
+                  />
+                  <Label htmlFor="solo-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm">
+                    <Timer className="h-3 w-3" />
+                    <span>Round Timer</span>
+                  </Label>
+                </div>
+                {isSoloTimerEnabled && (
+                  <span className="text-sm font-medium text-orange-400">
+                    {formatTime(soloTimerSeconds)}
+                  </span>
+                )}
+              </div>
+              {isSoloTimerEnabled && (
+                <div>
+                  <div className="flex justify-between text-xs text-gray-400 mb-1">
+                    <span>{formatTime(timerOptions[0])}</span>
+                    <span>1m</span>
+                    <span>3m</span>
+                    <span>5m</span>
+                  </div>
+                  <Slider
+                    defaultValue={[timerOptions.indexOf(300)]} // Default to 5 minutes
+                    min={0}
+                    max={timerOptions.length - 1}
+                    step={1}
+                    onValueChange={(value) => setSoloTimerSeconds(timerOptions[value[0]])}
+                    className="w-full"
+                  />
+                </div>
+              )}
+            </div>
+          </GameModeCard>
           <GameModeCard
             title="Friends"
             description="Race against the clock! Make quick decisions about historical events."

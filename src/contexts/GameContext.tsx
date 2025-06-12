@@ -47,24 +47,26 @@ interface GameContextState {
   refreshGlobalMetrics: () => Promise<void>; // Add this line
   roomId: string | null;
   images: GameImage[];
-  roundResults: RoundResult[]; // Store results for each round
+  roundResults: RoundResult[];
   isLoading: boolean;
   error: string | null;
-  hintsAllowed: number; // Number of hints allowed per game
-  roundTimerSec: number; // Timer duration for each round in seconds
-  totalGameAccuracy: number; // Current game accuracy
-  totalGameXP: number; // Current game XP
-  globalAccuracy: number; // Average accuracy across all games
-  globalXP: number; // Total XP earned across all games
-  gamesPlayedForAvg: number; // Total games played, used for averaging accuracy
-  setHintsAllowed: (hints: number) => void; // Function to update hints allowed
-  setRoundTimerSec: (seconds: number) => void; // Function to update round timer
-  startGame: () => Promise<void>;
-  recordRoundResult: (result: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'>, currentRoundIndex: number) => void; // Function to record results
-  handleTimeUp?: (currentRoundIndex: number) => void; // Function to handle round timeout
+  hintsAllowed: number;
+  roundTimerSec: number;
+  timerEnabled: boolean; // Flag to determine if timer should be shown in HUD
+  totalGameAccuracy: number;
+  totalGameXP: number;
+  globalAccuracy: number;
+  globalXP: number;
+  gamesPlayedForAvg: number;
+  setHintsAllowed: (hints: number) => void;
+  setRoundTimerSec: (seconds: number) => void;
+  setTimerEnabled: (enabled: boolean) => void; // Function to enable/disable timer
+  startGame: (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean }) => Promise<void>; // Updated to accept settings
+  recordRoundResult: (result: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'>, currentRoundIndex: number) => void;
+  handleTimeUp?: (currentRoundIndex: number) => void;
   resetGame: () => void;
-  fetchGlobalMetrics: () => Promise<void>; // Function to fetch global metrics from Supabase
-  setProvisionalGlobalMetrics: (gameXP: number, gameAccuracy: number) => void; // Function to optimistically update global metrics
+  fetchGlobalMetrics: () => Promise<void>;
+  setProvisionalGlobalMetrics: (gameXP: number, gameAccuracy: number) => void;
 }
 
 // Create the context
@@ -103,6 +105,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   // Get timer setting from settings store (defaults to 60 seconds)
   const { timerSeconds, setTimerSeconds } = useSettingsStore();
   const [roundTimerSec, setRoundTimerSec] = useState<number>(timerSeconds || 60);
+  const [timerEnabled, setTimerEnabled] = useState<boolean>(true); // Default to timer enabled
 
   // Keep roundTimerSec in sync with timerSeconds from settings store
   useEffect(() => {
@@ -110,10 +113,11 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   }, [timerSeconds]);
 
   // Accept settings from startGame
-  const applyGameSettings = (settings?: { timerSeconds?: number; hintsPerGame?: number }) => {
+  const applyGameSettings = (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean }) => {
     if (settings) {
       if (typeof settings.timerSeconds === 'number') setRoundTimerSec(settings.timerSeconds);
       if (typeof settings.hintsPerGame === 'number') setHintsAllowed(settings.hintsPerGame);
+      if (typeof settings.timerEnabled === 'boolean') setTimerEnabled(settings.timerEnabled);
     }
   };
 
@@ -138,13 +142,14 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         roundResults,
         hintsAllowed,
         roundTimerSec,
+        timerEnabled,
         totalGameAccuracy,
         totalGameXP,
         timestamp: Date.now()
       };
       localStorage.setItem('gh_current_game', JSON.stringify(gameState));
     }
-  }, [roomId, images, roundResults, hintsAllowed, roundTimerSec, totalGameAccuracy, totalGameXP]);
+  }, [roomId, images, roundResults, hintsAllowed, roundTimerSec, timerEnabled, totalGameAccuracy, totalGameXP]);
 
   // Load game state from localStorage on mount
   useEffect(() => {
@@ -162,6 +167,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             setRoundResults(gameState.roundResults || []);
             setHintsAllowed(gameState.hintsAllowed || 3);
             setRoundTimerSec(gameState.roundTimerSec || 60);
+            setTimerEnabled(gameState.timerEnabled || true);
             setTotalGameAccuracy(gameState.totalGameAccuracy || 0);
             setTotalGameXP(gameState.totalGameXP || 0);
             console.log('Loaded saved game state:', gameState);
@@ -397,6 +403,10 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           setHintsAllowed(parsed.hintsPerGame);
           console.log(`Loaded hints settings from localStorage: ${parsed.hintsPerGame} hints`);
         }
+        if (parsed.timerEnabled !== undefined) {
+          setTimerEnabled(parsed.timerEnabled);
+          console.log(`Loaded timer enabled setting from localStorage: ${parsed.timerEnabled}`);
+        }
       }
     } catch (error) {
       console.error('Error loading game settings from localStorage:', error);
@@ -404,7 +414,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   }, []);
 
   // Function to fetch images and start a new game
-  const startGame = useCallback(async (settings?: { timerSeconds?: number; hintsPerGame?: number }) => {
+  const startGame = useCallback(async (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean }) => {
     console.log("Starting new game...");
     clearSavedGameState(); // Clear any existing saved state
     setIsLoading(true);
@@ -469,10 +479,11 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
       localStorage.setItem('gh_game_settings', JSON.stringify({
         hintsAllowed,
-        roundTimerSec
+        roundTimerSec,
+        timerEnabled
       }));
 
-      console.log(`Game settings: ${hintsAllowed} hints, ${roundTimerSec}s timer`);
+      console.log(`Game settings: ${hintsAllowed} hints, ${roundTimerSec}s timer, timer enabled: ${timerEnabled}`);
       
       setIsLoading(false);
       
@@ -487,7 +498,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       // Consider a more user-friendly error display than alert
       // alert('Failed to start game. Please try again.'); 
     }
-  }, [navigate, hintsAllowed, roundTimerSec, clearSavedGameState]);
+  }, [navigate, hintsAllowed, roundTimerSec, timerEnabled, clearSavedGameState]);
 
   const recordRoundResult = useCallback((resultData: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'>, currentRoundIndex: number) => {
     if (currentRoundIndex < 0 || currentRoundIndex >= images.length) {
@@ -596,6 +607,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     error,
     hintsAllowed,
     roundTimerSec,
+    timerEnabled,
     totalGameAccuracy,
     totalGameXP,
     globalAccuracy,
@@ -603,6 +615,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     gamesPlayedForAvg,
     setHintsAllowed,
     setRoundTimerSec: handleSetRoundTimerSec,
+    setTimerEnabled,
     startGame,
     recordRoundResult,
     handleTimeUp,

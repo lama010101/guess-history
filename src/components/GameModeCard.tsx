@@ -9,6 +9,7 @@ interface GameModeCardProps {
   icon: LucideIcon;
   onStartGame: (mode: string) => void;
   isLoading: boolean;
+  children?: React.ReactNode;
 }
 
 export function GameModeCard({ 
@@ -17,7 +18,8 @@ export function GameModeCard({
   mode, 
   icon: Icon, 
   onStartGame,
-  isLoading
+  isLoading,
+  children
 }: GameModeCardProps) {
   const handleButtonClick = () => {
     if (!isLoading) {
@@ -38,6 +40,11 @@ export function GameModeCard({
           {description}
         </CardDescription>
       </CardHeader>
+      {children && (
+        <div className="px-6 pb-4">
+          {children}
+        </div>
+      )}
       <CardContent>
         <Button
           className="w-full bg-history-secondary hover:bg-history-secondary/90 text-white"

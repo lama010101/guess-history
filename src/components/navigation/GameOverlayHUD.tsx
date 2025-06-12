@@ -68,7 +68,8 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
       <div className="flex justify-between items-start w-full">
         {/* Left side - Timer */}
         <div className="pointer-events-auto">
-          {rawRemainingTime > 0 && (
+          {/* Only show timer if isTimerActive is true (controlled by timerEnabled from GameContext) */}
+          {rawRemainingTime > 0 && isTimerActive && (
             <TimerDisplay
               remainingTime={rawRemainingTime}
               setRemainingTime={setRemainingTime}

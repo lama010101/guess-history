@@ -30,17 +30,19 @@ const homePageStyle: React.CSSProperties = {
 
 const contentStyle: React.CSSProperties = {
   position: 'absolute',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
+  top: '50%',
+  left: '50%',
+  transform: 'translate(-50%, -50%)',
   zIndex: 1,
   backgroundColor: 'rgba(0, 0, 0, 0.7)',
-  width: '100%',
-  height: '100%',
+  width: '90%',
+  maxWidth: '1200px',
+  height: '90%',
   overflowY: 'auto',
-  padding: '2rem 1rem',
+  padding: '2rem',
   boxSizing: 'border-box',
+  borderRadius: '0.5rem',
+  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
 };
 
 const HomePage = () => {
@@ -245,6 +247,7 @@ const HomePage = () => {
                   </div>
                   {isSoloTimerEnabled && (
                     <div>
+<<<<<<< HEAD
                       <div className="relative mb-6 mt-4">
                         {/* Calculate positions for markers based on their values */}
                         <div className="absolute w-full h-6 pointer-events-none" style={{ bottom: '0px' }}>
@@ -280,6 +283,22 @@ const HomePage = () => {
                           />
                         </div>
                       </div>
+=======
+                      <div className="flex justify-between text-xs text-gray-400 mb-1">
+                        <span>{formatTime(timerOptions[0])}</span>
+                        <span>1m</span>
+                        <span>3m</span>
+                        <span>5m</span>
+                      </div>
+                      <Slider
+                        defaultValue={[timerOptions.indexOf(300)]}
+                        min={0}
+                        max={timerOptions.length - 1}
+                        step={1}
+                        onValueChange={(value) => setSoloTimerSeconds(timerOptions[value[0]])}
+                        className="w-full"
+                      />
+>>>>>>> 9773b76 (background)
                     </div>
                   )}
                 </div>

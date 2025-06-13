@@ -13,6 +13,29 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
+const homePageStyle: React.CSSProperties = {
+  minHeight: '100vh',
+  width: '100%',
+  backgroundImage: 'url("/images/background.jpg")',
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  backgroundRepeat: 'no-repeat',
+  backgroundAttachment: 'fixed',
+  position: 'relative',
+  padding: '2rem 0',
+};
+
+const contentStyle: React.CSSProperties = {
+  position: 'relative',
+  zIndex: 1,
+  backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  borderRadius: '0.5rem',
+  padding: '2rem',
+  maxWidth: '1200px',
+  margin: '0 auto',
+  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+};
+
 const HomePage = () => {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const { user } = useAuth();
@@ -173,101 +196,106 @@ const HomePage = () => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-history-primary to-history-secondary text-white">
-      <div className="container mx-auto px-4 py-12">
-        {/* Removed Settings Button */}
-
-      {/* Game instructions, settings, etc. */}
-      <div className="my-4"></div>
-      {gameContext ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          <GameModeCard
-            title="Solo"
-            description="Test your historical knowledge at your own pace. Perfect for learning and exploring."
-            mode="classic"
-            icon={User}
-            onStartGame={handleStartGame}
-            isLoading={isLoading}
-          >
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-1">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center space-x-2">
-                  <Switch 
-                    id="solo-timer-toggle" 
-                    checked={isSoloTimerEnabled}
-                    onCheckedChange={setIsSoloTimerEnabled}
-                    className="data-[state=checked]:bg-orange-500 h-4 w-8"
-                  />
-                  <Label htmlFor="solo-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm">
-                    <Timer className="h-3 w-3" />
-                    <span>Round Timer</span>
-                  </Label>
-                </div>
-                {isSoloTimerEnabled && (
-                  <span className="text-sm font-medium text-orange-400">
-                    {formatTime(soloTimerSeconds)}
-                  </span>
-                )}
-              </div>
-              {isSoloTimerEnabled && (
-                <div>
-                  <div className="flex justify-between text-xs text-gray-400 mb-1">
-                    <span>{formatTime(timerOptions[0])}</span>
-                    <span>1m</span>
-                    <span>3m</span>
-                    <span>5m</span>
+    <div style={homePageStyle}>
+      <div style={contentStyle}>
+        <div className="container mx-auto px-4 py-12">
+          {/* Game instructions, settings, etc. */}
+          <div className="my-4"></div>
+          
+          {gameContext ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+              <GameModeCard
+                title="Solo"
+                description="Test your historical knowledge at your own pace. Perfect for learning and exploring."
+                mode="classic"
+                icon={User}
+                onStartGame={handleStartGame}
+                isLoading={isLoading}
+              >
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <Switch 
+                        id="solo-timer-toggle" 
+                        checked={isSoloTimerEnabled}
+                        onCheckedChange={setIsSoloTimerEnabled}
+                        className="data-[state=checked]:bg-orange-500 h-4 w-8"
+                      />
+                      <Label htmlFor="solo-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm">
+                        <Timer className="h-3 w-3" />
+                        <span>Round Timer</span>
+                      </Label>
+                    </div>
+                    {isSoloTimerEnabled && (
+                      <span className="text-sm font-medium text-orange-400">
+                        {formatTime(soloTimerSeconds)}
+                      </span>
+                    )}
                   </div>
-                  <Slider
-                    defaultValue={[timerOptions.indexOf(300)]} // Default to 5 minutes
-                    min={0}
-                    max={timerOptions.length - 1}
-                    step={1}
-                    onValueChange={(value) => setSoloTimerSeconds(timerOptions[value[0]])}
-                    className="w-full"
-                  />
+                  {isSoloTimerEnabled && (
+                    <div>
+                      <div className="flex justify-between text-xs text-gray-400 mb-1">
+                        <span>{formatTime(timerOptions[0])}</span>
+                        <span>1m</span>
+                        <span>3m</span>
+                        <span>5m</span>
+                      </div>
+                      <Slider
+                        defaultValue={[timerOptions.indexOf(300)]}
+                        min={0}
+                        max={timerOptions.length - 1}
+                        step={1}
+                        onValueChange={(value) => setSoloTimerSeconds(timerOptions[value[0]])}
+                        className="w-full"
+                      />
+                    </div>
+                  )}
                 </div>
-              )}
+              </GameModeCard>
+              
+              <GameModeCard
+                title="Friends"
+                description="Race against the clock! Make quick decisions about historical events."
+                mode="time-attack"
+                icon={Clock}
+                onStartGame={handleStartGame}
+                isLoading={isLoading}
+              />
+              
+              <GameModeCard
+                title="Challenge"
+                description="Compete with others in daily challenges and earn achievements."
+                mode="challenge"
+                icon={Award}
+                onStartGame={handleStartGame}
+                isLoading={isLoading}
+              />
             </div>
-          </GameModeCard>
-          <GameModeCard
-            title="Friends"
-            description="Race against the clock! Make quick decisions about historical events."
-            mode="time-attack"
-            icon={Clock}
-            onStartGame={handleStartGame}
-            isLoading={isLoading}
-          />
-          <GameModeCard
-            title="Challenge"
-            description="Compete with others in daily challenges and earn achievements."
-            mode="challenge"
-            icon={Award}
-            onStartGame={handleStartGame}
-            isLoading={isLoading}
-          />
-        </div>
-      ) : (
-        <div className="text-center py-12">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mx-auto"></div>
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mx-auto"></div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto mt-8">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-64 bg-gray-100 dark:bg-gray-800 rounded-lg p-6 shadow">
-                  <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-4"></div>
-                  <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mx-auto mb-2"></div>
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6 mx-auto mb-4"></div>
-                  <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mx-auto"></div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="animate-pulse space-y-4">
+                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mx-auto"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mx-auto"></div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto mt-8">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-64 bg-gray-100 dark:bg-gray-800 rounded-lg p-6 shadow">
+                      <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-4"></div>
+                      <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mx-auto mb-2"></div>
+                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6 mx-auto mb-4"></div>
+                      <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mx-auto"></div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
       <GlobalSettingsModal 
         isOpen={isSettingsModalOpen} 
-        onClose={() => setIsSettingsModalOpen(false)} 
+        onClose={() => setIsSettingsModalOpen(false)}
+        onSettingsUpdated={handleSettingsUpdated}
       />
       
       <FriendsGameModal
@@ -276,7 +304,7 @@ const HomePage = () => {
         onStartGame={handleStartFriendsGame}
         isLoading={isLoading}
       />
-
+      
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => {
@@ -286,7 +314,6 @@ const HomePage = () => {
         onAuthSuccess={handleAuthSuccess}
         onGuestContinue={handleGuestContinue}
       />
-</div>
     </div>
   );
 };

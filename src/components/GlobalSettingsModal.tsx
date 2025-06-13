@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 interface GlobalSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSettingsUpdated?: () => void;
 }
 
 // Placeholder settings structure - adjust based on actual settings
@@ -17,7 +18,7 @@ interface GameSettings {
   // Add other global game settings here
 }
 
-const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClose }) => {
+const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClose, onSettingsUpdated }) => {
   const [hintsPerGame, setHintsPerGame] = React.useState(3);
   const [timerEnabled, setTimerEnabled] = React.useState(true);
   const [timerSeconds, setTimerSeconds] = React.useState(60); // 1 min
@@ -68,6 +69,9 @@ const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClo
       timerSeconds,
     }));
     onClose();
+    if (onSettingsUpdated) {
+      onSettingsUpdated();
+    }
   };
 
   if (!isOpen) return null;

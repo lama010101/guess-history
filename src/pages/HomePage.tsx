@@ -28,12 +28,11 @@ const homePageStyle: React.CSSProperties = {
 const contentStyle: React.CSSProperties = {
   position: 'relative',
   zIndex: 1,
-  backgroundColor: 'rgba(255, 255, 255, 0.9)',
-  borderRadius: '0.5rem',
-  padding: '2rem',
-  maxWidth: '1200px',
-  margin: '0 auto',
-  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+  backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  minHeight: '100vh',
+  width: '100%',
+  padding: '2rem 1rem',
+  boxSizing: 'border-box',
 };
 
 const HomePage = () => {

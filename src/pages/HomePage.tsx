@@ -246,59 +246,40 @@ const HomePage = () => {
                     )}
                   </div>
                   {isSoloTimerEnabled && (
-                    <div>
-<<<<<<< HEAD
-                      <div className="relative mb-6 mt-4">
-                        {/* Calculate positions for markers based on their values */}
-                        <div className="absolute w-full h-6 pointer-events-none" style={{ bottom: '0px' }}>
-                          {[5, 60, 120, 180, 240, 300].map((value) => {
-                            // Calculate position percentage based on value
-                            const position = ((value - minTimerValue) / (maxTimerValue - minTimerValue)) * 100;
-                            return (
-                              <div 
-                                key={value} 
-                                className="absolute flex flex-col items-center" 
-                                style={{ left: `${position}%`, transform: 'translateX(-50%)' }}
-                              >
-                                <span className="text-xs text-gray-400 mb-1">
-                                  {value === 5 ? '5s' : 
-                                   value === 60 ? '1m' : 
-                                   value === 120 ? '2m' : 
-                                   value === 180 ? '3m' : 
-                                   value === 240 ? '4m' : '5m'}
-                                </span>
-                                <div className="h-1.5 w-0.5 bg-gray-400" />
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <div className="pt-6">
-                          <Slider
-                            value={[soloTimerSeconds]}
-                            min={minTimerValue}
-                            max={maxTimerValue}
-                            step={stepSize}
-                            onValueChange={(value) => setSoloTimerSeconds(value[0])}
-                            className="w-full"
-                          />
-                        </div>
+                    <div className="relative mb-6 mt-4">
+                      {/* Calculate positions for markers based on their values */}
+                      <div className="absolute w-full h-6 pointer-events-none" style={{ bottom: '0px' }}>
+                        {[5, 60, 120, 180, 240, 300].map((value) => {
+                          // Calculate position percentage based on value
+                          const position = ((value - minTimerValue) / (maxTimerValue - minTimerValue)) * 100;
+                          return (
+                            <div 
+                              key={value} 
+                              className="absolute flex flex-col items-center" 
+                              style={{ left: `${position}%`, transform: 'translateX(-50%)' }}
+                            >
+                              <span className="text-xs text-gray-400 mb-1">
+                                {value === 5 ? '5s' : 
+                                 value === 60 ? '1m' : 
+                                 value === 120 ? '2m' : 
+                                 value === 180 ? '3m' : 
+                                 value === 240 ? '4m' : '5m'}
+                              </span>
+                              <div className="h-1.5 w-0.5 bg-gray-400" />
+                            </div>
+                          );
+                        })}
                       </div>
-=======
-                      <div className="flex justify-between text-xs text-gray-400 mb-1">
-                        <span>{formatTime(timerOptions[0])}</span>
-                        <span>1m</span>
-                        <span>3m</span>
-                        <span>5m</span>
+                      <div className="pt-6">
+                        <Slider
+                          value={[soloTimerSeconds]}
+                          min={minTimerValue}
+                          max={maxTimerValue}
+                          step={stepSize}
+                          onValueChange={(value) => setSoloTimerSeconds(value[0])}
+                          className="w-full"
+                        />
                       </div>
-                      <Slider
-                        defaultValue={[timerOptions.indexOf(300)]}
-                        min={0}
-                        max={timerOptions.length - 1}
-                        step={1}
-                        onValueChange={(value) => setSoloTimerSeconds(timerOptions[value[0]])}
-                        className="w-full"
-                      />
->>>>>>> 9773b76 (background)
                     </div>
                   )}
                 </div>

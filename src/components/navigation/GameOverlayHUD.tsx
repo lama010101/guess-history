@@ -83,16 +83,16 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
         {/* Center - Score and accuracy */}
         <div className="flex bg-black/30 backdrop-blur-sm p-2 rounded-lg space-x-2 pointer-events-auto">
           <Badge 
-            variant="accuracy" 
-            className="flex items-center gap-1" 
+            variant="default" 
+            className="flex items-center gap-1 bg-white text-black" 
             aria-label={`Accuracy: ${Math.round(currentAccuracy)}%`}
           >
             <Target className="h-3 w-3" />
             <span>{formatInteger(currentAccuracy)}%</span>
           </Badge>
           <Badge 
-            variant="xp" 
-            className="flex items-center gap-1" 
+            variant="default" 
+            className="flex items-center gap-1 bg-white text-black" 
             aria-label={`Score: ${Math.round(currentScore)}`}
           >
             <Zap className="h-3 w-3" />
@@ -118,7 +118,7 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
       </div>
 
       {/* Bottom bar with Hint button and Home button */}
-      <div className="flex justify-between items-end w-full">
+      <div className="flex justify-between items-end w-full pointer-events-auto">
         {/* Hint button */}
         <div>
           {onHintClick && (

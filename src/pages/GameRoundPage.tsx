@@ -54,6 +54,7 @@ const GameRoundPage = () => {
     isLoading: isContextLoading,
     gameId: contextRoomId,
     roundTimerSec,
+    timerEnabled,
     setGameId
   } = useGame();
   const { toast } = useToast();
@@ -64,8 +65,8 @@ const GameRoundPage = () => {
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedYear, setSelectedYear] = useState(1932);
-  const [remainingTime, setRemainingTime] = useState<number>(roundTimerSec > 0 ? roundTimerSec : 300);
-  const [isTimerActive, setIsTimerActive] = useState<boolean>(roundTimerSec > 0);
+  const [remainingTime, setRemainingTime] = useState<number>(timerEnabled ? roundTimerSec : 0);
+  const [isTimerActive, setIsTimerActive] = useState<boolean>(timerEnabled && roundTimerSec > 0);
   const [hasTimedOut, setHasTimedOut] = useState<boolean>(false);
   const [hasGuessedLocation, setHasGuessedLocation] = useState<boolean>(false);
 
@@ -165,6 +166,7 @@ const GameRoundPage = () => {
 
   // Handle timer completion
   const handleTimeComplete = useCallback(() => {
+    if (!timerEnabled) return;
     console.log("Timer completed - auto submitting");
     setHasTimedOut(true);
     setIsTimerActive(false);
@@ -273,12 +275,12 @@ const GameRoundPage = () => {
 
   // Reset timer and guess state when round changes
   useEffect(() => {
-    setRemainingTime(roundTimerSec);
-    setIsTimerActive(roundTimerSec > 0);
+    setRemainingTime(timerEnabled ? roundTimerSec : 0);
+    setIsTimerActive(timerEnabled && roundTimerSec > 0);
     setHasTimedOut(false);
     setHasGuessedLocation(false);
     setCurrentGuess(null);
-  }, [roundNumber, roundTimerSec]);
+  }, [roundNumber, roundTimerSec, timerEnabled]);
 
 
 
@@ -372,10 +374,10 @@ const GameRoundPage = () => {
               <div className="w-full max-w-md">
                 <Button
                   onClick={handleSubmitGuess}
-                  disabled={isSubmitting || hasTimedOut || (roundTimerSec > 0 && remainingTime <= 0) || !hasGuessedLocation}
+                  disabled={isSubmitting || (timerEnabled && (hasTimedOut || (roundTimerSec > 0 && remainingTime <= 0))) || !hasGuessedLocation}
                   size="lg"
                   className={`submit-guess w-full shadow-lg ${
-                    hasTimedOut || (roundTimerSec > 0 && remainingTime <= 0) || !hasGuessedLocation ? 'opacity-75 cursor-not-allowed' : ''
+                    timerEnabled && (hasTimedOut || (roundTimerSec > 0 && remainingTime <= 0)) || !hasGuessedLocation ? 'opacity-75 cursor-not-allowed' : ''
                   }`}
                 >
                   {isSubmitting ? (
@@ -384,12 +386,12 @@ const GameRoundPage = () => {
                       Submitting...
                     </>
                   ) : (
-                    roundTimerSec > 0 && remainingTime <= 0 ? 'Time\'s Up!' : 'Submit Guess'
+                    timerEnabled && roundTimerSec > 0 && remainingTime <= 0 ? 'Time\'s Up!' : 'Submit Guess'
                   )}
                 </Button>
               </div>
             </TooltipTrigger>
-            {!hasGuessedLocation && !hasTimedOut && (
+            {!hasGuessedLocation && !(timerEnabled && hasTimedOut) && (
               <TooltipContent>
                 <div className="flex items-center">
                   <MapPin className="mr-2 h-4 w-4" />

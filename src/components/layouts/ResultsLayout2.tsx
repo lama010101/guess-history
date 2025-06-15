@@ -77,6 +77,7 @@ interface ResultsLayout2Props {
   error?: string | null;
   result?: RoundResult | null;
   userAvatarUrl?: string;
+  extraButtons?: React.ReactNode;
 }
 
 const ResultsLayout2: React.FC<ResultsLayout2Props> = ({ 
@@ -87,7 +88,8 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
   isLoading = false,
   error,
   result,
-  userAvatarUrl = '/assets/default-avatar.png'
+  userAvatarUrl = '/assets/default-avatar.png',
+  extraButtons
 }) => {
   const { user } = useAuth();
   const [earnedBadge, setEarnedBadge] = useState<BadgeType | null>(null);
@@ -539,7 +541,7 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
               </div>
             </div>
             
-            {/* Home button */}
+            {/* Home button and extra buttons */}
             <div className="mt-6 flex justify-center">
               <Button 
                 variant="outline"
@@ -557,6 +559,7 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
               >
                 <Home className="h-5 w-5" />
               </Button>
+              {extraButtons}
             </div>
           </div>
         </div>

@@ -391,11 +391,11 @@ document:has(.leaflet-fullscreen-on) .hud-element,
   }
 
   .time-slider::-webkit-slider-runnable-track {
-    @apply h-2 rounded-full;
+    @apply h-2 rounded-full bg-transparent border-none;
   }
 
   .time-slider::-moz-range-track {
-    @apply h-2 rounded-full;
+    @apply h-2 rounded-full bg-transparent border-none;
   }
 
   /* Slider markers positioning */

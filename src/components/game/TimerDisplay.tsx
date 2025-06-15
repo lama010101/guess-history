@@ -93,25 +93,34 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
 
   // Timer countdown effect
   useEffect(() => {
-    if (!isActive || remainingTime <= 0) {
-      if (remainingTime <= 0 && onTimeout) {
-        onTimeout();
-      }
-      return;
+    if (!isActive) { // If the timer is not supposed to be running
+      return; // Do nothing, and importantly, don't call onTimeout
     }
 
-    const timer = setInterval(() => {
-      setRemainingTime(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          setTimeout(() => onTimeout?.(), 0);
+    // Timer is active (isActive is true)
+    if (remainingTime <= 0) { // And time is already up
+      if (onTimeout) {
+        onTimeout(); // Call onTimeout if it's provided
+      }
+      return; // Stop further processing for this effect cycle
+    }
+
+    // Timer is active and time > 0, start the interval
+    const timerInterval = setInterval(() => {
+      setRemainingTime(prevTime => {
+        if (prevTime <= 1) {
+          clearInterval(timerInterval);
+          if (onTimeout) {
+            // Ensure onTimeout is called after state update and potential re-render
+            setTimeout(() => onTimeout(), 0);
+          }
           return 0;
         }
-        return prev - 1;
+        return prevTime - 1;
       });
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => clearInterval(timerInterval); // Cleanup interval
   }, [isActive, remainingTime, onTimeout, setRemainingTime]);
 
   if (roundTimerSec <= 0) {

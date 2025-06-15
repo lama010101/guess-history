@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserSettings } from '@/utils/profile/profileService';
+import { useSettingsStore } from '@/lib/useSettingsStore';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -8,7 +9,6 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Settings as SettingsIcon, Moon, Sun, Monitor } from "lucide-react";
-import { useSettingsStore } from '@/lib/useSettingsStore';
 
 interface SettingsTabProps {
   userId: string;
@@ -24,6 +24,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
   onSettingsUpdated
 }) => {
   const [updatedSettings, setUpdatedSettings] = useState<UserSettings>(settings);
+  const { soundEnabled, toggleSound } = useSettingsStore();
   const [saving, setSaving] = useState(false);
   const { setTimerSeconds } = useSettingsStore();
 
@@ -122,8 +123,11 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
           <div className="flex items-center space-x-3">
             <Switch
               id="sound-toggle"
-              checked={updatedSettings.sound_enabled ?? true}
-              onCheckedChange={(checked) => setUpdatedSettings({ ...updatedSettings, sound_enabled: checked })}
+              checked={updatedSettings.sound_enabled ?? soundEnabled}
+              onCheckedChange={(checked) => {
+                setUpdatedSettings({ ...updatedSettings, sound_enabled: checked });
+                toggleSound(); // Update the global sound state
+              }}
             />
             <Label htmlFor="sound-toggle">
               {updatedSettings.sound_enabled ? 'On' : 'Off'}

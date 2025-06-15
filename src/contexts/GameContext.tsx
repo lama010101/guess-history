@@ -597,6 +597,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     setIsLoading(false);
   }, [clearSavedGameState, gameId]);
 
+  // Timer initialization is handled in GameRoundPage.tsx
+
   const contextValue = {
     gameId,
     setGameId, // Add setGameId to the context value

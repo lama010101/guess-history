@@ -10,10 +10,13 @@ import { awardRoundBadges } from '@/utils/badges/badgeService';
 import { Badge } from '@/utils/badges/types';
 import { toast as sonnerToast } from '@/components/ui/sonner';
 import { ConfirmNavigationDialog } from '@/components/game/ConfirmNavigationDialog';
+import ImageRatingModal from '@/components/rating/ImageRatingModal';
 // Import RoundResult type from context if not already imported by ResultsLayout2 or define mapping
 import { RoundResult as ContextRoundResult, GameImage } from '@/contexts/GameContext';
 // Import the RoundResult type expected by ResultsLayout2
 import { RoundResult as LayoutRoundResultType } from '@/utils/resultsFetching';
+// Import supabase client
+import { supabase } from '@/integrations/supabase/client';
 // Import standardized scoring system
 import { 
   MAX_DIST_KM,
@@ -61,6 +64,7 @@ const RoundResultsPage = () => {
   const { user } = useAuth();
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+  const [showRatingModal, setShowRatingModal] = useState(false);
   
   // Use useParams for new route structure
   const { roomId, roundNumber: roundNumberStr } = useParams<{ roomId: string; roundNumber: string }>(); 
@@ -294,6 +298,8 @@ const RoundResultsPage = () => {
     );
   }
 
+
+
   // Pass the correctly mapped result to the layout
   return (
     <>
@@ -304,7 +310,23 @@ const RoundResultsPage = () => {
         round={roundNumber}
         isLoading={navigating}
         error={null} 
-        result={resultForLayout} 
+        result={resultForLayout}
+        extraButtons={
+          user && currentImage && roomId ? (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowRatingModal(true)}
+              className="h-12 w-12 rounded-full bg-white/90 hover:bg-white shadow-md ml-2"
+              aria-label="Rate Image"
+              title="Rate this image"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-star">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </Button>
+          ) : null
+        }
       />
       <ConfirmNavigationDialog
         isOpen={showConfirmDialog}
@@ -314,6 +336,17 @@ const RoundResultsPage = () => {
           pendingNavigation?.();
         }}
       />
+      
+      {/* Image Rating Modal */}
+      {user && currentImage && roomId && (
+        <ImageRatingModal
+          isOpen={showRatingModal}
+          onClose={() => setShowRatingModal(false)}
+          userId={user.id}
+          imageId={currentImage.id}
+          roundId={roomId}
+        />
+      )}
     </>
   );
 };

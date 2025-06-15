@@ -58,12 +58,16 @@ const HomePage = () => {
   const gameContext = useGame();
   const { startGame, isLoading } = gameContext || {};
   
-  // Timer options in seconds with 5-second intervals
-  const timerOptions = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 120, 180, 240, 300]; // 5s to 5m
+  // Timer range in seconds with 5-second intervals from 5s to 5m (300s)
+  const minTimerValue = 5; // 5 seconds
+  const maxTimerValue = 300; // 5 minutes
+  const stepSize = 5; // 5-second intervals
   
   const formatTime = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`;
-    return `${Math.floor(seconds / 60)}m`;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return remainingSeconds > 0 ? `${minutes}m${remainingSeconds}s` : `${minutes}m`;
   };
 
   useEffect(() => {
@@ -241,20 +245,41 @@ const HomePage = () => {
                   </div>
                   {isSoloTimerEnabled && (
                     <div>
-                      <div className="flex justify-between text-xs text-gray-400 mb-1">
-                        <span>{formatTime(timerOptions[0])}</span>
-                        <span>1m</span>
-                        <span>3m</span>
-                        <span>5m</span>
+                      <div className="relative mb-6 mt-4">
+                        {/* Calculate positions for markers based on their values */}
+                        <div className="absolute w-full h-6 pointer-events-none" style={{ bottom: '0px' }}>
+                          {[5, 60, 120, 180, 240, 300].map((value) => {
+                            // Calculate position percentage based on value
+                            const position = ((value - minTimerValue) / (maxTimerValue - minTimerValue)) * 100;
+                            return (
+                              <div 
+                                key={value} 
+                                className="absolute flex flex-col items-center" 
+                                style={{ left: `${position}%`, transform: 'translateX(-50%)' }}
+                              >
+                                <span className="text-xs text-gray-400 mb-1">
+                                  {value === 5 ? '5s' : 
+                                   value === 60 ? '1m' : 
+                                   value === 120 ? '2m' : 
+                                   value === 180 ? '3m' : 
+                                   value === 240 ? '4m' : '5m'}
+                                </span>
+                                <div className="h-1.5 w-0.5 bg-gray-400" />
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="pt-6">
+                          <Slider
+                            value={[soloTimerSeconds]}
+                            min={minTimerValue}
+                            max={maxTimerValue}
+                            step={stepSize}
+                            onValueChange={(value) => setSoloTimerSeconds(value[0])}
+                            className="w-full"
+                          />
+                        </div>
                       </div>
-                      <Slider
-                        defaultValue={[timerOptions.indexOf(300)]}
-                        min={0}
-                        max={timerOptions.length - 1}
-                        step={1}
-                        onValueChange={(value) => setSoloTimerSeconds(timerOptions[value[0]])}
-                        className="w-full"
-                      />
                     </div>
                   )}
                 </div>

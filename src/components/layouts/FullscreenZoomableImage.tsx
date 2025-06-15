@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, WheelEvent } from "react";
 
 interface FullscreenZoomableImageProps {
   image: { url: string; placeholderUrl: string; title: string };
@@ -8,6 +8,7 @@ interface FullscreenZoomableImageProps {
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
 const ZOOM_STEP = 0.2;
+const WHEEL_ZOOM_FACTOR = 0.1; // Smaller factor for smoother wheel zooming
 
 const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image, onExit }) => {
   const [zoom, setZoom] = useState(1);
@@ -24,18 +25,69 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   // Zoom controls
   const zoomIn = () => setZoom(z => Math.min(MAX_ZOOM, +(z + ZOOM_STEP).toFixed(2)));
   const zoomOut = () => setZoom(z => Math.max(MIN_ZOOM, +(z - ZOOM_STEP).toFixed(2)));
+  
+  // Calculate zoom centered on mouse position
+  const zoomAtPoint = (newZoom: number, clientX: number, clientY: number) => {
+    if (!imgRef.current || !containerRef.current) return;
+    
+    // Constrain zoom level
+    newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
+    
+    // Get container dimensions and position
+    const container = containerRef.current.getBoundingClientRect();
+    
+    // Calculate relative position of mouse in image space
+    const relX = (clientX - container.left) / container.width;
+    const relY = (clientY - container.top) / container.height;
+    
+    // Calculate how the offset should change to keep the point under cursor
+    const prevZoom = zoom;
+    const scaleChange = newZoom / prevZoom;
+    
+    // Calculate new offset to maintain the point under cursor
+    const newOffsetX = offset.x * scaleChange + (1 - scaleChange) * (container.width * relX);
+    const newOffsetY = offset.y * scaleChange + (1 - scaleChange) * (container.height * relY);
+    
+    // Update state
+    setZoom(newZoom);
+    setOffset({ x: newOffsetX, y: newOffsetY });
+  };
 
   // Mouse drag
   const handleMouseDown = (e: React.MouseEvent) => {
     if (zoom === 1) return;
     setDragging(true);
     setLastPos({ x: e.clientX - offset.x, y: e.clientY - offset.y });
+    // Change cursor to grabbing
+    if (imgRef.current) {
+      imgRef.current.style.cursor = 'grabbing';
+    }
   };
+  
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!dragging) return;
     setOffset({ x: e.clientX - lastPos.x, y: e.clientY - lastPos.y });
   };
-  const handleMouseUp = () => setDragging(false);
+  
+  const handleMouseUp = () => {
+    setDragging(false);
+    // Change cursor back to grab
+    if (imgRef.current) {
+      imgRef.current.style.cursor = 'grab';
+    }
+  };
+  
+  // Mouse wheel zoom
+  const handleWheel = (e: WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    
+    // Calculate zoom direction based on wheel delta
+    const delta = -Math.sign(e.deltaY) * WHEEL_ZOOM_FACTOR;
+    const newZoom = +(zoom + delta).toFixed(2);
+    
+    // Apply zoom centered at mouse position
+    zoomAtPoint(newZoom, e.clientX, e.clientY);
+  };
 
   // Touch drag & pinch
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -47,30 +99,47 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
       lastTouchDist.current = getTouchDist(e);
     }
   };
+  
   const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault(); // Prevent browser gestures
+    
     if (e.touches.length === 1 && dragging) {
+      // Single touch - pan
       setOffset({ x: e.touches[0].clientX - lastPos.x, y: e.touches[0].clientY - lastPos.y });
     } else if (e.touches.length === 2) {
+      // Two touches - pinch zoom
       const dist = getTouchDist(e);
+      
       if (lastTouchDist.current !== null) {
         const delta = dist - lastTouchDist.current;
-        if (Math.abs(delta) > 5) {
-          setZoom(z => {
-            let newZoom = z + (delta > 0 ? ZOOM_STEP : -ZOOM_STEP);
-            newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
-            return +newZoom.toFixed(2);
-          });
+        
+        // Only zoom if the change is significant
+        if (Math.abs(delta) > 2) {
+          // Calculate center point between the two touches
+          const touch1 = e.touches[0];
+          const touch2 = e.touches[1];
+          const centerX = (touch1.clientX + touch2.clientX) / 2;
+          const centerY = (touch1.clientY + touch2.clientY) / 2;
+          
+          // Calculate zoom factor based on pinch distance change
+          const zoomFactor = delta * 0.005; // Smaller factor for smoother zooming
+          const newZoom = +(zoom + zoomFactor).toFixed(2);
+          
+          // Apply zoom centered at pinch center point
+          zoomAtPoint(newZoom, centerX, centerY);
         }
       }
+      
       lastTouchDist.current = dist;
     }
   };
+  
   const handleTouchEnd = () => {
     setDragging(false);
     lastTouchDist.current = null;
   };
+  
   const getTouchDist = (e: React.TouchEvent) => {
-    // Fix for TypeScript error: TouchList must have Symbol.iterator
     if (e.touches.length >= 2) {
       const a = e.touches[0];
       const b = e.touches[1];
@@ -79,6 +148,38 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
     return 0;
   };
 
+  // Constrain panning to prevent image from being moved too far outside view
+  useEffect(() => {
+    if (zoom === 1) {
+      // Reset offset when at minimum zoom
+      setOffset({ x: 0, y: 0 });
+      return;
+    }
+    
+    if (!imgRef.current || !containerRef.current) return;
+    
+    // Get image and container dimensions
+    const img = imgRef.current.getBoundingClientRect();
+    const container = containerRef.current.getBoundingClientRect();
+    
+    // Calculate boundaries based on zoom level
+    const zoomedImgWidth = img.width * zoom;
+    const zoomedImgHeight = img.height * zoom;
+    
+    // Calculate maximum allowed offset to keep image partially visible
+    const maxOffsetX = Math.max(0, (zoomedImgWidth - container.width) / 2);
+    const maxOffsetY = Math.max(0, (zoomedImgHeight - container.height) / 2);
+    
+    // Constrain offset within boundaries
+    const constrainedX = Math.min(maxOffsetX, Math.max(-maxOffsetX, offset.x));
+    const constrainedY = Math.min(maxOffsetY, Math.max(-maxOffsetY, offset.y));
+    
+    // Update offset if it changed
+    if (constrainedX !== offset.x || constrainedY !== offset.y) {
+      setOffset({ x: constrainedX, y: constrainedY });
+    }
+  }, [zoom, offset]);
+  
   // Reset pan/zoom on open/close and handle image preloading
   useEffect(() => {
     setZoom(1);
@@ -124,6 +225,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
+      onWheel={handleWheel}
       style={{ touchAction: "none" }}
     >
       {/* Loading Spinner */}
@@ -143,6 +245,9 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
         >
           +
         </button>
+        <div className="w-10 h-8 flex items-center justify-center text-xs font-medium bg-white/90 border-b border-gray-200">
+          {Math.round(zoom * 100)}%
+        </div>
         <button
           onClick={zoomOut}
           disabled={zoom <= MIN_ZOOM}
@@ -152,6 +257,12 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
         >
           –
         </button>
+      </div>
+      
+      {/* Instructions tooltip */}
+      <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm pointer-events-none transition-opacity duration-300" 
+           style={{ opacity: isLoading ? 0 : 0.8 }}>
+        Use mouse wheel or pinch to zoom, drag to pan
       </div>
       {/* Image */}
       <div className="relative w-full h-full flex items-center justify-center">

@@ -1,0 +1,9 @@
+/* Custom styles for map fullscreen mode */
+.leaflet-fullscreen-on .game-overlay-hud {
+  display: none !important;
+}
+
+/* Ensure the fullscreen map has a higher z-index than other elements */
+.leaflet-container.leaflet-fullscreen {
+  z-index: 9999 !important;
+}

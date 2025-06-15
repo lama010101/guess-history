@@ -63,7 +63,7 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
   };
 
   return (
-    <div className={`absolute inset-0 z-40 flex flex-col justify-between p-4 pointer-events-none ${className || ''}`}>
+    <div className={`absolute inset-0 z-40 flex flex-col justify-between p-4 pointer-events-none game-overlay-hud ${className || ''}`}>
       {/* Top bar - Score in center, Home button on right */}
       <div className="flex justify-between items-start w-full">
         {/* Left side - Timer */}

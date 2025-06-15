@@ -4,6 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { FullscreenControl } from 'react-leaflet-fullscreen';
 import 'react-leaflet-fullscreen/styles.css';
+import '@/styles/map-fullscreen.css';
 import { Badge } from "@/components/ui/badge";
 
 interface HomeMapProps {

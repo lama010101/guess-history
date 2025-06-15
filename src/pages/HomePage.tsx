@@ -14,23 +14,31 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
 const homePageStyle: React.CSSProperties = {
-  minHeight: '100vh',
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
   width: '100%',
+  height: '100%',
   backgroundImage: 'url("/images/background.jpg")',
   backgroundSize: 'cover',
   backgroundPosition: 'center',
   backgroundRepeat: 'no-repeat',
   backgroundAttachment: 'fixed',
-  position: 'relative',
-  padding: '2rem 0',
 };
 
 const contentStyle: React.CSSProperties = {
-  position: 'relative',
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
   zIndex: 1,
   backgroundColor: 'rgba(0, 0, 0, 0.7)',
-  minHeight: '100vh',
   width: '100%',
+  height: '100%',
+  overflowY: 'auto',
   padding: '2rem 1rem',
   boxSizing: 'border-box',
 };

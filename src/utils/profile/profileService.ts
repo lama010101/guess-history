@@ -1,5 +1,13 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { generateRandomUsername } from '@/utils/usernameGenerator';
+import { getRandomAvatar as getServiceRandomAvatar, updateUserAvatar } from '@/services/avatarService';
+
+// Re-export the avatar service functions
+export { updateUserAvatar };
+
+// Alias the function to avoid naming conflicts
+const getRandomAvatarFromService = getServiceRandomAvatar;
 
 export interface UserProfile {
   id: string;
@@ -10,12 +18,11 @@ export interface UserProfile {
   updated_at?: string;
 }
 
-export interface Avatar {
-  id: string;
-  name: string;
-  image_url: string;
-  created_at: string;
-}
+// Import the Avatar type from the avatar service
+import type { Avatar } from '@/services/avatarService';
+
+// Re-export the Avatar type for backward compatibility
+export type { Avatar };
 
 export interface UserStats {
   games_played: number;
@@ -132,163 +139,98 @@ export async function fetchUserProfile(userId: string): Promise<UserProfile | nu
   }
 }
 
-// Update user avatar
-// Find a matching avatar based on user's display name
-export async function findMatchingAvatar(displayName: string | undefined, isGuest: boolean = false): Promise<Avatar | null> {
+// Get a random avatar from the avatar service
+export async function getRandomAvatar(): Promise<Avatar | null> {
   try {
-    if (!displayName) return null;
-    
-    // Get all available avatars
-    const avatars = await fetchAvatars();
-    if (avatars.length === 0) return null;
-    
-    // For guest users, try to find an avatar with 'guest' in the name
-    if (isGuest) {
-      const guestAvatars = avatars.filter(avatar => 
-        avatar.name.toLowerCase().includes('guest'));
-      
-      if (guestAvatars.length > 0) {
-        // Return a random guest avatar
-        return guestAvatars[Math.floor(Math.random() * guestAvatars.length)];
-      }
-    }
-    
-    // Get the first letter of the display name
-    const firstLetter = displayName.charAt(0).toLowerCase();
-    
-    // Try to find an avatar that starts with the same letter
-    const matchingAvatars = avatars.filter(avatar => 
-      avatar.name.charAt(0).toLowerCase() === firstLetter);
-    
-    if (matchingAvatars.length > 0) {
-      // Return a random matching avatar
-      return matchingAvatars[Math.floor(Math.random() * matchingAvatars.length)];
-    }
-    
-    // If no match found, return a random avatar
-    return avatars[Math.floor(Math.random() * avatars.length)];
+    // Use the service function to get a random avatar
+    return await getRandomAvatarFromService();
   } catch (error) {
-    console.error('Error in findMatchingAvatar:', error);
+    console.error('Error in getRandomAvatar:', error);
     return null;
   }
 }
 
-export async function updateUserAvatar(userId: string, avatarId: string, customImageUrl: string | null = null): Promise<boolean> {
-  try {
-    let imageUrl = customImageUrl;
-    
-    // If no custom image URL provided, fetch from avatars table
-    if (!customImageUrl) {
-      const { data: avatarData, error: avatarError } = await supabase
-        .from('avatars')
-        .select('image_url')
-        .eq('id', avatarId)
-        .single();
-        
-      if (avatarError || !avatarData) {
-        console.error('Error fetching avatar:', avatarError);
-        return false;
-      }
-      
-      imageUrl = avatarData.image_url;
-    }
-    
-    // Update the user profile with the new avatar
-    const { error } = await supabase
-      .from('profiles')
-      .update({ 
-        avatar_url: imageUrl,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', userId);
-      
-    if (error) {
-      console.error('Error updating avatar:', error);
-      return false;
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error in updateUserAvatar:', error);
-    return false;
-  }
-}
+// Use the imported updateUserAvatar from avatar service
 
 // Create a new user profile if it doesn't exist
-export async function createUserProfileIfNotExists(userId: string, displayName: string, isGuest: boolean = false): Promise<boolean> {
+export async function createUserProfileIfNotExists(userId: string, displayName?: string, isGuest: boolean = false): Promise<{ success: boolean; profile?: UserProfile; error?: string }> {
   try {
     console.log(`Checking if profile exists for user ${userId}`);
     
     // Check if profile exists
-    const { data, error: fetchError } = await supabase
+    const { data: existingProfile, error: fetchError } = await supabase
       .from('profiles')
-      .select('id')
+      .select('*')
       .eq('id', userId)
       .single();
       
-    // If profile exists, no need to create one
-    if (data) {
+    // If profile exists, return it
+    if (existingProfile) {
       console.log(`Profile already exists for user ${userId}`);
-      return true;
+      return { success: true, profile: existingProfile as UserProfile };
     }
     
     // If error is not "not found", then something else went wrong
     if (fetchError && fetchError.code !== 'PGRST116') {
       console.error('Error checking profile existence:', fetchError);
-      return false;
+      return { success: false, error: fetchError.message };
     }
     
-    // Create new profile
-    const defaultAvatarUrl = 'https://api.dicebear.com/6.x/adventurer/svg?seed=' + userId;
+    // Generate a random username if none provided
+    const username = displayName || generateRandomUsername();
     
-    // Prepare the profile data based on the actual database schema
-    const profileData: any = {
+    // Get a random avatar from the storage bucket
+    const randomAvatar = await getRandomAvatarFromService();
+    
+    if (!randomAvatar) {
+      console.error('Failed to get random avatar from storage bucket');
+      return { 
+        success: false, 
+        error: 'Failed to initialize profile. Please try again later.' 
+      };
+    }
+    
+    // Prepare the profile data with all required fields
+    const profileData = {
       id: userId,
-      display_name: displayName,
-      avatar_url: defaultAvatarUrl,
+      display_name: username,
+      avatar_url: randomAvatar.url,
+      avatar_name: randomAvatar.name,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      // Add any other required fields with default values
+      avatar_image_url: randomAvatar.url, // Use url as image_url
+      earned_badges: [] as string[]
     };
-    
-    // If this is a guest user, mark it as such using avatar_url field
-    if (isGuest) {
-      profileData.avatar_url = 'guest';
-    }
     
     console.log('Creating new profile with data:', profileData);
     
-    const { data: insertData, error } = await supabase
+    const { data: newProfile, error: insertError } = await supabase
       .from('profiles')
       .insert(profileData)
-      .select();
+      .select()
+      .single();
       
-    if (error) {
-      console.error('Error creating profile:', error);
-      return false;
+    if (insertError) {
+      console.error('Error creating profile:', insertError);
+      return { success: false, error: insertError.message };
     }
     
-    console.log('Profile created successfully:', insertData);
-    return true;
+    console.log('Profile created successfully:', newProfile);
+    return { success: true, profile: newProfile as UserProfile }; 
   } catch (error) {
     console.error('Error in createUserProfileIfNotExists:', error);
-    return false;
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error occurred' 
+    };
   }
 }
 
-// Fetch available avatars
+// For backward compatibility
 export async function fetchAvatars(): Promise<Avatar[]> {
   try {
-    const { data, error } = await supabase
-      .from('avatars')
-      .select('*')
-      .order('created_at');
-
-    if (error) {
-      console.error('Error fetching avatars:', error);
-      return [];
-    }
-
-    return data as Avatar[];
+    return await getRandomAvatarFromService() ? [await getRandomAvatarFromService()] : [];
   } catch (error) {
     console.error('Error in fetchAvatars:', error);
     return [];

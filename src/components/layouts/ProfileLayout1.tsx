@@ -51,7 +51,7 @@ const ProfileLayout1 = () => {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [metrics, setMetrics] = useState<Record<BadgeRequirementCode, number> | null>(null);
-  const [avatars, setAvatars] = useState<{ id: string; name: string; image_url: string }[]>([]);
+  const [avatars, setAvatars] = useState<{ id: string; name: string; url: string }[]>([]); // Changed image_url to url
   const [badgeEvaluations, setBadgeEvaluations] = useState<BadgeEvaluation[]>([]);
   
   // Loading states
@@ -103,10 +103,10 @@ const ProfileLayout1 = () => {
           setProfile({
             id: user.id,
             display_name: user.display_name || 'Guest User',
-            avatar_url: user.avatar_url || '',
+            avatar_url: user.avatar_url || 'https://api.dicebear.com/6.x/adventurer/svg?seed=' + user.id, // Corrected field and ensured a fallback
             email: 'guest@example.com',
             created_at: new Date().toISOString(),
-            avatar_image_url: user.avatar_url || 'https://api.dicebear.com/6.x/adventurer/svg?seed=' + user.id
+            // avatar_image_url is not a property of UserProfile, avatar_url is used
           });
           setSettings({
             theme: 'light',
@@ -356,8 +356,8 @@ const ProfileLayout1 = () => {
           <TabsContent value="avatars" className="mt-0">
             <AvatarsTab 
               profile={profile} 
-              avatars={avatars} 
-              isLoading={avatarsLoading}
+              // avatars prop is not used by AvatarsTab anymore, it fetches its own
+              // isLoading prop is also not used by AvatarsTab as it manages its own loading state
               onAvatarUpdated={refreshData}
             />
           </TabsContent>
@@ -367,6 +367,7 @@ const ProfileLayout1 = () => {
               <SettingsTab 
                 userId={user.id}
                 settings={settings}
+                profileDisplayName={profile?.display_name || ''} // Pass the display name
                 isLoading={settingsLoading}
                 onSettingsUpdated={refreshData}
               />

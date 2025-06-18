@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
+import { assignRandomAvatarAndUsername, needsAvatarOrUsername } from '@/services/avatarService';
 
 // Define types for our users
 export type AuthUser = User & {
@@ -103,6 +104,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           try {
             const guestUser = JSON.parse(guestSession) as GuestUser;
             console.log("Found guest session:", guestUser);
+            
+            // Check if the guest user has an avatar and username
+            // If not, assign them (this handles existing guest sessions without avatars)
+            if (!guestUser.avatar_url || !guestUser.display_name) {
+              console.log("Guest user missing avatar or username, assigning...");
+              const { avatar, username } = await assignRandomAvatarAndUsername();
+              
+              if (avatar && username) {
+                guestUser.avatar_url = avatar.url;
+                guestUser.display_name = username;
+                // Update localStorage with the updated guest user
+                localStorage.setItem('guestSession', JSON.stringify(guestUser));
+              }
+            }
+            
             setUser(guestUser);
             setSession(null);
             setIsGuest(true);
@@ -120,6 +136,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const authUser = session.user as AuthUser;
           authUser.type = 'auth';
           authUser.isGuest = false;
+          
+          // Check if the authenticated user needs an avatar or username
+          const needsAssignment = await needsAvatarOrUsername(authUser.id);
+          
+          // If they need an avatar or username, assign one
+          if (needsAssignment) {
+            console.log("User missing avatar or username, assigning...");
+            const { avatar, username } = await assignRandomAvatarAndUsername();
+            
+            if (avatar && username) {
+              // Update the user's profile in Supabase
+              await supabase.from('profiles').upsert({
+                id: authUser.id,
+                avatar_url: avatar.url,
+                avatar_name: avatar.name,
+                avatar_image_url: avatar.url,
+                display_name: username,
+                updated_at: new Date().toISOString()
+              });
+              
+              console.log("Assigned avatar and username to user:", username, avatar.url);
+            }
+          }
+          
           setUser(authUser);
           setSession(session);
           setIsGuest(false);
@@ -172,62 +212,82 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       setIsLoading(true);
       console.log("[2] Loading state set to true");
-
-      // Generate a simple display name
-      const randomName = `Guest${Math.floor(Math.random() * 10000)}`;
-      const displayName = randomName;
       
       // Create a guest ID with the guest_ prefix
       const guestId = `guest_${uuidv4()}`;
       console.log(`[3] Generated guest ID: ${guestId}`);
       
-      const avatarUrl = `https://api.dicebear.com/6.x/adventurer/svg?seed=${randomName}`;
+      // Get a random avatar and username from our new utility function
+      const { avatar, username } = await assignRandomAvatarAndUsername();
+      
+      if (!avatar || !username) {
+        throw new Error("Failed to assign avatar and username");
+      }
+      
+      console.log(`[4] Assigned avatar: ${avatar.name} and username: ${username}`);
       
       // Create guest user object
       const guestUser: GuestUser = {
         id: guestId,
         type: 'guest',
         isGuest: true,
-        display_name: displayName,
-        avatar_url: avatarUrl
+        display_name: username,
+        avatar_url: avatar.url
       };
-      console.log(`[4] Created guest user object:`, JSON.stringify(guestUser));
+      console.log(`[5] Created guest user object:`, JSON.stringify(guestUser));
 
-      console.log("[5] Saving guest to localStorage first");
+      console.log("[7] Saving guest to localStorage first");
       localStorage.setItem('guestSession', JSON.stringify(guestUser));
       
-      console.log("[6] Updating React state");
+      console.log("[8] Updating React state");
       setUser(guestUser);
+      setSession(null);
       setIsGuest(true);
+      setIsGoogleUser(false);
       
-      // Create the profile in the database after localStorage and state are updated
-      console.log("[7] Creating guest user in database...");
-      try {
-        // Direct insert into profiles table - matches the exact schema
-        const { data, error } = await supabase
-          .from('profiles')
-          .insert({
-            id: guestId,
-            display_name: displayName,
-            avatar_url: 'guest', // Mark as guest in avatar_url
-            avatar_image_url: avatarUrl,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select();
-          
-        if (error) {
-          console.error("[ERROR] Error inserting guest profile into database:", error);
-        } else {
-          console.log("[8] Guest profile created in database successfully:", data);
+      console.log("[9] Creating anonymous session in Supabase");
+      const { data, error } = await supabase.auth.signUp({
+        email: `${guestId}@anonymous.user`,
+        password: uuidv4(),
+      });
+      
+      if (error) {
+        console.error("[10] Error creating anonymous session:", error);
+      } else {
+        console.log("[10] Anonymous session created successfully");
+        
+        // Create profile for the anonymous user
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            console.log("[11] Creating profile for anonymous user:", user.id);
+            // Create profile with the same display name and avatar
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .insert([
+                { 
+                  id: user.id,
+                  display_name: username,
+                  avatar_url: avatar.url,
+                  avatar_name: avatar.name,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                  avatar_image_url: avatar.url,
+                  earned_badges: []
+                },
+              ]);
+            
+            if (profileError) {
+              console.error("[12] Error creating profile:", profileError);
+            } else {
+              console.log("[12] Profile created successfully");
+            }
+          }
+        } catch (profileError) {
+          console.error("[11] Error in profile creation:", profileError);
         }
-      } catch (dbError) {
-        console.error("[ERROR] Exception during database operation:", dbError);
-        // Continue since we already updated localStorage and state
       }
-      
-      console.log("[9] Guest user creation complete!");
-      return guestUser;
+      // Continue since we already updated localStorage and state
     } catch (error) {
       console.error("[CRITICAL ERROR] Error in continueAsGuest:", error);
       
@@ -236,12 +296,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const fallbackGuestId = `guest_${uuidv4()}`;
       const fallbackName = `Guest${Math.floor(Math.random() * 10000)}`;
       
+      // Try to get a simple avatar from our bucket, or use dicebear as last resort
+      let fallbackAvatarUrl = `https://api.dicebear.com/6.x/adventurer/svg?seed=${fallbackName}`;
+      
+      try {
+        const { data: files } = await supabase.storage
+          .from('avatars')
+          .list();
+        
+        if (files && files.length > 0) {
+          // Get the first .png or .jpg file we can find
+          const avatarFile = files.find(f => f.name.endsWith('.png') || f.name.endsWith('.jpg'));
+          if (avatarFile) {
+            const { data: { publicUrl } } = supabase.storage
+              .from('avatars')
+              .getPublicUrl(avatarFile.name);
+            fallbackAvatarUrl = publicUrl;
+          }
+        }
+      } catch (e) {
+        console.error("Error getting fallback avatar", e);
+      }
+      
       const fallbackGuestUser: GuestUser = {
         id: fallbackGuestId,
         type: 'guest',
         isGuest: true,
         display_name: fallbackName,
-        avatar_url: `https://api.dicebear.com/6.x/adventurer/svg?seed=${fallbackName}`
+        avatar_url: fallbackAvatarUrl
       };
       
       localStorage.setItem('guestSession', JSON.stringify(fallbackGuestUser));

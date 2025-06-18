@@ -8,11 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Settings as SettingsIcon, Moon, Sun, Monitor } from "lucide-react";
+import { Settings as SettingsIcon, Moon, Sun, Monitor, User } from "lucide-react";
+import UsernameEditor from './UsernameEditor'; // Assuming UsernameEditor.tsx is in the same directory
 
 interface SettingsTabProps {
   userId: string;
   settings: UserSettings;
+  profileDisplayName: string; // Added to pass the display name from UserProfile
   isLoading: boolean;
   onSettingsUpdated: () => void;
 }
@@ -20,6 +22,7 @@ interface SettingsTabProps {
 const SettingsTab: React.FC<SettingsTabProps> = ({ 
   userId, 
   settings, 
+  profileDisplayName, // Destructure new prop
   isLoading,
   onSettingsUpdated
 }) => {
@@ -81,6 +84,27 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
   return (
     <div className="glass-card rounded-xl p-6">
       <h3 className="text-lg font-semibold mb-6 text-history-primary dark:text-history-light">Your Settings</h3>
+      
+      {/* Username Section */}
+      <div className="mb-8">
+        <div className="flex items-center gap-2 mb-2">
+          <User className="h-5 w-5 text-history-primary" />
+          <Label className="text-history-primary dark:text-history-light">Username</Label>
+        </div>
+        <div className="bg-white/50 dark:bg-gray-800/50 p-4 rounded-lg">
+          <UsernameEditor 
+            userId={userId} 
+            currentUsername={profileDisplayName} 
+            onUsernameUpdated={(newUsername) => {
+              // Username is updated in DB by UsernameEditor.
+              // Call onSettingsUpdated to refresh profile data in the parent component.
+              onSettingsUpdated();
+              // If you want to reflect the change immediately in SettingsTab's state for other purposes,
+              // you might need a separate state for display name here, but updatedSettings is UserSettings type.
+            }} 
+          />
+        </div>
+      </div>
       
       <div className="space-y-6">
         {/* Theme Setting */}

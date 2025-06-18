@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Clock, Users, Calendar, Info } from "lucide-react";
@@ -243,13 +242,19 @@ const HomeLayout1 = () => {
             setPendingMode(null);
           }
         }}
-        onGuestContinue={() => {
+        onGuestContinue={async () => {
           console.log('[DEBUG] AuthModal: onGuestContinue triggered');
-          setShowAuthModal(false);
-          if (pendingMode) {
-            console.log('[DEBUG] AuthModal: Starting game after guest continue:', pendingMode);
-            startGame(pendingMode);
-            setPendingMode(null);
+          try {
+            const guestUser = await continueAsGuest();
+            console.log('[DEBUG] Guest user signed in:', guestUser);
+            setShowAuthModal(false);
+            if (pendingMode) {
+              console.log('[DEBUG] AuthModal: Starting game after guest continue:', pendingMode);
+              startGame(pendingMode);
+              setPendingMode(null);
+            }
+          } catch (error) {
+            console.error('[ERROR] Failed to sign in as guest:', error);
           }
         }}
       />

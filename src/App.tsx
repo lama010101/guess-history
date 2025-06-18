@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { GameProvider, useGame } from "@/contexts/GameContext"; // Added useGame
 import { LogProvider, useConsoleLogging } from "@/contexts/LogContext";
 import { LogWindowModal } from "@/components/LogWindowModal";
+import { AuthGate } from "components/AuthGate";
 
 import TestLayout from "./layouts/TestLayout";
 import HomePage from "./pages/HomePage";
@@ -34,23 +35,22 @@ const AuthRedirectHandler = () => {
   useEffect(() => {
     // Check for hash fragment which indicates a redirect from OAuth
     const handleAuthRedirect = async () => {
-      // Get current URL hash
+      // Get current URL hash and query params
       const hashParams = window.location.hash;
+      const queryParams = new URLSearchParams(window.location.search);
       
-      if (hashParams && hashParams.includes('access_token')) {
-        console.log("Detected OAuth redirect with access token");
+      // Check for Supabase auth callback in either hash or query params
+      const isAuthCallback = 
+        (hashParams && hashParams.includes('access_token')) || 
+        queryParams.get('code') || 
+        queryParams.get('error_description');
+      
+      if (isAuthCallback) {
+        console.log("Detected OAuth redirect");
         
         try {
-          // First set the access token from URL into storage
-          const accessToken = new URLSearchParams(hashParams.substring(1)).get('access_token');
-          if (accessToken) {
-            await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: '',
-            });
-          }
-          
-          // Then get the session which will now include the token we just set
+          // Let Supabase handle the redirect automatically
+          // This will parse the URL and set up the session
           const { data, error } = await supabase.auth.getSession();
           
           if (error) {
@@ -58,9 +58,30 @@ const AuthRedirectHandler = () => {
             return;
           }
           
+          // If no session, try to exchange the code for a session
+          if (!data?.session && queryParams.get('code')) {
+            console.log("Attempting to exchange code for session");
+            const { data: exchangeData, error: exchangeError } = 
+              await supabase.auth.exchangeCodeForSession(queryParams.get('code') || '');
+              
+            if (exchangeError) {
+              console.error("Error exchanging code for session:", exchangeError);
+              return;
+            }
+            
+            if (exchangeData?.session) {
+              console.log("Successfully exchanged code for session");
+              // Scrub the URL params so you don't leak tokens
+              window.history.replaceState({}, document.title, window.location.pathname);
+              // Navigate to home page after successful authentication
+              navigate('/test', { replace: true });
+              return;
+            }
+          }
+          
           if (data?.session) {
             console.log("Successfully retrieved session after OAuth redirect");
-            // Scrub the hash so you don't leak tokens in your URL
+            // Scrub the URL params so you don't leak tokens
             window.history.replaceState({}, document.title, window.location.pathname);
             // Navigate to home page after successful authentication
             navigate('/test', { replace: true });
@@ -124,7 +145,8 @@ const App = () => {
                   <AuthRedirectHandler />
                   <GameProvider>
                     <GlobalXPLogger />
-                    <Routes>
+                    <AuthGate>
+                      <Routes>
                       <Route path="/test" element={<TestLayout />}>
                         <Route index element={<HomePage />} />
                         <Route path="auth" element={<AuthPage />} />
@@ -146,6 +168,7 @@ const App = () => {
                       <Route path="/test/game/room/:roomId/final" element={<FinalResultsPage />} />
                       <Route path="*" element={<Navigate to="/test" replace />} />
                     </Routes>
+                    </AuthGate>
                   </GameProvider>
                 </BrowserRouter>
               </TooltipProvider>

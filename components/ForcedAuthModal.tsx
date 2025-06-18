@@ -15,17 +15,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "components/ui/tabs";
 import { Input } from "components/ui/input";
 import { Label } from "components/ui/label";
 
-interface AuthModalProps {
+interface ForcedAuthModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onAuthenticated: () => void;
 }
 
-export function AuthModal({ isOpen, onClose }: AuthModalProps) {
-  // Diagnostic log to check continueAsGuest
-  const { continueAsGuest, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
-  console.log("[AuthModal] continueAsGuest from useAuth:", continueAsGuest);
-
-  const { continueAsGuest, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
+export function ForcedAuthModal({ isOpen, onAuthenticated }: ForcedAuthModalProps) {
+  const { continueAsGuest, signInWithGoogle, signInWithEmail, signUpWithEmail, user } = useAuth();
   const { toast } = useToast();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -33,15 +29,20 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [password, setPassword] = useState("");
   const [activeTab, setActiveTab] = useState<"signIn" | "signUp">("signIn");
 
+  // If user is already authenticated, close the modal
+  React.useEffect(() => {
+    if (user) {
+      onAuthenticated();
+    }
+  }, [user, onAuthenticated]);
+
   const handleGuestLogin = async () => {
     try {
-      console.log("Starting guest login from modal");
+      console.log("Starting guest login from forced modal");
       setIsLoading(true);
-      console.log("[AuthModal] About to call continueAsGuest");
-      const guestUser = await continueAsGuest();
-      console.log("[AuthModal] Call to continueAsGuest finished. Result:", guestUser);
-      console.log("Guest login successful:", guestUser);
-      onClose();
+      await continueAsGuest();
+      console.log("Guest login successful");
+      onAuthenticated();
     } catch (error) {
       console.error("Guest login error:", error);
       toast({
@@ -76,7 +77,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           description: "Please check your email to confirm your account",
         });
       }
-      onClose();
+      onAuthenticated();
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -89,8 +90,16 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      // Prevent closing the dialog by clicking outside or pressing escape
+      if (!open && !user) {
+        return;
+      }
+      if (!open && user) {
+        onAuthenticated();
+      }
+    }}>
+      <DialogContent className="sm:max-w-md [&>button]:hidden">
         <DialogHeader>
           <DialogTitle>Welcome to Guess History</DialogTitle>
           <DialogDescription>
@@ -181,7 +190,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         </div>
         <div className="flex flex-col gap-4 mt-4">
           <Button
-            className="w-full border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+            variant="outline"
+            className="w-full"
             onClick={handleGuestLogin}
             disabled={isLoading}
           >
@@ -189,7 +199,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           </Button>
           {/* Google sign-in */}
           <Button
-            className="w-full border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+            variant="outline"
+            className="w-full"
             onClick={async () => {
               setIsLoading(true);
               try {
@@ -205,7 +216,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             }}
             disabled={isLoading}
           >
-            Sign in with Google
+            Continue with Google
           </Button>
         </div>
       </DialogContent>

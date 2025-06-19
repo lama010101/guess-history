@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import FullscreenZoomableImage from './FullscreenZoomableImage';
 import HomeMap from '../HomeMap';
 import GlobalSettingsModal from '@/components/settings/GlobalSettingsModal'; // Import the global settings modal
@@ -48,6 +49,11 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   onNavigateHome,
   onConfirmNavigation,
 }) => {
+  // Get current authenticated or guest user to show avatar on map
+  const { user } = useAuth();
+  const avatarUrl = user?.avatar_url && user.avatar_url.trim() !== ''
+    ? user.avatar_url
+    : `https://api.dicebear.com/6.x/adventurer/svg?seed=${user?.id || 'guest'}`;
   const [isImageFullScreen, setIsImageFullScreen] = useState(false);
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
 
@@ -197,7 +203,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       
       {isImageFullScreen && image && (
         <FullscreenZoomableImage
-          image={{ url: image.url, title: image.title }}
+          image={{ url: image.url, placeholderUrl: image.url, title: image.title }}
           onExit={handleExitImageFullscreen}
         />
       )}
@@ -213,6 +219,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             selectedLocation={null}
             onLocationSelect={() => {}}
             onCoordinatesSelect={handleCoordinatesSelect}
+            avatarUrl={avatarUrl}
           />
         </div>
       </div>

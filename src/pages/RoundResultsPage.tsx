@@ -300,6 +300,11 @@ const RoundResultsPage = () => {
 
 
 
+  // Determine avatar URL (use user avatar or fallback DiceBear)
+  const avatarUrl = user?.avatar_url && user.avatar_url.trim() !== ''
+    ? user.avatar_url
+    : `https://api.dicebear.com/6.x/adventurer/svg?seed=${user?.id || 'guest'}`;
+
   // Pass the correctly mapped result to the layout
   return (
     <>
@@ -311,6 +316,7 @@ const RoundResultsPage = () => {
         isLoading={navigating}
         error={null} 
         result={resultForLayout}
+        userAvatarUrl={avatarUrl}
         extraButtons={
           user && currentImage && roomId ? (
             <Button

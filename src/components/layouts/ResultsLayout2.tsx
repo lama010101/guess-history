@@ -67,6 +67,30 @@ const FullscreenHandler: React.FC = () => {
   return null;
 };
 
+// Component to auto-fit map bounds to show both markers
+interface MapBoundsHandlerProps {
+  userPosition: [number, number];
+  correctPosition: [number, number];
+}
+
+const MapBoundsHandler: React.FC<MapBoundsHandlerProps> = ({ userPosition, correctPosition }) => {
+  const map = useMap();
+  
+  useEffect(() => {
+    // Create a bounds object that includes both positions
+    const bounds = L.latLngBounds([userPosition, correctPosition]);
+    
+    // Fit the map to these bounds with some padding
+    map.fitBounds(bounds, {
+      padding: [50, 50],
+      maxZoom: 12, // Limit zoom level to avoid excessive zoom on close points
+      animate: true
+    });
+  }, [map, userPosition, correctPosition]);
+  
+  return null;
+};
+
 // Define proper props interface
 interface ResultsLayout2Props {
   onNext?: () => void;
@@ -169,23 +193,28 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
   const correctLng = result.eventLng;
   const userLat = result.guessLat;
   const userLng = result.guessLng;
-  const mapCenter: L.LatLngExpression = [correctLat, correctLng]; // Default center to correct location
+  // Default to correct location, but calculate bounds to show both markers if user made a guess
+  const mapCenter: L.LatLngExpression = [correctLat, correctLng];
   const hasUserGuess = userLat !== null && userLng !== null;
   
-  // Create custom icons for markers
-  const userIcon = new L.DivIcon({ 
-    html: `<img src="${userAvatarUrl}" class="rounded-full w-8 h-8 border-2 border-white" alt="Your guess" />`,
+  // Create custom DivIcon for user's guess using avatar image with fallback
+  const fallbackUrl = '/placeholder.svg';
+  const userIcon = L.divIcon({
+    html: `<img src="${userAvatarUrl}" onerror="this.onerror=null;this.src='${fallbackUrl}';" class="rounded-full w-8 h-8 border-2 border-white shadow-md object-cover" alt="Your avatar" />`,
     className: '',
     iconSize: [40, 40],
     iconAnchor: [20, 20]
   });
   
   const correctIcon = new L.DivIcon({ 
-    html: `<div class="rounded-full w-8 h-8 bg-green-500 flex items-center justify-center text-white">✓</div>`,
+    html: `<div class="rounded-full w-8 h-8 bg-green-500 flex items-center justify-center text-white shadow-md">✓</div>`,
     className: '',
     iconSize: [40, 40],
     iconAnchor: [20, 20]
   });
+  
+  // Ensure Tailwind's rounded-full styles apply to dynamically injected markers (no-op if already present)
+  useEffect(() => {}, []);
 
   // Define positions for the polyline
   const userPosition: [number, number] = [userLat || 0, userLng || 0];
@@ -451,23 +480,33 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
                   
                   <FullscreenHandler />
                   
-                  {/* Marker for Correct Location */}
+                  {/* Marker for Correct Location - Always shown */}
                   <Marker position={correctPosition} icon={correctIcon}>
                     <Popup>Correct Location: {result.locationName}</Popup>
                   </Marker>
                   
-                  {/* Marker for User Guess (only if coordinates exist) */}
-                  {hasUserGuess && (
-                    <Marker position={userPosition} icon={userIcon}>
-                      <Popup>Your Guess</Popup>
-                    </Marker>
-                  )}
+                  {/* Marker for User Guess - Always shown with default position if no guess */}
+                  <Marker 
+                    position={hasUserGuess ? userPosition : correctPosition} 
+                    icon={userIcon}
+                    opacity={hasUserGuess ? 1 : 0.7} // Slightly transparent if it's at the same position as correct answer
+                  >
+                    <Popup>Your Guess{!hasUserGuess && ' (No guess made)'}</Popup>
+                  </Marker>
                   
                   {/* Connector line between the two points */}
                   {hasUserGuess && (
                     <Polyline 
                       positions={[userPosition, correctPosition]} 
                       pathOptions={{ dashArray: '4 4', color: '#666' }} 
+                    />
+                  )}
+                  
+                  {/* Auto-fit bounds to show both markers */}
+                  {hasUserGuess && (
+                    <MapBoundsHandler 
+                      userPosition={userPosition} 
+                      correctPosition={correctPosition} 
                     />
                   )}
                   

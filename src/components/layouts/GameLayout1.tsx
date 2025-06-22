@@ -4,6 +4,8 @@ import HomeMap from '../HomeMap';
 import GlobalSettingsModal from '@/components/settings/GlobalSettingsModal'; // Import the global settings modal
 import { useHint, type HintType } from '@/hooks/useHint';
 import HintModal from '@/components/HintModal';
+import HintModalV2 from '@/components/HintModalV2';
+import { useHintV2 } from '@/hooks/useHintV2';
 import GameOverlayHUD from '@/components/navigation/GameOverlayHUD';
 import YearSelector from '@/components/game/YearSelector';
 import LocationSelector from '@/components/game/LocationSelector';
@@ -59,6 +61,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
     setIsImageFullScreen(false);
   };
   const [isHintModalOpen, setIsHintModalOpen] = useState(false);
+  const [isHintModalV2Open, setIsHintModalV2Open] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const game = useGame();
   const { totalGameAccuracy, totalGameXP, roundTimerSec } = game;
@@ -121,7 +124,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
     }
   }, [image]);
 
-  // Use the new hint system
+  // Use the legacy hint system for backward compatibility
   const {
     selectedHintType,
     hintContent,
@@ -133,19 +136,28 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
     HINTS_PER_ROUND,
     HINTS_PER_GAME
   } = useHint(memoizedImageData);
+  
+  // Use the new V2 hint system
+  const {
+    availableHints,
+    purchasedHintIds,
+    purchasedHints,
+    xpRemaining,
+    maxAccuracy,
+    isLoading: isHintLoading,
+    isHintLoading: isPurchasing,
+    purchaseHint,
+    hintsByLevel
+  } = useHintV2(memoizedImageData);
 
   const handleHintClick = () => {
-    if (!canSelectHint) {
-      console.warn('Cannot select hint: no hints available or already selected');
-      return;
-    }
-    
     if (!image) {
       console.error('Cannot show hint modal: no image data available');
       return;
     }
     
-    setIsHintModalOpen(true);
+    // Open the V2 hint modal instead of the old one
+    setIsHintModalV2Open(true);
   };
 
   const handleCoordinatesSelect = (lat: number, lng: number) => {
@@ -175,12 +187,11 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
         />
         <div className={`hud-element`}>
           <GameOverlayHUD 
-            selectedHintType={selectedHintType}
             remainingTime={formatTime(remainingTime)}
             rawRemainingTime={remainingTime}
             onHintClick={handleHintClick}
-            hintsUsed={hintsUsedThisRound || 0}
-            hintsAllowed={HINTS_PER_ROUND}
+            hintsUsed={purchasedHints.length}
+            hintsAllowed={availableHints.length}
             currentAccuracy={totalGameAccuracy}
             currentScore={totalGameXP}
             onNavigateHome={onNavigateHome}
@@ -197,7 +208,11 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       
       {isImageFullScreen && image && (
         <FullscreenZoomableImage
-          image={{ url: image.url, title: image.title }}
+          image={{ 
+            url: image.url, 
+            title: image.title,
+            placeholderUrl: image.url // Use the same URL as placeholder
+          }}
           onExit={handleExitImageFullscreen}
         />
       )}
@@ -217,16 +232,17 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
         </div>
       </div>
 
-      <HintModal
-        isOpen={isHintModalOpen}
-        onOpenChange={setIsHintModalOpen}
-        onSelectHint={selectHint}
-        selectedHintType={selectedHintType}
-        hintContent={hintContent || ''}
-        hintsUsedThisRound={hintsUsedThisRound}
-        hintsUsedTotal={hintsUsedTotal}
-        HINTS_PER_ROUND={HINTS_PER_ROUND}
-        HINTS_PER_GAME={HINTS_PER_GAME}
+      {/* V2 Hint Modal */}
+      <HintModalV2
+        isOpen={isHintModalV2Open}
+        onOpenChange={setIsHintModalV2Open}
+        availableHints={availableHints}
+        purchasedHintIds={purchasedHintIds}
+        xpRemaining={xpRemaining}
+        maxAccuracy={maxAccuracy}
+        onPurchaseHint={purchaseHint}
+        isLoading={isHintLoading || isPurchasing}
+        hintsByLevel={hintsByLevel}
       />
 
       <GlobalSettingsModal

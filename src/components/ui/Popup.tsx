@@ -8,6 +8,7 @@ interface PopupProps {
   children: React.ReactNode;
   ariaLabelledBy?: string;
   ariaDescribedBy?: string;
+  className?: string;
 }
 
 const Popup: React.FC<PopupProps> = ({ 
@@ -15,7 +16,8 @@ const Popup: React.FC<PopupProps> = ({
   onClose, 
   children, 
   ariaLabelledBy,
-  ariaDescribedBy 
+  ariaDescribedBy,
+  className
 }) => {
   useEffect(() => {
     const handleEscKey = (event: KeyboardEvent) => {
@@ -49,7 +51,7 @@ const Popup: React.FC<PopupProps> = ({
       aria-describedby={ariaDescribedBy}
     >
       <div 
-        className={`${styles.panel} bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto`} 
+        className={`${styles.panel} bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto ${className || ''}`} 
         onClick={(e) => e.stopPropagation()}
       >
         {children}

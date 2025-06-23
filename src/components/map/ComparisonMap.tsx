@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import MapMarker from './MapMarker';
 import '../mapStyles.css';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Setup bounds calculation helper
 const getBoundingBox = (positions: [number, number][]) => {
@@ -68,9 +69,11 @@ const AutoBoundMap: React.FC<{
 interface ComparisonMapProps {
   guessPosition: [number, number];
   actualPosition: [number, number];
+  avatarUrl?: string;
 }
 
-const ComparisonMap: React.FC<ComparisonMapProps> = ({ guessPosition, actualPosition }) => {
+const ComparisonMap: React.FC<ComparisonMapProps> = ({ guessPosition, actualPosition, avatarUrl }) => {
+  const { user } = useAuth();
   // Draw a line connecting the guess and actual positions
   const ConnectionLine = () => {
     React.useEffect(() => {
@@ -128,12 +131,14 @@ const ComparisonMap: React.FC<ComparisonMapProps> = ({ guessPosition, actualPosi
       <AutoBoundMap positions={[guessPosition, actualPosition]}>
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         
-        {/* Guess marker */}
+        {/* Guess marker with avatar */}
         <MapMarker 
           position={guessPosition} 
           color="bg-history-accent"
           label="You"
-          pulse={true} 
+          pulse={true}
+          avatarUrl={(user && 'user_metadata' in user) ? user.user_metadata?.avatar_url : avatarUrl}
+          isUserGuess={true}
         />
         
         {/* Actual marker */}

@@ -22,8 +22,8 @@ export interface UseHintV2Return {
   availableHints: Hint[];
   purchasedHintIds: string[];
   purchasedHints: Hint[];
-  xpRemaining: number;
-  maxAccuracy: number;
+  xpDebt: number;        // Total XP that will be deducted at round end
+  accDebt: number;       // Total accuracy penalty that will be applied at round end
   isLoading: boolean;
   isHintLoading: boolean;
   purchaseHint: (hintId: string) => Promise<void>;
@@ -41,8 +41,6 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
   // State variables
   const [availableHints, setAvailableHints] = useState<Hint[]>([]);
   const [purchasedHintIds, setPurchasedHintIds] = useState<string[]>([]);
-  const [xpRemaining, setXpRemaining] = useState<number>(0);
-  const [maxAccuracy, setMaxAccuracy] = useState<number>(100);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isHintLoading, setIsHintLoading] = useState<boolean>(false);
   
@@ -60,7 +58,7 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
     }
 
     setIsLoading(true);
-    addLog(`Generating sample hints for image ${imageData.id}`);
+    addLog(`Fetching hints for image ${imageData.id}`);
 
     try {
       // Fetch available hints for this image
@@ -104,28 +102,6 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
         addLog('No purchased hints found for this image');
         setPurchasedHintIds([]);
       }
-
-      // Fetch user metrics for XP and accuracy
-      const { data: metrics, error: metricsError } = await supabase
-        .from('user_metrics')
-        .select('xp, max_accuracy')
-        .eq('user_id', user.id)
-        .single();
-
-      if (metricsError) {
-        addLog(`Error fetching user metrics: ${metricsError.message}`);
-        throw metricsError;
-      }
-
-      if (metrics) {
-        addLog(`User metrics: XP=${(metrics as any).xp}, Max Accuracy=${(metrics as any).max_accuracy}`);
-        setXpRemaining((metrics as any).xp || 0);
-        setMaxAccuracy((metrics as any).max_accuracy || 100);
-      } else {
-        addLog('No user metrics found, using defaults');
-        setXpRemaining(500); // Default XP
-        setMaxAccuracy(100); // Default max accuracy
-      }
     } catch (error) {
       addLog(`Error in fetchHints: ${error}`);
     } finally {
@@ -156,6 +132,7 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
 
     try {
       // Call the RPC function to purchase the hint
+      // Note: API no longer checks XP balance, only prevents duplicates
       const { data, error } = await supabase.rpc('purchase_hint' as any, {
         p_hint_id: hintId,
         p_user_id: user.id,
@@ -171,10 +148,6 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
       
       // Update local state (the subscription will update this too, but this makes the UI more responsive)
       setPurchasedHintIds(prev => [...prev, hintId]);
-      
-      // Update XP and max accuracy
-      setXpRemaining(prev => Math.max(0, prev - hint.xp_cost));
-      setMaxAccuracy(prev => Math.max(0, prev - hint.accuracy_penalty));
     } catch (error) {
       addLog(`Error in purchaseHint: ${error}`);
     } finally {
@@ -283,12 +256,16 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
     purchasedHintIds.includes(hint.id)
   );
 
+  // Calculate total XP debt and accuracy debt from purchased hints
+  const xpDebt = purchasedHints.reduce((total, hint) => total + (hint.xp_cost || 0), 0);
+  const accDebt = purchasedHints.reduce((total, hint) => total + (hint.accuracy_penalty || 0), 0);
+
   return {
     availableHints,
     purchasedHintIds,
     purchasedHints,
-    xpRemaining,
-    maxAccuracy,
+    xpDebt,
+    accDebt,
     isLoading,
     isHintLoading,
     purchaseHint,

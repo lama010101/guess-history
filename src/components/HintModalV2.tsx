@@ -10,8 +10,8 @@ interface HintModalV2Props {
   onOpenChange: (open: boolean) => void;
   availableHints: Hint[];
   purchasedHintIds: string[];
-  xpRemaining: number;
-  maxAccuracy: number;
+  xpDebt: number;
+  accDebt: number;
   onPurchaseHint: (hintId: string) => Promise<void>;
   isLoading: boolean;
   hintsByLevel: Record<number, Hint[]>;
@@ -84,8 +84,8 @@ const HintModalV2 = ({
   onOpenChange,
   availableHints,
   purchasedHintIds,
-  xpRemaining,
-  maxAccuracy,
+  xpDebt,
+  accDebt,
   onPurchaseHint,
   isLoading,
   hintsByLevel
@@ -99,12 +99,9 @@ const HintModalV2 = ({
     return purchasedHintIds.includes(hintId);
   };
 
-  // Check if user can purchase a hint (has enough XP)
+  // Check if user can purchase a hint (always true in debt model, unless already purchased)
   const canPurchaseHint = (hint: Hint): boolean => {
-    // Convert to numbers to ensure proper comparison
-    const userXp = Number(xpRemaining);
-    const hintCost = Number(hint.xp_cost);
-    return !isHintPurchased(hint.id) && userXp >= hintCost;
+    return !isHintPurchased(hint.id);
   };
 
   // Handle hint purchase
@@ -118,7 +115,7 @@ const HintModalV2 = ({
       
       await onPurchaseHint(hint.id);
       
-      setPurchaseSuccess(`Successfully purchased ${HINT_TYPE_NAMES[hint.type] || hint.type} hint!`);
+      setPurchaseSuccess(`Successfully purchased ${HINT_TYPE_NAMES[hint.type] || hint.type} hint! You'll pay ${hint.xp_cost} XP at end of round.`);
       
       // Clear success message after 3 seconds
       setTimeout(() => {
@@ -146,7 +143,7 @@ const HintModalV2 = ({
         <div className="flex justify-center items-center gap-3 mb-4">
           <div className="flex items-center">
             <XpIcon className="w-5 h-5 mr-1" />
-            <span className="text-sm font-medium text-black">You have {xpRemaining} XP</span>
+            <span className="text-sm font-medium text-black">Spent {xpDebt} XP</span>
           </div>
         </div>
       </div>
@@ -240,7 +237,7 @@ const HintModalV2 = ({
                           ) : canPurchase ? (
                             'Purchase Hint'
                           ) : (
-                            xpRemaining < costXp ? 'Insufficient XP' : 'Already Purchased'
+                            'Already Purchased'
                           )}
                         </Button>
                       </div>

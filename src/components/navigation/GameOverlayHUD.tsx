@@ -83,16 +83,16 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
         {/* Center - Score and accuracy */}
         <div className="flex bg-black/30 backdrop-blur-sm p-2 rounded-lg space-x-2 pointer-events-auto">
           <Badge 
-            variant="default" 
-            className="flex items-center gap-1 bg-white text-black" 
+            variant="accuracy" 
+            className="flex items-center gap-1" 
             aria-label={`Accuracy: ${Math.round(currentAccuracy)}%`}
           >
             <Target className="h-3 w-3" />
             <span>{formatInteger(currentAccuracy)}%</span>
           </Badge>
           <Badge 
-            variant="default" 
-            className="flex items-center gap-1 bg-white text-black" 
+            variant="xp" 
+            className="flex items-center gap-1" 
             aria-label={`Score: ${Math.round(currentScore)}`}
           >
             <Zap className="h-3 w-3" />

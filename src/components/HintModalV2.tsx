@@ -79,22 +79,17 @@ export const HintModalV2: React.FC<HintModalV2Props> = ({
       isOpen={isOpen} 
       onClose={() => onOpenChange(false)} 
     >
-      <div className="p-1 bg-white rounded-lg shadow-lg w-full mx-auto h-full overflow-y-auto fixed inset-0 z-[9999]">
-        <div className="sticky top-0 bg-white p-4 z-10 border-b-2 border-gray-200 flex justify-between items-center">
-          <div className="w-8"></div> {/* Spacer for centering */}
-          <p className="text-center text-sm text-gray-600">
+      <div className="p-1 bg-white rounded-lg shadow-lg w-full h-full fixed inset-0 z-50 overflow-y-auto">
+        <div className="sticky top-0 bg-white p-4 z-10 border-b-2 border-gray-200">
+          <p className="text-center text-sm text-gray-600 mt-1">
             Use your XP to buy hints. Penalties apply to your final score.
           </p>
-          <button 
-            onClick={() => onOpenChange(false)}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-200"
-            aria-label="Close"
-          >
-            ✕
-          </button>
           <div className="mt-3 flex justify-around p-2 bg-gray-100 rounded-lg">
             <div className="text-center">
-              <div className="font-bold text-lg text-red-500">-{xpDebt} XP</div>
+              <div className="flex items-center justify-center">
+                <XpIcon className="h-5 w-5 mr-1" />
+                <span className="font-bold text-lg">-{xpDebt}</span>
+              </div>
               <div className="text-xs text-gray-500">Total Cost</div>
             </div>
             <div className="text-center">
@@ -107,13 +102,11 @@ export const HintModalV2: React.FC<HintModalV2Props> = ({
         {Object.entries(hintsByLevel).map(([level, hints]) => (
           <div key={level} className="mb-4 px-4">
             <h3 className="text-xl font-semibold my-3 text-gray-800 border-b pb-2">
-              {Number(level) === 1 ? "GLOBAL" : 
-               Number(level) === 2 ? "DISTANT" : 
-               Number(level) === 3 ? "REGIONAL" : 
-               Number(level) === 4 ? "NEARBY" : 
-               `Level ${level}`}
+              {getLevelTitle(Number(level), hints)}
             </h3>
-            {/* Removed subtitles as requested */}
+            <p className="text-xs text-gray-500 mb-3">
+              {HINT_LEVEL_DESCRIPTIONS[Number(level)]}
+            </p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {hints.map((hint) => {
@@ -133,7 +126,7 @@ export const HintModalV2: React.FC<HintModalV2Props> = ({
                     <div className="flex items-center mb-2">
                       <span className="text-2xl mr-3">{HINT_TYPE_ICONS[hint.type] || '❓'}</span>
                       <div>
-                        {/* Removed hint type name as requested */}
+                        <h4 className="font-bold text-md text-gray-900">{HINT_TYPE_NAMES[hint.type] || 'Hint'}</h4>
                         <div className="flex items-center text-xs text-gray-500">
                           <span className="text-red-500">-{cost} XP</span>
                           <span className="mx-2">|</span>
@@ -184,7 +177,7 @@ export const HintModalV2: React.FC<HintModalV2Props> = ({
         )}
       </div>
 
-      <div className="sticky bottom-0 bg-white p-4 mt-4 flex justify-center border-t-2 border-gray-200">
+      <div className="mt-4 flex justify-center">
         <Button
           onClick={() => onOpenChange(false)}
           className="bg-orange-500 hover:bg-orange-600 text-white"

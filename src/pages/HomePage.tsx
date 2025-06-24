@@ -14,34 +14,25 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
 const homePageStyle: React.CSSProperties = {
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
+  minHeight: '100vh',
   width: '100%',
-  height: '100%',
   backgroundImage: 'url("/images/background.jpg")',
   backgroundSize: 'cover',
   backgroundPosition: 'center',
   backgroundRepeat: 'no-repeat',
   backgroundAttachment: 'fixed',
+  position: 'relative',
+  padding: '2rem 0'
 };
 
 const contentStyle: React.CSSProperties = {
-  position: 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
+  position: 'relative',
   zIndex: 1,
-  backgroundColor: 'rgba(0, 0, 0, 0.7)',
-  width: '90%',
-  maxWidth: '1200px',
-  height: '90%',
-  overflowY: 'auto',
-  padding: '2rem',
-  boxSizing: 'border-box',
+  backgroundColor: 'rgba(255, 255, 255, 0.9)',
   borderRadius: '0.5rem',
+  padding: '2rem',
+  maxWidth: '1200px',
+  margin: '0 auto',
   boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
 };
 
@@ -246,39 +237,19 @@ const HomePage = () => {
                     )}
                   </div>
                   {isSoloTimerEnabled && (
-                    <div className="relative mb-6 mt-4">
-                      {/* Calculate positions for markers based on their values */}
-                      <div className="absolute w-full h-6 pointer-events-none" style={{ bottom: '0px' }}>
-                        {[5, 60, 120, 180, 240, 300].map((value) => {
-                          // Calculate position percentage based on value
-                          const position = ((value - minTimerValue) / (maxTimerValue - minTimerValue)) * 100;
-                          return (
-                            <div 
-                              key={value} 
-                              className="absolute flex flex-col items-center" 
-                              style={{ left: `${position}%`, transform: 'translateX(-50%)' }}
-                            >
-                              <span className="text-xs text-gray-400 mb-1">
-                                {value === 5 ? '5s' : 
-                                 value === 60 ? '1m' : 
-                                 value === 120 ? '2m' : 
-                                 value === 180 ? '3m' : 
-                                 value === 240 ? '4m' : '5m'}
-                              </span>
-                              <div className="h-1.5 w-0.5 bg-gray-400" />
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <div className="pt-6">
-                        <Slider
-                          value={[soloTimerSeconds]}
-                          min={minTimerValue}
-                          max={maxTimerValue}
-                          step={stepSize}
-                          onValueChange={(value) => setSoloTimerSeconds(value[0])}
-                          className="w-full"
-                        />
+                    <div className="mt-2">
+                      <Slider
+                        value={[soloTimerSeconds]}
+                        min={minTimerValue}
+                        max={maxTimerValue}
+                        step={stepSize}
+                        onValueChange={(values) => setSoloTimerSeconds(values[0])}
+                        className="w-full"
+                      />
+                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>{formatTime(minTimerValue)}</span>
+                        <span>{formatTime(maxTimerValue / 2)}</span>
+                        <span>{formatTime(maxTimerValue)}</span>
                       </div>
                     </div>
                   )}

@@ -28,10 +28,10 @@ export const HINT_COSTS = {
 
 // Hint level descriptions
 export const HINT_LEVEL_DESCRIPTIONS: Record<number, string> = {
-  1: "Basic Hints - General Location & Time Period",
-  2: "Intermediate Hints - Distant References",
-  3: "Advanced Hints - Narrower Location & Time",
-  4: "Precise Hints - Specific Context"
+  1: "GLOBAL",
+  2: "DISTANT",
+  3: "REGIONAL",
+  4: "NEARBY"
 };
 
 // Hint type display names

@@ -129,6 +129,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
 
   // Use the new V2 hint system - but only initialize it when needed
   const [initializeHints, setInitializeHints] = useState(false);
+  const [hintsUsed, setHintsUsed] = useState(0);
   
   const {
     availableHints,
@@ -139,6 +140,13 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
     purchaseHint,
     hintsByLevel,
   } = useHintV2(initializeHints ? memoizedImageData : null);
+  
+  // Update hintsUsed when purchasedHintIds changes
+  useEffect(() => {
+    if (purchasedHintIds.length > 0) {
+      setHintsUsed(purchasedHintIds.length);
+    }
+  }, [purchasedHintIds.length]);
 
   const handleHintClick = () => {
     if (!image) {
@@ -148,6 +156,12 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
     // Initialize hints when the button is clicked
     setInitializeHints(true);
     setIsHintModalV2Open(true);
+  };
+  
+  // Custom hint purchase handler to track hints used
+  const handlePurchaseHint = async (hintId: string) => {
+    await purchaseHint(hintId);
+    setHintsUsed(prev => prev + 1);
   };
 
   const handleCoordinatesSelect = (lat: number, lng: number) => {
@@ -180,7 +194,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             remainingTime={formatTime(remainingTime)}
             rawRemainingTime={remainingTime}
             onHintClick={handleHintClick}
-            hintsUsed={purchasedHintIds.length}
+            hintsUsed={hintsUsed}
             hintsAllowed={12}
             currentAccuracy={game.totalGameAccuracy}
             currentScore={game.totalGameXP}
@@ -215,23 +229,23 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             onLocationSelect={() => {}}
             onCoordinatesSelect={handleCoordinatesSelect}
             avatarUrl={avatarUrl}
-            hideSubmitButton={isHintModalV2Open}
           />
         </div>
       </div>
 
-      {/* V2 Hint Modal */}
-      <HintModalV2
-        isOpen={isHintModalV2Open}
-        onOpenChange={setIsHintModalV2Open}
-        availableHints={availableHints}
-        purchasedHintIds={purchasedHintIds}
-        xpDebt={xpDebt}
-        accDebt={accDebt}
-        onPurchaseHint={purchaseHint}
-        isLoading={isHintLoading}
-        hintsByLevel={hintsByLevel}
-      />
+      {isHintModalV2Open && (
+        <HintModalV2
+          isOpen={isHintModalV2Open}
+          onOpenChange={setIsHintModalV2Open}
+          availableHints={availableHints}
+          purchasedHintIds={purchasedHintIds}
+          xpDebt={xpDebt}
+          accDebt={accDebt}
+          onPurchaseHint={handlePurchaseHint}
+          isLoading={isHintLoading}
+          hintsByLevel={hintsByLevel}
+        />
+      )}
 
       <GlobalSettingsModal
         isOpen={isSettingsModalOpen}

@@ -6,15 +6,13 @@ interface LocationSelectorProps {
   onLocationSelect: (location: string) => void;
   onCoordinatesSelect?: (lat: number, lng: number) => void;
   avatarUrl?: string;
-  hideSubmitButton?: boolean;
 }
 
 const LocationSelector: React.FC<LocationSelectorProps> = ({
   selectedLocation,
   onLocationSelect,
   onCoordinatesSelect,
-  avatarUrl,
-  hideSubmitButton
+  avatarUrl
 }) => {
   return (
     <div className="mb-8">
@@ -23,7 +21,6 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
           avatarUrl={avatarUrl}
           onLocationSelect={onLocationSelect}
           onCoordinatesSelect={onCoordinatesSelect}
-          hideSubmitButton={hideSubmitButton}
         />
       </div>
     </div>

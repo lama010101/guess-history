@@ -11,7 +11,6 @@ interface HomeMapProps {
   avatarUrl?: string;
   onLocationSelect?: (location: string) => void;
   onCoordinatesSelect?: (lat: number, lng: number) => void;
-  hideSubmitButton?: boolean;
 }
 
 // Component that handles map click events
@@ -46,8 +45,7 @@ const FullscreenHandler: React.FC = () => {
 const HomeMap: React.FC<HomeMapProps> = ({
   avatarUrl,
   onLocationSelect,
-  onCoordinatesSelect,
-  hideSubmitButton = false
+  onCoordinatesSelect
 }) => {
   const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(null);
   const [location, setLocation] = useState<string>('Select a location');
@@ -109,19 +107,9 @@ const HomeMap: React.FC<HomeMapProps> = ({
       <div className="flex justify-between items-center mb-2">
         <label className="font-semibold text-history-primary dark:text-history-light">WHERE</label>
         {markerPosition ? (
-          <div className="flex items-center gap-2">
-            <Badge variant="selectedValue" className="font-medium">
-              {location}
-            </Badge>
-            {markerPosition && !hideSubmitButton && (
-              <button 
-                className="bg-history-primary hover:bg-history-primary-dark text-white px-3 py-1 rounded-md text-sm font-medium transition-colors"
-                onClick={() => onCoordinatesSelect && onCoordinatesSelect(markerPosition[0], markerPosition[1])}
-              >
-                Submit Guess
-              </button>
-            )}
-          </div>
+          <Badge variant="selectedValue" className="font-medium">
+            {location}
+          </Badge>
         ) : (
           <span className="text-muted-foreground text-sm">Select a location on the map</span>
         )}

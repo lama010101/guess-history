@@ -30,6 +30,154 @@ export type Database = {
         }
         Relationships: []
       }
+      hints: {
+        Row: {
+          id: string
+          image_id: string
+          type: string
+          category: string
+          level: number
+          text: string
+          xp_cost: number
+          accuracy_penalty: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          image_id: string
+          type: string
+          category: string
+          level: number
+          text: string
+          xp_cost?: number
+          accuracy_penalty?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          image_id?: string
+          type?: string
+          category?: string
+          level?: number
+          text?: string
+          xp_cost?: number
+          accuracy_penalty?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hints_image_id_fkey"
+            columns: ["image_id"]
+            isOneToOne: false
+            referencedRelation: "images"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      hint_dependencies: {
+        Row: {
+          id: string
+          hint_id: string
+          required_hint_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          hint_id: string
+          required_hint_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          hint_id?: string
+          required_hint_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hint_dependencies_hint_id_fkey"
+            columns: ["hint_id"]
+            isOneToOne: false
+            referencedRelation: "hints"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hint_dependencies_required_hint_id_fkey"
+            columns: ["required_hint_id"]
+            isOneToOne: false
+            referencedRelation: "hints"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      hint_purchases: {
+        Row: {
+          id: string
+          user_id: string
+          hint_id: string
+          image_id: string
+          game_id: string | null
+          round_index: number | null
+          xp_cost: number
+          accuracy_penalty: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          hint_id: string
+          image_id: string
+          game_id?: string | null
+          round_index?: number | null
+          xp_cost?: number
+          accuracy_penalty?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          hint_id?: string
+          image_id?: string
+          game_id?: string | null
+          round_index?: number | null
+          xp_cost?: number
+          accuracy_penalty?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hint_purchases_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hint_purchases_hint_id_fkey"
+            columns: ["hint_id"]
+            isOneToOne: false
+            referencedRelation: "hints"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hint_purchases_image_id_fkey"
+            columns: ["image_id"]
+            isOneToOne: false
+            referencedRelation: "images"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hint_purchases_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       friends: {
         Row: {
           created_at: string | null

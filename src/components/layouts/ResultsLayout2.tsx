@@ -28,9 +28,19 @@ declare module '@/utils/resultsFetching' {
   }
 } 
 
-// Import our ComparisonMap component
-import ComparisonMap from '@/components/map/ComparisonMap';
+// Import Leaflet components and CSS
+import { MapContainer, TileLayer, Marker, Popup, ZoomControl, useMap, Polyline } from 'react-leaflet';
+import { FullscreenControl } from 'react-leaflet-fullscreen';
+import 'react-leaflet-fullscreen/styles.css';
 import 'leaflet/dist/leaflet.css';
+// Import Leaflet's default icon handling (important for markers)
+import L from 'leaflet';
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+});
 
 // Import the new CircularProgress component
 import CircularProgress from '@/components/ui/CircularProgress';
@@ -40,7 +50,22 @@ import { BadgeEarnedPopup } from '@/components/badges/BadgeEarnedPopup';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 
-// No longer need the FullscreenHandler as it's handled by ComparisonMap
+// Component to handle fullscreen events
+const FullscreenHandler: React.FC = () => {
+  const map = useMap();
+  
+  useEffect(() => {
+    map.on('enterFullscreen', () => document.body.classList.add('leaflet-fullscreen-on'));
+    map.on('exitFullscreen', () => document.body.classList.remove('leaflet-fullscreen-on'));
+    
+    return () => {
+      map.off('enterFullscreen');
+      map.off('exitFullscreen');
+    };
+  }, [map]);
+  
+  return null;
+};
 
 // Define proper props interface
 interface ResultsLayout2Props {
@@ -144,9 +169,25 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
   const correctLng = result.eventLng;
   const userLat = result.guessLat;
   const userLng = result.guessLng;
+  const mapCenter: L.LatLngExpression = [correctLat, correctLng]; // Default center to correct location
   const hasUserGuess = userLat !== null && userLng !== null;
   
-  // Define positions for the map
+  // Create custom icons for markers
+  const userIcon = new L.DivIcon({ 
+    html: `<img src="${userAvatarUrl}" class="rounded-full w-8 h-8 border-2 border-white" alt="Your guess" />`,
+    className: '',
+    iconSize: [40, 40],
+    iconAnchor: [20, 20]
+  });
+  
+  const correctIcon = new L.DivIcon({ 
+    html: `<div class="rounded-full w-8 h-8 bg-green-500 flex items-center justify-center text-white">✓</div>`,
+    className: '',
+    iconSize: [40, 40],
+    iconAnchor: [20, 20]
+  });
+
+  // Define positions for the polyline
   const userPosition: [number, number] = [userLat || 0, userLng || 0];
   const correctPosition: [number, number] = [correctLat, correctLng];
 

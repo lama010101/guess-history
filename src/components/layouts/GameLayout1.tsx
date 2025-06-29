@@ -235,14 +235,14 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       <div className="flex-grow p-4 lg:p-8 lg:overflow-y-auto lg:h-screen">
         <div className="max-w-5xl mx-auto">
           <div className="space-y-6">
-            <div className="pb-4">
+            <div className="pb-0.5 sm:pb-4">
               <YearSelector 
                 selectedYear={selectedYear}
                 onChange={onYearChange}
               />
             </div>
             
-            <div className="pt-4">
+            <div className="pt-0.5 sm:pt-4">
               <LocationSelector 
                 selectedLocation={currentGuess ? `${currentGuess.lat}, ${currentGuess.lng}` : null}
                 onLocationSelect={() => {}}

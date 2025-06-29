@@ -18,8 +18,8 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
   hasSelectedLocation = false
 }) => {
   return (
-    <div className="mb-8 w-full">
-      <div className="h-64 lg:h-[500px] w-full rounded-lg overflow-hidden shadow-lg">
+    <div className="mb-8 w-full flex flex-col h-full">
+      <div className="h-64 lg:h-[500px] w-full rounded-lg overflow-hidden shadow-lg mb-4">
         <HomeMap 
           onLocationSelect={onLocationSelect}
           onCoordinatesSelect={onCoordinatesSelect}
@@ -27,10 +27,10 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
       </div>
       
       {onSubmit && (
-        <div className="mt-8 w-full">
+        <div className="mt-auto w-full sticky bottom-0 bg-background pt-2 pb-4 lg:pb-0 lg:pt-4 lg:static">
           <Button 
             onClick={onSubmit}
-            className="w-full lg:w-full max-w-2xl mx-auto px-8 py-6 text-lg font-semibold"
+            className="w-full lg:w-full max-w-2xl mx-auto px-8 py-6 text-lg font-semibold shadow-lg lg:shadow-none"
             disabled={!hasSelectedLocation}
           >
             Submit Guess

@@ -366,49 +366,13 @@ const GameRoundPage = () => {
         onConfirmNavigation={confirmNavigation}
       />
 
-      {/* Submit Guess Button */}
-      <div className="submit-button-container fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent z-[10001] flex justify-center">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="w-full max-w-md">
-                <Button
-                  onClick={handleSubmitGuess}
-                  disabled={isSubmitting || (timerEnabled && (hasTimedOut || (roundTimerSec > 0 && remainingTime <= 0))) || !hasGuessedLocation}
-                  size="lg"
-                  className={`submit-guess w-full shadow-lg ${
-                    timerEnabled && (hasTimedOut || (roundTimerSec > 0 && remainingTime <= 0)) || !hasGuessedLocation ? 'opacity-75 cursor-not-allowed' : ''
-                  }`}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader className="mr-2 h-4 w-4 animate-spin" />
-                      Submitting...
-                    </>
-                  ) : (
-                    timerEnabled && roundTimerSec > 0 && remainingTime <= 0 ? 'Time\'s Up!' : 'Submit Guess'
-                  )}
-                </Button>
-              </div>
-            </TooltipTrigger>
-            {!hasGuessedLocation && !(timerEnabled && hasTimedOut) && (
-              <TooltipContent>
-                <div className="flex items-center">
-                  <MapPin className="mr-2 h-4 w-4" />
-                  <span>Please place a guess on the map before submitting</span>
-                </div>
-              </TooltipContent>
-            )}
-          </Tooltip>
-        </TooltipProvider>
-      </div>
       {/* Confirmation Dialog */}
       <ConfirmNavigationDialog
         isOpen={showConfirmDialog}
         onClose={() => setShowConfirmDialog(false)}
         onConfirm={handleConfirmNavigation}
       />
-    </div> // Closing tag for the main container
+    </div>
   );
 };
 

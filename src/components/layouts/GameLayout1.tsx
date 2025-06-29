@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { cn } from '@/lib/utils';
 import FullscreenZoomableImage from './FullscreenZoomableImage';
 import HomeMap from '../HomeMap';
 import GlobalSettingsModal from '@/components/settings/GlobalSettingsModal'; // Import the global settings modal
@@ -166,6 +167,18 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
     console.log("Map coordinates selected:", lat, lng);
   };
 
+  const handleSubmitGuess = () => {
+    if (!currentGuess) {
+      console.error('No location selected');
+      return;
+    }
+    
+    // Call the parent's onComplete if it exists
+    if (onComplete) {
+      onComplete();
+    }
+  };
+
   if (!image) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-history-light dark:bg-history-dark">
@@ -178,8 +191,9 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-history-light dark:bg-history-dark">
-      <div className="w-full h-[40vh] md:h-[50vh] relative">
+    <div className="min-h-screen flex flex-col lg:flex-row bg-history-light dark:bg-history-dark">
+      {/* Image Section - Full width on mobile, half on desktop */}
+      <div className="w-full lg:w-1/2 lg:h-screen relative">
         <img
           src={image.url}
           alt={image.title}
@@ -211,24 +225,33 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           image={{ 
             url: image.url, 
             title: image.title,
-            placeholderUrl: image.url // Use the same URL as placeholder
+            placeholderUrl: image.url
           }}
           onExit={handleExitImageFullscreen}
         />
       )}
 
-      <div className="flex-grow p-4 md:p-8">
+      {/* Input Sections - Full width on mobile, half on desktop */}
+      <div className="flex-grow p-4 lg:p-8 lg:overflow-y-auto lg:h-screen">
         <div className="max-w-5xl mx-auto">
-          <YearSelector 
-            selectedYear={selectedYear}
-            onChange={onYearChange}
-          />
-          
-          <LocationSelector 
-            selectedLocation={null}
-            onLocationSelect={() => {}}
-            onCoordinatesSelect={handleCoordinatesSelect}
-          />
+          <div className="space-y-6">
+            <div className="pb-4">
+              <YearSelector 
+                selectedYear={selectedYear}
+                onChange={onYearChange}
+              />
+            </div>
+            
+            <div className="pt-4">
+              <LocationSelector 
+                selectedLocation={currentGuess ? `${currentGuess.lat}, ${currentGuess.lng}` : null}
+                onLocationSelect={() => {}}
+                onCoordinatesSelect={handleCoordinatesSelect}
+                onSubmit={handleSubmitGuess}
+                hasSelectedLocation={!!currentGuess}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -238,8 +261,8 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
         onOpenChange={setIsHintModalV2Open}
         availableHints={availableHints}
         purchasedHintIds={purchasedHintIds}
-        xpRemaining={xpRemaining}
-        maxAccuracy={maxAccuracy}
+        xpDebt={0} // TODO: Get actual xpDebt from useHintV2 hook
+        accDebt={0} // TODO: Get actual accDebt from useHintV2 hook
         onPurchaseHint={purchaseHint}
         isLoading={isHintLoading || isPurchasing}
         hintsByLevel={hintsByLevel}

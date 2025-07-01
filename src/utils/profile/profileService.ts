@@ -215,7 +215,7 @@ export async function updateUserAvatar(userId: string, avatarId: string, customI
 }
 
 // Create a new user profile if it doesn't exist
-export async function createUserProfileIfNotExists(userId: string, displayName: string, isGuest: boolean = false): Promise<boolean> {
+export async function createUserProfileIfNotExists(userId: string, displayName: string): Promise<boolean> {
   try {
     console.log(`Checking if profile exists for user ${userId}`);
     
@@ -250,10 +250,7 @@ export async function createUserProfileIfNotExists(userId: string, displayName: 
       updated_at: new Date().toISOString()
     };
     
-    // If this is a guest user, mark it as such using avatar_url field
-    if (isGuest) {
-      profileData.avatar_url = 'guest';
-    }
+
     
     console.log('Creating new profile with data:', profileData);
     

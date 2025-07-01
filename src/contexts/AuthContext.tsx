@@ -3,18 +3,9 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-// Define types for our users
-export type AuthUser = User & {
-  is_guest?: false;
-};
-
-export type GuestUser = User & {
-  is_guest: true;
-};
-
 // Define the shape of our Auth Context
 export interface AuthState {
-  user: AuthUser | GuestUser | null;
+  user: User | null;
   session: Session | null;
   isLoading: boolean;
   isGuest: boolean;
@@ -23,6 +14,9 @@ export interface AuthState {
   signOut: () => Promise<void>;
   continueAsGuest: () => Promise<void>;
   upgradeUser: (email: string) => Promise<void>;
+  updateUserEmail: (newEmail: string) => Promise<void>;
+  updateUserPassword: (newPassword: string) => Promise<void>;
+  deleteUserAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
@@ -35,30 +29,28 @@ const generateRandomUsername = (avatarName: string) => {
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<AuthUser | GuestUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      const currentUser = session?.user as AuthUser | GuestUser | null;
-      setUser(currentUser);
+      setUser(session?.user ?? null);
       setIsLoading(false);
     });
 
     // Fetch initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      const currentUser = session?.user as AuthUser | GuestUser | null;
-      setUser(currentUser);
+      setUser(session?.user ?? null);
       setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const isGuest = user ? 'is_guest' in user && user.is_guest === true : false;
+  const isGuest = user ? !user.email : false;
 
   const continueAsGuest = async () => {
     setIsLoading(true);
@@ -78,7 +70,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const username = generateRandomUsername(randomAvatar.name);
 
         // Create user profile in the database
-        const { error: profileError } = await supabase.from('users').insert({
+        const { error: profileError } = await supabase.from('profiles').insert({
           id: authData.user.id,
           is_guest: true,
           username,
@@ -88,8 +80,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (profileError) throw profileError;
 
         // Update the user state
-        const guestUser = { ...authData.user, is_guest: true } as GuestUser;
-        setUser(guestUser);
+        setUser(authData.user);
       }
     } catch (error) {
       console.error('Error during guest sign-in:', error);
@@ -121,15 +112,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Update the user's is_guest status in the database
     const { error: profileError } = await supabase
-      .from('users')
+      .from('profiles')
       .update({ is_guest: false })
       .eq('id', user.id);
 
     if (profileError) throw profileError;
 
-    // Refresh the user state
-    const updatedUser = { ...user, is_guest: false } as AuthUser;
-    setUser(updatedUser);
+    // The user object will be updated automatically by the onAuthStateChange listener.
+  };
+
+  const updateUserEmail = async (newEmail: string) => {
+    const { error } = await supabase.auth.updateUser({ email: newEmail });
+    if (error) throw error;
+    // Supabase sends a confirmation email. User state will update upon confirmation.
+  };
+
+  const updateUserPassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+  };
+
+  const deleteUserAccount = async () => {
+    if (!user) throw new Error('No user is currently signed in.');
+    // This is a placeholder for a more complex server-side operation.
+    // In a real app, you would call a Supabase Edge Function to delete the user
+    // and all their associated data to bypass RLS.
+    console.warn('Placeholder for deleteUserAccount. This should be a server-side call.');
+    // For now, we will just sign the user out.
+    await signOut();
   };
 
   const value = {
@@ -142,6 +152,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signOut,
     continueAsGuest,
     upgradeUser,
+    updateUserEmail,
+    updateUserPassword,
+    deleteUserAccount,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

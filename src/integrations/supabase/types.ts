@@ -90,6 +90,56 @@ export type Database = {
           },
         ]
       }
+      image_feedback: {
+        Row: {
+          id: string
+          user_id: string
+          image_id: string
+          round_id: string
+          image_accuracy: number
+          description_accurate: boolean | null
+          location_accurate: boolean | null
+          date_accurate: boolean | null
+          comment: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          image_id: string
+          round_id: string
+          image_accuracy: number
+          description_accurate?: boolean | null
+          location_accurate?: boolean | null
+          date_accurate?: boolean | null
+          comment?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          image_id?: string
+          round_id?: string
+          image_accuracy?: number
+          description_accurate?: boolean | null
+          location_accurate?: boolean | null
+          date_accurate?: boolean | null
+          comment?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_feedback_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       games: {
         Row: {
           completed: boolean | null

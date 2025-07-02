@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { GameProvider, useGame } from "@/contexts/GameContext"; // Added useGame
 import { LogProvider, useConsoleLogging } from "@/contexts/LogContext";
 import { LogWindowModal } from "@/components/LogWindowModal";
+import { AuthRedirectWrapper } from "@/components/AuthRedirectWrapper";
 
 import TestLayout from "./layouts/TestLayout";
 import HomePage from "./pages/HomePage";
@@ -122,7 +123,8 @@ const App = () => {
                 <LogWindowModal />
                 <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                   <AuthRedirectHandler />
-                  <GameProvider>
+                  <AuthRedirectWrapper>
+                    <GameProvider>
                     <GlobalXPLogger />
                     <Routes>
                       <Route path="/test" element={<TestLayout />}>
@@ -143,7 +145,8 @@ const App = () => {
                       <Route path="/test/game/room/:roomId/final" element={<FinalResultsPage />} />
                       <Route path="*" element={<Navigate to="/test" replace />} />
                     </Routes>
-                  </GameProvider>
+                    </GameProvider>
+                  </AuthRedirectWrapper>
                 </BrowserRouter>
               </TooltipProvider>
             </AuthProvider>

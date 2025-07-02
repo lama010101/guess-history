@@ -8,4 +8,27 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storageKey: 'supabase.auth.token',
+    storage: {
+      getItem: (key) => {
+        const item = localStorage.getItem(key);
+        return item;
+      },
+      setItem: (key, value) => {
+        localStorage.setItem(key, value);
+        // Set cookie with domain for cross-subdomain auth
+        document.cookie = `${key}=${value};domain=.guess-history.com;path=/;max-age=${60 * 60 * 24 * 7};secure;samesite=lax`;
+      },
+      removeItem: (key) => {
+        localStorage.removeItem(key);
+        // Remove cookie by setting expiry in the past
+        document.cookie = `${key}=;domain=.guess-history.com;path=/;max-age=0;secure;samesite=lax`;
+      }
+    }
+  }
+});

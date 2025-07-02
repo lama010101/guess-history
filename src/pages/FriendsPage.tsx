@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, UserPlus, UserMinus, Mail, Loader, AlertCircle, User } from "lucide-react";
+import { LockedFeatureOverlay } from "@/components/LockedFeatureOverlay";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,7 +35,7 @@ type User = {
 };
 
 const FriendsPage = () => {
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
@@ -47,14 +48,26 @@ const FriendsPage = () => {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [selectedUserForProfile, setSelectedUserForProfile] = useState<User | Friend | null>(null);
 
-  // Access Control: Check if user is registered
+  // If no user, redirect to login
   if (!user) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
         <AlertCircle className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
         <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
-        <p className="mb-6">This page is for registered users only. Please log in or create an account to view your friends.</p>
-        <Button onClick={() => navigate('/login')}>Login / Register</Button> {/* Adjust '/login' to your actual auth route */}
+        <p className="mb-6">Please log in or create an account to view this page.</p>
+        <Button onClick={() => navigate('/test/auth')}>Login / Register</Button>
+      </div>
+    );
+  }
+  
+  // For guest users, show the page with a lock overlay
+  if (isGuest) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold mb-6 text-history-primary dark:text-history-light">Friends</h1>
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 max-w-4xl mx-auto">
+          <LockedFeatureOverlay message="You need an account to connect with friends." />
+        </div>
       </div>
     );
   }

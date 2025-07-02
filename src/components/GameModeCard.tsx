@@ -14,6 +14,7 @@ interface GameModeCardProps {
   onTimerChange?: (seconds: number) => void;
   children?: React.ReactNode;
   disabled?: boolean;
+  overlay?: React.ReactNode;
 }
 
 export function GameModeCard({ 
@@ -26,7 +27,8 @@ export function GameModeCard({
   timerSeconds = 300,
   onTimerChange,
   children,
-  disabled = false
+  disabled = false,
+  overlay
 }: GameModeCardProps) {
   const isFriendsMode = mode === 'time-attack';
   const buttonText = mode === 'classic' 
@@ -48,7 +50,8 @@ export function GameModeCard({
   };
 
   return (
-    <Card className="bg-white dark:bg-gray-900 rounded-xl shadow-lg hover:shadow-xl transition-shadow">
+    <Card className="bg-white dark:bg-gray-900 rounded-xl shadow-lg hover:shadow-xl transition-shadow relative">
+      {overlay}
       <CardContent className="p-6 flex flex-col items-center">
         {/* Icon */}
         <div className={cn("h-24 w-24 rounded-full bg-opacity-20 flex items-center justify-center mb-6", {

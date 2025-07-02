@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Clock, Award, Target, Users, Timer } from "lucide-react";
+import { Clock, Award, Target, Users, Timer, Lock } from "lucide-react";
 import GlobalSettingsModal from '@/components/GlobalSettingsModal';
 import FriendsGameModal from '@/components/FriendsGameModal';
 import { AuthModal } from '@/components/AuthModal';
@@ -7,6 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from '@/contexts/AuthContext';
+import GuestBadge from '@/components/GuestBadge';
 import { UserSettings, fetchUserSettings, UserProfile, fetchUserProfile } from '@/utils/profile/profileService';
 import { GameModeCard } from "@/components/GameModeCard";
 import { useGame } from "@/contexts/GameContext";
@@ -46,7 +47,8 @@ const contentStyle: React.CSSProperties = {
 
 const HomePage = () => {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
+  const [showGuestBadge, setShowGuestBadge] = useState(false);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null); // For profile specific settings if any, or just user id
   const [isLoadingUserSettings, setIsLoadingUserSettings] = useState(false);
@@ -83,6 +85,9 @@ const HomePage = () => {
           setUserSettings(settings);
           const userProfile = await fetchUserProfile(user.id); // Potentially needed for other settings aspects or just to confirm user
           setProfile(userProfile);
+          
+          // Show guest badge if the user is a guest
+          setShowGuestBadge(isGuest);
         } catch (error) {
           console.error("Error fetching user settings for popup:", error);
           // Handle error, maybe set default settings
@@ -91,7 +96,7 @@ const HomePage = () => {
       }
     };
     loadUserSettings();
-  }, [user]);
+  }, [user, isGuest]);
 
   const handleSettingsUpdated = () => {
     if (user) {
@@ -105,6 +110,13 @@ const HomePage = () => {
     // Check if user is authenticated (either guest or registered)
     if (!user) {
       setPendingMode(mode);
+      setShowAuthModal(true);
+      return;
+    }
+    
+    // Guest users can only play Practice mode
+    if (isGuest && mode !== 'classic') {
+      setPendingMode(null);
       setShowAuthModal(true);
       return;
     }
@@ -216,6 +228,7 @@ const HomePage = () => {
 
   return (
     <div style={homePageStyle}>
+      {showGuestBadge && <GuestBadge username={profile?.display_name || 'Guest'} />}
       <div style={contentStyle} className="flex items-center min-h-screen">
         <div className="container mx-auto px-4">
           <div className="w-full max-w-6xl mx-auto">
@@ -294,6 +307,13 @@ const HomePage = () => {
                   icon={Users}
                   onStartGame={handleStartGame}
                   isLoading={isLoading}
+                  disabled={isGuest}
+                  overlay={isGuest ? <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-xl">
+                    <div className="text-center p-4">
+                      <Lock className="h-8 w-8 text-amber-400 mx-auto mb-2" />
+                      <p className="text-white text-sm">Sign in to challenge your friends and track your wins.</p>
+                    </div>
+                  </div> : undefined}
                 >
                   <div className="w-full mt-4">
                     <div className="flex items-center justify-between mb-2">
@@ -360,6 +380,12 @@ const HomePage = () => {
                   onStartGame={handleStartGame}
                   isLoading={isLoading}
                   disabled={true}
+                  overlay={isGuest ? <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-xl">
+                    <div className="text-center p-4">
+                      <Lock className="h-8 w-8 text-amber-400 mx-auto mb-2" />
+                      <p className="text-white text-sm">Sign in to unlock Challenge mode.</p>
+                    </div>
+                  </div> : undefined}
                 >
                   <div className="flex items-center justify-center mt-4">
                     <span className="text-sm text-gray-500 dark:text-gray-400">Coming soon..</span>

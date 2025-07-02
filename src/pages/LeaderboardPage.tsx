@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ListOrdered } from "lucide-react";
+import { ListOrdered, Info } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { AuthModal } from "@/components/AuthModal";
 
 interface ProfileFromSupabase {
   id: string;
@@ -19,6 +23,8 @@ interface LeaderboardEntry {
 const LeaderboardPage = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const { isGuest } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -132,6 +138,27 @@ const LeaderboardPage = () => {
         <ListOrdered className="h-8 w-8 text-history-primary" />
         <h1 className="text-3xl font-bold text-history-primary">Leaderboard</h1>
       </div>
+      
+      {isGuest && (
+        <Alert className="mb-6 bg-amber-50 border-amber-200 text-amber-800 max-w-4xl mx-auto">
+          <div className="flex items-center gap-2">
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full gap-2">
+                <span>Guest users can view the leaderboard but won't appear on it.</span>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-300"
+                  onClick={() => setShowAuthModal(true)}
+                >
+                  Sign up to compete
+                </Button>
+              </div>
+            </AlertDescription>
+          </div>
+        </Alert>
+      )}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden max-w-4xl mx-auto">
         <Table>
           <TableHeader>

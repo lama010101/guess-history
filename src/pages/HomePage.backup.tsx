@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Award, Target, Users, Timer, Lock, Play } from "lucide-react";
+import { Clock, Award, Target, Users, Timer, Lock } from "lucide-react";
 import GlobalSettingsModal from '@/components/GlobalSettingsModal';
 import FriendsGameModal from '@/components/FriendsGameModal';
 import { AuthModal } from '@/components/AuthModal';
@@ -13,7 +13,6 @@ import { GameModeCard } from "@/components/GameModeCard";
 import { useGame } from "@/contexts/GameContext";
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { Button } from "@/components/ui/button";
 
 
 const homePageStyle: React.CSSProperties = {
@@ -38,23 +37,13 @@ const contentStyle: React.CSSProperties = {
   right: 0,
   bottom: 0,
   zIndex: 1,
-  backdropFilter: 'blur(8px)',
-  backgroundColor: 'rgba(0, 0, 0, 0.75)',
+  backgroundColor: 'rgba(0, 0, 0, 0.7)',
   width: '100%',
   height: '100%',
   overflowY: 'auto',
   padding: '2rem 1rem',
   boxSizing: 'border-box',
 };
-
-// Game mode icon styles
-const iconContainerStyle = "flex items-center justify-center w-16 h-16 rounded-full mb-4 mx-auto";
-const iconStyle = "w-8 h-8";
-
-// Game mode colors
-const practiceColor = "bg-orange-500/20 text-orange-500";
-const friendsColor = "bg-blue-500/20 text-blue-500";
-const challengeColor = "bg-purple-500/20 text-purple-500";
 
 const HomePage = () => {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -240,24 +229,21 @@ const HomePage = () => {
   return (
     <div style={homePageStyle}>
       {showGuestBadge && <GuestBadge username={profile?.display_name || 'Guest'} />}
-      <div style={contentStyle} className="flex items-center justify-center min-h-screen">
+      <div style={contentStyle} className="flex items-center min-h-screen">
         <div className="container mx-auto px-4">
           <div className="w-full max-w-6xl mx-auto">
-            {/* Game Mode Selection */}
-            <h1 className="text-3xl font-bold text-center text-white mb-12">Select Game Mode</h1>
-            
+            {/* Game instructions, settings, etc. */}
+            <div className="my-4"></div>
             {gameContext ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-                {/* Practice Mode Card */}
-                <div className="bg-black/40 backdrop-blur-sm rounded-xl p-6 flex flex-col items-center border border-orange-500/20 hover:border-orange-500/40 transition-all">
-                  <div className={`${iconContainerStyle} ${practiceColor}`}>
-                    <Target className={iconStyle} />
-                  </div>
-                  
-                  <h2 className="text-xl font-bold text-white mb-6">Practice</h2>
-                  
-                  {/* Timer Toggle */}
-                  <div className="w-full mb-6">
+                <GameModeCard
+                  title="Practice"
+                  mode="classic"
+                  icon={Target}
+                  onStartGame={handleStartGame}
+                  isLoading={isLoading}
+                >
+                  <div className="w-full mt-4">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
                         <Switch 
@@ -266,7 +252,7 @@ const HomePage = () => {
                           onCheckedChange={setIsSoloTimerEnabled}
                           className="data-[state=checked]:bg-orange-500 h-4 w-8"
                         />
-                        <Label htmlFor="solo-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm text-white">
+                        <Label htmlFor="solo-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm">
                           <Timer className="h-3 w-3" />
                           <span>Round Timer</span>
                         </Label>
@@ -277,8 +263,6 @@ const HomePage = () => {
                         </span>
                       )}
                     </div>
-                    
-                    {/* Timer Slider */}
                     {isSoloTimerEnabled && (
                       <div className="relative mb-4">
                         <div className="absolute w-full h-6 pointer-events-none" style={{ bottom: '0px' }}>
@@ -315,38 +299,23 @@ const HomePage = () => {
                       </div>
                     )}
                   </div>
-                  
-                  {/* Start Button */}
-                  <Button 
-                    className="w-full bg-orange-500 hover:bg-orange-600 text-white mt-auto flex items-center justify-center gap-2"
-                    onClick={() => handleStartGame('classic')}
-                    disabled={isLoading}
-                  >
-                    <Play className="h-4 w-4" />
-                    {isLoading ? 'Loading...' : 'Start Practice'}
-                  </Button>
-                </div>
+                </GameModeCard>
                 
-                {/* Friends Mode Card */}
-                <div className="bg-black/40 backdrop-blur-sm rounded-xl p-6 flex flex-col items-center border border-blue-500/20 hover:border-blue-500/40 transition-all relative">
-                  {/* Overlay for guest users */}
-                  {isGuest && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-xl z-10">
-                      <div className="text-center p-4">
-                        <Lock className="h-10 w-10 text-amber-400 mx-auto mb-3" />
-                        <p className="text-white text-sm">Sign in to challenge your friends and track your wins.</p>
-                      </div>
+                <GameModeCard
+                  title="Friends"
+                  mode="time-attack"
+                  icon={Users}
+                  onStartGame={handleStartGame}
+                  isLoading={isLoading}
+                  disabled={isGuest}
+                  overlay={isGuest ? <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-xl">
+                    <div className="text-center p-4">
+                      <Lock className="h-8 w-8 text-amber-400 mx-auto mb-2" />
+                      <p className="text-white text-sm">Sign in to challenge your friends and track your wins.</p>
                     </div>
-                  )}
-                  
-                  <div className={`${iconContainerStyle} ${friendsColor}`}>
-                    <Users className={iconStyle} />
-                  </div>
-                  
-                  <h2 className="text-xl font-bold text-white mb-6">Friends</h2>
-                  
-                  {/* Timer Toggle */}
-                  <div className="w-full mb-6">
+                  </div> : undefined}
+                >
+                  <div className="w-full mt-4">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
                         <Switch 
@@ -355,7 +324,7 @@ const HomePage = () => {
                           onCheckedChange={setIsFriendsTimerEnabled}
                           className="data-[state=checked]:bg-blue-500 h-4 w-8"
                         />
-                        <Label htmlFor="friends-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm text-white">
+                        <Label htmlFor="friends-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm">
                           <Timer className="h-3 w-3" />
                           <span>Round Timer</span>
                         </Label>
@@ -366,10 +335,8 @@ const HomePage = () => {
                         </span>
                       )}
                     </div>
-                    
-                    {/* Timer Slider */}
                     {isFriendsTimerEnabled && (
-                      <div className="relative mb-4">
+                      <div className="relative">
                         <div className="absolute w-full h-6 pointer-events-none" style={{ bottom: '0px' }}>
                           {[5, 60, 120, 180, 240, 300].map((value) => {
                             const position = ((value - minTimerValue) / (maxTimerValue - minTimerValue)) * 100;
@@ -404,58 +371,36 @@ const HomePage = () => {
                       </div>
                     )}
                   </div>
-                  
-                  {/* Start Button */}
-                  <Button 
-                    className="w-full bg-blue-500 hover:bg-blue-600 text-white mt-auto flex items-center justify-center gap-2"
-                    onClick={() => handleStartGame('time-attack')}
-                    disabled={isLoading || isGuest}
-                  >
-                    <Play className="h-4 w-4" />
-                    {isLoading ? 'Loading...' : 'Play with Friends'}
-                  </Button>
-                </div>
+                </GameModeCard>
                 
-                {/* Challenge Mode Card */}
-                <div className="bg-black/40 backdrop-blur-sm rounded-xl p-6 flex flex-col items-center border border-purple-500/20 hover:border-purple-500/40 transition-all relative">
-                  {/* Coming Soon Overlay */}
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-xl z-10">
+                <GameModeCard
+                  title="Challenge"
+                  mode="challenge"
+                  icon={Award}
+                  onStartGame={handleStartGame}
+                  isLoading={isLoading}
+                  disabled={true}
+                  overlay={isGuest ? <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-xl">
                     <div className="text-center p-4">
-                      <p className="text-white text-lg font-medium mb-2">Coming Soon</p>
-                      <p className="text-gray-300 text-sm">Challenge mode will be available in a future update.</p>
+                      <Lock className="h-8 w-8 text-amber-400 mx-auto mb-2" />
+                      <p className="text-white text-sm">Sign in to unlock Challenge mode.</p>
                     </div>
+                  </div> : undefined}
+                >
+                  <div className="flex items-center justify-center mt-4">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Coming soon..</span>
                   </div>
-                  
-                  <div className={`${iconContainerStyle} ${challengeColor}`}>
-                    <Award className={iconStyle} />
-                  </div>
-                  
-                  <h2 className="text-xl font-bold text-white mb-6">Challenge</h2>
-                  
-                  <div className="flex-grow w-full flex items-center justify-center mb-6">
-                    <span className="text-sm text-gray-400">Compete against other players in timed challenges</span>
-                  </div>
-                  
-                  {/* Start Button (Disabled) */}
-                  <Button 
-                    className="w-full bg-purple-500/50 text-white/70 cursor-not-allowed mt-auto flex items-center justify-center gap-2"
-                    disabled={true}
-                  >
-                    <Play className="h-4 w-4" />
-                    Coming Soon
-                  </Button>
-                </div>
+                </GameModeCard>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="animate-pulse">
-                    <div className="h-[450px] bg-black/30 backdrop-blur-sm rounded-xl p-6 border border-gray-700/30">
-                      <div className="h-16 w-16 bg-gray-700/50 rounded-full mx-auto mb-6"></div>
-                      <div className="h-6 bg-gray-700/50 rounded w-1/3 mx-auto mb-8"></div>
-                      <div className="h-4 bg-gray-700/50 rounded w-3/4 mx-auto mb-4"></div>
-                      <div className="h-4 bg-gray-700/50 rounded w-2/3 mx-auto mb-8"></div>
-                      <div className="h-10 bg-gray-700/50 rounded w-full mx-auto mt-auto"></div>
+                    <div className="h-96 bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6">
+                      <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-6"></div>
+                      <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mx-auto mb-4"></div>
+                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6 mx-auto mb-6"></div>
+                      <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mx-auto"></div>
                     </div>
                   </div>
                 ))}

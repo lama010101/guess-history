@@ -100,8 +100,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    // Redirect to guess-history.com after sign out
-    window.location.href = 'https://guess-history.com';
+    // No redirect - user stays on the current page
   };
 
   const upgradeUser = async (email: string) => {

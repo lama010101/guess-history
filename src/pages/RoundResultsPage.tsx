@@ -342,9 +342,7 @@ const RoundResultsPage = () => {
         <ImageRatingModal
           isOpen={showRatingModal}
           onClose={() => setShowRatingModal(false)}
-          userId={user.id}
           imageId={currentImage.id}
-          roundId={roomId}
         />
       )}
     </>

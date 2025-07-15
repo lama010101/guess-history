@@ -26,6 +26,7 @@ import FriendsPage from "./pages/FriendsPage";
 import AuthPage from "./pages/AuthPage";
 
 
+import LandingPage from "./pages/LandingPage";
 import RoundResultsPage from "./pages/RoundResultsPage";
 
 // Enhanced AuthRedirectHandler with better session handling
@@ -127,6 +128,7 @@ const App = () => {
                     <GameProvider>
                     <GlobalXPLogger />
                     <Routes>
+                      <Route path="/" element={<LandingPage />} />
                       <Route path="/test" element={<TestLayout />}>
                         <Route index element={<HomePage />} />
                         <Route path="auth" element={<AuthPage />} />
@@ -143,7 +145,7 @@ const App = () => {
                       </Route>
                       {/* Final Results page with its own MainNavbar */}
                       <Route path="/test/game/room/:roomId/final" element={<FinalResultsPage />} />
-                      <Route path="*" element={<Navigate to="/test" replace />} />
+                      <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                     </GameProvider>
                   </AuthRedirectWrapper>

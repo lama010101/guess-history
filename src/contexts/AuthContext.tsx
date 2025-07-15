@@ -9,9 +9,10 @@ export interface AuthState {
   session: Session | null;
   isLoading: boolean;
   isGuest: boolean;
-  signInWithEmail: (email: string) => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  signUpWithEmail: (email: string, password: string) => Promise<void>;
   continueAsGuest: () => Promise<void>;
   upgradeUser: (email: string) => Promise<void>;
   updateUserEmail: (newEmail: string) => Promise<void>;
@@ -93,14 +94,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await supabase.auth.signInWithOAuth({ provider: 'google' });
   };
 
-  const signInWithEmail = async (email: string) => {
-    await supabase.auth.signInWithOtp({ email });
+  const signInWithEmail = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  };
+
+  const signUpWithEmail = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) throw error;
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Error during sign-out:', error);
+      return;
+    }
+
     setUser(null);
-    // No redirect - user stays on the current page
+    // Redirect to landing page after successful sign-out
+    window.location.replace('/')
   };
 
   const upgradeUser = async (email: string) => {
@@ -150,6 +163,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signInWithEmail,
     signOut,
     continueAsGuest,
+    signUpWithEmail,
     upgradeUser,
     updateUserEmail,
     updateUserPassword,

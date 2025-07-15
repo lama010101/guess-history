@@ -42,7 +42,6 @@ export const NavProfile = () => {
   const handleSignOut = async () => {
     try {
       await signOut();
-      navigate('/test');
     } catch (error) {
       console.error('Error signing out:', error);
     }

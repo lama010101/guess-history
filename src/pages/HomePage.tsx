@@ -136,11 +136,12 @@ const HomePage = () => {
       // For friends mode, use the friends timer settings
       if (isFriendsTimerEnabled) {
         await startGame?.({ timerSeconds: friendsTimerSeconds, timerEnabled: true });
-        navigate('/game');
+        // The startGame function will handle navigation to the correct route
+        return;
       } else {
         setIsFriendsModalOpen(true);
+        return;
       }
-      return;
     }
     
     if (!gameContext) {
@@ -164,7 +165,7 @@ const HomePage = () => {
           : {};
           
         await startGame?.(gameSettings);
-        navigate('/game');
+        // startGame handles navigation internally
       } catch (error) {
         console.error('Error starting game:', error);
         toast({
@@ -198,9 +199,13 @@ const HomePage = () => {
     
     if (!isLoading) {
       try {
-        // Call startGame without parameters since it doesn't accept any
-        await startGame?.();
-        navigate('/game');
+        // Call startGame with the settings from the friends modal
+        await startGame?.({ 
+          timerSeconds: settings.timerSeconds, 
+          hintsPerGame: settings.hintsPerGame,
+          timerEnabled: settings.timerSeconds > 0
+        });
+        // startGame handles navigation internally
       } catch (error) {
         console.error('Error starting friends game:', error);
         toast({

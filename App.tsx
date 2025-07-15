@@ -21,6 +21,7 @@ import TestFriendsPage from "./pages/test/TestFriendsPage";
 import TestAuthPage from "./pages/test/TestAuthPage";
 import AdminImagesPage from './pages/AdminImagesPage';
 import AdminBadgesPage from './pages/AdminBadgesPage';
+import LandingPage from './pages/LandingPage';
 
 // Handler for auth redirects
 const AuthRedirectHandler = () => {
@@ -58,6 +59,7 @@ const App = () => {
               <BrowserRouter>
                 <AuthRedirectHandler />
                 <Routes>
+                  <Route path="/" element={<LandingPage />} />
                   <Route path="/test" element={<TestLayout />}>
                     <Route index element={<TestHomePage />} />
                     <Route path="auth" element={<TestAuthPage />} />
@@ -72,7 +74,7 @@ const App = () => {
                   </Route>
                   <Route path="/test/admin/images" element={<AdminImagesPage />} />
                   <Route path="/test/admin/badges" element={<AdminBadgesPage />} />
-                  <Route path="*" element={<Navigate to="/test" replace />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </BrowserRouter>
             </TooltipProvider>

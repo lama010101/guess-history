@@ -40,21 +40,22 @@ export function AuthModal({
       
       // If there's a custom guest continue handler, use it
       if (onGuestContinue) {
+        await continueAsGuest();
         await onGuestContinue();
         onClose();
         return;
       }
       
       // Fallback to default behavior if no onGuestContinue provided
-      const guestUser = await continueAsGuest();
-      console.log("Guest login successful:", guestUser);
+      await continueAsGuest();
+      console.log("Guest login successful");
       
       // Close the modal first
       onClose();
       
       // Then navigate to home after a small delay to ensure the modal is closed
       setTimeout(() => {
-        window.location.href = '/';
+        window.location.replace('/test');
       }, 100);
     } catch (error) {
       console.error("Guest login error:", error);

@@ -35,6 +35,24 @@ interface ToastProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: "default" | "destructive";
 }
 
+// Image module declarations
+declare module "*.png" {
+  const src: string;
+  export default src;
+}
+declare module "*.jpg" {
+  const src: string;
+  export default src;
+}
+declare module "*.jpeg" {
+  const src: string;
+  export default src;
+}
+declare module "*.webp" {
+  const src: string;
+  export default src;
+}
+
 // Toggle component props
 interface ToggleProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "default" | "outline";

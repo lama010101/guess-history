@@ -13,7 +13,7 @@ const TestAuthPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [activeTab, setActiveTab] = useState<"signIn" | "signUp">("signIn");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,7 +76,7 @@ const TestAuthPage = () => {
                       className="w-full p-2 border rounded"
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full" disabled={isProcessing}>
                     Sign In
                   </Button>
                 </form>
@@ -105,7 +105,7 @@ const TestAuthPage = () => {
                       className="w-full p-2 border rounded"
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full" disabled={isProcessing}>
                     Create Account
                   </Button>
                 </form>
@@ -125,11 +125,11 @@ const TestAuthPage = () => {
             </div>
             <Button
               className="w-full border border-input bg-background hover:bg-accent hover:text-accent-foreground"
-              disabled={isLoading}
+              disabled={isProcessing}
               onClick={async () => {
                 console.log("Google sign-in button clicked");
                 try {
-                  setIsLoading(true);
+                  setIsProcessing(true);
                   await signInWithGoogle();
                   console.log("signInWithGoogle completed");
                   // No need to navigate here as the redirect will happen automatically
@@ -140,7 +140,7 @@ const TestAuthPage = () => {
                     description: error.message || "Could not sign in with Google.",
                   });
                   console.error(error);
-                  setIsLoading(false);
+                  setIsProcessing(false);
                 }
               }}
             >
@@ -150,7 +150,7 @@ const TestAuthPage = () => {
               className="w-full border border-input bg-background hover:bg-accent hover:text-accent-foreground"
               onClick={async () => {
                 try {
-                  setIsLoading(true);
+                  setIsProcessing(true);
                   console.log("Starting guest login from auth page");
                   const guestUser = await continueAsGuest();
                   console.log("Guest login successful:", guestUser);
@@ -162,10 +162,10 @@ const TestAuthPage = () => {
                     title: "Guest Login Failed",
                     description: "Could not log in as guest. Please try again."
                   });
-                  setIsLoading(false);
+                  setIsProcessing(false);
                 }
               }}
-              disabled={isLoading}
+              disabled={isProcessing}
             >
               Continue as Guest
             </Button>

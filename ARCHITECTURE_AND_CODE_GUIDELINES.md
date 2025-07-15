@@ -194,8 +194,40 @@ npm test
 | 2025-07-10 | Switch all guest logic to Supabase anonymous users | memorised changes 3cea80f… |
 | 2025-07-12 | Refactor `updateUserMetrics` to single `upsert`    | memorised changes 3a41c1e… |
 | 2025-07-13 | Remove inaccurate columns from `game_rounds`      | memorised changes 13cee066… |
+| 2025-07-14 | Add image feedback feature with upsert support | memorised changes 7a41c1e… |
 
 ---
+
+## 9. Image Feedback Feature
+
+### Architecture
+The image feedback system allows users to rate both the image accuracy and metadata accuracy for any image in the game. The feedback is stored in the `image_feedbacks` table in Supabase.
+
+### Database Schema
+The `image_feedbacks` table has the following key columns:
+- `user_id` (UUID) - References the authenticated user
+- `image_id` (UUID) - References the image being rated
+- `image_accuracy` (integer) - Rating from 1-10
+- `description_accurate` (boolean) - Whether the description is accurate
+- `location_accurate` (boolean) - Whether the location metadata is accurate
+- `date_accurate` (boolean) - Whether the date metadata is accurate
+- `additional_comments` (text) - Optional comments from the user
+
+### Key Features
+1. **Idempotent Feedback**
+   - Users can submit feedback multiple times for the same image
+   - The system uses `upsert` to update existing feedback if it exists
+   - A unique constraint on (`user_id`, `image_id`) ensures one feedback per user per image
+
+2. **Authentication**
+   - Feedback requires an authenticated user (anonymous or registered)
+   - The user's ID is automatically included in the feedback submission
+
+3. **UI Implementation**
+   - Feedback is collected via the `ImageRatingModal` component
+   - Supports rating on a 1-10 scale for image accuracy
+   - Allows boolean ratings for metadata accuracy (description, location, date)
+   - Optional text comments can be added
 
 ## 10. FAQ
 **Q: Where do I add a new page?**  → Create a component under `src/pages/` and add a route in `App.tsx`.

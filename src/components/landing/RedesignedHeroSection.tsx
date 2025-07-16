@@ -17,12 +17,47 @@ const RedesignedHeroSection = ({ onAuthModalOpen }: RedesignedHeroSectionProps) 
         setImagesLoading(true);
         
         const imageUrls = [];
-        for (let i = 1; i <= 8; i++) {
-          const imageUrl = `https://jghesmrwhegaotbztrhr.supabase.co/storage/v1/object/public/landing/when-where%20(${i}).webp`;
-          imageUrls.push(imageUrl);
+        const imagePromises = [];
+        // List of hero image filenames (update as needed)
+        const heroImages = [
+          'HERO (1).webp',
+          'HERO (2).webp',
+          'HERO (3).webp',
+          'hero (8).webp',
+          'hero (9).webp',
+          'hero (12).webp',
+          'hero (14).webp',
+          'hero (17).webp',
+          'hero (18).webp',
+          'hero (19).webp',
+          'hero (22).webp',
+        ];
+        for (const filename of heroImages) {
+          const imageUrl = `/images/hero/${filename}`;
+          const imagePromise = new Promise<void>((resolve) => {
+            const img = new Image();
+            img.src = imageUrl;
+            img.onload = () => {
+              imageUrls.push(imageUrl);
+              resolve();
+            };
+            img.onerror = () => {
+              console.warn(`Failed to load image: ${imageUrl}`);
+              resolve();
+            };
+          });
+          imagePromises.push(imagePromise);
         }
         
-        setCarouselImages(imageUrls);
+        // Wait for all image checks to complete
+        await Promise.all(imagePromises);
+        
+        if (imageUrls.length === 0) {
+          console.error('No images could be loaded');
+          // Optionally set some fallback images here if needed
+        } else {
+          setCarouselImages(imageUrls);
+        }
       } catch (error) {
         console.error('Error setting up images:', error);
       } finally {

@@ -33,17 +33,27 @@ const RedesignedHeroSection = ({ onAuthModalOpen }: RedesignedHeroSectionProps) 
           'hero (22).webp',
         ];
         for (const filename of heroImages) {
-          const imageUrl = `/images/hero/${filename}`;
+          const localUrl = `/images/hero/${filename}`;
+          const supabaseUrl = `https://jghesmrwhegaotbztrhr.supabase.co/storage/v1/object/public/landing/${encodeURIComponent(filename)}`;
           const imagePromise = new Promise<void>((resolve) => {
             const img = new Image();
-            img.src = imageUrl;
+            img.src = localUrl;
             img.onload = () => {
-              imageUrls.push(imageUrl);
+              imageUrls.push(localUrl);
               resolve();
             };
             img.onerror = () => {
-              console.warn(`Failed to load image: ${imageUrl}`);
-              resolve();
+              // Try Supabase fallback
+              const fallbackImg = new Image();
+              fallbackImg.src = supabaseUrl;
+              fallbackImg.onload = () => {
+                imageUrls.push(supabaseUrl);
+                resolve();
+              };
+              fallbackImg.onerror = () => {
+                console.warn(`Failed to load image: ${localUrl} and fallback: ${supabaseUrl}`);
+                resolve();
+              };
             };
           });
           imagePromises.push(imagePromise);

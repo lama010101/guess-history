@@ -16,8 +16,6 @@ const RedesignedHeroSection = ({ onAuthModalOpen }: RedesignedHeroSectionProps) 
       try {
         setImagesLoading(true);
         
-        const imageUrls = [];
-        const imagePromises = [];
         // List of hero image filenames (update as needed)
         const heroImages = [
           'HERO (1).webp',
@@ -32,42 +30,10 @@ const RedesignedHeroSection = ({ onAuthModalOpen }: RedesignedHeroSectionProps) 
           'hero (19).webp',
           'hero (22).webp',
         ];
-        for (const filename of heroImages) {
-          const localUrl = `/images/hero/${filename}`;
-          const supabaseUrl = `https://jghesmrwhegaotbztrhr.supabase.co/storage/v1/object/public/landing/${encodeURIComponent(filename)}`;
-          const imagePromise = new Promise<void>((resolve) => {
-            const img = new Image();
-            img.src = localUrl;
-            img.onload = () => {
-              imageUrls.push(localUrl);
-              resolve();
-            };
-            img.onerror = () => {
-              // Try Supabase fallback
-              const fallbackImg = new Image();
-              fallbackImg.src = supabaseUrl;
-              fallbackImg.onload = () => {
-                imageUrls.push(supabaseUrl);
-                resolve();
-              };
-              fallbackImg.onerror = () => {
-                console.warn(`Failed to load image: ${localUrl} and fallback: ${supabaseUrl}`);
-                resolve();
-              };
-            };
-          });
-          imagePromises.push(imagePromise);
-        }
-        
-        // Wait for all image checks to complete
-        await Promise.all(imagePromises);
-        
-        if (imageUrls.length === 0) {
-          console.error('No images could be loaded');
-          // Optionally set some fallback images here if needed
-        } else {
-          setCarouselImages(imageUrls);
-        }
+        // Store only local URLs in state; fallback handled in <img> onError
+        const imageUrls = heroImages.map(filename => `/images/hero/${encodeURI(filename)}`);
+        setCarouselImages(imageUrls);
+
       } catch (error) {
         console.error('Error setting up images:', error);
       } finally {
@@ -114,6 +80,15 @@ const RedesignedHeroSection = ({ onAuthModalOpen }: RedesignedHeroSectionProps) 
               src={image}
               alt={`Historical moment ${index + 1}`}
               className="w-full h-full object-cover"
+              onError={e => {
+                const target = e.currentTarget as HTMLImageElement;
+                // Only swap if not already using fallback
+                if (!target.src.startsWith('https://jghesmrwhegaotbztrhr.supabase.co')) {
+                  const encodedName = image.split('/').pop() || '';
+                  const decodedName = decodeURIComponent(encodedName);
+                  target.src = `https://jghesmrwhegaotbztrhr.supabase.co/storage/v1/object/public/landing/${encodeURIComponent(decodedName)}`;
+                }
+              }}
             />
             <div className="absolute inset-0 bg-black/40" />
           </div>

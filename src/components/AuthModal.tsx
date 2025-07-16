@@ -114,11 +114,6 @@ export function AuthModal({
     try {
       setIsLoading(true);
       await signInWithGoogle();
-      if (onAuthSuccess) {
-        onAuthSuccess();
-      } else {
-        onClose();
-      }
     } catch (error) {
       console.error("Google sign in error:", error);
       toast({

@@ -29,6 +29,7 @@ import StatsTab from '@/components/profile/StatsTab';
 import BadgesTab from '@/components/profile/BadgesTab';
 import AvatarsTab from '@/components/profile/AvatarsTab';
 import SettingsTab from '@/components/profile/SettingsTab';
+import AccountManagement from '@/components/profile/AccountManagement';
 
 const ProfileLayout1 = () => {
   const { user, isGuest, upgradeUser } = useAuth();
@@ -157,11 +158,12 @@ const ProfileLayout1 = () => {
         )}
         
         <Tabs defaultValue="stats">
-          <TabsList className="grid grid-cols-4 mb-8">
+          <TabsList className="grid grid-cols-5 mb-8">
             <TabsTrigger value="stats">Stats</TabsTrigger>
             <TabsTrigger value="badges">Badges</TabsTrigger>
             <TabsTrigger value="avatars">Avatars</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="account">Account</TabsTrigger>
           </TabsList>
           
           <TabsContent value="stats">
@@ -189,6 +191,16 @@ const ProfileLayout1 = () => {
                 isLoading={settingsLoading}
                 onSettingsUpdated={refreshData}
               />
+            )}
+          </TabsContent>
+
+          <TabsContent value="account">
+            {user && !isGuest && <AccountManagement />}
+            {isGuest && (
+              <div className="text-center p-8 glass-card rounded-xl">
+                  <h3 className="text-lg font-semibold text-history-primary dark:text-history-light">Account Management</h3>
+                  <p className="text-gray-600 dark:text-gray-400 mt-2">Please upgrade your account to manage your email, password, and other account settings.</p>
+              </div>
             )}
           </TabsContent>
         </Tabs>

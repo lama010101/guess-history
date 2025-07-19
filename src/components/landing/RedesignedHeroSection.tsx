@@ -1,6 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { ref, listAll, getDownloadURL } from "firebase/storage";
+import { storage } from "@/firebase";
+import localImagePaths from '@/data/heroImages.json';
 
 interface RedesignedHeroSectionProps {
   onAuthModalOpen?: () => void;
@@ -15,27 +17,50 @@ const RedesignedHeroSection = ({ onAuthModalOpen }: RedesignedHeroSectionProps) 
     const fetchImages = async () => {
       try {
         setImagesLoading(true);
-        
-        // List of hero image filenames (update as needed)
-        const heroImages = [
-          'HERO (1).webp',
-          'HERO (2).webp',
-          'HERO (3).webp',
-          'hero (8).webp',
-          'hero (9).webp',
-          'hero (12).webp',
-          'hero (14).webp',
-          'hero (17).webp',
-          'hero (18).webp',
-          'hero (19).webp',
-          'hero (22).webp',
-        ];
-        // Store only local URLs in state; fallback handled in <img> onError
-        const imageUrls = heroImages.map(filename => `/images/hero/${encodeURI(filename)}`);
-        setCarouselImages(imageUrls);
+        // --- Primary: Load local images from JSON ---
+        if (localImagePaths && localImagePaths.length > 0) {
+          const loadPromises = localImagePaths.map(url => {
+            return new Promise<void>((resolve, reject) => {
+              const img = new Image();
+              img.src = url;
+              img.onload = () => resolve();
+              img.onerror = reject;
+            });
+          });
+          await Promise.all(loadPromises);
+          setCarouselImages(localImagePaths);
+        } else {
+          throw new Error("No local images found in JSON. Attempting Firebase fallback.");
+        }
+      } catch (localError) {
+        console.warn(localError); // Log the fallback trigger
+        try {
+          // --- Fallback: Load from Firebase Storage ---
+          const listRef = ref(storage, 'hero');
+          const res = await listAll(listRef);
+          const urlPromises = res.items.map(item => getDownloadURL(item));
+          const firebaseImageUrls = await Promise.all(urlPromises);
 
-      } catch (error) {
-        console.error('Error setting up images:', error);
+          if (firebaseImageUrls.length === 0) {
+            console.error("Fallback failed: No images found in Firebase.");
+            return;
+          }
+
+          const loadPromises = firebaseImageUrls.map(url => {
+            return new Promise<void>((resolve, reject) => {
+              const img = new Image();
+              img.src = url;
+              img.onload = () => resolve();
+              img.onerror = reject;
+            });
+          });
+
+          await Promise.all(loadPromises);
+          setCarouselImages(firebaseImageUrls);
+
+        } catch (firebaseError) {
+          console.error('Error loading images from Firebase fallback:', firebaseError);
+        }
       } finally {
         setImagesLoading(false);
       }

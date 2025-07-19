@@ -25,6 +25,7 @@ import {
 
 // Import tab components
 import ProfileHeader from '@/components/profile/ProfileHeader';
+import { fetchAvatarById, Avatar } from '@/utils/profile/profileService';
 import StatsTab from '@/components/profile/StatsTab';
 import BadgesTab from '@/components/profile/BadgesTab';
 import AvatarsTab from '@/components/profile/AvatarsTab';
@@ -32,6 +33,7 @@ import SettingsTab from '@/components/profile/SettingsTab';
 import AccountManagement from '@/components/profile/AccountManagement';
 
 const ProfileLayout1 = () => {
+  const [avatar, setAvatar] = useState<Avatar | null>(null);
   const { user, isGuest, upgradeUser } = useAuth();
   const navigate = useNavigate();
   const { fetchGlobalMetrics } = useGame();
@@ -77,6 +79,13 @@ const ProfileLayout1 = () => {
         setStats(userStats);
         setSettings(userSettings);
         setAvatars(allAvatars);
+        // Fetch avatar metadata if avatar_id is present
+        if (userProfile && userProfile.avatar_id) {
+          const avatarMeta = await fetchAvatarById(userProfile.avatar_id);
+          setAvatar(avatarMeta);
+        } else {
+          setAvatar(null);
+        }
         const userMetrics = getDefaultMetrics(userStats);
         setMetrics(userMetrics);
         if (!isGuest) {
@@ -123,9 +132,20 @@ const ProfileLayout1 = () => {
 
   const refreshData = async () => {
     if (!user) return;
-    // Simplified refresh logic
-    const userStats = await fetchUserStats(user.id);
+    // Refresh profile, stats, and avatar data
+    const [userProfile, userStats] = await Promise.all([
+      fetchUserProfile(user.id),
+      fetchUserStats(user.id)
+    ]);
+    
+    setProfile(userProfile);
     setStats(userStats);
+    
+    // Refresh avatar metadata if avatar_id is present
+    if (userProfile && userProfile.avatar_id) {
+      const avatarMeta = await fetchAvatarById(userProfile.avatar_id);
+      setAvatar(avatarMeta);
+    }
   };
   
   return (
@@ -135,6 +155,7 @@ const ProfileLayout1 = () => {
           profile={profile} 
           isLoading={isLoading}
           onEditProfile={() => {}}
+          avatar={avatar}
         />
         {isGuest && (
           <div className="my-4 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700">

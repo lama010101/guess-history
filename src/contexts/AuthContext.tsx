@@ -1,6 +1,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
+import { createUserProfileIfNotExists } from '@/utils/profile/profileService';
 import { supabase } from '@/integrations/supabase/client';
 
 // Define the shape of our Auth Context
@@ -35,9 +36,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+      if (session?.user) {
+        // Ensure profile exists with historical avatar
+        createUserProfileIfNotExists(
+          session.user.id,
+          session.user.user_metadata?.full_name || 'User'
+        );
+      }
       setIsLoading(false);
     });
 
@@ -45,6 +53,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      if (session?.user) {
+        // Ensure profile exists with historical avatar
+        createUserProfileIfNotExists(
+          session.user.id,
+          session.user.user_metadata?.full_name || 'User'
+        );
+      }
       setIsLoading(false);
     });
 
@@ -60,27 +75,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (authError) throw authError;
 
       if (authData.user) {
-        // Fetch a random avatar
-        const { data: avatarData, error: avatarError } = await supabase.storage.from('avatars').list();
-        if (avatarError || !avatarData || avatarData.length === 0) {
-          throw new Error('Could not fetch avatars.');
-        }
-
-        const randomAvatar = avatarData[Math.floor(Math.random() * avatarData.length)];
-        const avatarUrl = supabase.storage.from('avatars').getPublicUrl(randomAvatar.name).data.publicUrl;
-        const username = generateRandomUsername(randomAvatar.name);
-
-        // Create user profile in the database
-        const { error: profileError } = await supabase.from('profiles').insert({
-          id: authData.user.id,
-          is_guest: true,
-          username,
-          avatar_url: avatarUrl,
-        });
-
-        if (profileError) throw profileError;
-
-        // Update the user state
+        // Create profile with random historical avatar
+        await createUserProfileIfNotExists(authData.user.id, 'Guest');
+        // Update the user state (already set by auth)
         setUser(authData.user);
       }
     } catch (error) {
@@ -105,15 +102,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
       console.error('Error during sign-out:', error);
-      return;
+      // Proceed anyway
     }
-
     setUser(null);
-    // Redirect to landing page after successful sign-out
-    window.location.replace('/')
+    window.location.replace('/');
   };
 
   const upgradeUser = async (email: string) => {

@@ -1,18 +1,20 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
-import { UserProfile } from '@/utils/profile/profileService';
+import { UserProfile, Avatar } from '@/utils/profile/profileService';
 
 interface ProfileHeaderProps {
   profile: UserProfile | null;
   isLoading: boolean;
   onEditProfile: () => void;
+  avatar?: Avatar | null;
 }
 
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({ 
   profile,
   isLoading,
-  onEditProfile
+  onEditProfile,
+  avatar
 }) => {
   const getDisplayName = () => {
     if (isLoading) return '...';
@@ -21,19 +23,12 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   };
   
   const getAvatarUrl = () => {
-    if (!profile) return '/placeholder.svg';
-    
-    // If user has a social avatar, use that
-    if (profile.avatar_url) {
-      return profile.avatar_url;
-    }
-    
-    // If user has selected a historical figure avatar, use that
-    if (profile.avatar_image_url) {
-      return profile.avatar_image_url;
-    }
-    
-    // Default placeholder
+    // Prioritize firebase_url from the avatar object (direct from avatars table)
+    if (avatar && avatar.firebase_url) return avatar.firebase_url;
+    // Fall back to other sources if needed
+    if (avatar && avatar.image_url) return avatar.image_url;
+    if (profile && profile.avatar_image_url) return profile.avatar_image_url;
+    if (profile && profile.avatar_url) return profile.avatar_url;
     return '/placeholder.svg';
   };
   
@@ -60,13 +55,37 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           </Button>
         </div>
         
-        <div className="text-center sm:text-left">
+        <div className="flex-1 text-center sm:text-left">
           <h2 className="text-xl font-bold text-history-primary dark:text-history-light">
             {getDisplayName()}
           </h2>
-          <div className="text-sm text-muted-foreground">
+          <div className="text-sm text-muted-foreground mb-2">
             Member since {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : 'recently'}
           </div>
+          {avatar && (
+            <div className="mt-2 p-3 rounded-lg bg-history-secondary/10 dark:bg-history-light/10">
+              <div className="font-semibold text-history-secondary dark:text-history-light mb-1">
+                {avatar.first_name} {avatar.last_name}
+              </div>
+              {avatar.description && (
+                <div className="text-sm text-muted-foreground mb-1">{avatar.description}</div>
+              )}
+              <div className="text-xs text-gray-500">
+                {avatar.birth_day && (
+                  <span>Born: {avatar.birth_day}
+                    {avatar.birth_city ? `, ${avatar.birth_city}` : ''}
+                    {avatar.birth_country ? `, ${avatar.birth_country}` : ''}
+                  </span>
+                )}
+                {avatar.death_day && (
+                  <span> | Died: {avatar.death_day}
+                    {avatar.death_city ? `, ${avatar.death_city}` : ''}
+                    {avatar.death_country ? `, ${avatar.death_country}` : ''}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

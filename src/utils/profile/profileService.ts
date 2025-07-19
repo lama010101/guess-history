@@ -4,7 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 export interface UserProfile {
   id: string;
   display_name: string;
-  avatar_url: string;
+  avatar_url: string; // social avatar from OAuth providers
+  avatar_name?: string; // unique historical avatar name e.g. "Albert Einstein #1234"
+  avatar_image_url?: string; // image URL from avatars.firebase_url
+  avatar_id?: string; // optional FK to avatars.id (if column added)
   email?: string;
   created_at: string;
   updated_at?: string;
@@ -12,9 +15,22 @@ export interface UserProfile {
 
 export interface Avatar {
   id: string;
-  name: string;
-  image_url: string;
+  first_name: string;
+  last_name: string;
+  description?: string;
+  birth_day?: string;
+  birth_city?: string;
+  birth_country?: string;
+  death_day?: string;
+  death_city?: string;
+  death_country?: string;
+  firebase_url: string;
+  ready?: boolean;
   created_at: string;
+
+  // Helper derived fields (not in DB)
+  name?: string; // `${first_name} ${last_name}`
+  image_url?: string; // alias for firebase_url to keep old code working
 }
 
 export interface UserStats {
@@ -58,57 +74,12 @@ export interface UserSettings {
   language: string;
 }
 
-// Fetch user profile
+// Fetch user profile (registered or anonymous). Always query Supabase.
 export async function fetchUserProfile(userId: string): Promise<UserProfile | null> {
-  // If userId is not provided, return null early
-  if (!userId) {
-    console.log('No userId provided for profile fetch');
-    return null;
-  }
-  
-  console.log(`Fetching profile for user: ${userId}`);
-  
-  // Check if this is a guest user from localStorage first
-  const guestSession = localStorage.getItem('guestSession');
-  if (guestSession) {
-    try {
-      const guestUser = JSON.parse(guestSession);
-      if (guestUser.id === userId) {
-        console.log('Found guest user in localStorage:', guestUser.id);
-        
-        // Try to get the profile from the database first
-        try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .single();
+  if (!userId) return null;
 
-          // If we found the profile in the database, use that
-          if (data && !error) {
-            console.log('Found guest profile in database:', data);
-            return data as unknown as UserProfile;
-          }
-        } catch (dbError) {
-          console.log('Error fetching guest from database, using localStorage:', dbError);
-        }
-        
-        // Return a simplified profile for guest users from localStorage
-        return {
-          id: guestUser.id,
-          display_name: guestUser.display_name,
-          avatar_url: guestUser.avatar_url || 'https://api.dicebear.com/6.x/adventurer/svg?seed=' + userId,
-          created_at: new Date().toISOString()
-        } as UserProfile;
-      }
-    } catch (e) {
-      console.log('Error parsing guest session:', e);
-    }
-  }
-  
-  // Not a guest user or guest not found in localStorage, try database
   try {
-    console.log(`Fetching profile from database for: ${userId}`);
+    // First get the profile
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -119,15 +90,34 @@ export async function fetchUserProfile(userId: string): Promise<UserProfile | nu
       console.error('Error fetching user profile:', error);
       return null;
     }
-
-    // Check if this is a guest user (marked by avatar_url = 'guest')
-    if (data && data.avatar_url === 'guest') {
-      console.log('Found guest user in database:', data);
+    
+    // If profile has avatar_id but no avatar_image_url, fetch it from avatars table
+    if (data && data.avatar_id && !data.avatar_image_url) {
+      try {
+        const { data: avatarData, error: avatarError } = await supabase
+          .from('avatars')
+          .select('firebase_url')
+          .eq('id', data.avatar_id)
+          .single();
+          
+        if (!avatarError && avatarData) {
+          // Update the profile with the firebase_url
+          data.avatar_image_url = avatarData.firebase_url;
+          
+          // Also update it in the database for future queries
+          await supabase
+            .from('profiles')
+            .update({ avatar_image_url: avatarData.firebase_url })
+            .eq('id', userId);
+        }
+      } catch (avatarErr) {
+        console.error('Error fetching avatar URL:', avatarErr);
+      }
     }
 
-    return data as unknown as UserProfile;
-  } catch (error) {
-    console.error('Error in fetchUserProfile:', error);
+    return data as UserProfile;
+  } catch (err) {
+    console.error('Unexpected error in fetchUserProfile:', err);
     return null;
   }
 }
@@ -173,15 +163,17 @@ export async function findMatchingAvatar(displayName: string | undefined, isGues
   }
 }
 
+// Updates the user profile with a newly selected avatar
 export async function updateUserAvatar(userId: string, avatarId: string, customImageUrl: string | null = null): Promise<boolean> {
   try {
     let imageUrl = customImageUrl;
+    let avatarName: string | undefined;
     
     // If no custom image URL provided, fetch from avatars table
     if (!customImageUrl) {
       const { data: avatarData, error: avatarError } = await supabase
         .from('avatars')
-        .select('image_url')
+        .select('*')
         .eq('id', avatarId)
         .single();
         
@@ -190,14 +182,33 @@ export async function updateUserAvatar(userId: string, avatarId: string, customI
         return false;
       }
       
-      imageUrl = avatarData.image_url;
+      imageUrl = avatarData.firebase_url;
+        // Build unique avatar name
+        const baseName = `${avatarData.first_name} ${avatarData.last_name}`.trim();
+        let uniqueName = baseName;
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const suffix = Math.floor(1000 + Math.random() * 9000);
+          const candidate = `${baseName} #${suffix}`;
+          const { data: exists } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('avatar_name', candidate)
+            .single();
+          if (!exists) {
+            uniqueName = candidate;
+            break;
+          }
+        }
+        avatarName = uniqueName;
     }
     
-    // Update the user profile with the new avatar
+    // Update the user profile with the new avatar fields
     const { error } = await supabase
       .from('profiles')
       .update({ 
-        avatar_url: imageUrl,
+        avatar_image_url: imageUrl,
+        avatar_id: avatarId,
+        avatar_name: avatarName,
         updated_at: new Date().toISOString(),
       })
       .eq('id', userId);
@@ -215,20 +226,21 @@ export async function updateUserAvatar(userId: string, avatarId: string, customI
 }
 
 // Create a new user profile if it doesn't exist
+// Creates a profile and assigns a random historical avatar if one does not already exist
 export async function createUserProfileIfNotExists(userId: string, displayName: string): Promise<boolean> {
   try {
     console.log(`Checking if profile exists for user ${userId}`);
     
     // Check if profile exists
-    const { data, error: fetchError } = await supabase
+    const { data: existingProfile, error: fetchError } = await supabase
       .from('profiles')
-      .select('id')
+      .select('*')
       .eq('id', userId)
-      .single();
-      
-    // If profile exists, no need to create one
-    if (data) {
-      console.log(`Profile already exists for user ${userId}`);
+      .maybeSingle();
+
+    // If profile exists but already has an avatar, nothing to do
+    if (existingProfile && existingProfile.avatar_id) {
+      console.log(`Profile already exists with avatar for user ${userId}`);
       return true;
     }
     
@@ -238,33 +250,100 @@ export async function createUserProfileIfNotExists(userId: string, displayName: 
       return false;
     }
     
-    // Create new profile
-    const defaultAvatarUrl = 'https://api.dicebear.com/6.x/adventurer/svg?seed=' + userId;
-    
-    // Prepare the profile data based on the actual database schema
+    // --- Avatar assignment logic (fixed 2025-07-19) ---
+    // Fetch all ready avatars (id, firebase_url, first_name, last_name)
+    const { data: avatarsList, error: avatarErr } = await supabase
+      .from('avatars')
+      .select('id, firebase_url, first_name, last_name')
+      .eq('ready', true);
+
+    if (avatarErr || !avatarsList || avatarsList.length === 0) {
+      console.error('Error fetching ready avatars:', avatarErr);
+    }
+
+    // Pick one at random on the client
+    const avatar = avatarsList && avatarsList.length > 0
+      ? avatarsList[Math.floor(Math.random() * avatarsList.length)]
+      : null;
+
+    if (avatarErr) {
+      console.error('Error fetching random avatar:', avatarErr);
+    }
+
+    let avatarName = displayName;
+    let avatarImageUrl: string | undefined;
+    let avatarId: string | undefined;
+
+    if (avatar) {
+      // Build base name from avatar table
+      const baseName = `${avatar.first_name} ${avatar.last_name}`.trim();
+      // Ensure uniqueness by trying different numeric suffixes up to 10 attempts
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const suffix = Math.floor(1000 + Math.random() * 9000);
+        const candidate = `${baseName} #${suffix}`;
+        // Check uniqueness in profiles
+        const { data: existing } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('avatar_name', candidate)
+          .single();
+        if (!existing) {
+          avatarName = candidate;
+          break;
+        }
+      }
+
+      avatarImageUrl = avatar.firebase_url;
+      avatarId = avatar.id;
+    }
+
+    // Fallback avatar if query failed
+    if (!avatarImageUrl) {
+      avatarImageUrl = `https://api.dicebear.com/6.x/adventurer/svg?seed=${userId}`;
+    }
+
+    // Prepare the profile data (for insert or update)
     const profileData: any = {
-      id: userId,
-      display_name: displayName,
-      avatar_url: defaultAvatarUrl,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      display_name: avatarName,
+      avatar_name: avatarName,
+      avatar_image_url: avatarImageUrl,
+      avatar_id: avatarId ?? null,
+      updated_at: new Date().toISOString(),
     };
+
+    if (!existingProfile) {
+      // New profile insert
+      Object.assign(profileData, {
+        id: userId,
+        created_at: new Date().toISOString(),
+      });
+    }
     
 
     
     console.log('Creating new profile with data:', profileData);
     
-    const { data: insertData, error } = await supabase
-      .from('profiles')
-      .insert(profileData)
-      .select();
+    let dbError;
+    if (existingProfile) {
+      // Update existing profile missing avatar
+      const { error: updErr } = await supabase
+        .from('profiles')
+        .update(profileData)
+        .eq('id', userId);
+      dbError = updErr;
+    } else {
+      const { error: insErr } = await supabase
+        .from('profiles')
+        .insert(profileData);
+      dbError = insErr;
+    }
       
-    if (error) {
-      console.error('Error creating profile:', error);
+    if (dbError) {
+      console.error('Error saving profile:', dbError);
       return false;
     }
     
-    console.log('Profile created successfully:', insertData);
+    console.log('Profile upserted successfully for user', userId);
     return true;
   } catch (error) {
     console.error('Error in createUserProfileIfNotExists:', error);
@@ -272,20 +351,51 @@ export async function createUserProfileIfNotExists(userId: string, displayName: 
   }
 }
 
-// Fetch available avatars
-export async function fetchAvatars(): Promise<Avatar[]> {
+// Fetch avatar by id
+export async function fetchAvatarById(avatarId: string): Promise<Avatar | null> {
   try {
     const { data, error } = await supabase
       .from('avatars')
       .select('*')
+      .eq('id', avatarId)
+      .single();
+    if (error || !data) {
+      console.error('Error fetching avatar by id:', error);
+      return null;
+    }
+    // Add helper fields for UI compatibility
+    return {
+      ...data,
+      name: `${data.first_name} ${data.last_name}`,
+      image_url: data.firebase_url,
+    } as Avatar;
+  } catch (error) {
+    console.error('Error in fetchAvatarById:', error);
+    return null;
+  }
+}
+
+// Fetch available avatars
+export async function fetchAvatars(onlyReady: boolean = true): Promise<Avatar[]> {
+  try {
+    const query = supabase
+      .from('avatars')
+      .select('*')
       .order('created_at');
+
+    const { data, error } = onlyReady ? await query.eq('ready', true) : await query;
 
     if (error) {
       console.error('Error fetching avatars:', error);
       return [];
     }
 
-    return data as Avatar[];
+    // Map DB fields into Avatar helper fields expected by UI (name & image_url)
+    return (data as Avatar[]).map((a) => ({
+      ...a,
+      name: `${a.first_name} ${a.last_name}`,
+      image_url: a.firebase_url,
+    }));
   } catch (error) {
     console.error('Error in fetchAvatars:', error);
     return [];

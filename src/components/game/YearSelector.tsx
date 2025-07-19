@@ -99,8 +99,8 @@ const YearSelector: React.FC<YearSelectorProps> = ({
                 className="absolute flex flex-col items-center"
                 style={{ left: `${position}%`, transform: 'translateX(-50%)' }}
               >
-                <div className="w-0.5 h-2 bg-gray-400 -mt-2"></div>
-                <div className="text-xs text-gray-600 mt-1">{year}</div>
+                <div className="w-0.5 h-2 bg-[#dadada] -mt-2"></div>
+                <div className="text-xs text-[#dadada] mt-1">{year}</div>
               </div>
             );
           })}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserProfile } from '@/utils/profile/profileService';
+import { UserProfile, Avatar } from '@/utils/profile/profileService';
 import { Button } from "@/components/ui/button";
 import { CheckCircle, LockIcon } from "lucide-react";
 import { updateUserAvatar } from '@/utils/profile/profileService';
@@ -7,7 +7,7 @@ import { toast } from '@/components/ui/use-toast';
 
 interface AvatarsTabProps {
   profile: UserProfile | null;
-  avatars: { id: string; name: string; image_url: string }[];
+  avatars: (Avatar | { id: string; name: string; image_url: string; firebase_url?: string })[];
   isLoading: boolean;
   onAvatarUpdated: () => void;
 }
@@ -61,8 +61,7 @@ const AvatarsTab: React.FC<AvatarsTabProps> = ({
   }
   
   // Get current selected avatar
-  const currentAvatarId = profile?.avatar_name ? 
-    avatars.find(a => a.name === profile.avatar_name)?.id : null;
+  const currentAvatarId = profile?.avatar_id || null;
 
   return (
     <div className="glass-card rounded-xl p-6">
@@ -86,7 +85,7 @@ const AvatarsTab: React.FC<AvatarsTabProps> = ({
               >
                 <div className="h-24 w-24 mx-auto bg-history-light dark:bg-history-dark rounded-full overflow-hidden mb-2">
                   <img 
-                    src={avatar.image_url} 
+                    src={avatar.firebase_url || avatar.image_url} 
                     alt={avatar.name} 
                     className="h-full w-full object-cover"
                     onError={(e) => {

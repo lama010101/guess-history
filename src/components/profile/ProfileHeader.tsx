@@ -70,18 +70,26 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               {avatar.description && (
                 <div className="text-sm text-muted-foreground mb-1">{avatar.description}</div>
               )}
-              <div className="text-xs text-gray-500">
+              <div className="text-sm text-muted-foreground mt-1 space-y-1">
                 {avatar.birth_day && (
-                  <span>Born: {avatar.birth_day}
-                    {avatar.birth_city ? `, ${avatar.birth_city}` : ''}
-                    {avatar.birth_country ? `, ${avatar.birth_country}` : ''}
-                  </span>
+                  <div className="flex items-center">
+                    <span className="font-medium">Born:</span>
+                    <span className="ml-1">
+                      {avatar.birth_day}
+                      {avatar.birth_city && `, ${avatar.birth_city}`}
+                      {avatar.birth_country && `, ${avatar.birth_country}`}
+                    </span>
+                  </div>
                 )}
                 {avatar.death_day && (
-                  <span> | Died: {avatar.death_day}
-                    {avatar.death_city ? `, ${avatar.death_city}` : ''}
-                    {avatar.death_country ? `, ${avatar.death_country}` : ''}
-                  </span>
+                  <div className="flex items-center">
+                    <span className="font-medium">Died:</span>
+                    <span className="ml-1">
+                      {avatar.death_day}
+                      {avatar.death_city && `, ${avatar.death_city}`}
+                      {avatar.death_country && `, ${avatar.death_country}`}
+                    </span>
+                  </div>
                 )}
               </div>
             </div>

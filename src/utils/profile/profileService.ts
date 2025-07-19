@@ -203,12 +203,14 @@ export async function updateUserAvatar(userId: string, avatarId: string, customI
     }
     
     // Update the user profile with the new avatar fields
+    // Important: Update both display_name and avatar_name to the new avatar name
     const { error } = await supabase
       .from('profiles')
       .update({ 
         avatar_image_url: imageUrl,
         avatar_id: avatarId,
         avatar_name: avatarName,
+        display_name: avatarName, // Update display_name to match avatar_name
         updated_at: new Date().toISOString(),
       })
       .eq('id', userId);

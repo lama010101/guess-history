@@ -33,7 +33,7 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
     return () => clearInterval(refreshInterval);
   }, [fetchGlobalMetrics]);
 
-  // Fetch user avatar when user changes
+  // Fetch user avatar when user changes or every 5 seconds to catch updates
   useEffect(() => {
     const fetchAvatar = async () => {
       if (!user) {
@@ -45,7 +45,22 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
         const profile = await fetchUserProfile(user.id);
         if (profile && profile.avatar_id) {
           const avatarData = await fetchAvatarById(profile.avatar_id);
-          setAvatar(avatarData);
+          if (avatarData) {
+            console.log('NavBar: Avatar loaded successfully', avatarData.firebase_url);
+            setAvatar(avatarData);
+          } else {
+            console.warn('NavBar: Avatar data is null despite valid avatar_id');
+          }
+        } else if (profile && profile.avatar_image_url) {
+          // Fallback to using avatar_image_url directly if no avatar_id
+          setAvatar({
+            id: 'fallback',
+            firebase_url: profile.avatar_image_url,
+            first_name: profile.avatar_name?.split(' ')?.[0] || '',
+            last_name: profile.avatar_name?.split(' ')?.slice(1)?.join(' ') || '',
+            name: profile.avatar_name || '',
+            image_url: profile.avatar_image_url
+          } as Avatar);
         }
       } catch (error) {
         console.error('Error fetching avatar for navbar:', error);
@@ -53,6 +68,10 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
     };
     
     fetchAvatar();
+    
+    // Set up polling to catch avatar updates
+    const refreshInterval = setInterval(fetchAvatar, 5000);
+    return () => clearInterval(refreshInterval);
   }, [user]);
 
   return (

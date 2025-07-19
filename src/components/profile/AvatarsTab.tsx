@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { UserProfile, Avatar } from '@/utils/profile/profileService';
 import { Button } from "@/components/ui/button";
 import { CheckCircle, LockIcon } from "lucide-react";
@@ -14,18 +14,101 @@ interface AvatarsTabProps {
 
 const AvatarsTab: React.FC<AvatarsTabProps> = ({ 
   profile, 
-  avatars, 
+  avatars: initialAvatars, 
   isLoading,
   onAvatarUpdated
 }) => {
   const [updating, setUpdating] = useState(false);
+  const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null);
+  const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(null);
   
-  const handleSelectAvatar = async (avatarId: string) => {
-    if (!profile || updating) return;
+  // For infinite scroll
+  const [displayedAvatars, setDisplayedAvatars] = useState<(Avatar | { id: string; name: string; image_url: string; firebase_url?: string })[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const observer = useRef<IntersectionObserver | null>(null);
+  const ITEMS_PER_PAGE = 12;
+  
+  // Update selected avatar when profile changes
+  useEffect(() => {
+    if (profile?.avatar_id) {
+      setSelectedAvatarId(profile.avatar_id);
+    }
+  }, [profile]);
+
+  // Update selected avatar details when selection changes
+  useEffect(() => {
+    if (selectedAvatarId) {
+      const avatar = initialAvatars.find(a => a.id === selectedAvatarId);
+      setSelectedAvatar(avatar as Avatar || null);
+    } else {
+      setSelectedAvatar(null);
+    }
+  }, [selectedAvatarId, initialAvatars]);
+  
+  // Initialize displayed avatars
+  useEffect(() => {
+    if (initialAvatars.length > 0) {
+      setDisplayedAvatars(initialAvatars.slice(0, ITEMS_PER_PAGE));
+      setHasMore(initialAvatars.length > ITEMS_PER_PAGE);
+    }
+  }, [initialAvatars]);
+  
+  // Load more avatars when scrolling
+  const loadMoreAvatars = useCallback(() => {
+    if (loading || !hasMore) return;
+    
+    setLoading(true);
+    const nextPage = page + 1;
+    const startIndex = (nextPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = nextPage * ITEMS_PER_PAGE;
+    
+    // Simulate delay for better UX
+    setTimeout(() => {
+      const newAvatars = initialAvatars.slice(startIndex, endIndex);
+      if (newAvatars.length > 0) {
+        setDisplayedAvatars(prev => [...prev, ...newAvatars]);
+        setPage(nextPage);
+        setHasMore(endIndex < initialAvatars.length);
+      } else {
+        setHasMore(false);
+      }
+      setLoading(false);
+    }, 300);
+  }, [initialAvatars, loading, hasMore, page]);
+  
+  // Set up intersection observer for infinite scroll
+  const lastAvatarRef = useCallback((node: HTMLDivElement | null) => {
+    if (loading) return;
+    
+    if (observer.current) {
+      observer.current.disconnect();
+    }
+    
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        loadMoreAvatars();
+      }
+    });
+    
+    if (node) {
+      observer.current.observe(node);
+    }
+  }, [loading, hasMore, loadMoreAvatars]);
+
+  // Handle avatar selection (just preview, doesn't save yet)
+  const handleSelectAvatar = (avatarId: string) => {
+    setSelectedAvatarId(avatarId);
+  };
+  
+  // Handle saving the selected avatar
+  const handleSaveAvatar = async () => {
+    if (!profile || !selectedAvatarId || updating) return;
     
     try {
       setUpdating(true);
-      const success = await updateUserAvatar(profile.id, avatarId, null);
+      const success = await updateUserAvatar(profile.id, selectedAvatarId, null);
       
       if (success) {
         toast({
@@ -60,24 +143,81 @@ const AvatarsTab: React.FC<AvatarsTabProps> = ({
     );
   }
   
-  // Get current selected avatar
+  // Get current profile avatar id
   const currentAvatarId = profile?.avatar_id || null;
 
   return (
     <div className="glass-card rounded-xl p-6">
       <h3 className="text-lg font-semibold mb-6 text-history-primary dark:text-history-light">Choose Your Avatar</h3>
       
-      {avatars.length === 0 ? (
+      {/* Current user avatar name and info */}
+      {profile && profile.avatar_name && (
+        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <h4 className="font-medium mb-2 text-history-primary dark:text-history-light">Current Avatar</h4>
+          <div className="text-base font-medium">{profile.avatar_name}</div>
+        </div>
+      )}
+      
+      {/* Selected Avatar Info and Save Button - Moved to top */}
+      {selectedAvatar && selectedAvatarId !== profile?.avatar_id && (
+        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <h4 className="font-medium mb-2 text-history-primary dark:text-history-light">Selected Avatar</h4>
+          <div className="flex items-start gap-4">
+            <div className="h-20 w-20 bg-history-light dark:bg-history-dark rounded-full overflow-hidden flex-shrink-0">
+              <img 
+                src={selectedAvatar.firebase_url || selectedAvatar.image_url} 
+                alt={selectedAvatar.name} 
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/placeholder.svg';
+                }}
+              />
+            </div>
+            <div className="flex-1">
+              <div className="text-base font-medium">{selectedAvatar.name}</div>
+              {selectedAvatar.description && (
+                <div className="text-sm text-muted-foreground mt-1">{selectedAvatar.description}</div>
+              )}
+              <div className="text-xs text-gray-500 mt-1">
+                {selectedAvatar.birth_day && (
+                  <div>Born: {selectedAvatar.birth_day}
+                    {selectedAvatar.birth_city && `, ${selectedAvatar.birth_city}`}
+                    {selectedAvatar.birth_country && `, ${selectedAvatar.birth_country}`}
+                  </div>
+                )}
+                {selectedAvatar.death_day && (
+                  <div>Died: {selectedAvatar.death_day}
+                    {selectedAvatar.death_city && `, ${selectedAvatar.death_city}`}
+                    {selectedAvatar.death_country && `, ${selectedAvatar.death_country}`}
+                  </div>
+                )}
+              </div>
+              <Button
+                className="mt-3"
+                disabled={updating || selectedAvatarId === profile?.avatar_id}
+                onClick={handleSaveAvatar}
+              >
+                {updating ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {displayedAvatars.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           <p>No avatars available yet.</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {avatars.map((avatar) => {
-            const isSelected = avatar.id === currentAvatarId;
+          {displayedAvatars.map((avatar, index) => {
+            const isSelected = avatar.id === selectedAvatarId;
+            const isLastItem = index === displayedAvatars.length - 1;
+            
             return (
               <div 
-                key={avatar.id} 
+                key={avatar.id}
+                ref={isLastItem ? lastAvatarRef : null}
                 className={`relative bg-white dark:bg-gray-800 rounded-lg p-3 text-center shadow-sm border-2 ${
                   isSelected ? 'border-history-primary' : 'border-transparent'
                 } hover:border-history-primary/50 transition-colors cursor-pointer`}
@@ -134,6 +274,13 @@ const AvatarsTab: React.FC<AvatarsTabProps> = ({
               </Button>
             </div>
           </div>
+        </div>
+      )}
+      
+      {/* Loading indicator for infinite scroll */}
+      {loading && (
+        <div className="flex justify-center py-4 mt-4">
+          <div className="animate-spin h-6 w-6 border-4 border-history-primary border-t-transparent rounded-full"></div>
         </div>
       )}
     </div>

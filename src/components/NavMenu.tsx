@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthModal } from "@/components/AuthModal";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -8,6 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   Home,
@@ -19,11 +20,62 @@ import {
   LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabaseClient";
+import { Avatar } from "@/types/avatar";
 
 export const NavMenu = () => {
   const navigate = useNavigate();
   const { user, isGuest, signOut } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [profile, setProfile] = useState<{ 
+    first_name: string | null; 
+    last_name: string | null;
+    avatar_image_url: string | null;
+    avatar_id: string | null;
+  } | null>(null);
+  const [avatar, setAvatar] = useState<Avatar | null>(null);
+
+  // Fetch profile data when user changes
+  useEffect(() => {
+    if (user) {
+      const fetchProfileData = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('first_name, last_name, avatar_image_url, avatar_id')
+            .eq('id', user.id)
+            .single();
+
+          if (error) {
+            console.error('Error fetching profile:', error);
+            return;
+          }
+
+          setProfile(data);
+
+          // If avatar_id exists, fetch the avatar details
+          if (data?.avatar_id) {
+            const { data: avatarData, error: avatarError } = await supabase
+              .from('avatars')
+              .select('*')
+              .eq('id', data.avatar_id)
+              .single();
+
+            if (avatarError) {
+              console.error('Error fetching avatar:', avatarError);
+              return;
+            }
+
+            setAvatar(avatarData);
+          }
+        } catch (error) {
+          console.error('Error in profile fetch:', error);
+        }
+      };
+
+      fetchProfileData();
+    }
+  }, [user]);
 
   const handleRestrictedFeatureClick = (e: React.MouseEvent) => {
     if (isGuest) {
@@ -40,7 +92,42 @@ export const NavMenu = () => {
             <MenuIcon className="h-5 w-5" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-48">
+        <DropdownMenuContent align="start" className="w-56">          
+          {/* User Profile Header */}
+          {profile && (
+            <div className="px-2 py-2 mb-1">
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  {(avatar?.firebase_url || profile.avatar_image_url) ? (
+                    <img
+                      src={avatar?.firebase_url || profile.avatar_image_url || ''}
+                      alt="User avatar"
+                      className="h-10 w-10 rounded-full object-cover border border-gray-200"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/placeholder.svg';
+                      }}
+                    />
+                  ) : (
+                    <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                      <span className="text-gray-500 text-sm">{profile.first_name?.[0] || '?'}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">
+                    {profile.first_name && profile.last_name 
+                      ? `${profile.first_name} ${profile.last_name}` 
+                      : 'Anonymous User'}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {isGuest ? 'Guest User' : 'Registered User'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <Link to="/test" className="flex items-center">
               <Home className="mr-2 h-4 w-4" />

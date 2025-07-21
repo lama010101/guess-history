@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import HintModal from '@/components/HintModal';
 import { useHint } from '@/hooks/useHint';
+import LazyImage from '@/components/ui/LazyImage';
 
 export interface GameLayout2Props {
   onComplete?: () => void;
@@ -19,7 +20,15 @@ export interface GameLayout2Props {
 
 const GameLayout2: React.FC<GameLayout2Props> = ({ onComplete, gameMode = 'solo' }) => {
   const [isHintModalOpen, setIsHintModalOpen] = useState(false);
-  const { selectedHintType, hintContent, selectHint } = useHint();
+  const { 
+    selectedHintType, 
+    hintContent, 
+    selectHint, 
+    hintsUsedThisRound, 
+    hintsUsedTotal, 
+    HINTS_PER_ROUND, 
+    HINTS_PER_GAME 
+  } = useHint();
 
   const handleHintClick = () => {
     setIsHintModalOpen(true);
@@ -28,11 +37,12 @@ const GameLayout2: React.FC<GameLayout2Props> = ({ onComplete, gameMode = 'solo'
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col md:flex-row">
       {/* Historical Image Side */}
-      <div className="w-full md:w-1/2 h-[40vh] md:h-screen relative">
-        <img
+      <div className="w-full md:w-1/2 h-[60vh] md:h-screen relative">
+        <LazyImage
           src="https://source.unsplash.com/random/1600x900/?historical,vintage"
           alt="Historical scene"
           className="w-full h-full object-cover"
+          skeletonClassName="w-full h-full"
         />
         <div className="absolute bottom-4 right-4 flex space-x-2">
           <Button 
@@ -126,6 +136,10 @@ const GameLayout2: React.FC<GameLayout2Props> = ({ onComplete, gameMode = 'solo'
         selectedHintType={selectedHintType}
         hintContent={hintContent}
         onSelectHint={selectHint}
+        hintsUsedThisRound={hintsUsedThisRound}
+        hintsUsedTotal={hintsUsedTotal}
+        HINTS_PER_ROUND={HINTS_PER_ROUND}
+        HINTS_PER_GAME={HINTS_PER_GAME}
       />
     </div>
   );

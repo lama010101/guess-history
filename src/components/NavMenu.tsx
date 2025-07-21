@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
+import LazyImage from "@/components/ui/LazyImage";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthModal } from "@/components/AuthModal";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -32,6 +33,8 @@ export const NavMenu = () => {
     last_name: string | null;
     avatar_image_url: string | null;
     avatar_id: string | null;
+    avatar_name: string | null;
+    display_name: string | null;
   } | null>(null);
   const [avatar, setAvatar] = useState<Avatar | null>(null);
 
@@ -42,7 +45,7 @@ export const NavMenu = () => {
         try {
           const { data, error } = await supabase
             .from('profiles')
-            .select('first_name, last_name, avatar_image_url, avatar_id')
+            .select('first_name, last_name, avatar_image_url, avatar_id, avatar_name, display_name')
             .eq('id', user.id)
             .single();
 
@@ -88,39 +91,49 @@ export const NavMenu = () => {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="text-white hover:bg-history-primary/20">
-            <MenuIcon className="h-5 w-5" />
+          <Button variant="ghost" size="icon" className="text-white hover:bg-history-primary/20 p-0">
+            {(avatar?.firebase_url || profile?.avatar_image_url) ? (
+              <LazyImage
+                src={avatar?.firebase_url || profile?.avatar_image_url || ''}
+                alt="User avatar"
+                className="h-9 w-9 rounded-full object-cover border-2 border-history-primary/30"
+                skeletonClassName="h-9 w-9 rounded-full"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/placeholder.svg';
+                }}
+              />
+            ) : (
+              <MenuIcon className="h-5 w-5" />
+            )}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-56">          
+        <DropdownMenuContent align="start" className="w-64">          
           {/* User Profile Header */}
           {profile && (
-            <div className="px-2 py-2 mb-1">
+            <div className="px-3 py-3 mb-1">
               <div className="flex items-center space-x-3">
                 <div className="flex-shrink-0">
                   {(avatar?.firebase_url || profile.avatar_image_url) ? (
                     <img
                       src={avatar?.firebase_url || profile.avatar_image_url || ''}
                       alt="User avatar"
-                      className="h-10 w-10 rounded-full object-cover border border-gray-200"
+                      className="h-12 w-12 rounded-full object-cover border-2 border-history-primary/30"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = '/placeholder.svg';
                       }}
                     />
                   ) : (
-                    <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                    <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
                       <span className="text-gray-500 text-sm">{profile.first_name?.[0] || '?'}</span>
                     </div>
                   )}
                 </div>
                 <div className="flex flex-col">
                   <span className="text-sm font-medium">
-                    {profile.first_name && profile.last_name 
-                      ? `${profile.first_name} ${profile.last_name}` 
-                      : 'Anonymous User'}
+                    {profile.avatar_name || profile.display_name || 'Anonymous User'}
                   </span>
                   <span className="text-xs text-gray-500">
-                    {isGuest ? 'Guest User' : 'Registered User'}
+                    {isGuest ? 'Playing as guest' : 'Signed in'}
                   </span>
                 </div>
               </div>

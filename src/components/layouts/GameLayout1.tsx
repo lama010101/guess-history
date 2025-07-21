@@ -11,6 +11,7 @@ import GameOverlayHUD from '@/components/navigation/GameOverlayHUD';
 import YearSelector from '@/components/game/YearSelector';
 import LocationSelector from '@/components/game/LocationSelector';
 import TimerDisplay from '@/components/game/TimerDisplay';
+import LazyImage from '@/components/ui/LazyImage';
 
 // Helper function to format time as MM:SS
 const formatTime = (seconds: number): string => {
@@ -34,6 +35,7 @@ export interface GameLayout1Props {
   isTimerActive: boolean;
   onNavigateHome: () => void;
   onConfirmNavigation: (navigateTo: () => void) => void;
+  avatarUrl?: string;
 }
 
 const GameLayout1: React.FC<GameLayout1Props> = ({
@@ -48,6 +50,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   remainingTime,
   setRemainingTime,
   isTimerActive,
+  avatarUrl,
   onNavigateHome,
   onConfirmNavigation,
 }) => {
@@ -143,10 +146,10 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
     availableHints,
     purchasedHintIds,
     purchasedHints,
-    xpRemaining,
-    maxAccuracy,
-    isLoading: isHintLoading,
-    isHintLoading: isPurchasing,
+    xpDebt,
+    accDebt,
+    isLoading: isHintLoading, // for initial hint fetch
+    isHintLoading: isPurchasing, // for when a hint is being purchased
     purchaseHint,
     hintsByLevel
   } = useHintV2(memoizedImageData);
@@ -193,11 +196,12 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-history-light dark:bg-history-dark">
       {/* Image Section - Full width on mobile, half on desktop */}
-      <div className="w-full lg:w-1/2 lg:h-screen relative">
-        <img
+      <div className="w-full h-[60vh] lg:w-1/2 lg:h-screen relative">
+        <LazyImage
           src={image.url}
           alt={image.title}
           className="w-full h-full object-cover"
+          skeletonClassName="w-full h-full"
         />
         <div className={`hud-element`}>
           <GameOverlayHUD 
@@ -244,11 +248,12 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             
             <div className="pt-0.5 sm:pt-4">
               <LocationSelector 
-                selectedLocation={currentGuess ? `${currentGuess.lat}, ${currentGuess.lng}` : null}
-                onLocationSelect={() => {}}
+                selectedLocation={null} 
+                onLocationSelect={() => {}} 
                 onCoordinatesSelect={handleCoordinatesSelect}
                 onSubmit={handleSubmitGuess}
                 hasSelectedLocation={!!currentGuess}
+                avatarUrl={avatarUrl}
               />
             </div>
           </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import LazyImage from '@/components/ui/LazyImage';
 import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
 import { UserProfile, Avatar } from '@/utils/profile/profileService';
@@ -37,10 +38,11 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
       <div className="flex flex-col sm:flex-row items-center gap-6">
         <div className="relative">
           <div className="h-24 w-24 rounded-full overflow-hidden border-4 border-history-secondary">
-            <img 
+            <LazyImage 
               src={getAvatarUrl()}
               alt="Profile avatar" 
               className="h-full w-full object-cover"
+              skeletonClassName="h-full w-full"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = '/placeholder.svg';
               }}

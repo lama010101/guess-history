@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState, useCallback } from 'react';
+import { UserProfile, fetchUserProfile } from '@/utils/profile/profileService';
 import ResultsLayout2 from "@/components/layouts/ResultsLayout2"; // Use the original layout
 import { useToast } from "@/components/ui/use-toast";
 import { Loader } from 'lucide-react';
@@ -61,9 +62,25 @@ interface LayoutRoundResult {
 const RoundResultsPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const { user } = useAuth();
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (user) {
+        try {
+          const userProfile = await fetchUserProfile(user.id);
+          console.log('RoundResultsPage: Fetched profile:', userProfile);
+          setProfile(userProfile);
+        } catch (error) {
+          console.error('Error fetching user profile for round results:', error);
+        }
+      }
+    };
+    loadProfile();
+  }, [user]);
   const [showRatingModal, setShowRatingModal] = useState(false);
   
   // Use useParams for new route structure
@@ -311,6 +328,7 @@ const RoundResultsPage = () => {
         isLoading={navigating}
         error={null} 
         result={resultForLayout}
+        avatarUrl={profile?.avatar_image_url || profile?.avatar_url || '/assets/default-avatar.png'}
         extraButtons={
           user && currentImage && roomId ? (
             <Button

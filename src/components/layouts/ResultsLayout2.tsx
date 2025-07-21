@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { formatInteger } from '@/utils/format';
 import { Button } from "@/components/ui/button";
+import LazyImage from '@/components/ui/LazyImage';
 // Remove Progress component if no longer used
 // import { Progress } from "@/components/ui/progress";
 import { 
@@ -22,6 +23,7 @@ import { HINT_PENALTY } from '@/hooks/useHint';
 // Update RoundResult to include hint-related fields
 declare module '@/utils/resultsFetching' {
   interface RoundResult {
+    placeholderUrl?: string;
     hintsUsed?: number;
     hintPenalty?: number;
     hintPenaltyPercent?: number;
@@ -50,6 +52,17 @@ import { BadgeEarnedPopup } from '@/components/badges/BadgeEarnedPopup';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 
+// Component to automatically adjust map bounds
+const MapBoundsUpdater: React.FC<{ bounds: L.LatLngBoundsExpression }> = ({ bounds }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (bounds) {
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+  }, [map, bounds]);
+  return null;
+};
+
 // Component to handle fullscreen events
 const FullscreenHandler: React.FC = () => {
   const map = useMap();
@@ -76,7 +89,7 @@ interface ResultsLayout2Props {
   isLoading?: boolean;
   error?: string | null;
   result?: RoundResult | null;
-  userAvatarUrl?: string;
+  avatarUrl?: string;
   extraButtons?: React.ReactNode;
 }
 
@@ -88,7 +101,7 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
   isLoading = false,
   error,
   result,
-  userAvatarUrl = '/assets/default-avatar.png',
+  avatarUrl = '/assets/default-avatar.png',
   extraButtons
 }) => {
   const { user } = useAuth();
@@ -171,10 +184,11 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
   const userLng = result.guessLng;
   const mapCenter: L.LatLngExpression = [correctLat, correctLng]; // Default center to correct location
   const hasUserGuess = userLat !== null && userLng !== null;
+  const bounds = hasUserGuess ? L.latLngBounds([correctLat, correctLng], [userLat, userLng]) : undefined;
   
   // Create custom icons for markers
   const userIcon = new L.DivIcon({ 
-    html: `<img src="${userAvatarUrl}" class="rounded-full w-8 h-8 border-2 border-white" alt="Your guess" />`,
+    html: `<img src="${avatarUrl || '/assets/default-avatar.png'}" class="rounded-full w-8 h-8 border-2 border-white" alt="Your guess" />`,
     className: '',
     iconSize: [40, 40],
     iconAnchor: [20, 20]
@@ -191,82 +205,7 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
   const userPosition: [number, number] = [userLat || 0, userLng || 0];
   const correctPosition: [number, number] = [correctLat, correctLng];
 
-  useEffect(() => {
-    const checkBadges = async () => {
-      if (!user) return;
-      
-      try {
-        // Try to get existing user metrics from localStorage first
-        let existingMetrics = {
-          games_played: 0,
-          perfect_rounds: 0,
-          perfect_games: 0,
-          time_accuracy: 0,
-          location_accuracy: 0,
-          overall_accuracy: 0,
-          win_streak: 0,
-          daily_streak: 0,
-          xp_total: 0,
-          year_bullseye: 0,
-          location_bullseye: 0
-        };
-        
-        // For guest users particularly, we need to track metrics in localStorage
-        const storageKey = `user_metrics_${user.id}`;
-        const storedMetrics = localStorage.getItem(storageKey);
-        if (storedMetrics) {
-          try {
-            existingMetrics = JSON.parse(storedMetrics);
-          } catch (e) {
-            console.error('Error parsing stored metrics:', e);
-          }
-        }
-        
-        // Calculate metrics from this round
-        // Check if this round is perfect (both time and location accuracy are 100%)
-        const isPerfectRound = result.timeAccuracy === 100 && result.locationAccuracy === 100;
-        const perfectRounds = isPerfectRound ? 1 : 0;
-        
-        const isPerfectGame = totalAccuracy === 100;
-        
-        // Check if this is a year bullseye (exact match)
-        const yearBullseye = result.yearDifference === 0 ? 1 : 0;
-        
-        // Check if this is a location bullseye (less than 10km distance)
-        const locationBullseye = result.distanceKm < 10 ? 1 : 0;
-        
-        // Update cumulative metrics
-        const updatedMetrics = {
-          games_played: existingMetrics.games_played + 1,
-          perfect_rounds: existingMetrics.perfect_rounds + perfectRounds,
-          perfect_games: existingMetrics.perfect_games + (isPerfectGame ? 1 : 0),
-          time_accuracy: Math.round((existingMetrics.time_accuracy + result.timeAccuracy) / 2),
-          location_accuracy: Math.round((existingMetrics.location_accuracy + result.locationAccuracy) / 2),
-          overall_accuracy: Math.round((existingMetrics.overall_accuracy + totalAccuracy) / 2),
-          win_streak: isPerfectGame ? existingMetrics.win_streak + 1 : 0,
-          daily_streak: existingMetrics.daily_streak, // Would need more logic to track this properly
-          xp_total: existingMetrics.xp_total + result.xpTotal,
-          year_bullseye: existingMetrics.year_bullseye + yearBullseye,
-          location_bullseye: existingMetrics.location_bullseye + locationBullseye
-        };
-        
-        // Save the updated metrics to localStorage
-        localStorage.setItem(storageKey, JSON.stringify(updatedMetrics));
-        
-        // Check for earned badges using the updated metrics
-        const newBadges = await checkAndAwardBadges(user.id, updatedMetrics);
-        
-        // If any badges were earned, show the first one
-        if (newBadges.length > 0) {
-          setEarnedBadge(newBadges[0]);
-        }
-      } catch (error) {
-        console.error('Error checking badges:', error);
-      }
-    };
-    
-    checkBadges();
-  }, [user, result, totalAccuracy]);
+  
   
   const handleBadgePopupClose = () => {
     setEarnedBadge(null);
@@ -450,6 +389,7 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
                   />
                   
                   <FullscreenHandler />
+              {bounds && <MapBoundsUpdater bounds={bounds} />}
                   
                   {/* Marker for Correct Location */}
                   <Marker position={correctPosition} icon={correctIcon}>
@@ -525,11 +465,12 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
             
             {/* Historical image and description */}
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
-              <img 
-                src={result.imageUrl} 
-                alt={result.imageTitle} 
-                className="w-full h-48 object-cover"
-              />
+                  <LazyImage 
+                    src={result.imageUrl} 
+                    alt={result.imageTitle || 'Historical image'} 
+                    className="w-full h-48 object-cover"
+                    skeletonClassName="w-full h-48"
+                  />
               
               <div className="p-6">
                 <h2 className="text-xl font-bold mb-2 text-history-primary dark:text-history-light">

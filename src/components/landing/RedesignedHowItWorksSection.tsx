@@ -1,4 +1,5 @@
-
+import React from 'react';
+import LazyImage from '@/components/ui/LazyImage';
 import { Eye, MapPin, Trophy } from "lucide-react";
 
 const RedesignedHowItWorksSection = () => {
@@ -44,10 +45,11 @@ const RedesignedHowItWorksSection = () => {
             >
               {/* Full-width image */}
               <div className="w-full h-48 overflow-hidden">
-                <img 
+                <LazyImage 
                   src={step.image} 
                   alt={step.title}
                   className="w-full h-full object-cover"
+                  skeletonClassName="w-full h-full"
                 />
               </div>
               

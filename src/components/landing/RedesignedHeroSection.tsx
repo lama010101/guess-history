@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import LazyImage from '@/components/ui/LazyImage';
 import { Button } from "@/components/ui/button";
 import { ref, listAll, getDownloadURL } from "firebase/storage";
 import { storage } from "@/firebase";
@@ -101,17 +102,16 @@ const RedesignedHeroSection = ({ onAuthModalOpen }: RedesignedHeroSectionProps) 
               index === currentImageIndex ? "opacity-100" : "opacity-0"
             }`}
           >
-            <img
+            <LazyImage
               src={image}
               alt={`Historical moment ${index + 1}`}
               className="w-full h-full object-cover"
+              skeletonClassName="w-full h-full"
               onError={e => {
                 const target = e.currentTarget as HTMLImageElement;
                 // Only swap if not already using fallback
-                if (!target.src.startsWith('https://jghesmrwhegaotbztrhr.supabase.co')) {
-                  const encodedName = image.split('/').pop() || '';
-                  const decodedName = decodeURIComponent(encodedName);
-                  target.src = `https://jghesmrwhegaotbztrhr.supabase.co/storage/v1/object/public/landing/${encodeURIComponent(decodedName)}`;
+                if (!target.src.includes('fallback')) {
+                  target.src = '/assets/fallback-image.jpg';
                 }
               }}
             />

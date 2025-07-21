@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import LazyImage from '@/components/ui/LazyImage';
 import { Button } from "@/components/ui/button";
 import { Menu, Award } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '@/contexts/GameContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchUserProfile, fetchAvatarById, Avatar } from '@/utils/profile/profileService';
+import { fetchUserProfile, UserProfile } from '@/utils/profile/profileService';
 import Logo from '@/components/Logo';
 import { Badge } from "@/components/ui/badge";
 import { formatInteger } from '@/utils/format';
@@ -17,7 +18,7 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
   const navigate = useNavigate();
   const { globalXP, fetchGlobalMetrics } = useGame();
   const { user } = useAuth();
-  const [avatar, setAvatar] = useState<Avatar | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   
   // Fetch global metrics when component mounts and periodically refresh
   useEffect(() => {
@@ -33,45 +34,25 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
     return () => clearInterval(refreshInterval);
   }, [fetchGlobalMetrics]);
 
-  // Fetch user avatar when user changes or every 5 seconds to catch updates
+  // Fetch user avatar when user changes
   useEffect(() => {
-    const fetchAvatar = async () => {
-      if (!user) {
-        setAvatar(null);
-        return;
-      }
-      
-      try {
-        const profile = await fetchUserProfile(user.id);
-        if (profile && profile.avatar_id) {
-          const avatarData = await fetchAvatarById(profile.avatar_id);
-          if (avatarData) {
-            console.log('NavBar: Avatar loaded successfully', avatarData.firebase_url);
-            setAvatar(avatarData);
-          } else {
-            console.warn('NavBar: Avatar data is null despite valid avatar_id');
-          }
-        } else if (profile && profile.avatar_image_url) {
-          // Fallback to using avatar_image_url directly if no avatar_id
-          setAvatar({
-            id: 'fallback',
-            firebase_url: profile.avatar_image_url,
-            first_name: profile.avatar_name?.split(' ')?.[0] || '',
-            last_name: profile.avatar_name?.split(' ')?.slice(1)?.join(' ') || '',
-            name: profile.avatar_name || '',
-            image_url: profile.avatar_image_url
-          } as Avatar);
+    const fetchUserAvatar = async () => {
+      if (user) {
+        try {
+          const profile: UserProfile | null = await fetchUserProfile(user.id);
+          // Check both avatar_image_url and avatar_url fields
+          setAvatarUrl(profile?.avatar_image_url || profile?.avatar_url || null);
+          console.log('NavBar: Avatar URL set to:', profile?.avatar_image_url || profile?.avatar_url);
+        } catch (error) {
+          console.error('Error fetching user profile for navbar:', error);
+          setAvatarUrl(null);
         }
-      } catch (error) {
-        console.error('Error fetching avatar for navbar:', error);
+      } else {
+        setAvatarUrl(null);
       }
     };
-    
-    fetchAvatar();
-    
-    // Set up polling to catch avatar updates
-    const refreshInterval = setInterval(fetchAvatar, 5000);
-    return () => clearInterval(refreshInterval);
+
+    fetchUserAvatar();
   }, [user]);
 
   return (
@@ -95,20 +76,20 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
               variant="ghost" 
               size="icon"
               onClick={onMenuClick}
-              className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white p-0 overflow-hidden"
+              className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white p-0 overflow-hidden rounded-full"
             >
-              {avatar && avatar.firebase_url ? (
-                <img 
-                  src={avatar.firebase_url} 
+              {avatarUrl ? (
+                <LazyImage 
+                  src={avatarUrl} 
                   alt="User avatar"
-                  className="h-8 w-8 rounded-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/placeholder.svg';
-                    console.error('Failed to load avatar image');
-                  }}
+                  className="h-9 w-9 rounded-full object-cover border-2 border-history-primary/30"
+                  skeletonClassName="h-9 w-9 rounded-full"
+                  onError={() => setAvatarUrl(null)} // Fallback to menu icon on error
                 />
               ) : (
-                <Menu className="h-6 w-6" />
+                <div className="h-9 w-9 rounded-full bg-gray-200 flex items-center justify-center border-2 border-history-primary/30">
+                  <Menu className="h-5 w-5 text-gray-600" />
+                </div>
               )}
             </Button>
           </div>

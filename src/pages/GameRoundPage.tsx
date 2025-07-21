@@ -3,6 +3,8 @@ import { useEffect, useState, useCallback } from 'react';
 import GameLayout1 from "@/components/layouts/GameLayout1";
 import { Loader, MapPin } from "lucide-react";
 import { useGame, GuessCoordinates } from '@/contexts/GameContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { UserProfile, fetchUserProfile } from '@/utils/profile/profileService';
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from '@/components/ui/button';
 import { SegmentedProgressBar } from '@/components/ui';
@@ -26,8 +28,20 @@ import {
 const GameRoundPage = () => {
   const navigate = useNavigate();
   const { roomId, roundNumber: roundNumberStr } = useParams<{ roomId: string; roundNumber: string }>();
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (user) {
+        const userProfile = await fetchUserProfile(user.id);
+        setProfile(userProfile);
+      }
+    };
+    loadProfile();
+  }, [user]);
 
   const handleNavigateHome = useCallback(() => {
     console.log("Attempting to navigate to /test"); // Added log
@@ -364,6 +378,7 @@ const GameRoundPage = () => {
         isTimerActive={isTimerActive}
         onNavigateHome={handleNavigateHome}
         onConfirmNavigation={confirmNavigation}
+        avatarUrl={profile?.avatar_image_url}
       />
 
       {/* Confirmation Dialog */}

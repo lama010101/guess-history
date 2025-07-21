@@ -159,9 +159,11 @@ const HomePage = () => {
         // Pass timer settings to startGame if it's a solo game with timer enabled
         // When timer is disabled, pass timerEnabled: false to ensure it doesn't show in the HUD
         const gameSettings = mode === 'classic'
-          ? isSoloTimerEnabled 
-              ? { timerSeconds: practiceTimerSeconds, timerEnabled: true }
-              : { timerEnabled: false }
+          ? {
+              timerEnabled: isSoloTimerEnabled,
+              timerSeconds: isSoloTimerEnabled ? practiceTimerSeconds : 0,
+              hintsPerGame: 5, // TODO: Make hints configurable
+            }
           : {};
           
         await startGame?.(gameSettings);

@@ -1,6 +1,6 @@
-
 import { Button } from "@/components/ui/button";
 import { Target, Users, Trophy } from "lucide-react";
+import LazyImage from '@/components/ui/LazyImage';
 
 interface RedesignedGameModeSectionProps {
   onAuthModalOpen?: () => void;
@@ -98,10 +98,11 @@ const RedesignedGameModeSection = ({ onAuthModalOpen }: RedesignedGameModeSectio
 
                 {/* Image placed after icon and title */}
                 <div className="w-full h-48 overflow-hidden rounded-lg mb-6">
-                  <img 
+                  <LazyImage 
                     src={mode.image} 
                     alt={mode.title}
                     className="w-full h-full object-cover"
+                    skeletonClassName="w-full h-full"
                   />
                 </div>
                 

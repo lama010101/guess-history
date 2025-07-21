@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle, LockIcon } from "lucide-react";
 import { updateUserAvatar } from '@/utils/profile/profileService';
 import { toast } from '@/components/ui/use-toast';
+import LazyImage from '@/components/ui/LazyImage';
 
 interface AvatarsTabProps {
   profile: UserProfile | null;
@@ -164,10 +165,11 @@ const AvatarsTab: React.FC<AvatarsTabProps> = ({
           <h4 className="font-medium mb-2 text-history-primary dark:text-history-light">Selected Avatar</h4>
           <div className="flex items-start gap-4">
             <div className="h-20 w-20 bg-history-light dark:bg-history-dark rounded-full overflow-hidden flex-shrink-0">
-              <img 
+              <LazyImage 
                 src={selectedAvatar.firebase_url || selectedAvatar.image_url} 
                 alt={selectedAvatar.name} 
                 className="h-full w-full object-cover"
+                skeletonClassName="h-full w-full"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = '/placeholder.svg';
                 }}
@@ -224,10 +226,11 @@ const AvatarsTab: React.FC<AvatarsTabProps> = ({
                 onClick={() => handleSelectAvatar(avatar.id)}
               >
                 <div className="h-24 w-24 mx-auto bg-history-light dark:bg-history-dark rounded-full overflow-hidden mb-2">
-                  <img 
+                  <LazyImage 
                     src={avatar.firebase_url || avatar.image_url} 
                     alt={avatar.name} 
                     className="h-full w-full object-cover"
+                    skeletonClassName="h-full w-full"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = '/placeholder.svg';
                     }}
@@ -253,10 +256,11 @@ const AvatarsTab: React.FC<AvatarsTabProps> = ({
           <h4 className="font-medium mb-4 text-history-primary dark:text-history-light">Your Social Avatar</h4>
           <div className="flex items-center">
             <div className="h-20 w-20 bg-history-light dark:bg-history-dark rounded-full overflow-hidden mr-4">
-              <img 
+              <LazyImage 
                 src={profile.avatar_url} 
                 alt="Social avatar" 
                 className="h-full w-full object-cover"
+                skeletonClassName="h-full w-full"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = '/placeholder.svg';
                 }}

@@ -8,6 +8,7 @@ interface LocationSelectorProps {
   onCoordinatesSelect?: (lat: number, lng: number) => void;
   onSubmit?: () => void;
   hasSelectedLocation?: boolean;
+  avatarUrl?: string;
 }
 
 const LocationSelector: React.FC<LocationSelectorProps> = ({
@@ -15,7 +16,8 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
   onLocationSelect,
   onCoordinatesSelect,
   onSubmit,
-  hasSelectedLocation = false
+  hasSelectedLocation = false,
+  avatarUrl
 }) => {
   return (
     <div className="mb-8 w-full flex flex-col h-full">
@@ -23,6 +25,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
         <HomeMap 
           onLocationSelect={onLocationSelect}
           onCoordinatesSelect={onCoordinatesSelect}
+          avatarUrl={avatarUrl}
         />
       </div>
       

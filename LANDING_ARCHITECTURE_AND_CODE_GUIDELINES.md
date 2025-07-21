@@ -5,7 +5,7 @@ _Last updated: 2025-07-14_
 ---
 
 ## 1. Purpose
-This document describes the architecture, structure, and code guidelines for the **Landing Page webapp** found in the `LANDING/` folder. It also identifies the files required to integrate the landing page as the main entry point for the full application.
+This document describes the architecture, structure, and code guidelines for the **Landing Page webapp** that used to be found in the `LANDING/` folder. It also identifies the files required to integrate the landing page as the main entry point for the full application.
 
 ---
 

@@ -4,7 +4,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Share2, Loader, Home, MapPin, Calendar, ArrowLeft, Target, Zap } from "lucide-react";
 import { useGame } from "@/contexts/GameContext";
 import { Badge } from "@/components/ui/badge";
-import { useEffect, useRef } from "react";
+import { useEffect, useState, useRef } from 'react';
+import LazyImage from '@/components/ui/LazyImage';
 import Logo from "@/components/Logo";
 import { NavProfile } from "@/components/NavProfile";
 import { formatInteger } from '@/utils/format';
@@ -366,10 +367,11 @@ const FinalResultsPage = () => {
               >
                 <div className="flex flex-col md:flex-row">
                   <div className="md:w-1/3">
-                    <img
+                    <LazyImage
                       src={image.url}
                       alt={`Round ${index + 1} - ${image.title}`}
                       className="w-full h-48 object-cover"
+                      skeletonClassName="w-full h-48"
                     />
                   </div>
                   <div className="p-4 md:w-2/3">

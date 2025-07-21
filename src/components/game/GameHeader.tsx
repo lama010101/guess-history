@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
+import LazyImage from '@/components/ui/LazyImage';
 import { Clock, HelpCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useGame } from '@/contexts/GameContext';
@@ -41,10 +42,11 @@ const GameHeader: React.FC<GameHeaderProps> = ({
 
   return (
     <div className="w-full h-[40vh] md:h-[50vh] relative">
-      <img
+      <LazyImage
         src={imageUrl}
         alt={imageAlt}
         className="w-full h-full object-cover"
+        skeletonClassName="w-full h-full"
       />
       <div className="absolute bottom-4 right-4 flex space-x-2">
         <Button 

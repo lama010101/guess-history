@@ -105,7 +105,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   // Get timer setting from settings store (defaults to 60 seconds)
   const { timerSeconds, setTimerSeconds } = useSettingsStore();
   const [roundTimerSec, setRoundTimerSec] = useState<number>(timerSeconds || 60);
-  const [timerEnabled, setTimerEnabled] = useState<boolean>(true); // Default to timer enabled
+  const [timerEnabled, setTimerEnabled] = useState<boolean>(true); // Default to timer enabled - MUST be true for timer to work
 
   // Keep roundTimerSec in sync with timerSeconds from settings store
   useEffect(() => {
@@ -422,7 +422,11 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     setImages([]); // Clear previous images
     setRoundResults([]); // Clear previous results
     
-    applyGameSettings(settings);
+    // Apply game settings with timer enabled by default
+    applyGameSettings({
+      timerEnabled: true,
+      ...settings
+    });
     
     try {
       const newRoomId = `room_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;

@@ -422,11 +422,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     setImages([]); // Clear previous images
     setRoundResults([]); // Clear previous results
     
-    // Apply game settings with timer enabled by default
-    applyGameSettings({
-      timerEnabled: true,
-      ...settings
-    });
+    // Apply game settings provided by the caller (no forced defaults)
+    applyGameSettings(settings);
     
     try {
       const newRoomId = `room_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -682,4 +679,4 @@ export function calculateScore(distanceKm: number): number {
 
     // Ensure score is within bounds [0, maxScore]
     return Math.max(0, Math.min(score, maxScore));
-} 
+}

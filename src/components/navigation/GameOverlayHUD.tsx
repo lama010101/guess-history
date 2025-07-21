@@ -24,6 +24,7 @@ interface GameOverlayHUDProps {
   isTimerActive?: boolean;
   onTimeout?: () => void;
   setRemainingTime?: (time: number) => void;
+  timerEnabled?: boolean;
 }
 
 const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
@@ -43,7 +44,8 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
   className,
   isTimerActive = false,
   onTimeout = () => {},
-  setRemainingTime = () => {}
+  setRemainingTime = () => {},
+  timerEnabled = true
 }) => {
   // Show hint counter as X/Y where Y is the total allowed hints
   const hintsRemaining = hintsAllowed - hintsUsed;
@@ -68,13 +70,13 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
       <div className="flex justify-between items-start w-full">
         {/* Left side - Timer */}
         <div className="pointer-events-auto">
-          {rawRemainingTime > 0 && (
+          {timerEnabled && (
             <TimerDisplay
-              remainingTime={rawRemainingTime}
+              remainingTime={Math.max(0, rawRemainingTime || 0)}
               setRemainingTime={setRemainingTime}
-              isActive={true}
+              isActive={isTimerActive}
               onTimeout={onTimeout}
-              roundTimerSec={rawRemainingTime}
+              roundTimerSec={rawRemainingTime || 0}
             />
           )}
         </div>

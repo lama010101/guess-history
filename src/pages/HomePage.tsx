@@ -177,7 +177,7 @@ const HomePage = () => {
         });
       }
     }
-  }, [user, gameContext, startGame, isLoading, navigate, toast, setPendingMode, setShowAuthModal, setIsFriendsModalOpen]);
+  }, [user, gameContext, startGame, isLoading, navigate, toast, setPendingMode, setShowAuthModal, setIsFriendsModalOpen, isSoloTimerEnabled, practiceTimerSeconds, isFriendsTimerEnabled, friendsTimerSeconds]);
   
   const handleStartFriendsGame = useCallback(async (settings: { timerSeconds: number; hintsPerGame: number }) => {
     setIsFriendsModalOpen(false);
@@ -217,7 +217,7 @@ const HomePage = () => {
         });
       }
     }
-  }, [user, gameContext, startGame, isLoading, navigate, toast, setPendingMode, setShowAuthModal, setIsFriendsModalOpen]);
+  }, [user, gameContext, startGame, isLoading, navigate, toast, setPendingMode, setShowAuthModal, setIsFriendsModalOpen, isSoloTimerEnabled, practiceTimerSeconds, isFriendsTimerEnabled, friendsTimerSeconds]);
 
 
   useEffect(() => {

@@ -79,8 +79,9 @@ const GameRoundPage = () => {
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedYear, setSelectedYear] = useState(1932);
+  // Initialize timer with roundTimerSec if timer is enabled, otherwise use 0 (will be hidden)
   const [remainingTime, setRemainingTime] = useState<number>(timerEnabled ? roundTimerSec : 0);
-  const [isTimerActive, setIsTimerActive] = useState<boolean>(timerEnabled && roundTimerSec > 0);
+  const [isTimerActive, setIsTimerActive] = useState<boolean>(timerEnabled);
   const [hasTimedOut, setHasTimedOut] = useState<boolean>(false);
   const [hasGuessedLocation, setHasGuessedLocation] = useState<boolean>(false);
 

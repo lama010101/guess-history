@@ -68,7 +68,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const [isHintModalV2Open, setIsHintModalV2Open] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const game = useGame();
-  const { totalGameAccuracy, totalGameXP, roundTimerSec } = game;
+  const { totalGameAccuracy, totalGameXP, roundTimerSec, timerEnabled } = game;
   
   // Handle timer timeout
   const handleTimeout = useCallback(() => {
@@ -220,6 +220,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             isTimerActive={isTimerActive}
             onTimeout={handleTimeout}
             setRemainingTime={setRemainingTime}
+            timerEnabled={timerEnabled}
           />
         </div>
       </div>

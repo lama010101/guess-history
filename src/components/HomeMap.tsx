@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents, ZoomControl, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, useMapEvents, ZoomControl, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { FullscreenControl } from 'react-leaflet-fullscreen';
 import 'react-leaflet-fullscreen/styles.css';
 import '@/styles/map-fullscreen.css';
 import { Badge } from "@/components/ui/badge";
+
+import AvatarMarker from './map/AvatarMarker';
 
 interface HomeMapProps {
   avatarUrl?: string;
@@ -49,17 +51,9 @@ const HomeMap: React.FC<HomeMapProps> = ({
 }) => {
   const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(null);
   const [location, setLocation] = useState<string>('Select a location');
-  const [avatarError, setAvatarError] = useState<boolean>(false);
+  // Avatar error state handled inside AvatarMarker
 
-  // Create avatar icon using the user's profile image or a fallback
-  const avatarIcon = markerPosition ? L.divIcon({
-    html: avatarUrl && !avatarError 
-      ? `<img src="${avatarUrl}" class="rounded-full w-8 h-8 border-2 border-white shadow-md" alt="User location" onerror="this.style.display='none'; this.parentNode.classList.add('fallback-avatar')" />`
-      : `<div class="fallback-avatar w-8 h-8 rounded-full bg-history-secondary border-2 border-white shadow-md flex items-center justify-center text-white text-xs">📍</div>`,
-    className: '',
-    iconSize: [40, 40],
-    iconAnchor: [20, 20],
-  }) : null;
+  
 
   // Handle map click to set marker position
   const handleMapClick = async (latlng: L.LatLng) => {
@@ -133,8 +127,8 @@ const HomeMap: React.FC<HomeMapProps> = ({
           <MapClickHandler onMapClick={handleMapClick} />
           <FullscreenHandler />
           
-          {markerPosition && avatarIcon && (
-            <Marker position={markerPosition} icon={avatarIcon} />
+          {markerPosition && (
+            <AvatarMarker lat={markerPosition[0]} lng={markerPosition[1]} imageUrl={avatarUrl ?? undefined} sizePx={40} />
           )}
           
           <FullscreenControl position="topright" />

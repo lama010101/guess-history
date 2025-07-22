@@ -542,7 +542,20 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     });
   }, [images, gameId]);
 
-  const handleTimeUp = useCallback(async (currentRoundIndex: number) => {
+  const handleTimeUp = useCallback((currentRoundIndex: number) => {
+    if (currentRoundIndex < 0 || currentRoundIndex >= images.length) {
+      console.error(`[GameContext] handleTimeUp: Invalid round index ${currentRoundIndex}.`);
+      return;
+    }
+
+    const existingResult = roundResults.find(r => r.roundIndex === currentRoundIndex);
+    if (existingResult) {
+      console.log(`[GameContext] handleTimeUp: Result for round ${currentRoundIndex + 1} already exists.`);
+      return; // Avoid re-submitting
+    }
+
+    console.log(`[GameContext] Time's up for round ${currentRoundIndex + 1}! Recording null result.`);
+
     console.log(`[GameContext] Time is up for round ${currentRoundIndex + 1}`);
     
     if (!images || images.length === 0 || !images[currentRoundIndex]) {

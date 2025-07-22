@@ -36,6 +36,7 @@ export interface GameLayout1Props {
   onNavigateHome: () => void;
   onConfirmNavigation: (navigateTo: () => void) => void;
   avatarUrl?: string;
+  onTimeout?: () => void;
 }
 
 const GameLayout1: React.FC<GameLayout1Props> = ({
@@ -53,6 +54,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   avatarUrl,
   onNavigateHome,
   onConfirmNavigation,
+  onTimeout,
 }) => {
   const [isImageFullScreen, setIsImageFullScreen] = useState(false);
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
@@ -218,7 +220,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             imageUrl={image.url}
             onFullscreen={handleImageFullscreen}
             isTimerActive={isTimerActive}
-            onTimeout={handleTimeout}
+            onTimeout={onTimeout}
             setRemainingTime={setRemainingTime}
             timerEnabled={timerEnabled}
           />

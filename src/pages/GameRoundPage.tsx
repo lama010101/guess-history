@@ -69,7 +69,8 @@ const GameRoundPage = () => {
     gameId: contextRoomId,
     roundTimerSec,
     timerEnabled,
-    setGameId
+    setGameId,
+    handleTimeUp
   } = useGame();
   const { toast } = useToast();
 
@@ -94,6 +95,18 @@ const GameRoundPage = () => {
       roundNumber <= images.length
       ? images[currentRoundIndex] 
       : null;
+  
+  useEffect(() => {
+    if (roomId) {
+      setGameId(roomId);
+    }
+  }, [roomId, setGameId]);
+
+  const handleTimeout = useCallback(() => {
+    if (handleTimeUp) {
+      handleTimeUp(currentRoundIndex);
+    }
+  }, [handleTimeUp, currentRoundIndex]);
   
   // Extract hints used from the useHint hook
   const { hintsUsedThisRound = 0, hintsUsedTotal = 0, HINTS_PER_GAME } = useHint(imageForRound || null) || {};
@@ -380,6 +393,7 @@ const GameRoundPage = () => {
         onNavigateHome={handleNavigateHome}
         onConfirmNavigation={confirmNavigation}
         avatarUrl={profile?.avatar_image_url}
+        onTimeout={handleTimeout}
       />
 
       {/* Confirmation Dialog */}

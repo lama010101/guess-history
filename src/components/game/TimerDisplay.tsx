@@ -48,12 +48,21 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
     };
   }, []);
   
-  // Play countdown sound effect when time <= 10 seconds
+  // Play countdown sound effect when time <= 10 seconds and stop when round is over
   useEffect(() => {
-    if (isActive && remainingTime <= 10 && remainingTime > 0 && soundEnabled) {
+    // Stop any playing sounds if timer is not active or time is up
+    if (!isActive || remainingTime <= 0) {
+      if (countdownBeepRef.current) {
+        countdownBeepRef.current.pause();
+      }
+      return;
+    }
+    
+    // Play beep sound for countdown when under 10 seconds
+    if (remainingTime <= 10 && remainingTime > 0 && soundEnabled) {
       if (countdownBeepRef.current) {
         const beepSound = countdownBeepRef.current.cloneNode() as HTMLAudioElement;
-        beepSound.volume = 0.5;
+        beepSound.volume = 0.0;
         beepSound.play().catch(e => console.error('Error playing countdown sound:', e));
       }
     }
@@ -93,16 +102,17 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
 
   // Timer countdown effect
   useEffect(() => {
-    if (!isActive) { // If the timer is not supposed to be running
-      return; // Do nothing, and importantly, don't call onTimeout
+    // If timer is not active, do nothing
+    if (!isActive) {
+      return;
     }
 
-    // Timer is active (isActive is true)
-    if (remainingTime <= 0) { // And time is already up
+    // If time is already up, call onTimeout and exit
+    if (remainingTime <= 0) {
       if (onTimeout) {
-        onTimeout(); // Call onTimeout if it's provided
+        onTimeout();
       }
-      return; // Stop further processing for this effect cycle
+      return;
     }
 
     // Timer is active and time > 0, start the interval
@@ -111,7 +121,7 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
         if (prevTime <= 1) {
           clearInterval(timerInterval);
           if (onTimeout) {
-            // Ensure onTimeout is called after state update and potential re-render
+            // Ensure onTimeout is called after state update
             setTimeout(() => onTimeout(), 0);
           }
           return 0;
@@ -120,7 +130,8 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
       });
     }, 1000);
 
-    return () => clearInterval(timerInterval); // Cleanup interval
+    // Clean up interval on unmount or when dependencies change
+    return () => clearInterval(timerInterval);
   }, [isActive, remainingTime, onTimeout, setRemainingTime]);
 
   if (roundTimerSec <= 0) {

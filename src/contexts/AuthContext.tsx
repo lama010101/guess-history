@@ -118,13 +118,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { error } = await supabase.auth.updateUser({ email });
     if (error) throw error;
 
-    // Update the user's is_guest status in the database
+    // Attempt to mark the profile as no longer a guest.
+    // Some databases may not have the `is_guest` column (older schema).
     const { error: profileError } = await supabase
       .from('profiles')
       .update({ is_guest: false })
       .eq('id', user.id);
 
-    if (profileError) throw profileError;
+    if (profileError && !profileError.message.includes('is_guest')) {
+      // Rethrow only if the error is NOT about the column missing.
+      throw profileError;
+    }
 
     // The user object will be updated automatically by the onAuthStateChange listener.
   };

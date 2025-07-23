@@ -28,7 +28,7 @@ export function AuthModal({
   onGuestContinue,
   initialTab
 }: AuthModalProps) {
-  const { continueAsGuest, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
+  const { continueAsGuest, signInWithGoogle, signInWithEmail, signUpWithEmail, isGuest, upgradeUser, updateUserPassword } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -87,11 +87,22 @@ export function AuthModal({
       if (activeTab === "signIn") {
         await signInWithEmail(email, password);
       } else {
-        await signUpWithEmail(email, password);
-        toast({
-          title: "Account created",
-          description: "Please check your email to confirm your account",
-        });
+        if (isGuest) {
+          // Upgrade the existing guest user to a real account so metrics stay attached
+          await upgradeUser(email);
+          // Set password separately (Supabase requires separate call)
+          await updateUserPassword(password);
+          toast({
+            title: "Account upgraded",
+            description: "Your guest progress has been saved to your new account. Please verify your email.",
+          });
+        } else {
+          await signUpWithEmail(email, password);
+          toast({
+            title: "Account created",
+            description: "Please check your email to confirm your account",
+          });
+        }
       }
       
       // Call the auth success callback if provided

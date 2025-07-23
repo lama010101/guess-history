@@ -56,7 +56,7 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
   }, [user]);
 
   return (
-    <header className="sticky top-0 z-50 bg-white dark:bg-gray-800 shadow-md opacity-80 hover:opacity-100 transition-opacity duration-200">
+    <header className="sticky top-0 z-50 bg-black/0 backdrop-blur-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo on the left */}

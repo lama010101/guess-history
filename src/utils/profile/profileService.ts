@@ -84,21 +84,26 @@ export async function fetchUserProfile(userId: string): Promise<UserProfile | nu
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching user profile:', error);
       return null;
     }
+
+    if (!data) {
+      console.log(`No profile found for user: ${userId}`);
+      return null;
+    }
     
     // If profile has avatar_id but no avatar_image_url, fetch it from avatars table
-    if (data && data.avatar_id && !data.avatar_image_url) {
+    if (data.avatar_id && !data.avatar_image_url) {
       try {
         const { data: avatarData, error: avatarError } = await supabase
           .from('avatars')
           .select('firebase_url')
           .eq('id', data.avatar_id)
-          .single();
+          .maybeSingle();
           
         if (!avatarError && avatarData) {
           // Update the profile with the firebase_url
@@ -288,7 +293,7 @@ export async function createUserProfileIfNotExists(userId: string, displayName: 
           .from('profiles')
           .select('id')
           .eq('avatar_name', candidate)
-          .single();
+          .maybeSingle(); // Use maybeSingle to avoid errors if name is not unique yet
         if (!existing) {
           avatarName = candidate;
           break;
@@ -341,6 +346,13 @@ export async function createUserProfileIfNotExists(userId: string, displayName: 
     }
       
     if (dbError) {
+      // If the error is a duplicate key violation (code 23505), it's okay.
+      // It means the profile was likely created by a concurrent request.
+      if (dbError.code === '23505') {
+        console.log(`Profile for user ${userId} already exists or was created concurrently. Continuing.`);
+        return true; // The profile exists, so we can consider this a success.
+      }
+      
       console.error('Error saving profile:', dbError);
       return false;
     }
@@ -641,23 +653,23 @@ export async function fetchUserSettings(userId: string): Promise<UserSettings | 
       .from('settings')
       .select('value')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      // If settings don't exist, return default settings
-      if (error.code === 'PGRST116') {
-        const defaultSettings: UserSettings = {
-          theme: 'system',
-          sound_enabled: true,
-          notification_enabled: true,
-          distance_unit: 'km',
-          language: 'en'
-        };
-        return defaultSettings;
-      }
-      
       console.error('Error fetching user settings:', error);
       return null;
+    }
+
+    if (!data) {
+      // If settings don't exist, return default settings
+      const defaultSettings: UserSettings = {
+        theme: 'system',
+        sound_enabled: true,
+        notification_enabled: true,
+        distance_unit: 'km',
+        language: 'en'
+      };
+      return defaultSettings;
     }
 
     // Add type assertion and handle potential JSON parsing

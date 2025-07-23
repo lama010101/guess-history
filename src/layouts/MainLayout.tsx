@@ -6,8 +6,8 @@ import Logo from "@/components/Logo";
 const MainLayout = () => {
   return (
     <div className="min-h-screen flex flex-col bg-history-light dark:bg-history-dark">
-  {/* Navbar is now always black with 50% opacity */}
-      <nav className="sticky top-0 z-50" style={{background: 'rgba(0,0,0,0.5)'}}> 
+
+            <nav className="sticky top-0 z-50 bg-black/0 backdrop-blur-none"> 
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Logo />

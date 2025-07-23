@@ -18,20 +18,22 @@ interface AuthModalProps {
   onClose: () => void;
   onAuthSuccess?: () => void;
   onGuestContinue?: () => void;
+  initialTab?: "signIn" | "signUp";
 }
 
 export function AuthModal({ 
   isOpen, 
   onClose, 
   onAuthSuccess,
-  onGuestContinue 
+  onGuestContinue,
+  initialTab
 }: AuthModalProps) {
   const { continueAsGuest, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [activeTab, setActiveTab] = useState<"signIn" | "signUp">("signIn");
+  const [activeTab, setActiveTab] = useState<"signIn" | "signUp">(initialTab || "signIn");
 
   const handleGuestLogin = async () => {
     try {

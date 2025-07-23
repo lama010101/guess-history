@@ -108,7 +108,7 @@ const App = () => {
     <React.StrictMode>
       <ThemeProvider 
         attribute="class" 
-        defaultTheme="light"
+        defaultTheme="dark"
         enableSystem={false}
         disableTransitionOnChange
         storageKey="gh-theme"

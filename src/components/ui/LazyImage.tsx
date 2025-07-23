@@ -36,12 +36,40 @@ const LazyImage: React.FC<LazyImageProps> = ({
   };
 
   return (
-    <div className={cn('relative w-full h-full', imgProps.style)}>
-      {/* Skeleton placeholder */}
+    <div
+      className={cn('relative w-full h-full', imgProps.style)}
+      aria-busy={!loaded && !errored}
+      aria-live="polite"
+    >
+      {/* Skeleton placeholder with spinner */}
       {!loaded && (
         <Skeleton
-          className={cn('absolute inset-0 w-full h-full', skeletonClassName)}
-        />
+          className={cn('absolute inset-0 w-full h-full flex items-center justify-center bg-black/90 dark:bg-white/10', skeletonClassName)}
+        >
+          {/* Spinner */}
+          <svg
+            className="h-6 w-6 text-white dark:text-gray-300 animate-spin"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            role="status"
+            aria-label="Loading image"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            ></circle>
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+            ></path>
+          </svg>
+        </Skeleton>
       )}
 
       {/* Optional placeholder image (blurred) */}

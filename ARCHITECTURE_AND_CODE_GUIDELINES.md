@@ -198,6 +198,25 @@ npm test
 
 ---
 
+## 10. Navbar Components
+
+The application currently uses three distinct navbar components. Each serves a different part of the UX and lives in a dedicated file.
+
+| Component | Path | Primary Usage | Notes |
+|-----------|------|---------------|-------|
+| `MainNavbar` | `src/components/navigation/MainNavbar.tsx` | In–game pages (e.g. Home, Friends, Leaderboard). Provides logo, global XP badge, and hamburger button that opens the slide-in menu handled by `NavMenu`. | Uses `useGame` for global XP. Avatar is fetched locally and shown on the right. | 
+| `NavProfile` | `src/components/NavProfile.tsx` | Rendered in the top-right of `MainLayout` (and some other layouts) as a dropdown avatar/profile menu. Handles profile fetching, guest vs. registered logic, and sign-out. | Shows avatar image if available, otherwise initials; now shows avatar name for registered users and a prominent register button for guests. |
+| `RedesignedNavbar` | `src/components/landing/RedesignedNavbar.tsx` | Marketing/landing pages only. Transparent by default; becomes blurred + opaque after scroll. Contains links to landing-page sections and sign-in/register buttons. | Lives entirely in the landing bundle; does not import game contexts. |
+
+Responsibilities:
+1. **MainNavbar** – game navigation & global stats; minimal profile info (just avatar).
+2. **NavProfile** – all auth/profile UI: avatar dropdown, sign-out, and guest promotion.
+3. **RedesignedNavbar** – marketing site navigation and call-to-actions.
+
+All navbars are now styled with `bg-black/0 backdrop-blur-none` (fully transparent) unless explicitly scrolled or hovered as per component logic.
+
+---
+
 ## 9. Image Feedback Feature
 
 ### Architecture

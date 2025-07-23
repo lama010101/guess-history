@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+console.log('HELLO FROM SRC NavProfile');
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGame } from "@/contexts/GameContext";
 import { useLogs } from "@/contexts/LogContext";
@@ -33,11 +34,50 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 
 export const NavProfile = () => {
+  console.log('NavProfile: Component mounting');
   const { user, signOut, isGuest } = useAuth();
   const { fetchGlobalMetrics } = useGame();
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [profile, setProfile] = useState<{ username: string | null } | null>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
   const navigate = useNavigate();
+
+  // Define helper to fetch profile data
+  const fetchProfileData = useCallback(async () => {
+    if (!user) return;
+    try {
+      console.log('NavProfile: Fetching profile for user:', user.id);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('username, avatar_image_url, avatar_url, avatar_name, display_name')
+        .eq('id', user.id)
+        .single();
+      if (error) {
+        console.error('NavProfile: Error fetching user profile:', error.message);
+        setError(new Error(error.message));
+        setProfile(null);
+      } else {
+        console.log('NavProfile: Fetched profile:', data);
+        setProfile(data);
+      }
+    } catch (err) {
+      console.error('NavProfile: Unexpected error:', err);
+      setError(err instanceof Error ? err : new Error(String(err)));
+      setProfile(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  // Add debug log for component render
+  console.log('NavProfile: Component rendering with user:', user ? user.id : 'no user');
+
+  useEffect(() => {
+    if (user) {
+      fetchProfileData();
+    }
+  }, [user, fetchProfileData]);
 
   const handleSignOut = async () => {
     try {
@@ -48,32 +88,19 @@ export const NavProfile = () => {
   };
 
   useEffect(() => {
-    if (user) {
-      const fetchProfileData = async () => {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('username')
-          .eq('id', user.id)
-          .single();
-        if (error) {
-          console.error("Error fetching user profile in NavProfile:", error.message);
-        } else {
-          setProfile(data);
-        }
-      };
-
-      fetchProfileData();
-      fetchGlobalMetrics();
-
-      const refreshInterval = setInterval(() => {
-        fetchGlobalMetrics().catch(err => console.error('Error refreshing global metrics in NavProfile:', err));
-      }, 5000);
-
-      return () => clearInterval(refreshInterval);
-    } else {
+    if (!user) {
       setProfile(null);
+      return;
     }
-  }, [user, fetchGlobalMetrics]);
+    setIsLoading(true);
+    setError(null);
+    fetchProfileData();
+    fetchGlobalMetrics().catch(err => console.error('Error refreshing global metrics in NavProfile:', err));
+    const refreshInterval = setInterval(() => {
+      fetchGlobalMetrics().catch(err => console.error('Error refreshing global metrics in NavProfile:', err));
+    }, 5000);
+    return () => clearInterval(refreshInterval);
+  }, [user, fetchGlobalMetrics, fetchProfileData]);
 
   if (!user) {
     return (
@@ -100,8 +127,24 @@ export const NavProfile = () => {
     return isGuest ? 'G' : 'U';
   };
 
-  const userDisplayName = profile?.username || (isGuest ? 'Guest User' : (user.email || 'User'));
-  const userEmail = !isGuest ? user.email : '';
+  const avatarUrl = profile?.avatar_image_url || profile?.avatar_url || null;
+  // Determine the best display name to show in the dropdown
+  const userDisplayName =
+    profile?.avatar_name ??
+    profile?.display_name ??
+    profile?.username ??
+    (user?.user_metadata as any)?.full_name ??
+    (!isGuest ? user?.email : 'Guest');
+
+  // Add debug logs for state changes
+  console.log('NavProfile: Current state:', {
+    hasUser: !!user,
+    userId: user?.id,
+    profileLoaded: !!profile,
+    avatarUrl,
+    isLoading,
+    error: error?.message
+  });
 
   return (
     <div className="flex items-center">
@@ -109,23 +152,42 @@ export const NavProfile = () => {
         <DropdownMenuTrigger className="outline-none" asChild>
           <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0">
             <Avatar className="h-8 w-8 border-2 border-history-secondary/20 hover:border-history-secondary/40 transition-colors">
-              <AvatarFallback className="bg-history-primary text-white text-sm">
-                {getInitial()}
-              </AvatarFallback>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="User avatar" className="h-8 w-8 rounded-full object-cover" />
+              ) : (
+                <AvatarFallback className="bg-history-primary text-white text-sm">
+                  {getInitial()}
+                </AvatarFallback>
+              )}
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
+          <div className="flex flex-col items-center pt-4 pb-2">
+            <Avatar className="h-14 w-14 border-2 border-history-secondary/20 mb-2">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="User avatar" className="h-14 w-14 rounded-full object-cover" />
+              ) : (
+                <AvatarFallback className="bg-history-primary text-white text-2xl">
+                  {getInitial()}
+                </AvatarFallback>
+              )}
+            </Avatar>
+          </div>
           <div className="px-2 py-1.5">
             <p className="text-sm font-medium truncate">{userDisplayName}</p>
-            {userEmail && (
-              <p className="text-xs text-muted-foreground truncate">
-                {userEmail}
-              </p>
+            {isGuest && (
+              <p className="text-xs text-muted-foreground">Playing as guest</p>
             )}
-            <p className="text-xs text-muted-foreground">
-              {isGuest ? 'Playing as guest' : 'Signed in'}
-            </p>
+            {isGuest && (
+              <Button
+                size="sm"
+                className="mt-2 w-full text-xs whitespace-nowrap bg-black text-white hover:bg-black/90"
+                onClick={() => setShowAuthModal(true)}
+              >
+                Register to save progress
+              </Button>
+            )}
           </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
@@ -175,6 +237,16 @@ export const NavProfile = () => {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onAuthSuccess={() => {
+          setShowAuthModal(false);
+          fetchProfileData();
+        }}
+        initialTab="signUp"
+      />
     </div>
   );
 };

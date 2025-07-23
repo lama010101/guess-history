@@ -251,7 +251,7 @@ const HomePage = () => {
         <div className="container mx-auto px-4">
           <div className="w-full max-w-6xl mx-auto">
             {/* Game Mode Selection */}
-            <h1 className="text-3xl font-bold text-center text-white mb-12">Select Game Mode</h1>
+            
             
             {gameContext ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">

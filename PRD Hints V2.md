@@ -162,10 +162,12 @@ const finalAcc = Math.max(0, baseAccuracy - accDebt);
 ## 6️⃣ ROUND RESULTS DISPLAY
 
 ```
-WHEN  – 900 XP | 87 % accuracy
+WHEN 
+900 XP | 87 % accuracy
 Hint Cost: −90 XP | −9 %
 
-WHERE – 850 XP | 89 % accuracy
+WHERE
+850 XP | 89 % accuracy
 Hint Cost: −120 XP | −12 %
 
 FINAL SCORE: 1 540 XP| 79 % accuracy 

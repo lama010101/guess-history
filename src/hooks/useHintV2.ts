@@ -79,6 +79,7 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
         setAvailableHints(sampleHints);
       } else {
         addLog(`Found ${hints.length} hints for image ${imageData.id}`);
+        console.log('Fetched hints from DB:', hints);
         setAvailableHints(hints as unknown as Hint[]);
       }
 

@@ -8,6 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Lock, CheckCircle, Sparkles } from 'lucide-react';
+import { HINT_TYPE_NAMES } from '@/constants/hints';
 
 interface Hint {
   id: string;
@@ -31,6 +32,42 @@ interface HintModalV2NewProps {
   isLoading: boolean;
 }
 
+// Renders a single hint as a large button with label and answer/lock logic
+const HintButtonUI: React.FC<{
+  hint: Hint;
+  purchasedHintIds: string[];
+  isLoading: boolean;
+  onPurchase: (hintId: string) => void;
+}> = ({ hint, purchasedHintIds, isLoading, onPurchase }) => {
+  const label1 = HINT_TYPE_NAMES[hint.type] ?? hint.type;
+  const label2 = `-${hint.xp_cost}XP -${hint.accuracy_penalty}%`;
+  const isPurchased = purchasedHintIds.includes(hint.id);
+  const isLocked = hint.prerequisite && !purchasedHintIds.includes(hint.prerequisite);
+
+  return (
+    <Button
+      size="lg"
+      variant={'outline'}
+      disabled={isLoading || isLocked || isPurchased}
+      className={`w-full py-3 text-base font-semibold flex items-center justify-center ${isPurchased ? 'bg-green-600 text-white' : ''}`}
+      onClick={e => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isPurchased && !isLocked) onPurchase(hint.id);
+      }}
+      title={isLocked ? 'Unlock prerequisite first' : label1}
+    >
+      {isPurchased ? (
+        <span>{hint.text}</span>
+      ) : isLocked ? (
+        <span className="flex items-center gap-1"><Lock className="h-4 w-4 mr-1" /> Locked</span>
+      ) : (
+        <span className="flex flex-col items-center"><span>{label1}</span><span className="text-xs text-gray-300">{label2}</span></span>
+      )}
+    </Button>
+  );
+};
+
 const HintModalV2New: React.FC<HintModalV2NewProps> = ({
   isOpen,
   onOpenChange,
@@ -52,10 +89,8 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
     };
 
     availableHints.forEach(hint => {
-      const category = hint.type.includes('when') || 
-                       hint.type.includes('century') || 
-                       hint.type.includes('decade') || 
-                       hint.type.includes('event') ? 'when' : 'where';
+      // Simple categorization based on hint type name
+      const category = ['century', 'decade', 'narrow_decade', 'year', 'month', 'day', 'distant_event', 'contemporary_event', 'date_period_clues', 'when_clues', 'distant_time_diff', 'close_time_diff'].includes(hint.type) ? 'when' : 'where';
       
       if (grouped[hint.level]) {
         grouped[hint.level][category].push(hint);
@@ -74,7 +109,7 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto bg-white dark:bg-gray-900">
+      <DialogContent className="max-w-6xl max-h-screen overflow-y-auto bg-white dark:bg-gray-900">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold flex items-center gap-2 text-black dark:text-white">
             <Sparkles className="h-6 w-6 text-blue-500" />
@@ -103,109 +138,69 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
                   {(() => {
                     const whenHints = categoryHints.when || [];
                     const whereHints = categoryHints.where || [];
-                    
-                    // Create pairs of WHEN/WHERE hints
                     const maxLength = Math.max(whenHints.length, whereHints.length);
-                    
-                    return Array.from({ length: maxLength }).map((_, index) => {
-                      const whenHint = whenHints[index];
-                      const whereHint = whereHints[index];
-                      
+
+                    if (level === '2' || level === '4') {
+                      const eventWhen = whenHints.find(h => h.type === (level === '2' ? 'distant_event' : 'contemporary_event'));
+                      const eventWhere = whereHints.find(h => h.type === (level === '2' ? 'distant_landmark' : 'nearby_landmark'));
+                      const timeDiffWhen = whenHints.find(h => h.type === (level === '2' ? 'distant_time_diff' : 'close_time_diff'));
+                      const distanceWhere = whereHints.find(h => h.type === (level === '2' ? 'distant_distance' : 'nearby_distance'));
+
                       return (
-                        <div key={`${level}-${index}`} className="grid grid-cols-5 gap-2 items-center p-2 border border-gray-200 dark:border-gray-600 rounded text-xs">
-                          {/* Level */}
-                          <div className="text-center font-bold text-black dark:text-white">
-                            {level}
+                        <>
+                          {/* Row 1: Event / Landmark */}
+                          <div key={`${level}-event`} className="grid grid-cols-3 gap-2 items-center p-2 border border-gray-200 dark:border-gray-600 rounded text-xs">
+                            <div className="text-center font-bold text-black dark:text-white">{level}</div>
+                            <div className="text-center">
+                              {eventWhen ? <HintButtonUI hint={eventWhen} purchasedHintIds={purchasedHintIds} isLoading={isLoading} onPurchase={handlePurchase} /> : <span className="text-gray-500">—</span>}
+                            </div>
+                            <div className="text-center">
+                              {eventWhere ? <HintButtonUI hint={eventWhere} purchasedHintIds={purchasedHintIds} isLoading={isLoading} onPurchase={handlePurchase} /> : <span className="text-gray-500">—</span>}
+                            </div>
                           </div>
-                          
-                          {/* When */}
-                          <div className="text-center">
-                            {whenHint ? (
-                              <div>
-                                <div className="font-medium text-black dark:text-white">{whenHint.type}</div>
-                                <div className="text-gray-600 dark:text-gray-400">{whenHint.xp_cost}XP</div>
-                                {purchasedHintIds.includes(whenHint.id) ? (
-                                  <div className="text-black dark:text-white bg-green-100 dark:bg-green-800 p-1 rounded mt-1">
-                                    {whenHint.text}
-                                  </div>
-                                ) : whenHint.prerequisite && !purchasedHintIds.includes(whenHint.prerequisite) ? (
-                                  <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400 mt-1">
-                                    <Lock className="h-3 w-3" />
-                                    <span>Locked</span>
-                                  </div>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      handlePurchase(whenHint.id);
-                                    }}
-                                    disabled={isLoading}
-                                    className="h-5 text-xs mt-1"
-                                  >
-                                    Hint
-                                  </Button>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-gray-500">—</span>
-                            )}
+                          {/* Row 2: TimeDiff / Distance */}
+                          <div key={`${level}-timediff`} className="grid grid-cols-3 gap-2 items-center p-2 border border-gray-200 dark:border-gray-600 rounded text-xs">
+                            <div className="text-center font-bold text-black dark:text-white">{level}</div>
+                            <div className="text-center">
+                              {timeDiffWhen ? <HintButtonUI hint={timeDiffWhen} purchasedHintIds={purchasedHintIds} isLoading={isLoading} onPurchase={handlePurchase} /> : <span className="text-gray-500">—</span>}
+                            </div>
+                            <div className="text-center">
+                              {distanceWhere ? <HintButtonUI hint={distanceWhere} purchasedHintIds={purchasedHintIds} isLoading={isLoading} onPurchase={handlePurchase} /> : <span className="text-gray-500">—</span>}
+                            </div>
                           </div>
-                          
-                          {/* Where */}
-                          <div className="text-center">
-                            {whereHint ? (
-                              <div>
-                                <div className="font-medium text-black dark:text-white">{whereHint.type}</div>
-                                <div className="text-gray-600 dark:text-gray-400">{whereHint.xp_cost}XP</div>
-                                {purchasedHintIds.includes(whereHint.id) ? (
-                                  <div className="text-black dark:text-white bg-green-100 dark:bg-green-800 p-1 rounded mt-1">
-                                    {whereHint.text}
-                                  </div>
-                                ) : whereHint.prerequisite && !purchasedHintIds.includes(whereHint.prerequisite) ? (
-                                  <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400 mt-1">
-                                    <Lock className="h-3 w-3" />
-                                    <span>Locked</span>
-                                  </div>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      handlePurchase(whereHint.id);
-                                    }}
-                                    disabled={isLoading}
-                                    className="h-5 text-xs mt-1"
-                                  >
-                                    Hint
-                                  </Button>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-gray-500">—</span>
-                            )}
-                          </div>
-                          
-                          {/* Accuracy penalties */}
-                          <div className="text-center">
-                            {whenHint && (
-                              <div className="text-gray-600 dark:text-gray-400">-{whenHint.accuracy_penalty}%</div>
-                            )}
-                            {whereHint && (
-                              <div className="text-gray-600 dark:text-gray-400">-{whereHint.accuracy_penalty}%</div>
-                            )}
-                          </div>
-                        </div>
+                        </>
                       );
-                    });
+                    } else {
+                      // Default rendering for other levels
+                      return Array.from({ length: maxLength }).map((_, index) => {
+                        const whenHint = whenHints[index];
+                        const whereHint = whereHints[index];
+                        return (
+                          <div key={`${level}-${index}`} className="grid grid-cols-3 gap-2 items-center p-2 border border-gray-200 dark:border-gray-600 rounded text-xs">
+                            <div className="text-center font-bold text-black dark:text-white">{level}</div>
+                            <div className="text-center">
+                              {whenHint ? <HintButtonUI hint={whenHint} purchasedHintIds={purchasedHintIds} isLoading={isLoading} onPurchase={handlePurchase} /> : <span className="text-gray-500">—</span>}
+                            </div>
+                            <div className="text-center">
+                              {whereHint ? <HintButtonUI hint={whereHint} purchasedHintIds={purchasedHintIds} isLoading={isLoading} onPurchase={handlePurchase} /> : <span className="text-gray-500">—</span>}
+                            </div>
+                          </div>
+                        );
+                      });
+                    }
                   })()}
                 </div>
               </div>
             ))}
+        </div>
+        <div className="pt-4 border-t border-gray-300 dark:border-gray-700 mt-4">
+          <Button 
+            size="lg" 
+            className="w-full"
+            onClick={() => onOpenChange(false)}
+          >
+            Continue Guessing
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

@@ -38,6 +38,25 @@ export const HINT_LEVEL_DESCRIPTIONS: Record<number, string> = {
 // Hint type display names
 export const HINT_TYPE_NAMES: Record<string, string> = {
   // Level 1
+  'century': 'Century',
+  'continent': 'Continent',
+  // Level 2
+  'distant_event': 'Distant Event',
+  'distant_landmark': 'Distant Landmark',
+  'distant_distance': 'Distance to Landmark',
+  'distant_time_diff': 'Time Difference (Far)',
+  // Level 3
+  'narrow_decade': 'Decade',
+  'region': 'Region',
+  // Level 4
+  'contemporary_event': 'Contemporary Event',
+  'nearby_landmark': 'Nearby Landmark',
+  'nearby_distance': 'Distance Nearby',
+  'close_time_diff': 'Time Difference (Close)',
+  // Level 5
+  'when_clues': 'Date/Period Clues',
+  'where_clues': 'Location Clues',
+  // Level 1
   '1_where_continent': "Continent",
   '1_when_century': "Century",
   

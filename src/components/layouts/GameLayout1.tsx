@@ -3,9 +3,7 @@ import { cn } from '@/lib/utils';
 import FullscreenZoomableImage from './FullscreenZoomableImage';
 import HomeMap from '../HomeMap';
 import GlobalSettingsModal from '@/components/settings/GlobalSettingsModal'; // Import the global settings modal
-import { useHint, type HintType } from '@/hooks/useHint';
-import HintModal from '@/components/HintModal';
-import HintModalV2 from '@/components/HintModalV2';
+import HintModalV2New from '@/components/HintModalV2New';
 import { useHintV2 } from '@/hooks/useHintV2';
 import GameOverlayHUD from '@/components/navigation/GameOverlayHUD';
 import YearSelector from '@/components/game/YearSelector';
@@ -66,11 +64,24 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const handleExitImageFullscreen = () => {
     setIsImageFullScreen(false);
   };
-  const [isHintModalOpen, setIsHintModalOpen] = useState(false);
+
   const [isHintModalV2Open, setIsHintModalV2Open] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const game = useGame();
   const { totalGameAccuracy, totalGameXP, roundTimerSec, timerEnabled } = game;
+
+  // V2 hint system
+  const {
+    availableHints,
+    purchasedHintIds,
+    purchasedHints,
+    xpDebt,
+    accDebt,
+    isLoading: isHintLoading,
+    isHintLoading: isPurchasing,
+    purchaseHint,
+    hintsByLevel
+  } = useHintV2(image);
   
   // Handle timer timeout
   const handleTimeout = useCallback(() => {
@@ -99,62 +110,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
     }
   }, [game, currentRound, currentGuess, onMapGuess, onComplete]);
   
-  // Memoize the imageData object passed to useHint
-  const memoizedImageData = useMemo(() => {
-    if (!image) {
-      console.warn('No image data available for hints');
-      return undefined;
-    }
-    
-    try {
-      return {
-        ...image,
-        // Ensure all required GameImage properties are included
-        gps: { 
-          lat: image.latitude || 0, 
-          lng: image.longitude || 0 
-        },
-        // These properties are already in the GameImage type
-        latitude: image.latitude || 0,
-        longitude: image.longitude || 0,
-        image_url: image.image_url || image.url || '', // Fallback to url if image_url is not available
-        url: image.url || image.image_url || '', // Ensure url is always set
-        description: image.description || '',
-        title: image.title || 'Untitled',
-        location_name: image.location_name || 'Unknown location',
-        year: image.year || new Date().getFullYear()
-      };
-    } catch (error) {
-      console.error('Error preparing image data for hints:', error);
-      return undefined;
-    }
-  }, [image]);
 
-  // Use the legacy hint system for backward compatibility
-  const {
-    selectedHintType,
-    hintContent,
-    hintsUsedThisRound,
-    hintsUsedTotal,
-    canSelectHint,
-    selectHint,
-    resetHint,
-    HINTS_PER_ROUND,
-    HINTS_PER_GAME
-  } = useHint(memoizedImageData);
-  
-  // Use the new V2 hint system
-  const {
-    availableHints,
-    purchasedHintIds,
-    purchasedHints,
-    xpDebt,
-    accDebt,
-    isLoading: isHintLoading, // for initial hint fetch
-    isHintLoading: isPurchasing, // for when a hint is being purchased
-    purchaseHint,
-    hintsByLevel
-  } = useHintV2(memoizedImageData);
 
   const handleHintClick = () => {
     if (!image) {
@@ -209,9 +165,9 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           <GameOverlayHUD 
             remainingTime={formatTime(remainingTime)}
             rawRemainingTime={remainingTime}
-            onHintClick={handleHintClick}
+            onHintV2Click={handleHintClick} // Wire up the new button to the same V2 handler
             hintsUsed={purchasedHints.length}
-            hintsAllowed={availableHints.length}
+            hintsAllowed={14}
             currentAccuracy={totalGameAccuracy}
             currentScore={totalGameXP}
             onNavigateHome={onNavigateHome}
@@ -264,16 +220,15 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       </div>
 
       {/* V2 Hint Modal */}
-      <HintModalV2
+      <HintModalV2New
         isOpen={isHintModalV2Open}
         onOpenChange={setIsHintModalV2Open}
         availableHints={availableHints}
         purchasedHintIds={purchasedHintIds}
-        xpDebt={0} // TODO: Get actual xpDebt from useHintV2 hook
-        accDebt={0} // TODO: Get actual accDebt from useHintV2 hook
+        xpDebt={xpDebt}
+        accDebt={accDebt}
         onPurchaseHint={purchaseHint}
         isLoading={isHintLoading || isPurchasing}
-        hintsByLevel={hintsByLevel}
       />
 
       <GlobalSettingsModal

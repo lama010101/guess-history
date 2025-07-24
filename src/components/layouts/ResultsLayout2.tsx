@@ -18,7 +18,8 @@ import {
 import ResultsHeader from "@/components/results/ResultsHeader";
 // Import the specific RoundResult type this component uses
 import { RoundResult, XP_WHERE_MAX, XP_WHEN_MAX } from '@/utils/resultsFetching';
-import { HINT_PENALTY } from '@/hooks/useHint';
+// import { HINT_PENALTY } from '@/hooks/useHint'; // Legacy, removed
+// TODO: Replace with V2 hint constants if needed
 
 // Update RoundResult to include hint-related fields
 declare module '@/utils/resultsFetching' {

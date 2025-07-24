@@ -9,9 +9,10 @@ import {
   MapPin,
   Check
 } from "lucide-react";
-import HintModal from '@/components/HintModal';
-import { useHint } from '@/hooks/useHint';
+import HintModalV2New from '@/components/HintModalV2New';
+import { useHintV2 } from '@/hooks/useHintV2';
 import LazyImage from '@/components/ui/LazyImage';
+
 
 export interface GameLayout2Props {
   onComplete?: () => void;
@@ -19,19 +20,16 @@ export interface GameLayout2Props {
 }
 
 const GameLayout2: React.FC<GameLayout2Props> = ({ onComplete, gameMode = 'solo' }) => {
-  const [isHintModalOpen, setIsHintModalOpen] = useState(false);
+  const [isHintModalV2Open, setIsHintModalV2Open] = useState(false);
   const { 
-    selectedHintType, 
-    hintContent, 
-    selectHint, 
-    hintsUsedThisRound, 
-    hintsUsedTotal, 
-    HINTS_PER_ROUND, 
-    HINTS_PER_GAME 
-  } = useHint();
+    availableHints,
+    purchasedHintIds,
+    isLoading,
+    purchaseHint
+  } = useHintV2();
 
   const handleHintClick = () => {
-    setIsHintModalOpen(true);
+    setIsHintModalV2Open(true);
   };
 
   return (
@@ -47,15 +45,17 @@ const GameLayout2: React.FC<GameLayout2Props> = ({ onComplete, gameMode = 'solo'
         <div className="absolute bottom-4 right-4 flex space-x-2">
           <Button 
             size="sm" 
-            className={`bg-black/50 hover:bg-black/70 text-white border-none ${selectedHintType ? 'bg-history-secondary/50' : ''}`}
+            className={`bg-blue-500 hover:bg-blue-600 text-white border-none`}
             onClick={handleHintClick}
           >
-            <HelpCircle className="h-4 w-4 mr-1" /> 
-            Hint
-            {selectedHintType && <span className="ml-1 text-xs">({selectedHintType})</span>}
+            <HelpCircle className="h-4 w-4 mr-2" />
+            Hints V2
           </Button>
-          <Button size="sm" className="bg-black/50 hover:bg-black/70 text-white border-none">
-            <Clock className="h-4 w-4 mr-1" /> 4:32
+          <Button 
+            size="sm" 
+            className={`bg-black/50 hover:bg-black/70 text-white border-none`}
+          >
+            <Maximize className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -118,29 +118,40 @@ const GameLayout2: React.FC<GameLayout2Props> = ({ onComplete, gameMode = 'solo'
             </div>
           </div>
           
-          {/* Submit Button */}
-          <Button 
-            className="mt-auto py-6 text-lg font-semibold rounded-xl bg-history-accent hover:bg-history-accent/90 text-white"
-            onClick={onComplete}
-          >
-            <Check className="mr-2 h-5 w-5" />
-            Submit Guess
-          </Button>
+          {/* GameOverlayHUD */}
+          <GameOverlayHUD 
+            remainingTime={formatTime(remainingTime)}
+            rawRemainingTime={remainingTime}
+            onHintV2Click={handleHintClick}
+            hintsUsed={purchasedHints.length}
+            hintsAllowed={14}
+            currentAccuracy={totalGameAccuracy}
+            currentScore={totalGameXP}
+            onNavigateHome={onNavigateHome}
+            onConfirmNavigation={onConfirmNavigation}
+            onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
+            imageUrl={image.url}
+            onFullscreen={handleImageFullscreen}
+            isTimerActive={isTimerActive}
+            onTimeout={onTimeout}
+            setRemainingTime={setRemainingTime}
+            timerEnabled={timerEnabled}
+          />
         </div>
       </div>
 
-      {/* Hint Modal */}
-      <HintModal
-        isOpen={isHintModalOpen}
-        onOpenChange={setIsHintModalOpen}
-        selectedHintType={selectedHintType}
-        hintContent={hintContent}
-        onSelectHint={selectHint}
-        hintsUsedThisRound={hintsUsedThisRound}
-        hintsUsedTotal={hintsUsedTotal}
-        HINTS_PER_ROUND={HINTS_PER_ROUND}
-        HINTS_PER_GAME={HINTS_PER_GAME}
-      />
+      {isHintModalV2Open && (
+        <HintModalV2New
+          isOpen={isHintModalV2Open}
+          onOpenChange={setIsHintModalV2Open}
+          availableHints={availableHints}
+          purchasedHintIds={purchasedHintIds}
+          onPurchaseHint={purchaseHint}
+          isLoading={isLoading}
+          xpDebt={0}
+          accDebt={0}
+        />
+      )}
     </div>
   );
 };

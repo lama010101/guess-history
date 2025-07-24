@@ -1,7 +1,7 @@
 import React from 'react';
-import { Button } from "@/components/ui/button";
-import { HelpCircle } from "lucide-react";
-import { useHint } from '@/hooks/useHint';
+import { Button } from '@/components/ui/button';
+import { HelpCircle, Sparkles } from 'lucide-react';
+import { useHintV2 } from '@/hooks/useHintV2';
 import { GameImage } from '@/contexts/GameContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -19,16 +19,14 @@ export const HintButton: React.FC<HintButtonProps> = ({
   hintsAllowed: propHintsAllowed
 }) => {
   const { 
-    canSelectHint, 
-    hintsAllowed: defaultHintsAllowed = 0,
-    hintsUsedThisRound = 0,
-    selectedHintType 
-  } = useHint(imageForRound);
+    purchasedHintIds,
+    isLoading,
+  } = useHintV2(imageForRound);
   
-  // Use prop value if provided, otherwise use the default from the hook
-  const effectiveHintsAllowed = propHintsAllowed ?? defaultHintsAllowed;
-  const hintsRemaining = Math.max(0, effectiveHintsAllowed - hintsUsedThisRound);
-  const isDisabled = !canSelectHint || !imageForRound || hintsRemaining <= 0;
+  const hintsUsedCount = purchasedHintIds.length;
+  const hintsAllowedCount = 14;
+  const hintsRemaining = Math.max(0, hintsAllowedCount - hintsUsedCount);
+  const isDisabled = !imageForRound || isLoading;
   
   const buttonContent = (
     <Button 
@@ -39,8 +37,7 @@ export const HintButton: React.FC<HintButtonProps> = ({
     >
       <HelpCircle className="h-4 w-4 mr-1" /> 
       Hint
-      {selectedHintType && <span className="ml-1 text-xs">({selectedHintType})</span>}
-      <span className="ml-2 text-xs opacity-75">Hints: {hintsRemaining}/{effectiveHintsAllowed}</span>
+      <span className="ml-2 text-xs opacity-75">Hints: {hintsUsedCount}/14</span>
     </Button>
   );
 

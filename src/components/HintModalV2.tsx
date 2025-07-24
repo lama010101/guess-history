@@ -99,9 +99,32 @@ const HintModalV2 = ({
     return purchasedHintIds.includes(hintId);
   };
 
-  // Check if user can purchase a hint (always true in debt model, unless already purchased)
+  // Dependency map must mirror the one used in useHintV2
+  const HINT_DEPENDENCIES: Record<string, string | null> = {
+    continent: null,
+    century: null,
+    distant_landmark: null,
+    distant_distance: 'distant_landmark',
+    distant_event: null,
+    distant_time_diff: 'distant_event',
+    region: null,
+    narrow_decade: null,
+    nearby_landmark: null,
+    nearby_distance: 'nearby_landmark',
+    contemporary_event: null,
+    close_time_diff: 'contemporary_event',
+    where_clues: null,
+    when_clues: null
+  };
+
+  // Check if user can purchase a hint (dependency + duplicate check)
   const canPurchaseHint = (hint: Hint): boolean => {
-    return !isHintPurchased(hint.id);
+    if (isHintPurchased(hint.id)) return false;
+    const prereqKey = HINT_DEPENDENCIES[hint.type];
+    if (!prereqKey) return true;
+    const prereqHint = availableHints.find(h => h.type === prereqKey);
+    if (!prereqHint) return false;
+    return purchasedHintIds.includes(prereqHint.id);
   };
 
   // Handle hint purchase

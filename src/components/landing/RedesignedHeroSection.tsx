@@ -1,8 +1,22 @@
 import { useState, useEffect } from "react";
 import LazyImage from '@/components/ui/LazyImage';
 import { Button } from "@/components/ui/button";
-import { ref, listAll, getDownloadURL } from "firebase/storage";
-import { storage } from "@/firebase";
+
+// Explicit list of hero images located in the public/images/hero directory.
+// Add or remove entries as you update the folder.
+const heroImages: string[] = [
+  '/images/hero/HERO (1).webp',
+  '/images/hero/HERO (2).webp',
+  '/images/hero/HERO (3).webp',
+  '/images/hero/hero (8).webp',
+  '/images/hero/hero (9).webp',
+  '/images/hero/hero (12).webp',
+  '/images/hero/hero (14).webp',
+  '/images/hero/hero (17).webp',
+  '/images/hero/hero (18).webp',
+  '/images/hero/hero (19).webp',
+  '/images/hero/hero (22).webp',
+];
 
 interface RedesignedHeroSectionProps {
   onAuthModalOpen?: () => void;
@@ -14,50 +28,31 @@ const RedesignedHeroSection = ({ onAuthModalOpen }: RedesignedHeroSectionProps) 
   const [imagesLoading, setImagesLoading] = useState(true);
 
   useEffect(() => {
-    const fetchImages = async () => {
+    const preload = async () => {
       try {
-        setImagesLoading(true);
-        
-        // --- Primary: Load from Firebase Storage ---
-        const listRef = ref(storage, 'hero');
-        const res = await listAll(listRef);
-        const urlPromises = res.items.map(item => getDownloadURL(item));
-        const firebaseImageUrls = await Promise.all(urlPromises);
-
-        if (firebaseImageUrls.length > 0) {
-          const loadPromises = firebaseImageUrls.map(url => {
-            return new Promise<void>((resolve, reject) => {
-              const img = new Image();
-              img.src = url;
-              img.onload = () => resolve();
-              img.onerror = reject;
-            });
-          });
-
-          await Promise.all(loadPromises);
-          setCarouselImages(firebaseImageUrls);
-        } else {
-          // Fallback to single local image
-          const fallbackImage = '/images/hero/HERO (1).webp';
-          const img = new Image();
-          img.src = fallbackImage;
-          await new Promise<void>((resolve, reject) => {
-            img.onload = () => resolve();
+        await Promise.all(
+          heroImages.map(
+            (url) =>
+              new Promise<void>((resolve) => {
+                const img = new Image();
+                img.src = url;
+                img.onload = () => resolve();
             img.onerror = reject;
           });
-          setCarouselImages([fallbackImage]);
-        }
+        const loaded = await Promise.all(heroImages.map(load));
+              })
+          )
+        );
+
+        setCarouselImages(loaded);
       } catch (error) {
-        console.error('Error loading images:', error);
-        // Fallback to single local image on any error
-        const fallbackImage = '/images/hero/HERO (1).webp';
-        setCarouselImages([fallbackImage]);
+        console.error('Error loading hero images:', error);
       } finally {
         setImagesLoading(false);
       }
     };
 
-    fetchImages();
+    loadImages();
   }, []);
 
   useEffect(() => {

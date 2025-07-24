@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { HelpCircle, Target, Zap, Home, Settings, Maximize } from "lucide-react";
+import { Home, Maximize, HelpCircle, Target, Zap, Sparkles } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from 'react-router-dom';
 import { formatInteger } from '@/utils/format';
@@ -9,7 +9,7 @@ import TimerDisplay from '@/components/game/TimerDisplay';
 interface GameOverlayHUDProps {
   remainingTime?: string;
   rawRemainingTime?: number;
-  onHintClick?: () => void;
+  onHintV2Click?: () => void;
   hintsUsed?: number;
   hintsAllowed?: number;
   selectedHintType?: string | null;
@@ -31,6 +31,7 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
   remainingTime,
   rawRemainingTime = 0,
   onHintClick,
+  onHintV2Click,
   hintsUsed = 0,
   hintsAllowed = 0,
   selectedHintType,
@@ -48,8 +49,7 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
   timerEnabled = true
 }) => {
   // Show hint counter as X/Y where Y is the total allowed hints
-  const hintsRemaining = hintsAllowed - hintsUsed;
-  const isHintDisabled = hintsRemaining <= 0 || hintsAllowed <= 0;
+  const isHintDisabled = hintsUsed >= hintsAllowed;
   
   const navigate = useNavigate();
   
@@ -122,18 +122,18 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
       <div className="flex justify-between items-end w-full">
         {/* Hint button */}
         <div>
-          {onHintClick && (
+          {onHintV2Click && (
             <Button 
               size="sm" 
               variant="outline" 
-              className="bg-white/70 hover:bg-white text-black pointer-events-auto"
-              onClick={onHintClick}
+              className="bg-blue-500 hover:bg-blue-600 text-white pointer-events-auto"
+              onClick={onHintV2Click}
               disabled={isHintDisabled}
             >
-              <HelpCircle className="h-4 w-4 mr-1" />
-              <span className="mr-1">Hint</span>
+              <Sparkles className="h-4 w-4 mr-1" />
+              <span className="mr-1">Hints</span>
               <Badge variant="default" className="text-xs">
-                {selectedHintType ? selectedHintType : `${hintsRemaining}/${hintsAllowed}`}
+                {`${hintsUsed}/14`}
               </Badge>
             </Button>
           )}

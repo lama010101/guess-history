@@ -1,0 +1,7 @@
+{
+  "task": "Implement Hint System V2 (Final)",
+  "status": "doing",
+  "notes": "Initial migration file created for schema changes: images extended, hints, round_hints, and user_metrics columns added.",
+  "commitSha": "",
+  "timestamp": "2025-07-23T16:59:45+07:00"
+}

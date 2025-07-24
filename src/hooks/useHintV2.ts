@@ -251,6 +251,35 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
     return acc;
   }, {} as Record<number, Hint[]>);
 
+  // Hint dependency map based on PRD
+  const HINT_DEPENDENCIES: Record<string, string | null> = {
+    continent: null,
+    century: null,
+    distant_landmark: null,
+    distant_distance: 'distant_landmark',
+    distant_event: null,
+    distant_time_diff: 'distant_event',
+    region: null,
+    narrow_decade: null,
+    nearby_landmark: null,
+    nearby_distance: 'nearby_landmark',
+    contemporary_event: null,
+    close_time_diff: 'contemporary_event',
+    where_clues: null,
+    when_clues: null
+  };
+
+  // Check if user can purchase a hint (checks dependency and duplicate)
+  const canPurchaseHint = (hint: Hint): boolean => {
+    if (purchasedHintIds.includes(hint.id)) return false;
+    const prereq = HINT_DEPENDENCIES[hint.type];
+    if (!prereq) return true;
+    // Find the prerequisite hint object and ensure it's purchased
+    const prereqHint = availableHints.find(h => h.type === prereq);
+    if (!prereqHint) return false; // should not happen if data complete
+    return purchasedHintIds.includes(prereqHint.id);
+  };
+
   // Get purchased hints
   const purchasedHints = availableHints.filter(hint => 
     purchasedHintIds.includes(hint.id)

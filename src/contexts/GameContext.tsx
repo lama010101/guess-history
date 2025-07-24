@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useSettingsStore } from '@/lib/useSettingsStore';
 import { v4 as uuidv4 } from 'uuid'; // For generating unique game IDs
+import { Hint } from '@/hooks/useHintV2';
 
 // Define the structure for a user's guess coordinates
 export interface GuessCoordinates {
@@ -23,6 +24,7 @@ export interface RoundResult {
   xpWhen?: number; // Time XP (0-100)
   accuracy?: number; // Overall accuracy percentage for the round (0-100)
   hintsUsed?: number; // Number of hints used in this round
+  hints?: Hint[]; // Hints purchased in this round
 }
 
 // Define the structure of an image object based on actual schema

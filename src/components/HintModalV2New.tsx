@@ -58,11 +58,24 @@ const HintButtonUI: React.FC<{
       title={isLocked ? 'Unlock prerequisite first' : label1}
     >
       {isPurchased ? (
-        <span>{hint.text}</span>
+        <span className="break-words whitespace-normal">
+          {hint.type.includes('event_years') ? `${hint.text} years off` :
+           hint.type.includes('landmark_km') ? `${hint.text} km away` :
+           hint.text}
+        </span>
       ) : isLocked ? (
-        <span className="flex items-center gap-1"><Lock className="h-4 w-4 mr-1" /> Locked</span>
+        <span className="flex items-center justify-center gap-1 text-xs break-words whitespace-normal">
+          <Lock className="h-4 w-4 shrink-0" />
+          <span className="flex flex-col items-center">
+            <span>{label1}</span>
+            <span className="text-gray-300">{label2}</span>
+          </span>
+        </span>
       ) : (
-        <span className="flex flex-col items-center"><span>{label1}</span><span className="text-xs text-gray-300">{label2}</span></span>
+        <span className="flex flex-col items-center break-words whitespace-normal">
+          <span>{label1}</span>
+          <span className="text-xs text-gray-300">{label2}</span>
+        </span>
       )}
     </Button>
   );
@@ -89,9 +102,14 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
     };
 
     availableHints.forEach(hint => {
-      // Simple categorization based on hint type name
-      const category = ['century', 'decade', 'narrow_decade', 'year', 'month', 'day', 'distant_event', 'contemporary_event', 'date_period_clues', 'when_clues', 'distant_time_diff', 'close_time_diff'].includes(hint.type) ? 'when' : 'where';
-      
+      // Determine category based on database column naming pattern
+      let category: 'when' | 'where';
+      if (hint.type.includes('_when_') || hint.type.endsWith('century') || hint.type.endsWith('decade') || hint.type.includes('time_diff') || hint.type === '5_when_clues') {
+          category = 'when';
+      } else {
+          category = 'where';
+      }
+
       if (grouped[hint.level]) {
         grouped[hint.level][category].push(hint);
       }
@@ -141,10 +159,11 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
                     const maxLength = Math.max(whenHints.length, whereHints.length);
 
                     if (level === '2' || level === '4') {
-                      const eventWhen = whenHints.find(h => h.type === (level === '2' ? 'distant_event' : 'contemporary_event'));
-                      const eventWhere = whereHints.find(h => h.type === (level === '2' ? 'distant_landmark' : 'nearby_landmark'));
-                      const timeDiffWhen = whenHints.find(h => h.type === (level === '2' ? 'distant_time_diff' : 'close_time_diff'));
-                      const distanceWhere = whereHints.find(h => h.type === (level === '2' ? 'distant_distance' : 'nearby_distance'));
+                      // For level 2 and 4 we have paired rows (event/landmark + timeDiff/distance)
+                      const eventWhen = whenHints.find(h => h.type === (level === '2' ? '2_when_event' : '4_when_event'));
+                      const eventWhere = whereHints.find(h => h.type === (level === '2' ? '2_where_landmark' : '4_where_landmark'));
+                      const timeDiffWhen = whenHints.find(h => h.type === (level === '2' ? '2_when_event_years' : '4_when_event_years'));
+                      const distanceWhere = whereHints.find(h => h.type === (level === '2' ? '2_where_landmark_km' : '4_where_landmark_km'));
 
                       return (
                         <>
@@ -169,6 +188,21 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
                             </div>
                           </div>
                         </>
+                      );
+                    } else if (level === '5') {
+                      // Render level 5 as a single row: Level / When / Where
+                      const whenHint = whenHints.find(h => h.type === '5_when_clues');
+                      const whereHint = whereHints.find(h => h.type === '5_where_clues');
+                      return (
+                        <div key={`${level}-single`} className="grid grid-cols-3 gap-2 items-center p-2 border border-gray-200 dark:border-gray-600 rounded text-xs">
+                          <div className="text-center font-bold text-black dark:text-white">{level}</div>
+                          <div className="text-center">
+                            {whenHint ? <HintButtonUI hint={whenHint} purchasedHintIds={purchasedHintIds} isLoading={isLoading} onPurchase={handlePurchase} /> : <span className="text-gray-500">—</span>}
+                          </div>
+                          <div className="text-center">
+                            {whereHint ? <HintButtonUI hint={whereHint} purchasedHintIds={purchasedHintIds} isLoading={isLoading} onPurchase={handlePurchase} /> : <span className="text-gray-500">—</span>}
+                          </div>
+                        </div>
                       );
                     } else {
                       // Default rendering for other levels

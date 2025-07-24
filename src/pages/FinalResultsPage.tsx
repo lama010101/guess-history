@@ -66,22 +66,45 @@ const FinalResultsPage = () => {
 
       // Sum up XP from all rounds
       const { finalXP, finalPercent } = calculateFinalScore(roundScores);
-      
-      // Calculate total hints used and apply penalty (30 XP per hint)
-      const HINT_PENALTY = 30;
+
+      // Calculate hint debt and category scores
+      const { whenXpDebt, whenAccDebt, whereXpDebt, whereAccDebt, totalWhenXP, totalWhereXP } = roundResults.reduce((acc, result, index) => {
+        const hints = result.hints || [];
+        hints.forEach(hint => {
+          if (['event_when', 'century', 'decade', 'period_clues'].includes(hint.type)) {
+            acc.whenXpDebt += hint.xp_cost;
+            acc.whenAccDebt += hint.accuracy_penalty;
+          } else {
+            acc.whereXpDebt += hint.xp_cost;
+            acc.whereAccDebt += hint.accuracy_penalty;
+          }
+        });
+
+        const img = images[index];
+        if (result && img) {
+          acc.totalWhenXP += calculateTimeAccuracy(result.guessYear || 0, img.year || 0);
+          acc.totalWhereXP += calculateLocationAccuracy(result.distanceKm || 0);
+        }
+
+        return acc;
+      }, { whenXpDebt: 0, whenAccDebt: 0, whereXpDebt: 0, whereAccDebt: 0, totalWhenXP: 0, totalWhereXP: 0 });
+
+      const totalWhenAccuracy = totalWhenXP > 0 ? (totalWhenXP / (roundResults.length * 100)) * 100 : 0;
+      const totalWhereAccuracy = totalWhereXP > 0 ? (totalWhereXP / (roundResults.length * 100)) * 100 : 0;
+
+      const netFinalXP = Math.max(0, Math.round(finalXP - whenXpDebt - whereXpDebt));
       const totalHintsUsed = roundResults.reduce((sum, result) => sum + (result.hintsUsed || 0), 0);
-      const totalHintPenalty = totalHintsUsed * HINT_PENALTY;
-      const netFinalXP = Math.max(0, Math.round(finalXP - totalHintPenalty));
-      
+
       console.log('Final Score Calculation:', {
         totalRounds: roundResults.length,
         rawTotalXP: finalXP,
         totalHintsUsed,
-        totalHintPenalty,
+        whenXpDebt,
+        whereXpDebt,
         netFinalXP,
         finalPercent
       });
-      
+
       // Check if this was a perfect game
       const isPerfectGame = finalPercent === 100;
       
@@ -405,7 +428,7 @@ const FinalResultsPage = () => {
                       </div>
                     </div>
                     {open && (
-                      <div className="details" id={`details-${image.id}`}> 
+                      <div className="details" id={`details-${image.id}`}>
                         <div className="grid grid-cols-2 gap-4 mt-4">
                           <div className="p-3 rounded-lg bg-history-primary/10 dark:bg-history-primary/20">
                             <div className="flex items-center mb-2">
@@ -442,7 +465,7 @@ const FinalResultsPage = () => {
                                 {yearDifference === 0 ? (
                                   <span className="text-green-600 dark:text-green-400 font-medium">Perfect!</span>
                                 ) : (
-                                  yearDifference === 0 ? (<span className="text-green-600 dark:text-green-400 font-medium">Perfect!</span>) : (`${formatInteger(yearDifference)} ${yearDifference === 1 ? 'year' : 'years'} off`)
+                                  `${formatInteger(yearDifference)} ${yearDifference === 1 ? 'year' : 'years'} off`
                                 )}
                               </span>
                               <div className="flex items-center gap-2">
@@ -465,6 +488,42 @@ const FinalResultsPage = () => {
               </div>
             );
           })}
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 my-4">
+          <h2 className="text-xl font-bold text-history-primary dark:text-history-light mb-4">Round Summary</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* WHEN Score */}
+            <div>
+              <h3 className="text-lg font-semibold text-history-primary dark:text-history-light mb-2">WHEN</h3>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-sm text-gray-600 dark:text-gray-300">Score</span>
+                <span className="font-medium">{formatInteger(totalWhenXP)} XP | {formatInteger(totalWhenAccuracy)}%</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600 dark:text-gray-300">Hint Cost</span>
+                <span className="font-medium text-red-500">-{formatInteger(whenXpDebt)} XP | -{formatInteger(whenAccDebt)}%</span>
+              </div>
+            </div>
+            {/* WHERE Score */}
+            <div>
+              <h3 className="text-lg font-semibold text-history-primary dark:text-history-light mb-2">WHERE</h3>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-sm text-gray-600 dark:text-gray-300">Score</span>
+                <span className="font-medium">{formatInteger(totalWhereXP)} XP | {formatInteger(totalWhereAccuracy)}%</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600 dark:text-gray-300">Hint Cost</span>
+                <span className="font-medium text-red-500">-{formatInteger(whereXpDebt)} XP | -{formatInteger(whereAccDebt)}%</span>
+              </div>
+            </div>
+          </div>
+          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-bold text-history-primary dark:text-history-light">FINAL SCORE</h3>
+              <span className="text-xl font-bold">{formatInteger(netFinalXP)} XP | {formatInteger(finalPercent)}%</span>
+            </div>
+          </div>
         </div>
 
 

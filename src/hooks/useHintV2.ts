@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { GameImage } from '@/contexts/GameContext';
 import { useLogs } from '@/contexts/LogContext';
-import { HINT_COSTS } from '@/constants/hints';
+import { HINT_COSTS, HINT_DEPENDENCIES } from '@/constants/hints';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -15,6 +15,12 @@ export interface Hint {
   image_id: string;
   xp_cost: number;
   accuracy_penalty: number;
+  /**
+   * Optional ID of a prerequisite hint that must be purchased before this one.
+   * This is expressed as a full hint ID (e.g. `2_where_landmark-<imageId>`)
+   * so the UI can quickly check purchase status without extra look-ups.
+   */
+  prerequisite?: string;
 }
 
 // Interface for the hook's return value
@@ -61,27 +67,64 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
     addLog(`Fetching hints for image ${imageData.id}`);
 
     try {
-      // Fetch available hints for this image
-      const { data: hints, error: hintsError } = await supabase
-        .from('hints' as any)
+      // Fetch hint data directly from the `images` table. Each image row contains
+      // the raw hint values (e.g. `1_where_continent`, `2_when_event`, ...).
+      // We transform those columns into an array of `Hint` objects so the rest of
+      // the hook / UI can work as-is.
+      const { data: imageRow, error: imageError } = await supabase
+        .from('images' as any)
         .select('*')
-        .eq('image_id', imageData.id);
+        .eq('id', imageData.id)
+        .single();
 
-      if (hintsError) {
-        addLog(`Error fetching hints: ${hintsError.message}`);
-        throw hintsError;
+      if (imageError) {
+        addLog(`Error fetching hints from images table: ${imageError.message}`);
+        throw imageError;
       }
 
-      // If no hints found, use sample hints for testing (can be removed in production)
-      if (!hints || hints.length === 0) {
-        addLog('No hints found for this image, using sample hints');
-        const sampleHints = generateSampleHints(imageData.id);
-        setAvailableHints(sampleHints);
-      } else {
-        addLog(`Found ${hints.length} hints for image ${imageData.id}`);
-        console.log('Fetched hints from DB:', hints);
-        setAvailableHints(hints as unknown as Hint[]);
-      }
+      // Map image column → HINT_COSTS key so that we can attach XP / accuracy costs
+      const costKeyMap: Record<string, keyof typeof HINT_COSTS | null> = {
+        '1_where_continent': 'continent',
+        '1_when_century': 'century',
+        '2_where_landmark': 'distantLandmark',
+        '2_where_landmark_km': 'distantDistance',
+        '2_when_event': 'distantEvent',
+        '2_when_event_years': 'distantTimeDiff',
+        '3_where_region': 'region',
+        '3_when_decade': 'narrowDecade',
+        '4_where_landmark': 'nearbyLandmark',
+        '4_where_landmark_km': 'nearbyDistance',
+        '4_when_event': 'contemporaryEvent',
+        '4_when_event_years': 'closeTimeDiff',
+        '5_where_clues': 'whereClues',
+        '5_when_clues': 'whenClues'
+      };
+
+      // Convert non-null column values into Hint objects
+      const hints: Hint[] = Object.entries(costKeyMap)
+        .filter(([column]) => imageRow && imageRow[column] !== null && imageRow[column] !== '')
+        .map(([column, costKey]) => {
+          const level = parseInt(column.charAt(0), 10) || 1; // first char is the level (1-5)
+          const xp_cost = costKey ? HINT_COSTS[costKey].xp : 0;
+          const accuracy_penalty = costKey ? HINT_COSTS[costKey].acc : 0;
+          // Resolve prerequisite based on dependency map so the UI can lock items until required hints are bought
+          const prereqType = HINT_DEPENDENCIES[column] ?? null;
+
+          return {
+            id: `${column}-${imageData.id}`,
+            type: column, // keep original column name so dependencies match
+            text: String(imageRow[column]),
+            level,
+            image_id: imageData.id,
+            xp_cost,
+            accuracy_penalty,
+            prerequisite: prereqType ? `${prereqType}-${imageData.id}` : undefined
+          } as Hint;
+        });
+
+      addLog(`Generated ${hints.length} hints for image ${imageData.id} from images table`);
+      setAvailableHints(hints);
+
 
       // Fetch already purchased hints
       let purchasedHintIdsFromDb: string[] = [];
@@ -263,23 +306,7 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
   }, {} as Record<number, Hint[]>);
 
   // Hint dependency map based on PRD
-  const HINT_DEPENDENCIES: Record<string, string | null> = {
-    continent: null,
-    century: null,
-    distant_landmark: null,
-    distant_distance: 'distant_landmark',
-    distant_event: null,
-    distant_time_diff: 'distant_event',
-    region: null,
-    narrow_decade: null,
-    nearby_landmark: null,
-    nearby_distance: 'nearby_landmark',
-    contemporary_event: null,
-    close_time_diff: 'contemporary_event',
-    where_clues: null,
-    when_clues: null
-  };
-
+  
   // Check if user can purchase a hint (checks dependency and duplicate)
   const canPurchaseHint = (hint: Hint): boolean => {
     if (purchasedHintIds.includes(hint.id)) return false;
@@ -313,12 +340,7 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
   };
 };
 
-// Helper function to generate sample hints for testing
-const generateSampleHints = (imageId: string): Hint[] => {
-  return [
-    // Level 1 Hints
-    {
-      id: `sample-continent-${imageId}`,
+/*
       type: 'continent',
       text: 'Europe',
       level: 1,
@@ -452,4 +474,4 @@ const generateSampleHints = (imageId: string): Hint[] => {
       accuracy_penalty: 30
     }
   ];
-};
+*/

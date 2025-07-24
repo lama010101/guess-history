@@ -24,6 +24,10 @@ export const HINT_COSTS = {
   nearbyDistance: { xp: 80, acc: 8 },
   contemporaryEvent: { xp: 160, acc: 16 },
   closeTimeDiff: { xp: 80, acc: 8 },
+
+  // Level 5 Hints (Full Clues)
+  whereClues: { xp: 200, acc: 20 },
+  whenClues: { xp: 200, acc: 20 },
 };
 
 // Hint level descriptions

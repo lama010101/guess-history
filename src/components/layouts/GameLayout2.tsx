@@ -12,6 +12,15 @@ import {
 import HintModalV2New from '@/components/HintModalV2New';
 import { useHintV2 } from '@/hooks/useHintV2';
 import LazyImage from '@/components/ui/LazyImage';
+import GameOverlayHUD from '@/components/navigation/GameOverlayHUD';
+import { useGame } from '@/contexts/GameContext';
+
+// Helper function to format time as MM:SS
+const formatTime = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
 
 
 export interface GameLayout2Props {
@@ -21,9 +30,14 @@ export interface GameLayout2Props {
 
 const GameLayout2: React.FC<GameLayout2Props> = ({ onComplete, gameMode = 'solo' }) => {
   const [isHintModalV2Open, setIsHintModalV2Open] = useState(false);
+  const game = useGame();
+  const { totalGameAccuracy, totalGameXP, roundTimerSec, timerEnabled } = game;
+  
   const { 
     availableHints,
     purchasedHintIds,
+    xpDebt,
+    accDebt,
     isLoading,
     purchaseHint
   } = useHintV2();
@@ -120,21 +134,21 @@ const GameLayout2: React.FC<GameLayout2Props> = ({ onComplete, gameMode = 'solo'
           
           {/* GameOverlayHUD */}
           <GameOverlayHUD 
-            remainingTime={formatTime(remainingTime)}
-            rawRemainingTime={remainingTime}
+            remainingTime={formatTime(roundTimerSec)}
+            rawRemainingTime={roundTimerSec}
             onHintV2Click={handleHintClick}
-            hintsUsed={purchasedHints.length}
+            hintsUsed={purchasedHintIds.length}
             hintsAllowed={14}
             currentAccuracy={totalGameAccuracy}
             currentScore={totalGameXP}
-            onNavigateHome={onNavigateHome}
-            onConfirmNavigation={onConfirmNavigation}
-            onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
-            imageUrl={image.url}
-            onFullscreen={handleImageFullscreen}
-            isTimerActive={isTimerActive}
-            onTimeout={onTimeout}
-            setRemainingTime={setRemainingTime}
+            onNavigateHome={() => {}}
+            onConfirmNavigation={() => {}}
+            onOpenSettingsModal={() => {}}
+            imageUrl=""
+            onFullscreen={() => {}}
+            isTimerActive={true}
+            onTimeout={() => {}}
+            setRemainingTime={() => {}}
             timerEnabled={timerEnabled}
           />
         </div>
@@ -146,10 +160,10 @@ const GameLayout2: React.FC<GameLayout2Props> = ({ onComplete, gameMode = 'solo'
           onOpenChange={setIsHintModalV2Open}
           availableHints={availableHints}
           purchasedHintIds={purchasedHintIds}
+          xpDebt={xpDebt}
+          accDebt={accDebt}
           onPurchaseHint={purchaseHint}
           isLoading={isLoading}
-          xpDebt={0}
-          accDebt={0}
         />
       )}
     </div>

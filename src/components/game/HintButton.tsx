@@ -23,21 +23,21 @@ export const HintButton: React.FC<HintButtonProps> = ({
     isLoading,
   } = useHintV2(imageForRound);
   
-  const hintsUsedCount = purchasedHintIds.length;
-  const hintsAllowedCount = 14;
+  const hintsUsedCount = purchasedHintIds?.length || 0;
+  const hintsAllowedCount = propHintsAllowed || 14;
   const hintsRemaining = Math.max(0, hintsAllowedCount - hintsUsedCount);
   const isDisabled = !imageForRound || isLoading;
   
   const buttonContent = (
     <Button 
       size="sm" 
-      className={`${className} ${selectedHintType ? 'bg-history-secondary/50' : 'bg-black/50 hover:bg-black/70'} text-white border-none`}
+      className={`${className} bg-blue-600 hover:bg-blue-700 text-white border-none shadow-md transition-all duration-200 hover:shadow-lg`}
       onClick={onClick}
       disabled={isDisabled}
     >
       <HelpCircle className="h-4 w-4 mr-1" /> 
       Hint
-      <span className="ml-2 text-xs opacity-75">Hints: {hintsUsedCount}/14</span>
+      <span className="ml-2 text-xs font-medium">{hintsUsedCount}/14</span>
     </Button>
   );
 

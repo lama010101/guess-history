@@ -189,8 +189,8 @@ const RoundResultsPage = () => {
       
       // Get hint-related information
       const hintsUsed = ctxResult.hintsUsed ?? 0;
-      const hintPenalty = hintsUsed * 30; // 30 XP per hint
-      const hintPenaltyPercent = hintsUsed * 30; // 30% per hint
+      const hintPenalty = hintsUsed * 50; // 50 XP per hint (from constants)
+      const hintPenaltyPercent = hintsUsed * 5; // 5% per hint (from constants)
       
       // Calculate total XP with hint penalties
       const xpBeforePenalty = xpWhere + xpWhen;

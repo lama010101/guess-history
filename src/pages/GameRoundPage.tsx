@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/tooltip";
 import { ConfirmNavigationDialog } from '@/components/game/ConfirmNavigationDialog';
 // import { useHint, HINT_PENALTY } from '@/hooks/useHint'; // Legacy hint system removed
-// TODO: Implement V2 hint penalty logic for scoring
+import { useHintV2 } from '@/hooks/useHintV2';
 import { 
   calculateDistanceKm, 
   calculateRoundScore, 
@@ -27,6 +27,7 @@ import {
 
 // Rename component
 const GameRoundPage = () => {
+  // --- Hint system V2 ---
   const navigate = useNavigate();
   const { roomId, roundNumber: roundNumberStr } = useParams<{ roomId: string; roundNumber: string }>();
   const { user } = useAuth();
@@ -87,15 +88,20 @@ const GameRoundPage = () => {
   const [hasTimedOut, setHasTimedOut] = useState<boolean>(false);
   const [hasGuessedLocation, setHasGuessedLocation] = useState<boolean>(false);
 
-  // Get current round's hint usage
-  const imageForRound = 
-      !isContextLoading && 
-      images.length > 0 && 
-      !isNaN(roundNumber) && 
-      roundNumber > 0 && 
+  // Determine the image for this round
+  const imageForRound =
+      !isContextLoading &&
+      images.length > 0 &&
+      !isNaN(roundNumber) &&
+      roundNumber > 0 &&
       roundNumber <= images.length
-      ? images[currentRoundIndex] 
-      : null;
+        ? images[currentRoundIndex]
+        : null;
+
+  // V2 hint system - track purchased hints for this image
+  const { purchasedHints, xpDebt, accDebt } = useHintV2(imageForRound);
+
+  
   
   useEffect(() => {
     if (roomId) {
@@ -115,21 +121,21 @@ const GameRoundPage = () => {
   const handleSubmitGuess = useCallback(() => {
     if (isSubmitting) return;
     if (hasTimedOut) return; // Prevent submission after timeout
-    
+
     if (!imageForRound) {
       toast({
-        title: "Error",
-        description: "Cannot submit guess, image data is missing.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Cannot submit guess, image data is missing.',
+        variant: 'destructive',
       });
       return;
     }
 
-    if (!hasGuessedLocation && !hasTimedOut) {
+    if (!hasGuessedLocation) {
       toast({
-        title: "No location selected",
-        description: "Please select a location on the map first.",
-        variant: "destructive",
+        title: 'No location selected',
+        description: 'Please select a location on the map first.',
+        variant: 'destructive',
       });
       return;
     }
@@ -139,53 +145,75 @@ const GameRoundPage = () => {
     setIsTimerActive(false);
 
     try {
-      const distance = currentGuess 
+      const distance = currentGuess
         ? calculateDistanceKm(
             currentGuess.lat,
             currentGuess.lng,
             imageForRound.latitude,
-            imageForRound.longitude
-          ) 
+            imageForRound.longitude,
+          )
         : null;
 
-      const { 
-        timeXP = 0, 
-        locationXP = 0, 
-        roundXP: finalScore = 0, 
-        roundPercent = 0
-      } = distance !== null 
-        ? calculateRoundScore(distance, selectedYear, imageForRound.year, 0, 0)
-        : { timeXP: 0, locationXP: 0, roundXP: 0, roundPercent: 0 };
-      
-      console.log(`Distance: ${distance?.toFixed(2) ?? 'N/A'} km, Location XP: ${locationXP.toFixed(1)}, Time XP: ${timeXP.toFixed(1)}, Round XP: ${finalScore.toFixed(1)}, Accuracy: ${roundPercent}%`);
+      // Calculate base XP without penalties using the scoring helpers
+      const timeXP = calculateTimeXP(selectedYear, imageForRound.year);
+      const locationXP = distance !== null ? calculateLocationXP(distance) : 0;
+      const roundXPBeforePenalty = timeXP + locationXP;
 
-      recordRoundResult(
-        {
-          guessCoordinates: currentGuess,
-          distanceKm: distance,
-          score: finalScore,
-          guessYear: selectedYear,
-          xpWhere: locationXP,
-          xpWhen: timeXP,
-          accuracy: roundPercent,
-          hintsUsed: 0 // TODO: Get from V2 context
-        },
-        currentRoundIndex
-      );
+      // Apply dynamic hint debts from the V2 hint system
+      const roundXP = Math.max(0, roundXPBeforePenalty - xpDebt);
+      const percentBeforePenalty = (roundXPBeforePenalty / (100 + 100)) * 100; // 200 is max XP per round
+      const roundPercent = Math.max(0, Math.round(percentBeforePenalty - accDebt));
+
+      const hintPenalty = xpDebt;
+      const hintPenaltyPercent = accDebt;
+
+      const resultData = {
+        guessCoordinates: currentGuess,
+        distanceKm: distance,
+        score: roundXP,
+        guessYear: selectedYear,
+        xpWhere: locationXP,
+        xpWhen: timeXP,
+        accuracy: roundPercent,
+        hintsUsed: purchasedHints.length,
+        xpDebt,
+        accDebt,
+        hintPenalty,
+        hintPenaltyPercent,
+      };
+
+      recordRoundResult(resultData, currentRoundIndex);
 
       setCurrentGuess(null);
       navigate(`/test/game/room/${roomId}/round/${roundNumber}/results`);
     } catch (error) {
-      console.error("Error during guess submission:", error);
+      console.error('Error during guess submission:', error);
       toast({
-        title: "Submission Error",
-        description: "An error occurred while submitting your guess.",
-        variant: "destructive",
+        title: 'Submission Error',
+        description: 'An error occurred while submitting your guess.',
+        variant: 'destructive',
       });
     } finally {
       setTimeout(() => setIsSubmitting(false), 300);
     }
-  }, [currentGuess, imageForRound, toast, roundNumber, selectedYear, recordRoundResult, currentRoundIndex, navigate, roomId, hasGuessedLocation, hasTimedOut]);
+  }, [
+    isSubmitting,
+    hasTimedOut,
+    imageForRound,
+    toast,
+    hasGuessedLocation,
+    roundNumber,
+    selectedYear,
+    currentGuess,
+    setIsSubmitting,
+    setIsTimerActive,
+    purchasedHints,
+    recordRoundResult,
+    currentRoundIndex,
+    setCurrentGuess,
+    navigate,
+    roomId,
+  ]);
 
   // Handle timer completion
   const handleTimeComplete = useCallback(() => {
@@ -216,7 +244,7 @@ const GameRoundPage = () => {
             xpWhere: 0,
             xpWhen: 0,
             accuracy: 0,
-            hintsUsed: 0 // TODO: Get from V2 context
+            hintsUsed: purchasedHints.length
           },
           currentRoundIndex
         );
@@ -246,7 +274,7 @@ const GameRoundPage = () => {
           roundXP: finalScore = 0, 
           roundPercent = 0
         } = distance !== null 
-          ? calculateRoundScore(distance, selectedYear, imageForRound.year, 0, 0)
+          ? calculateRoundScore(distance, selectedYear, imageForRound.year, purchasedHints.length)
           : { timeXP: 0, locationXP: 0, roundXP: 0, roundPercent: 0 };
         
         recordRoundResult(
@@ -258,7 +286,7 @@ const GameRoundPage = () => {
             xpWhere: locationXP,
             xpWhen: timeXP,
             accuracy: roundPercent,
-            hintsUsed: 0 // TODO: Get from V2 context
+            hintsUsed: purchasedHints.length
           },
           currentRoundIndex
         );

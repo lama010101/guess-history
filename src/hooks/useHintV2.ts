@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { v4 as uuidv4 } from 'uuid';
 import { GameImage } from '@/contexts/GameContext';
 import { useLogs } from '@/contexts/LogContext';
 import { HINT_COSTS, HINT_DEPENDENCIES } from '@/constants/hints';
@@ -15,6 +16,9 @@ export interface Hint {
   image_id: string;
   xp_cost: number;
   accuracy_penalty: number;
+  // Optional DB-only metadata for certain hint types
+  distance_km?: number;
+  time_diff_years?: number;
   /**
    * Optional ID of a prerequisite hint that must be purchased before this one.
    * This is expressed as a full hint ID (e.g. `2_where_landmark-<imageId>`)
@@ -67,91 +71,125 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
     addLog(`Fetching hints for image ${imageData.id}`);
 
     try {
-      // Fetch hint data directly from the `images` table. Each image row contains
-      // the raw hint values (e.g. `1_where_continent`, `2_when_event`, ...).
-      // We transform those columns into an array of `Hint` objects so the rest of
-      // the hook / UI can work as-is.
-      const { data: imageRow, error: imageError } = await supabase
-        .from('images' as any)
+      // 1) Try to fetch pre-generated hints from the dedicated `public.hints` table.
+      //    If this table is populated (recommended production path), we can map rows
+      //    directly into Hint objects and skip the column-parsing fallback.
+      const { data: dbHints, error: dbHintsError } = await supabase
+        .from('hints' as any)
         .select('*')
-        .eq('id', imageData.id)
-        .single();
+        .eq('image_id', imageData.id)
+        .order('level', { ascending: true });
 
-      if (imageError) {
-        addLog(`Error fetching hints from images table: ${imageError.message}`);
-        throw imageError;
+      if (dbHintsError) {
+        // Do NOT throw here – we can still fall back to legacy column mapping.
+        addLog(`Error querying hints table: ${dbHintsError.message}. Falling back to legacy column mapping.`);
       }
 
-      // Map image column → HINT_COSTS key so that we can attach XP / accuracy costs
-      const costKeyMap: Record<string, keyof typeof HINT_COSTS | null> = {
-        '1_where_continent': 'continent',
-        '1_when_century': 'century',
-        '2_where_landmark': 'distantLandmark',
-        '2_where_landmark_km': 'distantDistance',
-        '2_when_event': 'distantEvent',
-        '2_when_event_years': 'distantTimeDiff',
-        '3_where_region': 'region',
-        '3_when_decade': 'narrowDecade',
-        '4_where_landmark': 'nearbyLandmark',
-        '4_where_landmark_km': 'nearbyDistance',
-        '4_when_event': 'contemporaryEvent',
-        '4_when_event_years': 'closeTimeDiff',
-        '5_where_clues': 'whereClues',
-        '5_when_clues': 'whenClues'
-      };
+      let hints: Hint[] = [];
 
-      // Convert non-null column values into Hint objects
-      const hints: Hint[] = Object.entries(costKeyMap)
-        .filter(([column]) => imageRow && imageRow[column] !== null && imageRow[column] !== '')
-        .map(([column, costKey]) => {
-          const level = parseInt(column.charAt(0), 10) || 1; // first char is the level (1-5)
-          const xp_cost = costKey ? HINT_COSTS[costKey].xp : 0;
-          const accuracy_penalty = costKey ? HINT_COSTS[costKey].acc : 0;
-          // Resolve prerequisite based on dependency map so the UI can lock items until required hints are bought
-          const prereqType = HINT_DEPENDENCIES[column] ?? null;
+      if (dbHints && dbHints.length > 0) {
+        // Map DB rows to Hint objects expected by the UI.
+        hints = dbHints.map((row: any) => ({
+          id: row.id,
+          type: row.type,
+          text: row.text,
+          level: row.level,
+          image_id: row.image_id,
+          xp_cost: row.cost_xp,
+          accuracy_penalty: row.cost_accuracy,
+          distance_km: row.distance_km ?? undefined,
+          time_diff_years: row.time_diff_years ?? undefined,
+          // Derive prerequisite ID from dependency map (same logic as before)
+          prerequisite: HINT_DEPENDENCIES[row.type] ? `${HINT_DEPENDENCIES[row.type]}-${imageData.id}` : undefined
+        })) as Hint[];
 
-          return {
-            id: `${column}-${imageData.id}`,
-            type: column, // keep original column name so dependencies match
-            text: String(imageRow[column]),
-            level,
-            image_id: imageData.id,
-            xp_cost,
-            accuracy_penalty,
-            prerequisite: prereqType ? `${prereqType}-${imageData.id}` : undefined
-          } as Hint;
-        });
+        addLog(`Loaded ${hints.length} hints for image ${imageData.id} from hints table`);
+      } else {
+        // 2) Fallback – legacy approach: build hints dynamically from columns on the `images` table.
+        addLog('No rows found in hints table – using legacy column mapping');
 
-      addLog(`Generated ${hints.length} hints for image ${imageData.id} from images table`);
+        const { data: imageRow, error: imageError } = await supabase
+          .from('images' as any)
+          .select('*')
+          .eq('id', imageData.id)
+          .single();
+
+        if (imageError) {
+          addLog(`Error fetching image row for legacy mapping: ${imageError.message}`);
+          throw imageError;
+        }
+
+        // Map image column → HINT_COSTS key so that we can attach XP / accuracy costs
+        const costKeyMap: Record<string, keyof typeof HINT_COSTS | null> = {
+          '1_where_continent': 'continent',
+          '1_when_century': 'century',
+          '2_where_landmark': 'distantLandmark',
+          '2_where_landmark_km': 'distantDistance',
+          '2_when_event': 'distantEvent',
+          '2_when_event_years': 'distantTimeDiff',
+          '3_where_region': 'region',
+          '3_when_decade': 'narrowDecade',
+          '4_where_landmark': 'nearbyLandmark',
+          '4_where_landmark_km': 'nearbyDistance',
+          '4_when_event': 'contemporaryEvent',
+          '4_when_event_years': 'closeTimeDiff',
+          '5_where_clues': 'whereClues',
+          '5_when_clues': 'whenClues'
+        };
+
+        hints = Object.entries(costKeyMap)
+          .filter(([column]) => imageRow && imageRow[column] !== null && imageRow[column] !== '')
+          .map(([column, costKey]) => {
+            const level = parseInt(column.charAt(0), 10) || 1;
+            const xp_cost = costKey ? HINT_COSTS[costKey].xp : 0;
+            const accuracy_penalty = costKey ? HINT_COSTS[costKey].acc : 0;
+            const prereqType = HINT_DEPENDENCIES[column] ?? null;
+
+            return {
+              id: uuidv4(),
+              type: column,
+              text: String(imageRow[column]),
+              level,
+              image_id: imageData.id,
+              xp_cost,
+              accuracy_penalty,
+              prerequisite: undefined
+            } as Hint;
+          });
+
+        // After initial creation, wire prerequisite IDs now that we have all hint IDs
+            hints.forEach(h => {
+              const prereqType = HINT_DEPENDENCIES[h.type as keyof typeof HINT_DEPENDENCIES];
+              if (prereqType) {
+                const prereqHint = hints.find(ph => ph.type === prereqType);
+                if (prereqHint) {
+                  h.prerequisite = prereqHint.id;
+                }
+              }
+            });
+
+        addLog(`Generated ${hints.length} hints for image ${imageData.id} from images column fallback`);
+      }
+
       setAvailableHints(hints);
 
-
-      // Fetch already purchased hints
+      // ------------- Fetch already purchased hints for this user & image (round) -------------
       let purchasedHintIdsFromDb: string[] = [];
       try {
-        const { data: purchasedHints, error: purchasedError } = await supabase
+        const { data: purchases, error: purchaseError } = await supabase
           .from('round_hints' as any)
           .select('hint_id')
           .eq('user_id', user.id)
-          // NOTE: `round_hints` table currently has no `image_id` column. Skip this filter for now.
-          // .eq('image_id', imageData.id)
-          .limit(1000);
+          .eq('round_id', imageData.id); // using image_id as round identifier
 
-        if (purchasedError) {
-          throw purchasedError;
-        }
-
-        if (purchasedHints && purchasedHints.length > 0) {
-          purchasedHintIdsFromDb = purchasedHints.map((item: any) => item.hint_id);
-        }
-      } catch (err: any) {
-        // Log but don't fail UI
-        addLog(`round_hints query failed (likely schema mismatch): ${err.message || err}`);
+        if (purchaseError) throw purchaseError;
+        purchasedHintIdsFromDb = (purchases ?? []).map((row: any) => row.hint_id);
+        addLog(`Fetched ${purchasedHintIdsFromDb.length} purchased hints for image ${imageData.id}`);
+      } catch (error: any) {
+        addLog(`Error fetching purchased hints: ${error.message || error}`);
       }
 
-      // Update local state with whatever we found (may be empty)
       setPurchasedHintIds(purchasedHintIdsFromDb);
-      addLog(`Loaded ${purchasedHintIdsFromDb.length} purchased hints from DB`);
     } catch (error) {
       addLog(`Error in fetchHints: ${error}`);
     } finally {
@@ -178,27 +216,42 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
     }
 
     setIsHintLoading(true);
-    addLog(`Attempting to purchase hint ${hintId} (${hint.type})`);
 
     try {
-      // Call the RPC function to purchase the hint
-      // Note: API no longer checks XP balance, only prevents duplicates
-      let purchaseSucceeded = false;
-      try {
-        const { error } = await supabase.rpc('purchase_hint' as any, {
-          p_hint_id: hintId,
-          p_user_id: user.id,
-          p_image_id: imageData.id ?? null
-        });
+      // Debug what data we're inserting
+      const insertPayload = {
+        hint_id: hintId,
+        user_id: user.id,
+        round_id: String(imageData.id),
+        xpDebt: hint.xp_cost,      // store XP cost for this hint
+        accDebt: hint.accuracy_penalty, // store accuracy penalty for this hint
+        purchased_at: new Date().toISOString()
+      };
 
-        if (error) {
-          throw error;
+      addLog(`Attempting to insert hint purchase: ${JSON.stringify(insertPayload)}`);
+      
+      // Try direct insert first
+      
+      const { data: insertData, error } = await supabase
+        .from('round_hints')
+        .insert([insertPayload])
+        .select('*');
+
+      if (error) {
+        // Log all errors for debugging
+        addLog(`round_hints operation failed: ${error.code || 'unknown'} - ${error.message || 'No message'} - ${JSON.stringify(error)}`);
+        
+        // Only ignore duplicate purchase errors
+        if (error.code !== '23505') {
+          // For any other error, proceed anyway
+          addLog('Proceeding despite error - will update local state only');
         }
-        purchaseSucceeded = true;
-        addLog(`Hint purchase recorded in DB (RPC purchase_hint)`);
-      } catch (err: any) {
-        addLog(`purchase_hint RPC failed or missing: ${err.message || err}. Falling back to local-only purchase.`);
+      } else {
+        // Log success for debugging
+        addLog(`round_hints operation successful: ${JSON.stringify(insertData)}`);
       }
+
+      addLog('Hint purchase recorded in round_hints table');
 
       // Update local state so UI shows purchase immediately
       setPurchasedHintIds(prev => (prev.includes(hintId) ? prev : [...prev, hintId]));

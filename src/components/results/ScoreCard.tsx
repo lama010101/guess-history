@@ -3,11 +3,13 @@ import { formatInteger } from '@/utils/format';
 import { Button } from "@/components/ui/button";
 import { Award, Share2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { HINT_PENALTY } from '@/constants/hints';
 
 interface ScoreCardProps {
   locationAccuracy: number;
   timeAccuracy: number;
   xpTotal: number;
+  hintsUsed: number;
 }
 
 const ScoreCard: React.FC<ScoreCardProps> = ({ 
@@ -20,8 +22,8 @@ const ScoreCard: React.FC<ScoreCardProps> = ({
   // Round all values to integers
   const roundedLocationAccuracy = formatInteger(locationAccuracy);
   const roundedTimeAccuracy = formatInteger(timeAccuracy);
-  const hintXpPenalty = hintsUsed * 30;
-  const hintAccuracyPenalty = hintsUsed * 30;
+  const hintXpPenalty = hintsUsed * HINT_PENALTY.XP;
+  const hintAccuracyPenalty = hintsUsed * HINT_PENALTY.ACCURACY_PERCENT;
   const roundedXpTotal = formatInteger(xpTotal - hintXpPenalty);
   const overallAccuracy = formatInteger(((formatInteger(locationAccuracy) - hintAccuracyPenalty) + (formatInteger(timeAccuracy) - hintAccuracyPenalty)) / 2);
   const isPerfectScore = roundedLocationAccuracy >= 95 && roundedTimeAccuracy >= 95;

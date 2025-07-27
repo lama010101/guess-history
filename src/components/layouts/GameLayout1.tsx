@@ -156,7 +156,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       {/* Image Section - Full width on mobile, half on desktop */}
       <div className="w-full h-[60vh] lg:w-1/2 lg:h-screen relative">
         <LazyImage
-          src={image.url}
+          src={image.firebase_url || image.url}
           alt={image.title}
           className="w-full h-full object-cover"
           skeletonClassName="w-full h-full"
@@ -173,12 +173,14 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             onNavigateHome={onNavigateHome}
             onConfirmNavigation={onConfirmNavigation}
             onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
-            imageUrl={image.url}
+            imageUrl={image.firebase_url || image.url}
             onFullscreen={handleImageFullscreen}
             isTimerActive={isTimerActive}
             onTimeout={onTimeout}
             setRemainingTime={setRemainingTime}
             timerEnabled={timerEnabled}
+            xpDebt={xpDebt}
+            accDebt={accDebt}
           />
         </div>
       </div>
@@ -186,9 +188,9 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       {isImageFullScreen && image && (
         <FullscreenZoomableImage
           image={{ 
-            url: image.url, 
+            url: image.firebase_url || image.url, 
             title: image.title,
-            placeholderUrl: image.url
+            placeholderUrl: image.firebase_url || image.url
           }}
           onExit={handleExitImageFullscreen}
         />

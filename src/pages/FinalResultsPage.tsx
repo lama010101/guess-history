@@ -17,6 +17,7 @@ import {
   calculateLocationAccuracy,
   getTimeDifferenceDescription
 } from "@/utils/gameCalculations";
+import { HINT_PENALTY } from "@/constants/hints";
 
 const FinalResultsPage = () => {
   const navigate = useNavigate();
@@ -67,32 +68,40 @@ const FinalResultsPage = () => {
       // Sum up XP from all rounds
       const { finalXP, finalPercent } = calculateFinalScore(roundScores);
 
-      // Calculate hint debt and category scores
-      const { whenXpDebt, whenAccDebt, whereXpDebt, whereAccDebt, totalWhenXP, totalWhereXP } = roundResults.reduce((acc, result, index) => {
-        const hints = result.hints || [];
-        hints.forEach(hint => {
-          if (['event_when', 'century', 'decade', 'period_clues'].includes(hint.type)) {
-            acc.whenXpDebt += hint.xp_cost;
-            acc.whenAccDebt += hint.accuracy_penalty;
-          } else {
-            acc.whereXpDebt += hint.xp_cost;
-            acc.whereAccDebt += hint.accuracy_penalty;
-          }
-        });
+      // Calculate hint debt using standardized constants
+      let totalHintPenalty = 0;
+      let whenXpDebt = 0;
+      let whenAccDebt = 0;
+      let whereXpDebt = 0;
+      let whereAccDebt = 0;
+      let totalWhenXP = 0;
+      let totalWhereXP = 0;
+      
+      roundResults.forEach((result, index) => {
+        const hintsUsed = result.hintsUsed || 0;
+        totalHintPenalty += hintsUsed * HINT_PENALTY.XP;
+        
+        const whenHints = Math.floor(hintsUsed / 2); // Split hints between WHEN and WHERE
+        const whereHints = hintsUsed - whenHints;
+        
+        whenXpDebt += whenHints * HINT_PENALTY.XP;
+        whenAccDebt += whenHints * HINT_PENALTY.ACCURACY_PERCENT;
+        whereXpDebt += whereHints * HINT_PENALTY.XP;
+        whereAccDebt += whereHints * HINT_PENALTY.ACCURACY_PERCENT;
 
         const img = images[index];
         if (result && img) {
-          acc.totalWhenXP += calculateTimeAccuracy(result.guessYear || 0, img.year || 0);
-          acc.totalWhereXP += calculateLocationAccuracy(result.distanceKm || 0);
+          const timeXP = calculateTimeAccuracy(result.guessYear || 0, img.year || 0);
+          const locationXP = calculateLocationAccuracy(result.distanceKm || 0);
+          totalWhenXP += timeXP;
+          totalWhereXP += locationXP;
         }
-
-        return acc;
-      }, { whenXpDebt: 0, whenAccDebt: 0, whereXpDebt: 0, whereAccDebt: 0, totalWhenXP: 0, totalWhereXP: 0 });
+      });
 
       const totalWhenAccuracy = totalWhenXP > 0 ? (totalWhenXP / (roundResults.length * 100)) * 100 : 0;
       const totalWhereAccuracy = totalWhereXP > 0 ? (totalWhereXP / (roundResults.length * 100)) * 100 : 0;
 
-      const netFinalXP = Math.max(0, Math.round(finalXP - whenXpDebt - whereXpDebt));
+      const netFinalXP = Math.max(0, Math.round(finalXP - totalHintPenalty));
       const totalHintsUsed = roundResults.reduce((sum, result) => sum + (result.hintsUsed || 0), 0);
 
       console.log('Final Score Calculation:', {
@@ -317,8 +326,44 @@ const FinalResultsPage = () => {
   // Calculate final score and percentage
   const { finalXP, finalPercent } = calculateFinalScore(roundScores);
   
+  // Calculate hint debt using standardized constants
+  let totalHintPenalty = 0;
+  let whenXpDebt = 0;
+  let whenAccDebt = 0;
+  let whereXpDebt = 0;
+  let whereAccDebt = 0;
+  let totalWhenXP = 0;
+  let totalWhereXP = 0;
+  
+  roundResults.forEach((result, index) => {
+    const hintsUsed = result.hintsUsed || 0;
+    totalHintPenalty += hintsUsed * HINT_PENALTY.XP;
+    
+    const whenHints = Math.floor(hintsUsed / 2); // Split hints between WHEN and WHERE
+    const whereHints = hintsUsed - whenHints;
+    
+    whenXpDebt += whenHints * HINT_PENALTY.XP;
+    whenAccDebt += whenHints * HINT_PENALTY.ACCURACY_PERCENT;
+    whereXpDebt += whereHints * HINT_PENALTY.XP;
+    whereAccDebt += whereHints * HINT_PENALTY.ACCURACY_PERCENT;
+
+    const img = images[index];
+    if (result && img) {
+      const timeXP = calculateTimeAccuracy(result.guessYear || 0, img.year || 0);
+      const locationXP = calculateLocationAccuracy(result.distanceKm || 0);
+      totalWhenXP += timeXP;
+      totalWhereXP += locationXP;
+    }
+  });
+
+  const totalWhenAccuracy = totalWhenXP > 0 ? (totalWhenXP / (roundResults.length * 100)) * 100 : 0;
+  const totalWhereAccuracy = totalWhereXP > 0 ? (totalWhereXP / (roundResults.length * 100)) * 100 : 0;
+
+  const netFinalXP = Math.max(0, Math.round(finalXP - totalHintPenalty));
+  const totalHintsUsed = roundResults.reduce((sum, result) => sum + (result.hintsUsed || 0), 0);
+  
   // Use the calculated values
-  const totalScore = formatInteger(finalXP);
+  const totalScore = formatInteger(netFinalXP);
   const totalPercentage = formatInteger(finalPercent);
 
   return (

@@ -39,6 +39,7 @@ export interface GameImage {
   image_url: string; // Use actual column name
   location_name: string;
   url: string; // Keep processed url field
+  firebase_url?: string; // Optional Firebase image URL
 }
 
 // Define the context state shape
@@ -436,7 +437,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
       const { data: imageBatch, error: fetchError } = await supabase
         .from('images')
-        .select('id, title, description, latitude, longitude, year, image_url, location_name') 
+        .select('id, title, description, latitude, longitude, year, image_url, location_name, firebase_url') 
         .eq('ready', true)
         .limit(20);
         
@@ -455,6 +456,23 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
       const processedImages = await Promise.all(
         selectedImages.map(async (img) => {
+          // Prioritize firebase_url if it exists
+          if (img.firebase_url) {
+            return {
+              id: img.id,
+              title: img.title || 'Untitled',
+              description: img.description || 'No description.',
+              latitude: img.latitude || 0,
+              longitude: img.longitude || 0,
+              year: img.year || 0,
+              image_url: img.image_url, // keep original for reference if needed
+              location_name: img.location_name || 'Unknown Location',
+              url: img.firebase_url, // Use firebase_url directly
+              firebase_url: img.firebase_url
+            } as GameImage;
+          }
+
+          // Fallback to existing logic if firebase_url is not present
           let finalUrl = img.image_url;
           if (finalUrl && !finalUrl.startsWith('http')) {
             const { data: urlData } = supabase.storage.from('images').getPublicUrl(finalUrl);
@@ -472,7 +490,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             year: img.year || 0,
             image_url: img.image_url,
             location_name: img.location_name || 'Unknown Location',
-            url: finalUrl
+            url: finalUrl,
+            firebase_url: img.firebase_url
           } as GameImage;
         })
       );

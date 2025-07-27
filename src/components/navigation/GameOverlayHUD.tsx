@@ -25,12 +25,13 @@ interface GameOverlayHUDProps {
   onTimeout?: () => void;
   setRemainingTime?: (time: number) => void;
   timerEnabled?: boolean;
+  xpDebt?: number;
+  accDebt?: number;
 }
 
 const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
   remainingTime,
   rawRemainingTime = 0,
-  onHintClick,
   onHintV2Click,
   hintsUsed = 0,
   hintsAllowed = 0,
@@ -46,7 +47,9 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
   isTimerActive = false,
   onTimeout = () => {},
   setRemainingTime = () => {},
-  timerEnabled = true
+  timerEnabled = true,
+  xpDebt = 0,
+  accDebt = 0
 }) => {
   // Show hint counter as X/Y where Y is the total allowed hints
   const isHintDisabled = hintsUsed >= hintsAllowed;
@@ -82,23 +85,32 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
         </div>
         
         {/* Center - Score and accuracy */}
-        <div className="flex bg-black/30 backdrop-blur-sm p-2 rounded-lg space-x-2 pointer-events-auto">
-          <Badge 
-            variant="accuracy" 
-            className="flex items-center gap-1" 
-            aria-label={`Accuracy: ${Math.round(currentAccuracy)}%`}
-          >
-            <Target className="h-3 w-3" />
-            <span>{formatInteger(currentAccuracy)}%</span>
-          </Badge>
-          <Badge 
-            variant="xp" 
-            className="flex items-center gap-1" 
-            aria-label={`Score: ${Math.round(currentScore)}`}
-          >
-            <Zap className="h-3 w-3" />
-            <span>{formatInteger(currentScore)}</span>
-          </Badge>
+        <div className="flex flex-col items-center bg-black/30 backdrop-blur-sm p-2 rounded-lg pointer-events-auto">
+          <div className="flex space-x-2">
+            <Badge 
+              variant="accuracy" 
+              className="flex items-center gap-1" 
+              aria-label={`Accuracy: ${Math.round(currentAccuracy)}%`}
+            >
+              <Target className="h-3 w-3" />
+              <span>{formatInteger(currentAccuracy)}%</span>
+            </Badge>
+            <Badge 
+              variant="xp" 
+              className="flex items-center gap-1" 
+              aria-label={`Score: ${Math.round(currentScore)}`}
+            >
+              <Zap className="h-3 w-3" />
+              <span>{formatInteger(currentScore)}</span>
+            </Badge>
+          </div>
+          
+          {/* Display hint debts if they exist */}
+          {(xpDebt > 0 || accDebt > 0) && (
+            <div className="text-xs text-white/80 mt-1">
+              Hint penalties: -{xpDebt} XP, -{accDebt}%
+            </div>
+          )}
         </div>
         
         {/* Right side - Fullscreen button */}

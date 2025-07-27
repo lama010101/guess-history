@@ -12,6 +12,7 @@ export interface GameImage {
   latitude: number;
   longitude: number;
   location_name: string;
+  firebase_url?: string;
 }
 
 // No placeholder images - we will only use optimized images from the database
@@ -41,8 +42,10 @@ export function useGameImages(gameId?: string) {
       // Query the images table for ready images that have optimized images
       const { data, error } = await supabase
         .from('images')
-        .select('*')
+        .select('id, title, description, year, latitude, longitude, location_name, mobile_image_url, desktop_image_url, firebase_url')
         .eq('ready', true);
+
+      console.log('Fetched raw image data:', data);
 
       if (error) {
         throw error;
@@ -87,6 +90,22 @@ export function useGameImages(gameId?: string) {
     return Promise.all(
       imageData.map(async (image) => {
         try {
+          // If firebase_url is present, use it as the source of truth and skip other processing
+          if (image.firebase_url) {
+            return {
+              id: image.id,
+              url: image.firebase_url,
+              placeholderUrl: image.firebase_url, // Use it for placeholder as well
+              title: image.title || 'Historical Image',
+              description: image.description || 'No description available',
+              year: image.year || 1900,
+              latitude: image.latitude || 0,
+              longitude: image.longitude || 0,
+              location_name: image.location_name || 'Unknown Location',
+              firebase_url: image.firebase_url,
+            };
+          }
+
           // Select the appropriate optimized image URL based on device type
           const imageField = isMobile ? 'mobile_image_url' : 'desktop_image_url';
           let url = image[imageField];
@@ -121,16 +140,12 @@ export function useGameImages(gameId?: string) {
             placeholderUrl = url; // No separate placeholder available
           }
 
-          // If for some reason we still don't have a URL, skip this image
-          if (!fullUrl || !placeholderUrl) {
-            console.warn(`Failed to get public URL for ${imageField} of image ${image.id}, skipping`);
-            return null;
-          }
-
-          url = fullUrl; // For consistency, though we'll use the new variables
-
-          // If for some reason we still don't have a URL, skip this image
-          if (!url) {
+          // If firebase_url exists, it should be the source of truth.
+          if (image.firebase_url) {
+            fullUrl = image.firebase_url;
+            placeholderUrl = image.firebase_url; // Use the same for placeholder to simplify
+          } else if (!fullUrl || !placeholderUrl) {
+            // Fallback if firebase_url is missing and Supabase URL generation failed
             console.warn(`Failed to get public URL for ${imageField} of image ${image.id}, skipping`);
             return null;
           }
@@ -145,6 +160,7 @@ export function useGameImages(gameId?: string) {
             latitude: image.latitude || 0,
             longitude: image.longitude || 0,
             location_name: image.location_name || 'Unknown Location',
+            firebase_url: image.firebase_url,
           };
         } catch (err) {
           console.error('Error processing image:', image.id, err);

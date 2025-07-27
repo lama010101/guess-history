@@ -173,7 +173,26 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
   const progressPercentage = (round / 5) * 100;
   
   // Calculate total accuracy as average of where and when
+  // Calculate base totals before penalties
   const totalAccuracy = Math.round((result.locationAccuracy + result.timeAccuracy) / 2);
+  const xpTotal = result.xpTotal ?? 0;
+  // Hint penalties – these come from the mapped LayoutRoundResultType (already aggregated per-round)
+  const xpDebt = result.hintPenalty ?? 0;
+  const accDebt = result.hintPenaltyPercent ?? 0;
+
+  // Net values after deducting hint costs (per PRD section 5)
+  const netXP = Math.max(0, xpTotal - xpDebt);
+  const netAccuracy = Math.max(0, totalAccuracy - accDebt);
+
+  // Calculate net XP for each category, ensuring it doesn't drop below zero.
+  const xpWhenRatio = xpTotal > 0 ? result.xpWhen / xpTotal : 0;
+  const xpWhereRatio = xpTotal > 0 ? result.xpWhere / xpTotal : 0;
+
+  const xpDebtWhen = Math.round(xpDebt * xpWhenRatio);
+  const xpDebtWhere = Math.round(xpDebt * xpWhereRatio);
+
+  const netXpWhen = Math.max(0, result.xpWhen - xpDebtWhen);
+  const netXpWhere = Math.max(0, result.xpWhere - xpDebtWhere);
   
   // Max XP possible
   const maxXP = XP_WHERE_MAX + XP_WHEN_MAX;
@@ -220,8 +239,8 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
         totalRounds={5} 
         onNext={onNext} 
         isLoading={isLoading} 
-        currentRoundXP={result.xpTotal}
-        currentRoundAccuracy={totalAccuracy}
+        currentRoundXP={netXP}
+        currentRoundAccuracy={netAccuracy}
       />
       
       {/* Main content */}
@@ -236,33 +255,22 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
               <div className="flex justify-center items-center gap-6 mb-4">
                 <div className="flex flex-col items-center">
                   <div className="flex items-center justify-center bg-blue-100 dark:bg-blue-900/30 rounded-full w-16 h-16 mb-2">
-                    <div className="text-blue-600 dark:text-blue-400 font-bold">{totalAccuracy}%</div>
+                    <div className="text-blue-600 dark:text-blue-400 font-bold">{netAccuracy}%</div>
                   </div>
                   <div className="text-xs text-muted-foreground">Accuracy</div>
                 </div>
                 <div className="flex flex-col items-center">
                   <div className="flex items-center justify-center bg-green-100 dark:bg-green-900/30 rounded-full w-16 h-16 mb-2">
-                    <div className="text-green-600 dark:text-green-400 font-bold">+{result.xpTotal}</div>
+                    <div className="text-green-600 dark:text-green-400 font-bold">+{netXP}</div>
                   </div>
                   <div className="text-xs text-muted-foreground">Experience (XP)</div>
                 </div>
               </div>
               
-              {/* Hint usage and penalties */}
-              {result.hintsUsed > 0 && (
-                <div className="mt-4 mb-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                  <h3 className="text-sm font-semibold text-amber-700 dark:text-amber-400 mb-2">Hint Penalty</h3>
-                  <div className="flex justify-between text-sm">
-                    <div className="text-amber-600 dark:text-amber-300">
-                      {result.hintsUsed} hint{result.hintsUsed !== 1 ? 's' : ''} used
-                    </div>
-                    <div className="text-red-500 dark:text-red-400 font-medium">
-                      -{result.hintPenalty} XP / -{result.hintPenaltyPercent}%
-                    </div>
-                  </div>
-                  <div className="text-xs text-amber-500 dark:text-amber-400 mt-1">
-                    Each hint costs {HINT_PENALTY} XP or {HINT_PENALTY}% accuracy
-                  </div>
+              {/* Hint penalties summary */}
+              {(xpDebt > 0 || accDebt > 0) && (
+                <div className="mt-2 text-sm text-muted-foreground italic">
+                  (including -{accDebt}% and -{xpDebt}XP from hints)
                 </div>
               )}
               
@@ -322,7 +330,7 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
                 <div className="text-center">
                   <Badge variant="xp" className="text-sm flex items-center gap-1">
                     <Zap className="h-3 w-3" />
-                    +{formatInteger(result.xpWhen)}
+                    +{formatInteger(netXpWhen)}
                   </Badge>
                   <div className="text-xs text-muted-foreground mt-1">XP</div>
                 </div>
@@ -367,20 +375,22 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
                   <div className="text-center">
                     <Badge variant="xp" className="text-sm flex items-center gap-1">
                       <Zap className="h-3 w-3" />
-                      +{formatInteger(result.xpWhere)}
+                      +{formatInteger(netXpWhere)}
                     </Badge>
                     <div className="text-xs text-muted-foreground mt-1">XP</div>
+                    {xpDebtWhere > 0 && (
+                      <div className="text-[10px] text-red-500 dark:text-red-400 mt-0.5">- {formatInteger(xpDebtWhere)} XP</div>
+                    )}
                   </div>
                 </div>
               </div>
-              
               <div className="h-80 w-full">
-                <MapContainer 
+                <MapContainer
                   id="results-map"
                   className="results-map-container leaflet-container"
-                  center={mapCenter} 
+                  center={mapCenter}
                   zoom={3}
-                  style={{ height: '100%', width: '100%' }} 
+                  style={{ height: '100%', width: '100%' }}
                   scrollWheelZoom={false}
                   zoomControl={false}
                 >
@@ -424,7 +434,7 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
           
           {/* Right column - Image & Description */}
           <div className="w-full md:w-1/2 space-y-6">
-            {/* Time accuracy card for larger screens */}
+            {/* Time accuracy card for desktop screens */}
             <div className="hidden md:block bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4">
               <div className="border-b border-border pb-3 mb-3 flex justify-between items-center">
                 <h2 className="font-bold text-lg text-history-primary dark:text-history-light flex items-center">
@@ -457,12 +467,14 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
                 <div className="text-center">
                   <Badge variant="xp" className="text-sm flex items-center gap-1">
                     <Zap className="h-3 w-3" />
-                    +{formatInteger(result.xpWhen)}
+                    +{formatInteger(netXpWhen)}
                   </Badge>
                   <div className="text-xs text-muted-foreground mt-1">XP</div>
                 </div>
               </div>
             </div>
+            
+
             
             {/* Historical image and description */}
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">

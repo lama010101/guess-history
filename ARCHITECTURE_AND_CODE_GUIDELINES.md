@@ -62,6 +62,59 @@ This document provides a **single source of truth** for developers working on th
 3. **Utility services** communicate with Supabase (queries/mutations).
 4. On success, **state** in context is updated → React re-renders UI.
 
+## 4. Application Pages
+
+### Core Game Flow
+| Page | Route | Purpose | Key Features |
+|------|-------|---------|--------------|
+| **Landing Page** | `/` | Entry point for new users | - Rotating image carousel<br>- Call-to-action buttons<br>- Navigation to auth/signup |
+| **Home Page** | `/home` | Main dashboard | - Game mode selection<br>- User stats<br>- Recent activity |
+| **Game Round** | `/game/round/:roundNumber` | Core gameplay | - Historical image display<br>- Interactive map<br>- Year selection<br>- Hint system |
+| **Round Results** | `/round-results` | Post-round summary | - Accuracy metrics<br>- Score breakdown<br>- XP earned |
+| **Final Results** | `/final-results` | End-game summary | - Total score<br>- Level progression<br>- Badges/unlocks |
+
+### Page vs Layout Components
+
+- **Page Components** (`/src/pages/`): Handle routing, data fetching, and business logic. They determine what data to pass to layout components.
+- **Layout Components** (`/src/components/layouts/`): Focus purely on presentation and UI structure. They receive data and callbacks from page components.
+
+For example:
+- `/round-results` (page) fetches round data and user scores
+- `ResultsLayout2` (layout) receives this data and handles the visual presentation
+
+### Layout Components (`src/components/layouts/`)
+
+These reusable layout components provide consistent UI structures across different pages:
+
+| Component | Purpose | Key Features |
+|-----------|---------|--------------|
+| **`ResultsLayout2.tsx`** | Displays round results with scores, map, and hint penalties | - Shows accuracy and XP breakdown<br>- Interactive map with guess vs. actual location<br>- Hint penalty tracking and display<br>- Mobile/desktop responsive design |
+| **`GameLayout1.tsx`** | Primary game interface layout | - Contains game canvas/board<br>- Player HUD and controls<br>- Responsive design for different screen sizes |
+| **`GameLayout2.tsx`** | Alternative game interface | - Variant layout for different game modes<br>- Specialized UI components<br>- Optimized for specific game mechanics |
+| **`HomeLayout1.tsx`** | Main dashboard layout | - User stats and progress<br>- Game mode selection<br>- Recent activity feed |
+| **`ProfileLayout1.tsx`** | User profile interface | - Avatar and bio display<br>- Statistics and achievements<br>- Game history and progress |
+| **`FullscreenZoomableImage.tsx`** | Image viewer component | - Fullscreen image display<br>- Zoom and pan functionality<br>- Gesture support for mobile |
+
+### User Account
+| Page | Route | Purpose | Key Features |
+|------|-------|---------|--------------|
+| **Auth** | `/auth` | Authentication | - Login/signup forms<br>- Password reset<br>- Social login |
+| **Profile** | `/profile` | User profile | - Personal stats<br>- Avatar/bio<br>- Game history |
+| **User Profile** | `/user/:userId` | Public profiles | - Other users' stats<br>- Compare scores |
+| **Settings** | `/settings` | App preferences | - Theme selection<br>- Notification settings |
+
+### Social & Multiplayer
+| Page | Route | Purpose | Key Features |
+|------|-------|---------|--------------|
+| **Friends** | `/friends` | Social connections | - Friend list<br>- Friend requests<br>- Challenges |
+| **Game Room** | `/room/:roomId` | Multiplayer lobby | - Player management<br>- Game settings<br>- Chat |
+
+### Additional Pages
+| Page | Route | Purpose | Key Features |
+|------|-------|---------|--------------|
+| **Leaderboard** | `/leaderboard` | Global rankings | - Top players<br>- Filter by time period |
+| **404** | `*` | Error handling | - Helpful navigation<br>- Search |
+
 ---
 
 ## 4. Directory Structure (Top-Level)
@@ -405,6 +458,44 @@ CREATE  TABLE public.prompts (
   CONSTRAINT prompts_confidence_check CHECK (((confidence >= 0) AND (confidence <= 100)))
 ) TABLESPACE pg_default;
 CREATE INDEX IF NOT EXISTS prompts_created_at_desc_idx ON public.prompts USING btree (created_at DESC) TABLESPACE pg_default;
+
+## Scoring and Hint System
+
+The game's scoring system is designed to reward players for accuracy in both time and location guesses, while penalizing them for using hints. The final score for each round is a combination of these factors.
+
+### 1. Base Score Calculation
+
+At the end of each round, a base score is calculated based on the player's guess.
+
+-   **Location Score (`locationAccuracy`, `xpWhere`)**: Calculated based on the distance between the player's guess and the actual location. A closer guess results in a higher accuracy percentage and more XP. The maximum XP for a perfect guess is defined by `XP_WHERE_MAX` (currently 1000).
+-   **Time Score (`timeAccuracy`, `xpWhen`)**: Calculated based on the difference between the player's guessed year and the actual year. A smaller difference results in a higher accuracy percentage and more XP. The maximum XP for a perfect guess is defined by `XP_WHEN_MAX` (currently 1000).
+
+These calculations are primarily handled in `src/utils/gameCalculations.ts` and the results are stored in the `game_rounds` table.
+
+### 2. Hint System and Penalties
+
+Players can purchase hints to help them guess. Each hint has a predefined cost in both XP and Accuracy percentage.
+
+-   **Hint Data**: Hint definitions, including their costs (`xp_cost`, `accuracy_penalty`), are managed in `src/constants/hints.ts`.
+-   **Purchasing Hints**: When a player purchases a hint, the `purchaseHint` function in `useHintV2.ts` records the transaction in the `round_hints` table. This record includes the `user_id`, `image_id`, the `hint_id`, the `xp_cost` and `accuracy_penalty`, and importantly, the `hint_type` ('when' or 'where') and a friendly `label` for the hint.
+
+### 3. Net Round Score Calculation
+
+The final score for a round is calculated by deducting the total cost of all purchased hints from the base scores.
+
+-   **Fetching Debts**: On the `RoundResultsPage.tsx`, the `fetchDebts` function queries the `round_hints` table to get all hints purchased by the user for that specific round.
+-   **Aggregating Penalties**: In `ResultsLayout2.tsx`, the total `xpDebt` and `accDebt` are summed up separately for 'when' and 'where' hint types.
+-   **Calculating Net Scores**: The total debts are subtracted from the base scores to get the final net scores for the round:
+    -   `netXpWhen = xpWhen - totalXpDebtForWhenHints`
+    -   `netXpWhere = xpWhere - totalXpDebtForWhereHints`
+    -   `netTimeAccuracy = timeAccuracy - totalAccDebtForWhenHints`
+    -   `netLocationAccuracy = locationAccuracy - totalAccDebtForWhereHints`
+
+These net scores are what the player sees on the results screen.
+
+### 4. Final Game Score
+
+The final game score, displayed on the `FinalResultsPage.tsx`, is the sum of the net `xpTotal` from all rounds played in the game session. The `updateUserMetrics` function in `src/utils/profile/profileService.ts` is responsible for updating the player's global statistics with the results of the completed game.
 CREATE INDEX IF NOT EXISTS prompts_user_id_idx ON public.prompts USING btree (user_id) TABLESPACE pg_default;
 CREATE INDEX IF NOT EXISTS prompts_created_at_idx ON public.prompts USING btree (created_at DESC) TABLESPACE pg_default;
 CREATE INDEX IF NOT EXISTS prompts_confidence_idx ON public.prompts USING btree (confidence) TABLESPACE pg_default;

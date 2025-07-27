@@ -60,6 +60,9 @@ interface LayoutRoundResult {
 */
 
 const RoundResultsPage = () => {
+  // ---------------------------------- Hint debts ----------------------------------
+  const [hintDebts, setHintDebts] = useState<{ hintId: string; xpDebt: number; accDebt: number; label: string; hint_type: string }[]>([]);
+
   const navigate = useNavigate();
   const { toast } = useToast();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -96,10 +99,32 @@ const RoundResultsPage = () => {
   }, []);
 
   // Get data from GameContext
-  const { images, roundResults, isLoading: isContextLoading, error: contextError } = useGame(); 
+  const { images, roundResults, isLoading: isContextLoading, error: contextError } = useGame();
 
   const roundNumber = parseInt(roundNumberStr || '1', 10);
   const currentRoundIndex = roundNumber - 1; // 0-based index
+
+  // Fetch debts when user & image are ready
+  useEffect(() => {
+    const fetchDebts = async () => {
+      if (!user || !images.length) return;
+      const currentImg = images[currentRoundIndex];
+      if (!currentImg) return;
+      const { data, error } = await supabase
+        .from('round_hints')
+        .select('hint_id,xpDebt,accDebt,label,hint_type')
+        .eq('user_id', user.id)
+        .eq('round_id', String(currentImg.id));
+      if (error) {
+        console.error('Error fetching hint debts:', error.message);
+        return;
+      }
+      setHintDebts((data ?? []).map((d: any) => ({ hintId: d.hint_id, xpDebt: d.xpDebt ?? 0, accDebt: d.accDebt ?? 0, label: d.label, hint_type: d.hint_type })));
+    };
+    fetchDebts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, images, roundNumberStr]);
+
   const totalRounds = images.length > 0 ? images.length : 5; // Default to 5 if images not loaded yet
 
   // State for navigation loading indicator
@@ -162,7 +187,8 @@ const RoundResultsPage = () => {
   // Mapping function: Context -> Layout Type
   const mapToLayoutResultType = (
       ctxResult: ContextRoundResult | undefined,
-      img: GameImage | null
+      img: GameImage | null,
+      debts: typeof hintDebts
   ): LayoutRoundResultType | null => {
       if (!ctxResult || !img) return null;
 
@@ -189,12 +215,12 @@ const RoundResultsPage = () => {
       
       // Get hint-related information
       const hintsUsed = ctxResult.hintsUsed ?? 0;
-      const hintPenalty = hintsUsed * 50; // 50 XP per hint (from constants)
-      const hintPenaltyPercent = hintsUsed * 5; // 5% per hint (from constants)
+      const totalXpDebt = hintDebts.reduce((sum, d) => sum + (d.xpDebt || 0), 0);
+      const totalAccDebt = hintDebts.reduce((sum, d) => sum + (d.accDebt || 0), 0);
       
-      // Calculate total XP with hint penalties
+      // Calculate total XP with hint penalties / debts
       const xpBeforePenalty = xpWhere + xpWhen;
-      const xpTotal = ctxResult.score ?? Math.max(0, xpBeforePenalty - hintPenalty);
+      const xpTotal = ctxResult.score ?? Math.max(0, xpBeforePenalty - totalXpDebt);
       
       // Get standardized time difference description
       const timeDifferenceDesc = getTimeDifferenceDescription(guessYear, actualYear);
@@ -219,9 +245,9 @@ const RoundResultsPage = () => {
           xpWhere: xpWhere,
           xpWhen: xpWhen,
           // Include hint information
-          hintsUsed: hintsUsed,
-          hintPenalty: hintPenalty,
-          hintPenaltyPercent: hintPenaltyPercent,
+          hintPenalty: totalXpDebt,
+          hintPenaltyPercent: totalAccDebt,
+          hintDebts: debts, // Pass hint debts to the layout
           // Include image details if the type definition requires them
           imageTitle: img.title || 'Untitled',
           imageDescription: img.description || 'No description.',
@@ -236,7 +262,7 @@ const RoundResultsPage = () => {
   }
 
   // Generate the result in the format the layout expects
-  const resultForLayout = mapToLayoutResultType(contextResult, currentImage);
+  const resultForLayout = mapToLayoutResultType(contextResult, currentImage, hintDebts);
 
   // Handle navigation to next round or end of game
   const handleNext = () => {

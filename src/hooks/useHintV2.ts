@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { v4 as uuidv4 } from 'uuid';
 import { GameImage } from '@/contexts/GameContext';
 import { useLogs } from '@/contexts/LogContext';
-import { HINT_COSTS, HINT_DEPENDENCIES } from '@/constants/hints';
+import { HINT_COSTS, HINT_DEPENDENCIES, HINT_TYPE_NAMES } from '@/constants/hints';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -204,27 +204,33 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
       return;
     }
 
-    const hint = availableHints.find(h => h.id === hintId);
-    if (!hint) {
-      addLog(`Hint with ID ${hintId} not found`);
-      return;
+    const hintToPurchase = availableHints.find(h => h.id === hintId);
+
+    if (!hintToPurchase) {
+      throw new Error(`Hint with ID ${hintId} not found in available hints.`);
     }
 
-    if (purchasedHintIds.includes(hintId)) {
-      addLog(`Hint ${hintId} already purchased`);
-      return;
+    // Check for prerequisites and duplicates
+    if (!canPurchaseHint(hintToPurchase)) {
+      addLog(`Cannot purchase hint ${hintId}: prerequisite not met or already purchased.`);
+      return; 
     }
+
+    const hintType = hintToPurchase.type.includes('where') ? 'where' : 'when';
+    const hintLabel = HINT_TYPE_NAMES[hintToPurchase.type] || hintToPurchase.type;
 
     setIsHintLoading(true);
 
     try {
-      // Debug what data we're inserting
       const insertPayload = {
-        hint_id: hintId,
+        id: uuidv4(),
         user_id: user.id,
-        round_id: String(imageData.id),
-        xpDebt: hint.xp_cost,      // store XP cost for this hint
-        accDebt: hint.accuracy_penalty, // store accuracy penalty for this hint
+        image_id: imageData.id,
+        hint_id: hintToPurchase.id,
+        xp_cost: hintToPurchase.xp_cost,
+        accuracy_penalty: hintToPurchase.accuracy_penalty,
+        hint_type: hintToPurchase.type.includes('where') ? 'where' : 'when',
+        label: hintLabel,
         purchased_at: new Date().toISOString()
       };
 
@@ -392,139 +398,3 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
     hintsByLevel
   };
 };
-
-/*
-      type: 'continent',
-      text: 'Europe',
-      level: 1,
-      image_id: imageId,
-      xp_cost: HINT_COSTS.continent.xp,
-      accuracy_penalty: HINT_COSTS.continent.acc
-    },
-    {
-      id: `sample-century-${imageId}`,
-      type: 'century',
-      text: '20th Century',
-      level: 1,
-      image_id: imageId,
-      xp_cost: HINT_COSTS.century.xp,
-      accuracy_penalty: HINT_COSTS.century.acc
-    },
-    
-    // Level 2 Hints
-    {
-      id: `sample-distant-landmark-${imageId}`,
-      type: 'distant_landmark',
-      text: 'Eiffel Tower',
-      level: 2,
-      image_id: imageId,
-      xp_cost: HINT_COSTS.distantLandmark.xp,
-      accuracy_penalty: HINT_COSTS.distantLandmark.acc
-    },
-    {
-      id: `sample-distant-distance-${imageId}`,
-      type: 'distant_distance',
-      text: 'Distance > 350km',
-      level: 2,
-      image_id: imageId,
-      xp_cost: HINT_COSTS.distantDistance.xp,
-      accuracy_penalty: HINT_COSTS.distantDistance.acc
-    },
-    {
-      id: `sample-distant-event-${imageId}`,
-      type: 'distant_event',
-      text: 'World War II',
-      level: 2,
-      image_id: imageId,
-      xp_cost: HINT_COSTS.distantEvent.xp,
-      accuracy_penalty: HINT_COSTS.distantEvent.acc
-    },
-    {
-      id: `sample-distant-time-diff-${imageId}`,
-      type: 'distant_time_diff',
-      text: 'Time Difference > 15 years',
-      level: 2,
-      image_id: imageId,
-      xp_cost: HINT_COSTS.distantTimeDiff.xp,
-      accuracy_penalty: HINT_COSTS.distantTimeDiff.acc
-    },
-    
-    // Level 3 Hints
-    {
-      id: `sample-region-${imageId}`,
-      type: 'region',
-      text: 'Germany',
-      level: 3,
-      image_id: imageId,
-      xp_cost: HINT_COSTS.region.xp,
-      accuracy_penalty: HINT_COSTS.region.acc
-    },
-    {
-      id: `sample-narrow-decade-${imageId}`,
-      type: 'narrow_decade',
-      text: '1940s',
-      level: 3,
-      image_id: imageId,
-      xp_cost: HINT_COSTS.narrowDecade.xp,
-      accuracy_penalty: HINT_COSTS.narrowDecade.acc
-    },
-    
-    // Level 4 Hints
-    {
-      id: `sample-nearby-landmark-${imageId}`,
-      type: 'nearby_landmark',
-      text: 'Brandenburg Gate',
-      level: 4,
-      image_id: imageId,
-      xp_cost: HINT_COSTS.nearbyLandmark.xp,
-      accuracy_penalty: HINT_COSTS.nearbyLandmark.acc
-    },
-    {
-      id: `sample-nearby-distance-${imageId}`,
-      type: 'nearby_distance',
-      text: 'Distance < 5km',
-      level: 4,
-      image_id: imageId,
-      xp_cost: HINT_COSTS.nearbyDistance.xp,
-      accuracy_penalty: HINT_COSTS.nearbyDistance.acc
-    },
-    {
-      id: `sample-contemporary-event-${imageId}`,
-      type: 'contemporary_event',
-      text: 'Berlin Blockade',
-      level: 4,
-      image_id: imageId,
-      xp_cost: HINT_COSTS.contemporaryEvent.xp,
-      accuracy_penalty: HINT_COSTS.contemporaryEvent.acc
-    },
-    {
-      id: `sample-close-time-diff-${imageId}`,
-      type: 'close_time_diff',
-      text: 'Time Difference < 3 years',
-      level: 4,
-      image_id: imageId,
-      xp_cost: HINT_COSTS.closeTimeDiff.xp,
-      accuracy_penalty: HINT_COSTS.closeTimeDiff.acc
-    },
-    
-    // Level 5 Hints - Full Clues
-    {
-      id: `sample-where-clues-${imageId}`,
-      type: 'where_clues',
-      text: 'Berlin, Germany',
-      level: 5,
-      image_id: imageId,
-      xp_cost: 300,
-      accuracy_penalty: 30
-    },
-    {
-      id: `sample-when-clues-${imageId}`,
-      type: 'when_clues',
-      text: '1945',
-      level: 5,
-      image_id: imageId,
-      xp_cost: 300,
-      accuracy_penalty: 30
-    }
-  ];
-*/

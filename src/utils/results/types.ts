@@ -36,5 +36,5 @@ export interface RoundResult {
 // Maximum values for calculations
 export const MAX_RADIUS_KM = 1000;
 export const MAX_YEARS_DIFFERENCE = 100;
-export const XP_WHERE_MAX = 150;
-export const XP_WHEN_MAX = 150;
+export const XP_WHERE_MAX = 1000;
+export const XP_WHEN_MAX = 1000;

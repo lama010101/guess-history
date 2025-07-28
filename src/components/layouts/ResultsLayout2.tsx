@@ -126,7 +126,11 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
   const xpDebt = result.hintDebts?.reduce((sum, d) => sum + d.xpDebt, 0) ?? 0;
   const accDebt = result.hintDebts?.reduce((sum, d) => sum + d.accDebt, 0) ?? 0;
-  const netXP = Math.max(0, result.xpTotal - xpDebt);
+
+  // `xpTotal` provided in `result` is already **after** hint debt has been deducted.
+  // Therefore, do NOT subtract `xpDebt` again here, otherwise we double-count
+  // the deduction and show an incorrect (often zero) score.
+  const netXP = Math.max(0, result.xpTotal);
   const netAccuracy = Math.max(0, (result.locationAccuracy + result.timeAccuracy) / 2 - accDebt);
 
   const xpDebtWhen = result.hintDebts?.filter(d => d.hint_type === 'when').reduce((sum, d) => sum + d.xpDebt, 0) ?? 0;

@@ -380,21 +380,12 @@ const RoundResultsPage = () => {
   }
 
   // Handle case where results for this specific round aren't found in context yet OR image is missing
+  // If result is not yet ready, show a simple loading state. Do NOT redirect.
   if (!resultForLayout) {
     return (
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center p-4 bg-background rounded shadow">
-          <h2 className="text-xl font-semibold text-destructive mb-2">Results Not Found</h2>
-          <p className="text-muted-foreground mb-3">
-            Could not find {!currentImage ? 'image data' : 'results'} for round {roundNumber}.
-            {!contextResult && currentImage && ' Please play the round first.'}
-          </p>
-          <Button onClick={() => navigate(`/test/game/room/${roomId}/round/${roundNumber}`)}>
-            Go Back to Round
-          </Button>
-          <Button variant="link" onClick={() => confirmNavigation(handleNavigateHome)}>
-            Return Home
-          </Button>
+          <h2 className="text-xl font-semibold text-history-primary mb-2">Preparing Results...</h2>
         </div>
       </div>
     );

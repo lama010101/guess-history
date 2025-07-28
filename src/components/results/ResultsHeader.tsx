@@ -4,23 +4,20 @@ import { Button } from "@/components/ui/button";
 import { ChevronRight, Loader } from "lucide-react";
 
 interface ResultsHeaderProps {
-  round: number;
-  totalRounds: number;
-  onNext?: () => void;
-  isLoading?: boolean;
+  round?: number;
+  totalRounds?: number;
   currentRoundXP?: number;
   currentRoundAccuracy?: number;
+  nextRoundButton?: React.ReactNode;
 }
 
 const ResultsHeader: React.FC<ResultsHeaderProps> = ({
   round,
   totalRounds,
-  onNext,
-  isLoading = false,
   currentRoundXP,
-  currentRoundAccuracy
+  currentRoundAccuracy,
+  nextRoundButton
 }) => {
-  const progress = (round / totalRounds) * 100;
 
   return (
     <header className="sticky top-0 z-50 bg-white dark:bg-gray-800 shadow-md">
@@ -33,24 +30,11 @@ const ResultsHeader: React.FC<ResultsHeaderProps> = ({
           </div>
 
           <div className="flex-grow mx-4">
-            <SegmentedProgressBar current={round} total={totalRounds} />
+            {round && totalRounds && <SegmentedProgressBar current={round} total={totalRounds} />}
           </div>
 
           <div>
-            {onNext && (
-              <Button 
-                onClick={onNext} 
-                disabled={isLoading}
-                className="bg-history-primary hover:bg-history-primary/90 text-white"
-              >
-                {isLoading ? (
-                  <Loader className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-                <span className="ml-2">{round === totalRounds ? 'Final Score' : 'Next Round'}</span>
-              </Button>
-            )}
+            {nextRoundButton}
           </div>
         </div>
       </div>

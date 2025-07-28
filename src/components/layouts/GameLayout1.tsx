@@ -4,7 +4,7 @@ import FullscreenZoomableImage from './FullscreenZoomableImage';
 import HomeMap from '../HomeMap';
 import GlobalSettingsModal from '@/components/settings/GlobalSettingsModal'; // Import the global settings modal
 import HintModalV2New from '@/components/HintModalV2New';
-import { useHintV2 } from '@/hooks/useHintV2';
+
 import GameOverlayHUD from '@/components/navigation/GameOverlayHUD';
 import YearSelector from '@/components/game/YearSelector';
 import LocationSelector from '@/components/game/LocationSelector';
@@ -18,6 +18,7 @@ const formatTime = (seconds: number): string => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 import { GameImage, GuessCoordinates, useGame } from '@/contexts/GameContext';
+import { Hint } from '@/hooks/useHintV2';
 
 export interface GameLayout1Props {
   onComplete?: () => void;
@@ -35,6 +36,13 @@ export interface GameLayout1Props {
   onConfirmNavigation: (navigateTo: () => void) => void;
   avatarUrl?: string;
   onTimeout?: () => void;
+  availableHints: Hint[];
+  purchasedHints: Hint[];
+  purchasedHintIds: string[];
+  xpDebt: number;
+  accDebt: number;
+  onPurchaseHint: (hintId: string) => Promise<void>;
+  isHintLoading: boolean;
 }
 
 const GameLayout1: React.FC<GameLayout1Props> = ({
@@ -53,6 +61,13 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   onNavigateHome,
   onConfirmNavigation,
   onTimeout,
+  availableHints,
+  purchasedHints,
+  purchasedHintIds,
+  xpDebt,
+  accDebt,
+  onPurchaseHint,
+  isHintLoading,
 }) => {
   const [isImageFullScreen, setIsImageFullScreen] = useState(false);
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
@@ -71,17 +86,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const { totalGameAccuracy, totalGameXP, roundTimerSec, timerEnabled } = game;
 
   // V2 hint system
-  const {
-    availableHints,
-    purchasedHintIds,
-    purchasedHints,
-    xpDebt,
-    accDebt,
-    isLoading: isHintLoading,
-    isHintLoading: isPurchasing,
-    purchaseHint,
-    hintsByLevel
-  } = useHintV2(image);
+  
   
   // Handle timer timeout
   const handleTimeout = useCallback(() => {
@@ -229,8 +234,8 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
         purchasedHintIds={purchasedHintIds}
         xpDebt={xpDebt}
         accDebt={accDebt}
-        onPurchaseHint={purchaseHint}
-        isLoading={isHintLoading || isPurchasing}
+        onPurchaseHint={onPurchaseHint}
+        isLoading={isHintLoading}
       />
 
       <GlobalSettingsModal

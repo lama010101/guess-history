@@ -180,7 +180,7 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
           .from('round_hints' as any)
           .select('hint_id')
           .eq('user_id', user.id)
-          .eq('round_id', imageData.id); // using image_id as round identifier
+          .eq('round_id', (imageData as any).round_id || imageData.id);
 
         if (purchaseError) throw purchaseError;
         purchasedHintIdsFromDb = (purchases ?? []).map((row: any) => row.hint_id);
@@ -212,12 +212,12 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
 
     // Check for prerequisites and duplicates
     if (!canPurchaseHint(hintToPurchase)) {
-      addLog(`Cannot purchase hint ${hintId}: prerequisite not met or already purchased.`);
-      return; 
-    }
+    addLog(`Cannot purchase hint ${hintId}: prerequisite not met or already purchased.`);
+    return; 
+  }
 
+  const hintLabel = hintToPurchase.text;
     const hintType = hintToPurchase.type.includes('where') ? 'where' : 'when';
-    const hintLabel = HINT_TYPE_NAMES[hintToPurchase.type] || hintToPurchase.type;
 
     setIsHintLoading(true);
 
@@ -225,12 +225,12 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
       const insertPayload = {
         id: uuidv4(),
         user_id: user.id,
-        image_id: imageData.id,
+        round_id: (imageData as any).round_id || imageData.id,
         hint_id: hintToPurchase.id,
-        xp_cost: hintToPurchase.xp_cost,
-        accuracy_penalty: hintToPurchase.accuracy_penalty,
-        hint_type: hintToPurchase.type.includes('where') ? 'where' : 'when',
+        xpDebt: hintToPurchase.xp_cost,
+        accDebt: hintToPurchase.accuracy_penalty,
         label: hintLabel,
+        hint_type: hintType,
         purchased_at: new Date().toISOString()
       };
 
@@ -244,22 +244,15 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
         .select('*');
 
       if (error) {
-        // Log all errors for debugging
-        addLog(`round_hints operation failed: ${error.code || 'unknown'} - ${error.message || 'No message'} - ${JSON.stringify(error)}`);
-        
-        // Only ignore duplicate purchase errors
+        addLog(`round_hints insert failed: ${error.message}`);
+        // Do not update local state if DB insert fails, unless it's a duplicate error
         if (error.code !== '23505') {
-          // For any other error, proceed anyway
-          addLog('Proceeding despite error - will update local state only');
+          throw new Error(`Failed to purchase hint: ${error.message}`);
         }
-      } else {
-        // Log success for debugging
-        addLog(`round_hints operation successful: ${JSON.stringify(insertData)}`);
       }
-
-      addLog('Hint purchase recorded in round_hints table');
-
-      // Update local state so UI shows purchase immediately
+      
+      // If insert is successful (or it was a duplicate), update local state
+      addLog(`Hint purchase for ${hintId} recorded successfully.`);
       setPurchasedHintIds(prev => (prev.includes(hintId) ? prev : [...prev, hintId]));
     } catch (error) {
       addLog(`Error in purchaseHint: ${error}`);
@@ -272,7 +265,15 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
   useEffect(() => {
     if (!user || !imageData || !supabase) return;
 
+    addLog(`Running main effect for user ${user.id} and image ${imageData.id}`);
+    fetchHints();
+
     const setupRealtimeSubscription = async () => {
+      if (channelRef.current && isSubscribedRef.current) {
+        addLog('Subscription already active. Skipping setup.');
+        return;
+      }
+
       try {
         // Clean up any existing subscription first
         if (channelRef.current && isSubscribedRef.current) {
@@ -346,7 +347,7 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
       
       cleanup();
     };
-  }, [user, imageData]);
+  }, [user, imageData, fetchHints, addLog]);
 
   // Fetch hints when image changes
   useEffect(() => {

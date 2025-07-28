@@ -95,6 +95,43 @@ These reusable layout components provide consistent UI structures across differe
 | **`ProfileLayout1.tsx`** | User profile interface | - Avatar and bio display<br>- Statistics and achievements<br>- Game history and progress |
 | **`FullscreenZoomableImage.tsx`** | Image viewer component | - Fullscreen image display<br>- Zoom and pan functionality<br>- Gesture support for mobile |
 
+### Key Component Responsibilities
+
+This section details the primary files responsible for major features.
+
+#### Round Results Display
+
+-   **`src/pages/RoundResultsPage.tsx`**: The main page component for the round results screen. It is responsible for fetching all necessary data for the round (results from context, hint debts, badges) and handling navigation to the next round or the final results page.
+-   **`src/components/layouts/ResultsLayout2.tsx`**: The primary layout component that constructs the entire UI for the results screen. It displays the score cards, the map with the guess and actual locations, earned badges, and hint penalty details.
+-   **`src/components/results/ResultsHeader.tsx`**: The header component displayed at the top of the results screen, which shows the current round progress and contains the top "Next Round" button.
+
+#### User Profile and Settings
+
+-   **`src/pages/ProfilePage.tsx`**: Main page for displaying user profiles. It uses one of the layouts below.
+-   **`src/components/layouts/ProfileLayout1.tsx`**: A layout for user profiles, including tabs for settings, avatars, and stats.
+-   **`src/components/profile/SettingsTab.tsx`**: Component for handling user settings like username and email.
+-   **`src/components/profile/AvatarsTab.tsx`**: Component for selecting a user avatar.
+-   **`src/utils/profile/profileService.ts`**: Contains functions for fetching and updating user profiles and metrics (`fetchUserProfile`, `updateUserMetrics`).
+
+#### Hint System (Purchase & Debts)
+
+The hint system allows players to purchase clues during a game round at the cost of XP and accuracy penalties. The system is designed to ensure that hint state is managed centrally and that debts are persisted correctly to the database.
+
+-   **`src/hooks/useHintV2.ts`**: This is the central hook that manages the entire hint lifecycle. It is responsible for:
+    -   Fetching available hints for the current image from the `hints` table.
+    -   Tracking which hints the user has purchased during the round.
+    -   Calculating the total `xpDebt` and `accDebt` based on purchased hints.
+    -   Handling the `purchaseHint` logic, which saves the purchased hint to the `round_hints` table in Supabase.
+    -   Providing a real-time subscription to update hint status.
+
+-   **`src/pages/GameRoundPage.tsx`**: The page component for the main game screen. It initializes the `useHintV2` hook, establishing the single source of truth for all hint-related data for the duration of a round. It then passes the necessary state and functions (e.g., `availableHints`, `purchasedHints`, `purchaseHint`) as props to the `GameLayout1` component.
+
+-   **`src/components/HintModalV2New.tsx`**: The UI modal that displays all available hints, grouped by level and category. It receives hint data and the `onPurchaseHint` function via props. When a user clicks to buy a hint, it calls this function to trigger the purchase flow managed by `useHintV2.ts`.
+
+-   **`src/pages/RoundResultsPage.tsx`**: After a round is complete, this page is responsible for fetching the hint debts from the `round_hints` table and displaying them as penalties on the results screen via the `ResultsLayout2` component.
+
+-   **`src/constants/hints.ts`**: Contains all constant definitions for the hint system, including `HINT_COSTS` (XP and accuracy penalties), `HINT_DEPENDENCIES` (prerequisites for unlocking certain hints), and `HINT_TYPE_NAMES` for display purposes.
+
 ### User Account
 | Page | Route | Purpose | Key Features |
 |------|-------|---------|--------------|
@@ -459,7 +496,79 @@ CREATE  TABLE public.prompts (
 ) TABLESPACE pg_default;
 CREATE INDEX IF NOT EXISTS prompts_created_at_desc_idx ON public.prompts USING btree (created_at DESC) TABLESPACE pg_default;
 
-## Scoring and Hint System
+## Scoring, Hint System, and Game State Persistence (as of 2025-07-28)
+
+### Database Persistence System (Implemented 2025-07-28)
+
+#### New `round_results` Table
+- **Purpose**: Stores detailed per-round game results for reliable persistence across sessions and devices
+- **Migration**: `20250728_create_round_results.sql` creates table with comprehensive schema
+- **Schema**:
+  - `user_id` (UUID): Supabase auth user ID
+  - `game_id` (UUID): Unique game identifier  
+  - `round_index` (INTEGER): Round number (0-based)
+  - `image_id` (UUID): Reference to the image played
+  - `score` (INTEGER): Total score for this round
+  - `accuracy` (NUMERIC): Accuracy percentage
+  - `xp_where` (INTEGER): XP earned for location accuracy
+  - `xp_when` (INTEGER): XP earned for time accuracy
+  - `hints_used` (INTEGER): Number of hints used in this round
+  - `distance_km` (NUMERIC): Distance from actual location in km
+  - `guess_year` (INTEGER): User's year guess
+  - `guess_lat`, `guess_lng` (NUMERIC): User's location guess coordinates
+  - `actual_lat`, `actual_lng` (NUMERIC): Actual image coordinates
+  - `created_at`, `updated_at` (TIMESTAMP): Record timestamps
+
+#### Data Flow
+1. **Write Path**: `recordRoundResult` in GameContext.tsx now upserts round results to DB using Supabase client
+2. **Read Path**: `loadGameState` now fetches round results from DB instead of localStorage
+3. **Conflict Resolution**: Uses `ON CONFLICT (user_id,game_id,round_index)` for upsert behavior
+4. **RLS Policies**: Secure user data isolation with policies for SELECT/INSERT/UPDATE/DELETE
+
+#### Migration Files
+- `20250728_create_round_results.sql`: Creates table and indexes
+- `20250728_create_round_results_policies.sql`: RLS policies for security
+
+#### Removed Components
+- **localStorage fallback**: All round result persistence now uses DB only
+- **Cross-device support**: Results persist across devices using Supabase auth
+- **Resume capability**: Games can be resumed by fetching from DB the Round Results page and persist across refresh/devices.
+
+---
+
+## Hint Debts (Penalties) End-to-End Flow
+
+### Overview
+Hint debts (XP and accuracy penalties from hint usage) are fetched from the database, mapped to the UI, and rendered under the score breakdown on the Round Results page. If debts do not show, the cause is almost always a data mapping, prop passing, or data shape mismatch.
+
+### 1. **DB Fetch**
+- On Round Results page load, a query is made to the `round_hints` table:
+  - Filters: `user_id`, `round_id` (image id)
+  - Columns fetched: `hint_id`, `xpDebt`, `accDebt`, `label`, `hint_type`
+- Results are mapped to objects:
+  - `{ hintId, xpDebt, accDebt, label, hint_type }[]`
+
+### 2. **Mapping to Layout**
+- The debts array is passed to a mapping function (`mapToLayoutResultType` in `RoundResultsPage.tsx`)
+- This function constructs the result object for the layout, including:
+  - `hintDebts: debts` (passed as a prop)
+
+### 3. **UI Rendering**
+- `ResultsLayout2` receives the debts array as `result.hintDebts`
+- Debts are passed to `<HintDebtsCard hintDebts={result.hintDebts} />`
+- The debts card renders each debt with:
+  - The label (from `label` or fallback)
+  - XP penalty (red, if `xpDebt > 0`)
+  - Accuracy penalty (red, if `accDebt > 0`)
+
+### 4. **Troubleshooting (If Debts Are Not Showing)**
+- **Check DB**: Are debts actually present for this round/user in `round_hints`?
+- **Check Fetch**: Is the query returning the correct rows and columns?
+- **Check Mapping**: Is the debts array correctly mapped and passed to the layout?
+- **Check Prop Passing**: Is `hintDebts` present on the result object and non-empty?
+- **Check UI**: Is `<HintDebtsCard />` rendered (not short-circuited by a missing/empty array)?
+
+---
 
 The game's scoring system is designed to reward players for accuracy in both time and location guesses, while penalizing them for using hints. The final score for each round is a combination of these factors.
 
@@ -467,10 +576,38 @@ The game's scoring system is designed to reward players for accuracy in both tim
 
 At the end of each round, a base score is calculated based on the player's guess.
 
--   **Location Score (`locationAccuracy`, `xpWhere`)**: Calculated based on the distance between the player's guess and the actual location. A closer guess results in a higher accuracy percentage and more XP. The maximum XP for a perfect guess is defined by `XP_WHERE_MAX` (currently 1000).
--   **Time Score (`timeAccuracy`, `xpWhen`)**: Calculated based on the difference between the player's guessed year and the actual year. A smaller difference results in a higher accuracy percentage and more XP. The maximum XP for a perfect guess is defined by `XP_WHEN_MAX` (currently 1000).
+-   **Location Score (`locationAccuracy`, `xpWhere`)**: Calculated based on the distance between the player's guess and the actual location. A closer guess results in a higher accuracy percentage and more XP. The maximum XP for a perfect guess is defined by `XP_WHERE_MAX` (currently 100).
+-   **Time Score (`timeAccuracy`, `xpWhen`)**: Calculated based on the difference between the player's guessed year and the actual year. A smaller difference results in a higher accuracy percentage and more XP. The maximum XP for a perfect guess is defined by `XP_WHEN_MAX` (currently 100).
 
-These calculations are primarily handled in `src/utils/gameCalculations.ts` and the results are stored in the `game_rounds` table.
+These calculations are primarily handled in `src/utils/gameCalculations.ts`.
+
+---
+
+### Upcoming: `round_results` Table
+**Purpose:** Store all per-round results, scores, and hint debts for reliable DB-backed persistence and cross-device consistency.
+
+**Schema (proposed/partially implemented):**
+- `id` (uuid, PK)
+- `user_id` (uuid, FK to auth.users)
+- `game_id` (uuid)
+- `round_index` (int)
+- `image_id` (uuid)
+- `score` (int)
+- `accuracy` (float)
+- `xp_where` (int)
+- `xp_when` (int)
+- `hints_used` (int)
+- `debts` (jsonb or denormalized fields for xpDebt/accDebt/labels)
+- `created_at`, `updated_at` (timestamp)
+
+**Implementation:**
+- Write logic: Extend `recordRoundResult` in `GameContext.tsx` to upsert round results into `round_results`.
+- Read logic: On game/round load, fetch round results from DB to hydrate context/UI.
+- Remove all localStorage fallback for scores/results.
+- Add/update RLS policies for `round_results`.
+- Test persistence across refresh/devices.
+
+**Current blocker:** Migration not yet applied (psql not available on system). Table must be created for full persistence to work.
 
 ### 2. Hint System and Penalties
 
@@ -496,9 +633,61 @@ These net scores are what the player sees on the results screen.
 ### 4. Final Game Score
 
 The final game score, displayed on the `FinalResultsPage.tsx`, is the sum of the net `xpTotal` from all rounds played in the game session. The `updateUserMetrics` function in `src/utils/profile/profileService.ts` is responsible for updating the player's global statistics with the results of the completed game.
+
 CREATE INDEX IF NOT EXISTS prompts_user_id_idx ON public.prompts USING btree (user_id) TABLESPACE pg_default;
 CREATE INDEX IF NOT EXISTS prompts_created_at_idx ON public.prompts USING btree (created_at DESC) TABLESPACE pg_default;
 CREATE INDEX IF NOT EXISTS prompts_confidence_idx ON public.prompts USING btree (confidence) TABLESPACE pg_default;
 CREATE INDEX IF NOT EXISTS prompts_last_verified_idx ON public.prompts USING btree (last_verified) TABLESPACE pg_default;
 CREATE INDEX IF NOT EXISTS prompts_id_full_hints_idx ON public.prompts USING btree (id)  TABLESPACE pg_default WHERE (has_full_hints = true);
 CREATE TRIGGER trg_copy_location_name BEFORE INSERT OR UPDATE ON prompts FOR EACH ROW EXECUTE FUNCTION copy_location_to_location_name();
+
+Existing tables
+
+create table public.round_hints (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  hint_id uuid not null,
+  user_id uuid not null,
+  round_id text not null,
+  purchased_at timestamp with time zone not null default now(),
+  "xpDebt" numeric null,
+  "accDebt" numeric null,
+  label text null,
+  hint_type text null,
+  constraint round_hints_pkey primary key (id),
+  constraint round_hints_user_id_fkey foreign KEY (user_id) references auth.users (id)
+) TABLESPACE pg_default;
+
+create table public.round_results (
+  id uuid not null default gen_random_uuid (),
+  user_id uuid not null,
+  game_id uuid not null,
+  round_index integer not null,
+  image_id uuid not null,
+  score integer null,
+  accuracy numeric null,
+  xp_where integer null,
+  xp_when integer null,
+  hints_used integer null default 0,
+  distance_km numeric null,
+  guess_year integer null,
+  guess_lat numeric null,
+  guess_lng numeric null,
+  actual_lat numeric null,
+  actual_lng numeric null,
+  created_at timestamp with time zone null default now(),
+  updated_at timestamp with time zone null default now(),
+  constraint round_results_pkey primary key (id),
+  constraint round_results_user_id_game_id_round_index_key unique (user_id, game_id, round_index),
+  constraint round_results_image_id_fkey foreign KEY (image_id) references images (id) on delete CASCADE,
+  constraint round_results_user_id_fkey foreign KEY (user_id) references auth.users (id) on delete CASCADE
+) TABLESPACE pg_default;
+
+create index IF not exists idx_round_results_user_id on public.round_results using btree (user_id) TABLESPACE pg_default;
+
+create index IF not exists idx_round_results_game_id on public.round_results using btree (game_id) TABLESPACE pg_default;
+
+create index IF not exists idx_round_results_user_game on public.round_results using btree (user_id, game_id) TABLESPACE pg_default;
+
+create trigger update_round_results_updated_at BEFORE
+update on round_results for EACH row
+execute FUNCTION update_updated_at_column ();

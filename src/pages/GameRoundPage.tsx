@@ -99,13 +99,13 @@ const GameRoundPage = () => {
         : null;
 
   // V2 hint system - track purchased hints for this image
-  const { purchasedHints, xpDebt, accDebt } = useHintV2(imageForRound);
+  const { purchasedHints, purchasedHintIds, xpDebt, accDebt, purchaseHint, availableHints, isHintLoading } = useHintV2(imageForRound);
 
   
   
   useEffect(() => {
     if (roomId) {
-      setGameId(roomId);
+      // setGameId(roomId); // removed to avoid overwriting gameId with roomId
     }
   }, [roomId, setGameId]);
 
@@ -321,7 +321,7 @@ const GameRoundPage = () => {
     // This prevents unwanted redirects due to ID mismatch after timeout/next round navigation
     if (!isContextLoading && roomId && contextRoomId !== roomId) {
       console.log(`Synchronizing context room ID with URL room ID: ${roomId}`);
-      setGameId(roomId);
+      // setGameId(roomId); // removed to avoid overwriting gameId with roomId
       // Store this synchronization in session storage to help with navigation tracking
       sessionStorage.setItem('lastSyncedRoomId', roomId);
     }
@@ -393,6 +393,13 @@ const GameRoundPage = () => {
         onConfirmNavigation={confirmNavigation}
         avatarUrl={profile?.avatar_image_url}
         onTimeout={handleTimeout}
+        availableHints={availableHints}
+        purchasedHints={purchasedHints}
+        purchasedHintIds={purchasedHintIds}
+        xpDebt={xpDebt}
+        accDebt={accDebt}
+        onPurchaseHint={purchaseHint}
+        isHintLoading={isHintLoading}
       />
 
       {/* Confirmation Dialog */}

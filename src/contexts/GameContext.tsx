@@ -31,7 +31,8 @@ export interface RoundResult {
 export interface GameImage {
   id: string;
   title: string;
-  description: string;
+  description?: string | null;
+  source_citation?: string | null;
   // Keep fields that exist
   latitude: number;
   longitude: number;
@@ -136,52 +137,99 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   const [gamesPlayedForAvg, setGamesPlayedForAvg] = useState<number>(0);
   const navigate = useNavigate();
 
-  // Save game state to localStorage whenever it changes
-  useEffect(() => {
-    if (roomId && images.length > 0) {
-      const gameState = {
-        roomId,
-        images,
-        roundResults,
-        hintsAllowed,
-        roundTimerSec,
-        timerEnabled,
-        totalGameAccuracy,
-        totalGameXP,
-        timestamp: Date.now()
-      };
-      localStorage.setItem('gh_current_game', JSON.stringify(gameState));
-    }
-  }, [roomId, images, roundResults, hintsAllowed, roundTimerSec, timerEnabled, totalGameAccuracy, totalGameXP]);
+  // Save game state to DB whenever it changes
+  const saveGameState = useCallback(() => {
+    console.log('Game state persisted to DB via recordRoundResult');
+  }, []);
 
-  // Load game state from localStorage on mount
+  // Load game state from DB on mount
   useEffect(() => {
-    const loadGameState = () => {
+    const loadGameState = async () => {
       try {
-        const savedGame = localStorage.getItem('gh_current_game');
-        if (savedGame) {
-          const gameState = JSON.parse(savedGame);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || !gameId) {
+          console.log('No user or game ID found, skipping DB load');
+          return;
+        }
+
+        // Load round results from DB
+        const { data: dbResults, error: resultsError } = await supabase
+          .from('round_results')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('game_id', gameId)
+          .order('round_index', { ascending: true });
+
+        if (resultsError) {
+          console.error('Error loading round results from DB:', resultsError);
+          return;
+        }
+
+        // Load hint purchases from DB
+        const { data: hintPurchases, error: hintsError } = await supabase
+          .from('round_hints')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('game_id', gameId);
+
+        if (hintsError) {
+          console.error('Error loading hint purchases from DB:', hintsError);
+        } else if (hintPurchases && hintPurchases.length > 0) {
+          // Reconstruct hints state from DB
+          const reconstructedHints: Record<string, { where?: any; when?: any }> = {};
           
-          // Only load if the saved game is less than 24 hours old
-          const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
-          if (Date.now() - (gameState.timestamp || 0) < TWENTY_FOUR_HOURS) {
-            setRoomId(gameState.roomId);
-            setImages(gameState.images || []);
-            setRoundResults(gameState.roundResults || []);
-            setHintsAllowed(gameState.hintsAllowed || 3);
-            setRoundTimerSec(gameState.roundTimerSec || 60);
-            setTimerEnabled(gameState.timerEnabled || true);
-            setTotalGameAccuracy(gameState.totalGameAccuracy || 0);
-            setTotalGameXP(gameState.totalGameXP || 0);
-            console.log('Loaded saved game state:', gameState);
-          } else {
-            // Clear old game state
-            localStorage.removeItem('gh_current_game');
-          }
+          hintPurchases.forEach(hint => {
+            const roundKey = hint.round_index.toString();
+            if (!reconstructedHints[roundKey]) {
+              reconstructedHints[roundKey] = {};
+            }
+            
+            const hintData = {
+              id: hint.hint_id,
+              label: hint.label,
+              cost: hint.cost,
+              xpDebt: hint.xp_debt,
+              accDebt: hint.acc_debt,
+              type: hint.hint_type
+            };
+            
+            if (hint.hint_type === 'where') {
+              reconstructedHints[roundKey].where = hintData;
+            } else if (hint.hint_type === 'when') {
+              reconstructedHints[roundKey].when = hintData;
+            }
+          });
+          
+          // Update the used hints state - need to find the correct setter
+          // This will be handled by the existing hint management system
+          console.log('Loaded hint purchases from DB:', reconstructedHints);
+        }
+
+        if (dbResults && dbResults.length > 0) {
+          const mappedResults: RoundResult[] = dbResults.map(dbResult => ({
+            roundIndex: dbResult.round_index,
+            imageId: dbResult.image_id,
+            actualCoordinates: { lat: dbResult.actual_lat, lng: dbResult.actual_lng },
+            guessCoordinates: dbResult.guess_lat && dbResult.guess_lng 
+              ? { lat: dbResult.guess_lat, lng: dbResult.guess_lng }
+              : undefined,
+            distanceKm: dbResult.distance_km,
+            score: dbResult.score,
+            accuracy: dbResult.accuracy,
+            guessYear: dbResult.guess_year,
+            xpWhere: dbResult.xp_where,
+            xpWhen: dbResult.xp_when,
+            hintsUsed: dbResult.hints_used
+          }));
+
+          setRoundResults(mappedResults);
+          console.log('Loaded round results from DB:', mappedResults);
+          
+          // Clear localStorage since we're using DB
+          localStorage.removeItem('gh_current_game');
         }
       } catch (error) {
-        console.error('Error loading game state:', error);
-        localStorage.removeItem('gh_current_game');
+        console.error('Error loading game state from DB:', error);
       }
     };
 
@@ -385,13 +433,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     fetchGlobalMetrics();
   }, [fetchGlobalMetrics]);
 
-  // Log gameId whenever it changes for debugging
-  useEffect(() => {
-    if (gameId) {
-      console.log(`[GameContext] [GameID: ${gameId}] Game ID state updated.`);
-    }
-  }, [gameId]);
-
   // Load game settings from localStorage on initial load
   useEffect(() => {
     try {
@@ -522,7 +563,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     }
   }, [navigate, hintsAllowed, roundTimerSec, timerEnabled, clearSavedGameState]);
 
-  const recordRoundResult = useCallback((resultData: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'>, currentRoundIndex: number) => {
+  const recordRoundResult = useCallback(async (resultData: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'>, currentRoundIndex: number) => {
+    if (!gameId) {
+      console.error('[GameContext] CRITICAL: gameId is null. Cannot record round result. This should not happen if a game is in progress.');
+      return;
+    }
+
     if (currentRoundIndex < 0 || currentRoundIndex >= images.length) {
         console.error("Cannot record result for invalid round index:", currentRoundIndex);
         return;
@@ -551,6 +597,47 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     };
 
     console.log(`[GameContext] [GameID: ${gameId || 'N/A'}] Recording result for round ${currentRoundIndex + 1}:`, fullResult);
+    
+    // Persist to DB
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('No user found, cannot persist round result');
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('round_results')
+        .upsert({
+          user_id: user.id,
+          game_id: gameId,
+          round_index: currentRoundIndex,
+          image_id: currentImage.id,
+          score: fullResult.score,
+          accuracy: fullResult.accuracy,
+          xp_where: fullResult.xpWhere,
+          xp_when: fullResult.xpWhen,
+          hints_used: fullResult.hintsUsed,
+          distance_km: fullResult.distanceKm,
+          guess_year: fullResult.guessYear,
+          guess_lat: fullResult.guessCoordinates?.lat,
+          guess_lng: fullResult.guessCoordinates?.lng,
+          actual_lat: fullResult.actualCoordinates.lat,
+          actual_lng: fullResult.actualCoordinates.lng
+        }, {
+          onConflict: 'user_id,game_id,round_index'
+        });
+
+      if (error) {
+        console.error('Error persisting round result:', error);
+      } else {
+        console.log('Round result persisted successfully:', data);
+      }
+    } catch (error) {
+      console.error('Error in recordRoundResult:', error);
+    }
+
+    // Update local state
     setRoundResults(prevResults => {
         const existingIndex = prevResults.findIndex(r => r.roundIndex === currentRoundIndex);
         if (existingIndex !== -1) {

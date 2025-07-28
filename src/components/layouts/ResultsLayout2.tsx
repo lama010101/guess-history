@@ -1,37 +1,39 @@
-import React, { useEffect, useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { 
-  Award,
-  Calendar,
-  ChevronRight,
-  Home,
-  MapPin,
-  Star,
-  Target,
-  Zap
-} from "lucide-react";
-import ResultsHeader from "@/components/results/ResultsHeader";
-import { RoundResult as BaseRoundResult, XP_WHERE_MAX, XP_WHEN_MAX } from '@/utils/results/types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Badge as BadgeType } from '@/utils/badges/types';
+import { BadgeEarnedPopup } from '@/components/badges/BadgeEarnedPopup';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { Fullscreen, MapPin, Calendar, Target, Zap } from 'lucide-react';
+import ResultsHeader from '@/components/results/ResultsHeader';
+import SourceModal from '@/components/modals/SourceModal';
+import HintDebtsCard from '@/components/results/HintDebtsCard';
+import { RoundResult as BaseRoundResult, XP_WHERE_MAX, XP_WHEN_MAX, HintDebt } from '@/utils/results/types';
 import { formatInteger } from '@/utils/format';
 import { HINT_TYPE_NAMES } from '@/constants/hints';
+import { Badge } from '@/components/ui/badge';
 
 // Import Leaflet components and CSS
 import { MapContainer, TileLayer, Marker, Popup, ZoomControl, useMap, Polyline } from 'react-leaflet';
-import { FullscreenControl } from 'react-leaflet-fullscreen';
-import 'react-leaflet-fullscreen/styles.css';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.fullscreen/Control.FullScreen.css';
 import L from 'leaflet';
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+import { FullscreenControl } from 'react-leaflet-fullscreen';
+
+// Custom icons
+const createUserIcon = (avatarUrl: string) => L.divIcon({
+  html: `<div style="width: 30px; height: 30px; border-radius: 50%; background-image: url(${avatarUrl}); background-size: cover; border: 2px solid white;"></div>`,
+  className: 'user-avatar-icon',
+  iconSize: [30, 30],
+  iconAnchor: [15, 30],
+  popupAnchor: [0, -30]
 });
 
-import { Badge as BadgeType } from '@/utils/badges/types';
-import { BadgeEarnedPopup } from '@/components/badges/BadgeEarnedPopup';
-import { useAuth } from '@/contexts/AuthContext';
-import { Badge } from '@/components/ui/badge';
+const correctIcon = new L.Icon({
+  iconUrl: '/assets/marker-correct.png',
+  iconSize: [30, 30],
+  iconAnchor: [15, 30],
+  popupAnchor: [0, -30]
+});
 
 // Helper to get hint label if not present in debt object
 const getHintLabel = (hintId: string): string => {
@@ -39,127 +41,93 @@ const getHintLabel = (hintId: string): string => {
 };
 
 // Component to automatically adjust map bounds
-const MapBoundsUpdater: React.FC<{ bounds: L.LatLngBoundsExpression }> = ({ bounds }) => {
+const MapBoundsUpdater = ({ bounds }: { bounds: L.LatLngBounds | null }) => {
   const map = useMap();
   useEffect(() => {
     if (bounds) {
       map.fitBounds(bounds, { padding: [50, 50] });
     }
-  }, [map, bounds]);
+  }, [bounds, map]);
   return null;
 };
 
-// Component to handle fullscreen events
-const FullscreenHandler: React.FC = () => {
+const FullscreenHandler = () => {
   const map = useMap();
-  
   useEffect(() => {
-    map.on('enterFullscreen', () => document.body.classList.add('leaflet-fullscreen-on'));
-    map.on('exitFullscreen', () => document.body.classList.remove('leaflet-fullscreen-on'));
-    
-    return () => {
-      map.off('enterFullscreen');
-      map.off('exitFullscreen');
-    };
+    const lControl = document.querySelector('.leaflet-control-zoom-in');
+    if (lControl) {
+      L.DomEvent.disableClickPropagation(lControl as HTMLElement);
+    }
   }, [map]);
-  
   return null;
 };
-
-interface HintDebt {
-  hintId: string;
-  xpDebt: number;
-  accDebt: number;
-  label: string;
-  hint_type: string;
-}
 
 interface RoundResult extends BaseRoundResult {
   hintDebts?: HintDebt[];
 }
 
-interface ResultsLayout2Props {
-  onNext?: () => void;
-  onConfirmNavigation?: (navigateTo: () => void) => void;
-  round?: number;
-  gameId?: string;
-  isLoading?: boolean;
-  error?: string | null;
+export interface ResultsLayoutProps {
+  loading: boolean;
+  error: string | null;
   result?: RoundResult | null;
   avatarUrl?: string;
   extraButtons?: React.ReactNode;
+  homeButton?: React.ReactNode;
+  round?: number;
+  totalRounds?: number;
+  nextRoundButton?: React.ReactNode;
 }
 
-const ResultsLayout2: React.FC<ResultsLayout2Props> = ({ 
-  onNext, 
-  onConfirmNavigation,
-  round = 1, 
-  gameId,
-  isLoading = false,
+const ResultsLayout2: React.FC<ResultsLayoutProps> = ({ 
+  loading,
   error,
   result,
   avatarUrl = '/assets/default-avatar.png',
-  extraButtons
+  extraButtons,
+  homeButton,
+  round,
+  totalRounds,
+  nextRoundButton
 }) => {
   const { user } = useAuth();
   const [earnedBadge, setEarnedBadge] = useState<BadgeType | null>(null);
-  
+  const [isSourceModalOpen, setSourceModalOpen] = useState(false);
+
   if (error) {
     return (
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-        <ResultsHeader 
-          round={round} 
-          totalRounds={5} 
-          onNext={onNext} 
-          isLoading={isLoading} 
-        />
-        <div className="max-w-7xl mx-auto p-4 pt-8">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 text-center">
-            <h2 className="text-2xl font-bold mb-4 text-history-primary dark:text-history-light">
-              Oops! Something went wrong
-            </h2>
-            <p className="mb-6 text-muted-foreground">{error}</p>
-            {onNext && (
-              <Button 
-                className="bg-history-primary hover:bg-history-primary/90 text-white"
-                onClick={onNext}
-              >
-                Continue
-              </Button>
-            )}
-          </div>
+        <div className="flex flex-col items-center justify-center h-screen">
+          <div className="text-red-500 text-lg mb-4">{error}</div>
+          <Button onClick={() => window.location.reload()}>Try Again</Button>
         </div>
       </div>
     );
   }
 
-  if (!result) {
+  if (loading || !result) {
     return (
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-        <ResultsHeader 
-          round={round} 
-          totalRounds={5} 
-          onNext={onNext} 
-          isLoading={isLoading} 
-        />
-        <div className="max-w-7xl mx-auto p-4 pt-8">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 text-center">
-            <h2 className="text-2xl font-bold mb-4 text-history-primary dark:text-history-light">
-              Loading results...
-            </h2>
-          </div>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-lg">Calculating results...</div>
         </div>
       </div>
     );
   }
 
-  const totalAccuracy = Math.round((result.locationAccuracy + result.timeAccuracy) / 2);
-  const xpTotal = result.xpTotal ?? 0;
+  const handleBadgePopupClose = () => {
+    setEarnedBadge(null);
+  };
+
+  useEffect(() => {
+    if (result?.earnedBadges && result.earnedBadges.length > 0) {
+      setEarnedBadge(result.earnedBadges[0]);
+    }
+  }, [result]);
+
   const xpDebt = result.hintDebts?.reduce((sum, d) => sum + d.xpDebt, 0) ?? 0;
   const accDebt = result.hintDebts?.reduce((sum, d) => sum + d.accDebt, 0) ?? 0;
-
-  const netXP = Math.max(0, xpTotal - xpDebt);
-  const netAccuracy = Math.max(0, totalAccuracy - accDebt);
+  const netXP = Math.max(0, result.xpTotal - xpDebt);
+  const netAccuracy = Math.max(0, (result.locationAccuracy + result.timeAccuracy) / 2 - accDebt);
 
   const xpDebtWhen = result.hintDebts?.filter(d => d.hint_type === 'when').reduce((sum, d) => sum + d.xpDebt, 0) ?? 0;
   const accDebtWhen = result.hintDebts?.filter(d => d.hint_type === 'when').reduce((sum, d) => sum + d.accDebt, 0) ?? 0;
@@ -169,80 +137,89 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
   const xpDebtWhere = result.hintDebts?.filter(d => d.hint_type === 'where').reduce((sum, d) => sum + d.xpDebt, 0) ?? 0;
   const netXpWhere = Math.max(0, result.xpWhere - xpDebtWhere);
   const accDebtWhere = result.hintDebts?.filter(d => d.hint_type === 'where').reduce((sum, d) => sum + d.accDebt, 0) ?? 0;
-  const netLocationAccuracy = Math.max(0, result.locationAccuracy - accDebtWhere);
+  const netLocationAccuracy = result.locationAccuracy - accDebtWhere;
 
   const correctLat = result.eventLat;
   const correctLng = result.eventLng;
   const userLat = result.guessLat;
   const userLng = result.guessLng;
-  const mapCenter: L.LatLngExpression = [correctLat, correctLng];
+
   const hasUserGuess = userLat !== null && userLng !== null;
-  const bounds = hasUserGuess ? L.latLngBounds([correctLat, correctLng], [userLat, userLng]) : undefined;
+  const correctPosition: L.LatLngTuple = [correctLat, correctLng];
+  const userPosition: L.LatLngTuple = hasUserGuess ? [userLat, userLng] : correctPosition;
 
-  const userIcon = new L.DivIcon({ 
-    html: `<img src="${avatarUrl || '/assets/default-avatar.png'}" class="rounded-full w-8 h-8 border-2 border-white" alt="Your guess" />`,
-    className: '',
-    iconSize: [40, 40],
-    iconAnchor: [20, 20]
-  });
+  const bounds = useMemo(() => {
+    if (hasUserGuess) {
+      return L.latLngBounds(userPosition, correctPosition);
+    }
+    return null;
+  }, [userPosition, correctPosition, hasUserGuess]);
   
-  const correctIcon = new L.DivIcon({ 
-    html: `<div class="rounded-full w-8 h-8 bg-green-500 flex items-center justify-center text-white">✓</div>`,
-    className: '',
-    iconSize: [40, 40],
-    iconAnchor: [20, 20]
-  });
+  const mapCenter = hasUserGuess ? L.latLngBounds(userPosition, correctPosition).getCenter() : correctPosition;
 
-  const userPosition: [number, number] = [userLat || 0, userLng || 0];
-  const correctPosition: [number, number] = [correctLat, correctLng];
-
-  const handleBadgePopupClose = () => {
-    setEarnedBadge(null);
-  };
+  const userIcon = useMemo(() => createUserIcon(avatarUrl), [avatarUrl]);
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 pb-20">
       <ResultsHeader 
-        round={round} 
-        totalRounds={5} 
-        onNext={onNext} 
-        isLoading={isLoading} 
+        round={round}
+        totalRounds={totalRounds}
         currentRoundXP={netXP}
         currentRoundAccuracy={netAccuracy}
+        nextRoundButton={nextRoundButton}
       />
       
-      <div className="max-w-7xl mx-auto p-4 pt-8">
-        <div className="flex flex-col md:flex-row gap-6">
-          <div className="w-full md:w-1/2 space-y-6">
+      <div className="container mx-auto p-4 md:p-6 lg:p-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Left Column */}
+          <div className="space-y-6">
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 text-center">
               <h2 className="text-2xl font-bold mb-1 text-history-primary dark:text-history-light">Your Score</h2>
               {(xpDebt > 0 || accDebt > 0) && (
-                <div className="text-[11px] text-red-500 dark:text-red-400 mb-5">(Hint cost deducted)</div>
+                <div className="text-xs text-red-500 dark:text-red-400 mb-5">(Hint cost deducted)</div>
               )}
               
               <div className="flex justify-center items-center gap-6 mb-4">
                 <div className="flex flex-col items-center">
-                  <div className="flex items-center justify-center bg-blue-100 dark:bg-blue-900/30 rounded-full w-16 h-16 mb-2">
-                    <div className="text-blue-600 dark:text-blue-400 font-bold">{netAccuracy}%</div>
+                  <div className="flex flex-col items-center justify-center bg-blue-100 dark:bg-blue-900/30 rounded-full w-24 h-24 mb-2">
+                    <div className="text-blue-600 dark:text-blue-400 font-bold text-xl">{netAccuracy.toFixed(0)}%</div>
+                    {accDebt > 0 && <div className="text-xs text-red-500 font-semibold mt-1">(-{accDebt.toFixed(0)}%)</div>}
                   </div>
-                  <div className="text-xs text-muted-foreground">Accuracy</div>
-                  {accDebt > 0 && (
-                    <div className="text-[10px] text-red-500 dark:text-red-400 mt-0.5">- {formatInteger(accDebt)}%</div>
-                  )}
+                  <div className="text-sm text-muted-foreground">Accuracy</div>
                 </div>
                 <div className="flex flex-col items-center">
-                  <div className="flex items-center justify-center bg-green-100 dark:bg-green-900/30 rounded-full w-16 h-16 mb-2">
-                    <div className="text-green-600 dark:text-green-400 font-bold">+{formatInteger(netXP)} XP</div>
+                  <div className="flex flex-col items-center justify-center bg-green-100 dark:bg-green-900/30 rounded-full w-24 h-24 mb-2">
+                    <div className="text-green-600 dark:text-green-400 font-bold text-xl">+{formatInteger(netXP)} XP</div>
+                    {xpDebt > 0 && <div className="text-xs text-red-500 font-semibold mt-1">(-{formatInteger(xpDebt)} XP)</div>}
                   </div>
-                  <div className="text-xs text-muted-foreground">Experience</div>
-                  {xpDebt > 0 && (
-                    <div className="text-[10px] text-red-500 dark:text-red-400 mt-0.5">- {formatInteger(xpDebt)} XP</div>
-                  )}
+                  <div className="text-sm text-muted-foreground">Experience</div>
                 </div>
               </div>
             </div>
-            
-            <div className="md:hidden bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4">
+
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+              <div className="relative w-full aspect-video overflow-hidden rounded-t-lg">
+                <img src={result.imageUrl} alt={result.imageTitle} className="w-full h-full object-cover" />
+              </div>
+              <div className="p-4">
+                <h3 className="text-lg font-semibold mb-2">{result.imageTitle}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {result.imageDescription}
+                </p>
+                {result.source_citation && (
+                  <div className="mt-4">
+                    <button onClick={() => setSourceModalOpen(true)} className="text-sm text-blue-500 hover:underline">
+                      View Source
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div className="space-y-6">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4">
               <div className="border-b border-border pb-3 mb-3 flex justify-between items-center">
                 <h2 className="font-bold text-lg text-history-primary dark:text-history-light flex items-center">
                   <Calendar className="mr-2 h-4 w-4" />
@@ -259,146 +236,101 @@ const ResultsLayout2: React.FC<ResultsLayout2Props> = ({
                   <Badge variant="selectedValue" className="ml-1 text-xl">{result.eventYear}</Badge>
                 </div>
               </div>
-              <div className="flex justify-between items-center mt-4">
+              <div className="flex justify-between items-center">
                 <Badge variant="accuracy" className="text-sm flex items-center gap-1">
                   <Target className="h-3 w-3" />
-                  {formatInteger(netTimeAccuracy)}%
-                  {accDebtWhen > 0 && <div className="text-[10px] text-red-500 dark:text-red-400">-{formatInteger(accDebtWhen)}%</div>}
+                  {netTimeAccuracy.toFixed(0)}%
+
                 </Badge>
                 <Badge variant="xp" className="text-sm flex items-center gap-1">
                   <Zap className="h-3 w-3" />
                   +{formatInteger(netXpWhen)} XP
-                  {xpDebtWhen > 0 && <div className="text-[10px] text-red-500 dark:text-red-400">-{formatInteger(xpDebtWhen)} XP</div>}
+
                 </Badge>
               </div>
             </div>
-            
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
-              <div className="p-4 border-b border-border flex justify-between items-center">
+
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4">
+              <div className="border-b border-border pb-3 mb-3 flex justify-between items-center">
                 <h2 className="font-bold text-lg text-history-primary dark:text-history-light flex items-center">
                   <MapPin className="mr-2 h-4 w-4" />
                   Where
                 </h2>
-                <div className="px-3 py-1 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm">
-                  {result.distanceKm === 0 ? <span className="text-green-600 dark:text-green-400 font-medium">Perfect!</span> : `${formatInteger(result.distanceKm)} km off`}
-                </div>
-              </div>
-              <div className="p-4 border-b border-border">
-                <div className="flex justify-end text-sm mb-4">
-                  <div className="text-center">
-                    <div className="text-foreground mb-1">Correct: </div>
-                    <Badge variant="selectedValue" className="text-xl block mx-auto">{result.locationName}</Badge>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center mt-4">
-                  <Badge variant="accuracy" className="text-sm flex items-center gap-1">
-                    <Target className="h-3 w-3" />
-                    {formatInteger(netLocationAccuracy)}%
-                  </Badge>
-                  <Badge variant="xp" className="text-sm flex items-center gap-1">
-                    <Zap className="h-3 w-3" />
-                    +{formatInteger(netXpWhere)} XP
-                  </Badge>
-                </div>
-              </div>
-              <div className="h-80 w-full">
-                <MapContainer
-                  id="results-map"
-                  className="results-map-container leaflet-container"
-                  center={mapCenter}
-                  zoom={3}
-                  style={{ height: '100%', width: '100%' }}
-                  scrollWheelZoom={false}
-                  zoomControl={false}
-                >
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  <FullscreenHandler />
-                  {bounds && <MapBoundsUpdater bounds={bounds} />}
-                  <Marker position={correctPosition} icon={correctIcon}><Popup>Correct Location: {result.locationName}</Popup></Marker>
-                  {hasUserGuess && <Marker position={userPosition} icon={userIcon}><Popup>Your Guess</Popup></Marker>}
-                  {hasUserGuess && <Polyline positions={[userPosition, correctPosition]} pathOptions={{ dashArray: '4 4', color: '#666' }} />}
-                  <FullscreenControl position="topright" />
-                  <ZoomControl position="topleft" zoomInText="+" zoomOutText="–" />
-                </MapContainer>
-              </div>
-            </div>
-          </div>
-          
-          <div className="w-full md:w-1/2 space-y-6">
-            <div className="hidden md:block bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4">
-              <div className="border-b border-border pb-3 mb-3 flex justify-between items-center">
-                <h2 className="font-bold text-lg text-history-primary dark:text-history-light flex items-center">
-                  <Calendar className="mr-2 h-4 w-4" />
-                  When
-                </h2>
                 <Badge variant="hint" className="text-sm">
-                  {result.yearDifference === 0 ? <span className="text-green-600 dark:text-green-400 font-medium">Perfect!</span> : `${formatInteger(Math.abs(result.yearDifference))} ${Math.abs(result.yearDifference) === 1 ? 'year' : 'years'} off`}
+                  {formatInteger(result.distanceKm)} km off
                 </Badge>
               </div>
-              <div className="flex justify-between text-sm mb-4">
-                <div>Your guess: <span className="font-medium">{result.guessYear}</span></div>
-                <div>
-                  <span className="text-foreground">Correct: </span>
-                  <Badge variant="selectedValue" className="ml-1 text-xl">{result.eventYear}</Badge>
-                </div>
+              <div className="text-center mb-2">
+                <span className="text-foreground">Correct: </span>
+                <Badge variant="selectedValue" className="ml-1 text-base">{result.locationName}</Badge>
               </div>
-              <div className="flex justify-between items-center mt-4">
+              <div className="relative h-64 md:h-80 rounded-lg overflow-hidden mb-4 z-0">
+                <MapContainer 
+                  center={mapCenter} 
+                  zoom={3} 
+                  style={{ height: '100%', width: '100%', backgroundColor: '#1f2937' }}
+                  zoomControl={false}
+                  scrollWheelZoom={false}
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  />
+                  <ZoomControl position="topright" />
+                  <FullscreenControl position="topright" />
+                  <FullscreenHandler />
+                  <Marker position={[result.eventLat, result.eventLng]} icon={correctIcon}>
+                    <Popup>Correct Location</Popup>
+                  </Marker>
+                  {result.guessLat && result.guessLng && (
+                    <Marker position={[result.guessLat, result.guessLng]} icon={userIcon}>
+                      <Popup>Your Guess</Popup>
+                    </Marker>
+                  )}
+                  {result.guessLat && result.guessLng && (
+                    <Polyline positions={[[result.guessLat, result.guessLng], [result.eventLat, result.eventLng]]} color="white" dashArray="5, 10" />
+                  )}
+                  <MapBoundsUpdater bounds={bounds} />
+                </MapContainer>
+              </div>
+              <div className="flex justify-between items-center">
                 <Badge variant="accuracy" className="text-sm flex items-center gap-1">
                   <Target className="h-3 w-3" />
-                  {formatInteger(netTimeAccuracy)}%
-                  {accDebtWhen > 0 && <div className="text-[10px] text-red-500 dark:text-red-400">-{formatInteger(accDebtWhen)}%</div>}
+                  {netLocationAccuracy.toFixed(0)}%
+
                 </Badge>
                 <Badge variant="xp" className="text-sm flex items-center gap-1">
                   <Zap className="h-3 w-3" />
-                  +{formatInteger(netXpWhen)} XP
-                  {xpDebtWhen > 0 && <div className="text-[10px] text-red-500 dark:text-red-400">-{formatInteger(xpDebtWhen)} XP</div>}
-                </Badge>
-              </div>
-            </div>
+                  +{formatInteger(netXpWhere)} XP
 
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
-              <div className="relative">
-                <img 
-                  src={result.imageUrl} 
-                  alt="Historical event" 
-                  className="w-full h-auto max-h-[50vh] object-contain"
-                />
-              </div>
-              <div className="p-4">
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {result.imageDescription}
-                </p>
+                </Badge>
               </div>
             </div>
 
             {result.hintDebts && result.hintDebts.length > 0 && (
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4">
-                <h2 className="font-bold text-lg text-history-primary dark:text-history-light flex items-center mb-3">
-                  <Zap className="mr-2 h-4 w-4" />
-                  Hint Debts
-                </h2>
-                <ul className="space-y-1">
-                  {result.hintDebts.map((debt, idx) => (
-                    <li key={idx} className="flex justify-between text-sm">
-                      <span className="truncate">{debt.label || getHintLabel(debt.hintId)}</span>
-                      <span className="text-destructive font-semibold">-{debt.xpDebt} XP / -{debt.accDebt}%</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <HintDebtsCard hintDebts={result.hintDebts} />
             )}
-
-            <div className="flex justify-center space-x-4">
-              {extraButtons}
-            </div>
           </div>
         </div>
+
+        <div className="mt-8 flex justify-center items-center space-x-4 md:col-span-2">
+          {extraButtons}
+          {homeButton}
+        </div>
       </div>
-      
-      {earnedBadge && <BadgeEarnedPopup badge={earnedBadge} onClose={handleBadgePopupClose} />}
+
+      {earnedBadge && (
+        <BadgeEarnedPopup 
+          badge={earnedBadge} 
+          onClose={handleBadgePopupClose} 
+        />
+      )}
+
+      <SourceModal 
+        isOpen={isSourceModalOpen} 
+        onClose={() => setSourceModalOpen(false)} 
+        url={result.source_citation || ''} 
+      />
     </div>
   );
 };

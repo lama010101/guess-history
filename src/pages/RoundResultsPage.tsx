@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { UserProfile, fetchUserProfile } from '@/utils/profile/profileService';
 import ResultsLayout2 from "@/components/layouts/ResultsLayout2"; // Use the original layout
 import { useToast } from "@/components/ui/use-toast";
-import { Loader } from 'lucide-react';
+import { Loader, Home, ChevronRight } from 'lucide-react';
 import { useGame } from '@/contexts/GameContext'; 
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -104,36 +104,47 @@ const RoundResultsPage = () => {
   const roundNumber = parseInt(roundNumberStr || '1', 10);
   const currentRoundIndex = roundNumber - 1; // 0-based index
 
-  // Fetch debts when user & image are ready
+  // Find the context result and image data
+  const contextResult = roundResults.find(r => r.roundIndex === currentRoundIndex);
+  const currentImage = images.length > currentRoundIndex ? images[currentRoundIndex] : null;
+
+  // Fetch debts when user, image, and results are ready
+  const fetchDebts = useCallback(async () => {
+    if (!user || !currentImage || !contextResult) {
+      setHintDebts([]); // Clear debts if prerequisites are not met
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('round_hints')
+      .select('hint_id,xpDebt,accDebt,label,hint_type')
+      .eq('user_id', user.id)
+      .eq('round_id', String(currentImage.id));
+
+    if (error) {
+      console.error('Error fetching hint debts:', error.message);
+      setHintDebts([]);
+      return;
+    }
+    
+    setHintDebts((data ?? []).map((d: any) => ({ 
+      hintId: d.hint_id, 
+      xpDebt: d.xpDebt ?? 0,
+      accDebt: d.accDebt ?? 0,
+      label: d.label,
+      hint_type: d.hint_type
+    })));
+  }, [user, currentImage, contextResult]);
+
   useEffect(() => {
-    const fetchDebts = async () => {
-      if (!user || !images.length) return;
-      const currentImg = images[currentRoundIndex];
-      if (!currentImg) return;
-      const { data, error } = await supabase
-        .from('round_hints')
-        .select('hint_id,xpDebt,accDebt,label,hint_type')
-        .eq('user_id', user.id)
-        .eq('round_id', String(currentImg.id));
-      if (error) {
-        console.error('Error fetching hint debts:', error.message);
-        return;
-      }
-      setHintDebts((data ?? []).map((d: any) => ({ hintId: d.hint_id, xpDebt: d.xpDebt ?? 0, accDebt: d.accDebt ?? 0, label: d.label, hint_type: d.hint_type })));
-    };
     fetchDebts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, images, roundNumberStr]);
+  }, [fetchDebts]);
 
   const totalRounds = images.length > 0 ? images.length : 5; // Default to 5 if images not loaded yet
 
   // State for navigation loading indicator
   const [navigating, setNavigating] = useState(false);
   const [earnedBadges, setEarnedBadges] = useState<Badge[]>([]);
-
-  // Find the context result and image data
-  const contextResult = roundResults.find(r => r.roundIndex === currentRoundIndex);
-  const currentImage = images.length > currentRoundIndex ? images[currentRoundIndex] : null;
 
   // Award badges when results are viewed
   useEffect(() => {
@@ -245,13 +256,12 @@ const RoundResultsPage = () => {
           xpWhere: xpWhere,
           xpWhen: xpWhen,
           // Include hint information
-          hintPenalty: totalXpDebt,
-          hintPenaltyPercent: totalAccDebt,
           hintDebts: debts, // Pass hint debts to the layout
           // Include image details if the type definition requires them
           imageTitle: img.title || 'Untitled',
           imageDescription: img.description || 'No description.',
           imageUrl: img.url || 'placeholder.jpg',
+          source_citation: img.source_citation,
           earnedBadges: earnedBadges,
           // Include other potential fields if defined in the imported type
           // roundNumber: ctxResult.roundIndex + 1, // Example if needed
@@ -347,29 +357,49 @@ const RoundResultsPage = () => {
   return (
     <>
       <ResultsLayout2 
-        onNext={handleNext} 
-        onConfirmNavigation={confirmNavigation}
-        gameId={roomId || undefined} 
         round={roundNumber}
-        isLoading={navigating}
+        totalRounds={images.length}
+        loading={navigating}
         error={null} 
         result={resultForLayout}
         avatarUrl={profile?.avatar_image_url || profile?.avatar_url || '/assets/default-avatar.png'}
+        nextRoundButton={
+          <Button onClick={handleNext} disabled={navigating} className="bg-history-primary hover:bg-history-primary/90 text-white">
+            {navigating ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
+            <span className="ml-2">{roundNumber === images.length ? 'Finish Game' : 'Next Round'}</span>
+          </Button>
+        }
+        homeButton={
+          <Button
+            variant="outline"
+            onClick={() => confirmNavigation(handleNavigateHome)}
+            className="h-12 w-12 rounded-full bg-white/90 hover:bg-white shadow-md"
+            aria-label="Go Home"
+            title="Return to Home"
+          >
+            <Home size={20} />
+          </Button>
+        }
         extraButtons={
-          user && currentImage && roomId ? (
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setShowRatingModal(true)}
-              className="h-12 w-12 rounded-full bg-white/90 hover:bg-white shadow-md ml-2"
-              aria-label="Rate Image"
-              title="Rate this image"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-star">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-              </svg>
+          <div className="flex items-center space-x-2">
+            {user && currentImage && roomId && (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setShowRatingModal(true)}
+                className="h-12 w-12 rounded-full bg-white/90 hover:bg-white shadow-md"
+                aria-label="Rate Image"
+                title="Rate this image"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-star">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+              </Button>
+            )}
+            <Button onClick={handleNext} className="h-12 px-6 rounded-full font-bold text-lg">
+              {roundNumber === images.length ? 'Finish Game' : 'Next Round'}
             </Button>
-          ) : null
+          </div>
         }
       />
       <ConfirmNavigationDialog

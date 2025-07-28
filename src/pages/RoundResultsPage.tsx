@@ -108,33 +108,71 @@ const RoundResultsPage = () => {
   const contextResult = roundResults.find(r => r.roundIndex === currentRoundIndex);
   const currentImage = images.length > currentRoundIndex ? images[currentRoundIndex] : null;
 
-  // Fetch debts when user, image, and results are ready
+  // Fetch and process hint debts when user, image, and results are ready
   const fetchDebts = useCallback(async () => {
     if (!user || !currentImage || !contextResult) {
-      setHintDebts([]); // Clear debts if prerequisites are not met
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from('round_hints')
-      .select('hint_id,xpDebt,accDebt,label,hint_type')
-      .eq('user_id', user.id)
-      .eq('round_id', String(currentImage.id));
-
-    if (error) {
-      console.error('Error fetching hint debts:', error.message);
+      console.log('Debug: Missing required data for fetchDebts', { 
+        hasUser: !!user, 
+        hasCurrentImage: !!currentImage, 
+        hasContextResult: !!contextResult 
+      });
       setHintDebts([]);
       return;
     }
-    
-    setHintDebts((data ?? []).map((d: any) => ({ 
-      hintId: d.hint_id, 
-      xpDebt: d.xpDebt ?? 0,
-      accDebt: d.accDebt ?? 0,
-      label: d.label,
-      hint_type: d.hint_type
-    })));
-  }, [user, currentImage, contextResult]);
+
+    console.groupCollapsed(`Debug: Fetching Hint Debts for Round ${currentImage.id}`);
+    console.log('currentImage.id:', currentImage.id, 'Type:', typeof currentImage.id);
+    // Build composite round session ID in the same format used when inserting
+    const roundSessionId = `${roomId}-r${roundNumber}`;
+    console.log('Query Params:', { userId: user.id, roundSessionId });
+
+    try {
+      const { data: hintRecords, error } = await supabase
+        .from('round_hints')
+        .select('hint_id, xpDebt, accDebt, label, hint_type, purchased_at, round_id')
+        .eq('user_id', user.id)
+        .eq('round_id', roundSessionId)
+        .order('purchased_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching hint debts:', error);
+        setHintDebts([]);
+        console.groupEnd();
+        return;
+      }
+
+      console.log(`Found ${hintRecords?.length || 0} hint records in DB for this round.`);
+      console.log('Raw hint records:', JSON.stringify(hintRecords, null, 2));
+
+      if (hintRecords && hintRecords.length > 0) {
+        const roundIdMismatch = hintRecords.filter(r => r.round_id !== roundSessionId);
+        if (roundIdMismatch.length > 0) {
+          console.warn('Warning: Query returned records with mismatched round_id!', roundIdMismatch);
+        }
+      }
+
+      if (!hintRecords || hintRecords.length === 0) {
+        setHintDebts([]);
+        console.groupEnd();
+        return;
+      }
+      
+      const processedDebts = hintRecords.map((hint: any) => ({
+        hintId: hint.hint_id,
+        xpDebt: Number(hint.xpDebt) || 0,
+        accDebt: Number(hint.accDebt) || 0,
+        label: hint.label,
+        hint_type: hint.hint_type
+      }));
+
+      console.log('Processed hint debts:', JSON.stringify(processedDebts, null, 2));
+      setHintDebts(processedDebts);
+
+    } catch (e) {
+      console.error('A critical error occurred in fetchDebts:', e);
+    }
+    console.groupEnd();
+  }, [user, currentImage, contextResult, roomId, roundNumber]);
 
   useEffect(() => {
     fetchDebts();
@@ -325,6 +363,17 @@ const RoundResultsPage = () => {
           <h2 className="text-xl font-semibold text-destructive mb-2">Error Loading Game</h2>
           <p className="text-muted-foreground mb-3">{contextError}</p>
            <Button onClick={() => confirmNavigation(handleNavigateHome)}>Return Home</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Prevent 'Results Not Found' from flashing while loading
+  if (isContextLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center p-4 bg-background rounded shadow">
+          <h2 className="text-xl font-semibold text-history-primary mb-2">Loading Results...</h2>
         </div>
       </div>
     );

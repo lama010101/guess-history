@@ -1,4 +1,7 @@
 /**
+ * @deprecated This function is deprecated and will be removed in a future version. 
+ * Please use the centralized scoring functions in `src/utils/gameCalculations.ts` instead.
+ *
  * Calculates the final round score after applying penalties for hint usage
  * 
  * @param baseScore The initial calculated score before penalties
@@ -22,6 +25,9 @@ export function calculateRoundScore(baseScore: number, hintsUsed: number = 0): n
 }
 
 /**
+ * @deprecated This function is deprecated and will be removed in a future version. 
+ * Please use the centralized scoring functions in `src/utils/gameCalculations.ts` instead.
+ *
  * Applies hint penalties to a score
  * @param baseScore The base score before applying hint penalties
  * @param hintsUsed The number of hints used (defaults to 0 if not provided or invalid)

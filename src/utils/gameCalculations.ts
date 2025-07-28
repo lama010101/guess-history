@@ -123,16 +123,20 @@ export const calculateRoundScore = (
   const locationXP = calculateLocationXP(distanceKm);
   
   // Calculate hint penalties
-  const totalHintPenalty = hintsUsed * hintPenalty;
-  const hintPenaltyPercent = hintsUsed * 30; // 30% per hint
+  const totalHintPenalty = hintsUsed * 15; // 15 XP penalty per hint
+  const hintPenaltyPercent = hintsUsed * 15; // 15% per hint
   
   // Combined per-round values with rounding and hint penalties
-  const roundXPBeforePenalty = timeXP + locationXP; // 0-200
-  const roundXP = Math.max(0, Math.round(roundXPBeforePenalty - totalHintPenalty));
-  
-  // Calculate percentage with hint penalty
-  const percentBeforePenalty = (roundXPBeforePenalty / (MAX_XP_TIME + MAX_XP_LOC)) * 100;
-  const roundPercent = Math.max(0, Math.round(percentBeforePenalty - hintPenaltyPercent));
+  // The round accuracy is the average of time and location accuracy.
+  const percentBeforePenalty = (timeXP + locationXP) / 2; // 0-100
+
+  // The round XP should be equivalent to the round percentage.
+  const roundXPBeforePenalty = percentBeforePenalty;
+
+  // Apply hint penalties consistently to both XP and percentage.
+  const hintPenaltyValue = hintsUsed * 15; // 15 points per hint
+  const roundXP = Math.max(0, Math.round(roundXPBeforePenalty - hintPenaltyValue));
+  const roundPercent = Math.max(0, Math.round(percentBeforePenalty - hintPenaltyValue));
   
   return {
     timeXP,

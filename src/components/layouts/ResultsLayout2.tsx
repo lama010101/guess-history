@@ -137,7 +137,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   const xpDebtWhere = result.hintDebts?.filter(d => d.hint_type === 'where').reduce((sum, d) => sum + d.xpDebt, 0) ?? 0;
   const netXpWhere = Math.max(0, result.xpWhere - xpDebtWhere);
   const accDebtWhere = result.hintDebts?.filter(d => d.hint_type === 'where').reduce((sum, d) => sum + d.accDebt, 0) ?? 0;
-  const netLocationAccuracy = result.locationAccuracy - accDebtWhere;
+  const netLocationAccuracy = Math.max(0, result.locationAccuracy - accDebtWhere);
 
   const correctLat = result.eventLat;
   const correctLng = result.eventLng;
@@ -239,12 +239,12 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               <div className="flex justify-between items-center">
                 <Badge variant="accuracy" className="text-sm flex items-center gap-1">
                   <Target className="h-3 w-3" />
-                  {netTimeAccuracy.toFixed(0)}%
+                  {result.timeAccuracy.toFixed(0)}%
 
                 </Badge>
                 <Badge variant="xp" className="text-sm flex items-center gap-1">
                   <Zap className="h-3 w-3" />
-                  +{formatInteger(netXpWhen)} XP
+                  +{formatInteger(result.xpWhen)} XP
 
                 </Badge>
               </div>
@@ -296,12 +296,12 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               <div className="flex justify-between items-center">
                 <Badge variant="accuracy" className="text-sm flex items-center gap-1">
                   <Target className="h-3 w-3" />
-                  {netLocationAccuracy.toFixed(0)}%
+                  {result.locationAccuracy.toFixed(0)}%
 
                 </Badge>
                 <Badge variant="xp" className="text-sm flex items-center gap-1">
                   <Zap className="h-3 w-3" />
-                  +{formatInteger(netXpWhere)} XP
+                  +{formatInteger(result.xpWhere)} XP
 
                 </Badge>
               </div>

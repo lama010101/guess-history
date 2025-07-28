@@ -222,10 +222,16 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
     setIsHintLoading(true);
 
     try {
+      // Derive a unique round session ID in the format <roomId>-r<roundNumber>
+      const urlMatch = window.location.pathname.match(/room\/([^/]+)\/round\/(\d+)/);
+      const roomFromUrl = urlMatch ? urlMatch[1] : 'unknown_room';
+      const roundNumFromUrl = urlMatch ? urlMatch[2] : '0';
+      const roundSessionId = `${roomFromUrl}-r${roundNumFromUrl}`;
+
       const insertPayload = {
         id: uuidv4(),
         user_id: user.id,
-        round_id: (imageData as any).round_id || imageData.id,
+        round_id: roundSessionId,
         hint_id: hintToPurchase.id,
         xpDebt: hintToPurchase.xp_cost,
         accDebt: hintToPurchase.accuracy_penalty,
@@ -233,6 +239,7 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
         hint_type: hintType,
         purchased_at: new Date().toISOString()
       };
+
 
       addLog(`Attempting to insert hint purchase: ${JSON.stringify(insertPayload)}`);
       

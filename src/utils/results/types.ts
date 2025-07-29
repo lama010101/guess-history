@@ -13,6 +13,8 @@ export interface HintDebt {
 }
 
 export interface RoundResult {
+  isCorrect?: boolean; // True if the answer is correct (e.g., locationAccuracy >= 95)
+
   // Image/event data
   imageId: string;
   imageTitle: string;

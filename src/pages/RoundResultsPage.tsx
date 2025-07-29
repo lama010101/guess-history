@@ -275,7 +275,9 @@ const RoundResultsPage = () => {
       const timeDifferenceDesc = getTimeDifferenceDescription(guessYear, actualYear);
 
       // Construct the object matching LayoutRoundResultType from utils/resultsFetching
-      const layoutResult: LayoutRoundResultType = {
+      const isCorrect = locationAccuracy >= 95; // Consider 95%+ as correct
+    console.log('Mapping result:', { isCorrect, locationAccuracy, guessLat: ctxResult.guessCoordinates?.lat, guessLng: ctxResult.guessCoordinates?.lng });
+    const layoutResult: LayoutRoundResultType = {
           // Fields identified from linter errors & ResultsLayout2 usage
           imageId: img.id, 
           eventLat: ctxResult.actualCoordinates.lat, // Use actual coords
@@ -301,6 +303,7 @@ const RoundResultsPage = () => {
           imageUrl: img.url || 'placeholder.jpg',
           source_citation: img.source_citation,
           earnedBadges: earnedBadges,
+        isCorrect: isCorrect,
           // Include other potential fields if defined in the imported type
           // roundNumber: ctxResult.roundIndex + 1, // Example if needed
           // gameId: roomId, // Example if needed

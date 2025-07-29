@@ -28,8 +28,9 @@ const createUserIcon = (avatarUrl: string) => L.divIcon({
   popupAnchor: [0, -30]
 });
 
-const correctIcon = new L.Icon({
-  iconUrl: '/assets/marker-correct.png',
+const correctIcon = L.divIcon({
+  html: `<div style="background-color: #10B981; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.3);"></div>`,
+  className: 'correct-marker',
   iconSize: [30, 30],
   iconAnchor: [15, 30],
   popupAnchor: [0, -30]
@@ -234,11 +235,11 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                 </Badge>
               </div>
               <div className="flex justify-between text-sm mb-4">
-                <div>Your guess: <span className="font-medium">{result.guessYear}</span></div>
                 <div>
                   <span className="text-foreground">Correct: </span>
                   <Badge variant="selectedValue" className="ml-1 text-xl">{result.eventYear}</Badge>
                 </div>
+                <div>Your guess: <span className="font-medium">{result.guessYear}</span></div>
               </div>
               <div className="flex justify-between items-center">
                 <Badge variant="accuracy" className="text-sm flex items-center gap-1">
@@ -264,9 +265,9 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   {formatInteger(result.distanceKm)} km off
                 </Badge>
               </div>
-              <div className="text-center mb-2">
-                <span className="text-foreground">Correct: </span>
-                <Badge variant="selectedValue" className="ml-1 text-base">{result.locationName}</Badge>
+              <div className="flex items-center mb-2">
+                <span className="text-foreground mr-2">Correct:</span>
+                <Badge variant="selectedValue" className="text-base">{result.locationName}</Badge>
               </div>
               <div className="relative h-64 md:h-80 rounded-lg overflow-hidden mb-4 z-0">
                 <MapContainer 
@@ -283,13 +284,35 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   <ZoomControl position="topright" />
                   <FullscreenControl position="topright" />
                   <FullscreenHandler />
-                  <Marker position={[result.eventLat, result.eventLng]} icon={correctIcon}>
+                  {/* Show the green correct icon if the answer is correct */}
+                  {result.isCorrect && (
+                    <Marker 
+                      position={[result.eventLat, result.eventLng]} 
+                      icon={correctIcon}
+                      zIndexOffset={1000}  // Ensure it's on top
+                    >
+                      <Popup>Correct Answer</Popup>
+                    </Marker>
+                  )}
+                  
+                  {/* Always show the actual location marker */}
+                  <Marker 
+                    position={[result.eventLat, result.eventLng]} 
+                    icon={correctIcon}
+                    opacity={result.isCorrect ? 0 : 1}  // Hide if we're showing the correct icon
+                  >
                     <Popup>Correct Location</Popup>
                   </Marker>
-                  {result.guessLat && result.guessLng && (
-                    <Marker position={[result.guessLat, result.guessLng]} icon={userIcon}>
-                      <Popup>Your Guess</Popup>
-                    </Marker>
+                  
+                  {/* Show user's guess if it exists and isn't exactly on the correct location */}
+                  {result.guessLat && result.guessLng && 
+                    (result.guessLat !== result.eventLat || result.guessLng !== result.eventLng) && (
+                      <Marker 
+                        position={[result.guessLat, result.guessLng]} 
+                        icon={userIcon}
+                      >
+                        <Popup>Your Guess</Popup>
+                      </Marker>
                   )}
                   {result.guessLat && result.guessLng && (
                     <Polyline positions={[[result.guessLat, result.guessLng], [result.eventLat, result.eventLng]]} color="white" dashArray="5, 10" />

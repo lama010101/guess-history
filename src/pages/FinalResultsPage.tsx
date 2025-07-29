@@ -411,6 +411,43 @@ const FinalResultsPage = () => {
             </div>
           </div>
 
+          {/* Round Summary Card - Moved to top */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8">
+            <h2 className="text-xl font-bold text-history-primary dark:text-history-light mb-4">Round Summary</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* WHEN Score */}
+              <div>
+                <h3 className="text-lg font-semibold text-history-primary dark:text-history-light mb-2">WHEN</h3>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm text-gray-600 dark:text-gray-300">Score</span>
+                  <span className="font-medium">{formatInteger(totalWhenXP)} XP | {formatInteger(totalWhenAccuracy)}%</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600 dark:text-gray-300">Hint Cost</span>
+                  <span className="font-medium text-red-500">-{formatInteger(whenXpDebt)} XP | -{formatInteger(whenAccDebt)}%</span>
+                </div>
+              </div>
+              {/* WHERE Score */}
+              <div>
+                <h3 className="text-lg font-semibold text-history-primary dark:text-history-light mb-2">WHERE</h3>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm text-gray-600 dark:text-gray-300">Score</span>
+                  <span className="font-medium">{formatInteger(totalWhereXP)} XP | {formatInteger(totalWhereAccuracy)}%</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600 dark:text-gray-300">Hint Cost</span>
+                  <span className="font-medium text-red-500">-{formatInteger(whereXpDebt)} XP | -{formatInteger(whereAccDebt)}%</span>
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold text-history-primary dark:text-history-light">FINAL SCORE</h3>
+                <span className="text-xl font-bold">{formatInteger(netFinalXP)} XP | {formatInteger(finalPercent)}%</span>
+              </div>
+            </div>
+          </div>
+
         <div className="grid gap-6 mb-8">
           {images.map((image, index) => {
             const result = roundResults?.[index];
@@ -433,43 +470,41 @@ const FinalResultsPage = () => {
                 key={image.id}
                 className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden"
               >
-                <div className="flex flex-col md:flex-row">
-                  <div className="md:w-1/3">
+                <div className="flex flex-col">
+                  <div className="w-full h-40 sm:h-48 md:h-40 lg:h-48">
                     <LazyImage
                       src={image.url}
                       alt={`Round ${index + 1} - ${image.title}`}
-                      className="w-full h-48 object-cover"
-                      skeletonClassName="w-full h-48"
+                      className="w-full h-full object-cover"
+                      skeletonClassName="w-full h-full"
                     />
                   </div>
-                  <div className="p-4 md:w-2/3">
-                    <div className="flex justify-between items-start mb-4">
-                      <div
-                        className="cursor-pointer w-full"
-                        onClick={() => setOpen(!open)}
-                        tabIndex={0}
-                        role="button"
-                        aria-expanded={open}
-                        aria-controls={`details-${image.id}`}
-                      >
-                        <h3 className="text-lg font-bold text-history-primary dark:text-history-light">
-                          {image.title || ""}
-                        </h3>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Badge variant="accuracy" className="flex items-center gap-1" aria-label={`Accuracy: ${formatInteger(roundPercentage)}%`}>
-                            <Target className="h-3 w-3" />
-                            <span>{formatInteger(roundPercentage)}%</span>
-                          </Badge>
-                          <Badge variant="xp" className="flex items-center gap-1" aria-label={`XP: ${formatInteger(result?.score || 0)}`}>
-                            <Zap className="h-3 w-3" />
-                            <span>{formatInteger(result?.score || 0)}</span>
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          <Badge variant="selectedValue" className="text-xs mt-1">
-                            {image.location_name} ({image.year})
-                          </Badge>
-                        </p>
+                  <div className="p-4">
+                    <div 
+                      className="cursor-pointer w-full"
+                      onClick={() => setOpen(!open)}
+                      tabIndex={0}
+                      role="button"
+                      aria-expanded={open}
+                      aria-controls={`details-${image.id}`}
+                    >
+                      <h3 className="text-lg font-bold text-history-primary dark:text-history-light">
+                        {image.title || ""}
+                      </h3>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <Badge variant="accuracy" className="flex items-center gap-1" aria-label={`Accuracy: ${formatInteger(roundPercentage)}%`}>
+                          <Target className="h-3 w-3" />
+                          <span>{formatInteger(roundPercentage)}%</span>
+                        </Badge>
+                        <Badge variant="xp" className="flex items-center gap-1" aria-label={`XP: ${formatInteger(result?.score || 0)}`}>
+                          <Zap className="h-3 w-3" />
+                          <span>{formatInteger(result?.score || 0)}</span>
+                        </Badge>
+                      </div>
+                      <div className="mt-2">
+                        <Badge variant="selectedValue" className="text-xs">
+                          {image.location_name} ({image.year})
+                        </Badge>
                       </div>
                     </div>
                     {open && (
@@ -534,44 +569,6 @@ const FinalResultsPage = () => {
             );
           })}
         </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 my-4">
-          <h2 className="text-xl font-bold text-history-primary dark:text-history-light mb-4">Round Summary</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* WHEN Score */}
-            <div>
-              <h3 className="text-lg font-semibold text-history-primary dark:text-history-light mb-2">WHEN</h3>
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-sm text-gray-600 dark:text-gray-300">Score</span>
-                <span className="font-medium">{formatInteger(totalWhenXP)} XP | {formatInteger(totalWhenAccuracy)}%</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-gray-300">Hint Cost</span>
-                <span className="font-medium text-red-500">-{formatInteger(whenXpDebt)} XP | -{formatInteger(whenAccDebt)}%</span>
-              </div>
-            </div>
-            {/* WHERE Score */}
-            <div>
-              <h3 className="text-lg font-semibold text-history-primary dark:text-history-light mb-2">WHERE</h3>
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-sm text-gray-600 dark:text-gray-300">Score</span>
-                <span className="font-medium">{formatInteger(totalWhereXP)} XP | {formatInteger(totalWhereAccuracy)}%</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-gray-300">Hint Cost</span>
-                <span className="font-medium text-red-500">-{formatInteger(whereXpDebt)} XP | -{formatInteger(whereAccDebt)}%</span>
-              </div>
-            </div>
-          </div>
-          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-bold text-history-primary dark:text-history-light">FINAL SCORE</h3>
-              <span className="text-xl font-bold">{formatInteger(netFinalXP)} XP | {formatInteger(finalPercent)}%</span>
-            </div>
-          </div>
-        </div>
-
-
       </div>
       {/* Removed the non-sticky Share and Home buttons */}
       </div>

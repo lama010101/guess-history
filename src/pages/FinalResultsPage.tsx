@@ -368,8 +368,8 @@ const FinalResultsPage = () => {
 
   return (
     <div className="min-h-screen bg-history-light dark:bg-history-dark flex flex-col">
-      {/* Navbar from TestLayout - exactly like Home page */}
-      <nav className="sticky top-0 z-50 bg-history-primary text-white shadow-md">
+      {/* Transparent Navbar */}
+      <nav className="sticky top-0 z-50 bg-transparent text-white">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">

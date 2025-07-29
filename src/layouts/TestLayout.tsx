@@ -18,7 +18,7 @@ const TestLayout = () => {
     <div className="min-h-screen flex flex-col bg-history-light dark:bg-history-dark">
       {/* Navbar only shown for non-game pages */}
       {!isGameContext && (
-        <nav className="sticky top-0 z-50 bg-history-primary/80 text-white shadow-md backdrop-blur-sm hover:bg-history-primary transition-colors duration-200">
+        <nav className="sticky top-0 z-50 bg-transparent text-white">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center">

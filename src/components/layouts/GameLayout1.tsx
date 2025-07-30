@@ -12,6 +12,7 @@ import TimerDisplay from '@/components/game/TimerDisplay';
 import LazyImage from '@/components/ui/LazyImage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 // Helper function to format time as MM:SS
 const formatTime = (seconds: number): string => {
@@ -204,38 +205,40 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       )}
 
       {/* Input Sections - Full width on mobile, half on desktop */}
-      <div className="flex-grow p-4 lg:p-8 lg:overflow-y-auto lg:h-screen">
-        <div className="max-w-5xl mx-auto">
-          <div className="space-y-6">
-            <Card className="overflow-hidden">
-              <CardContent className="p-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-bold uppercase">When</h3>
-                  <span className="text-orange-500 bg-orange-100 rounded-full px-4 py-1 font-semibold text-base">{selectedYear}</span>
-                </div>
-                <YearSelector 
-                  selectedYear={selectedYear}
-                  onChange={onYearChange}
-                />
-              </CardContent>
-            </Card>
-            
-            <Card className="overflow-hidden">
-              <CardContent className="p-4">
-                <LocationSelector 
-                  selectedLocation={null} 
-                  onLocationSelect={() => {}} 
-                  onCoordinatesSelect={handleCoordinatesSelect}
-                  onSubmit={handleSubmitGuess}
-                  hasSelectedLocation={!!currentGuess}
-                  avatarUrl={avatarUrl}
-                />
-                {/* Render the location label below the map, e.g., WHERE Foggaret... */}
-
-              </CardContent>
-            </Card>
-          </div>
+      <div className="flex-grow p-4 lg:p-8 flex flex-col">
+        <div className="max-w-5xl mx-auto w-full space-y-6">
+          <Card className="overflow-hidden">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-xl font-bold text-history-primary dark:text-history-light">WHEN</h2>
+                <div className="ml-auto px-3 py-1 bg-history-secondary/20 rounded-full text-history-secondary font-medium">{selectedYear}</div>
+              </div>
+              <YearSelector 
+                selectedYear={selectedYear}
+                onChange={onYearChange}
+              />
+            </CardContent>
+          </Card>
+          
+          <Card className="overflow-hidden">
+            <CardContent className="p-4">
+              
+              <div className="flex items-center mb-2">
+                <h2 className="text-xl font-bold text-history-primary dark:text-history-light">WHERE</h2>
+              </div>
+              <LocationSelector 
+                selectedLocation={null} 
+                onLocationSelect={() => {}} 
+                onCoordinatesSelect={handleCoordinatesSelect}
+                onSubmit={handleSubmitGuess}
+                hasSelectedLocation={!!currentGuess}
+                avatarUrl={avatarUrl}
+              />
+            </CardContent>
+          </Card>
         </div>
+
+        
       </div>
 
       {/* V2 Hint Modal */}

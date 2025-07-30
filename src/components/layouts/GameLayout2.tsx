@@ -7,7 +7,8 @@ import {
   HelpCircle,
   Calendar,
   MapPin,
-  Check
+  Check,
+  Home
 } from "lucide-react";
 import HintModalV2New from '@/components/HintModalV2New';
 import { useHintV2 } from '@/hooks/useHintV2';
@@ -29,6 +30,7 @@ export interface GameLayout2Props {
 }
 
 const GameLayout2: React.FC<GameLayout2Props> = ({ onComplete, gameMode = 'solo' }) => {
+  const navigate = useNavigate();
   const [isHintModalV2Open, setIsHintModalV2Open] = useState(false);
   const game = useGame();
   const { totalGameAccuracy, totalGameXP, roundTimerSec, timerEnabled } = game;
@@ -59,7 +61,7 @@ const GameLayout2: React.FC<GameLayout2Props> = ({ onComplete, gameMode = 'solo'
         <div className="absolute bottom-4 right-4 flex space-x-2">
           <Button 
             size="sm" 
-            className={`bg-blue-500 hover:bg-blue-600 text-white border-none`}
+            className={`bg-white text-black hover:bg-white/90 border-none`}
             onClick={handleHintClick}
           >
             <HelpCircle className="h-4 w-4 mr-2" />
@@ -118,7 +120,7 @@ const GameLayout2: React.FC<GameLayout2Props> = ({ onComplete, gameMode = 'solo'
             <div className="glass p-4 rounded-xl h-[calc(100%-2rem)]">
               <div className="relative h-full map-placeholder rounded-lg overflow-hidden">
                 {/* Map placeholder */}
-                <Button size="icon" className="absolute top-2 right-2 z-10 bg-white/80 hover:bg-white text-history-primary">
+                <Button size="icon" className="absolute top-2 right-2 z-10 bg-white hover:bg-white/90 text-history-primary border-none">
                   <Maximize className="h-4 w-4" />
                 </Button>
                 

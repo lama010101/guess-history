@@ -6,28 +6,28 @@
 // Hint costs and accuracy penalties
 export const HINT_COSTS = {
   // Level 1 Hints (Basic)
-  continent: { xp: 30, acc: 3 },
-  century: { xp: 30, acc: 3 },
+  continent: { xp: 10, acc: 1 },
+  century: { xp: 10, acc: 1 },
   
   // Level 2 Hints (Intermediate)
-  distantLandmark: { xp: 60, acc: 6 },
-  distantDistance: { xp: 30, acc: 3 },
-  distantEvent: { xp: 60, acc: 6 },
-  distantTimeDiff: { xp: 30, acc: 3 },
+  distantLandmark: { xp: 20, acc: 2 },
+  distantDistance: { xp: 10, acc: 1 },
+  distantEvent: { xp: 20, acc: 2 },
+  distantTimeDiff: { xp: 10, acc: 1 },
   
   // Level 3 Hints (Advanced)
-  region: { xp: 90, acc: 9 },
-  narrowDecade: { xp: 90, acc: 9 },
+  region: { xp: 50, acc: 5 },
+  narrowDecade: { xp: 50, acc: 5 },
   
   // Level 4 Hints (Precise)
-  nearbyLandmark: { xp: 160, acc: 16 },
-  nearbyDistance: { xp: 80, acc: 8 },
-  contemporaryEvent: { xp: 160, acc: 16 },
-  closeTimeDiff: { xp: 80, acc: 8 },
+  nearbyLandmark: { xp: 30, acc: 3 },
+  nearbyDistance: { xp: 10, acc: 1 },
+  contemporaryEvent: { xp: 30, acc: 3 },
+  closeTimeDiff: { xp: 10, acc: 1 },
 
   // Level 5 Hints (Full Clues)
-  whereClues: { xp: 200, acc: 20 },
-  whenClues: { xp: 200, acc: 20 },
+  whereClues: { xp: 40, acc: 4 },
+  whenClues: { xp: 40, acc: 4 },
 };
 
 // Hint level descriptions

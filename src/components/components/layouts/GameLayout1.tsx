@@ -67,8 +67,8 @@ const GameLayout1: React.FC<GameLayout1Props> = ({ onComplete, gameMode = 'solo'
           {/* When - Date Selector */}
           <div className="mb-8">
             <div className="flex justify-between mb-2">
-              <label className="font-semibold text-history-primary dark:text-history-light">WHEN</label>
-              <span className="text-history-secondary font-medium">{selectedYear}</span>
+              <h2 className="text-xl font-bold text-history-primary dark:text-history-light">WHEN</h2>
+              <div className="ml-auto px-3 py-1 bg-history-secondary/20 rounded-full text-history-secondary font-medium">{selectedYear}</div>
             </div>
             <div className="relative">
               <input 
@@ -93,11 +93,14 @@ const GameLayout1: React.FC<GameLayout1Props> = ({ onComplete, gameMode = 'solo'
           </div>
           
           {/* Where - Map Selector */}
+          {/* Where - Map Selector */}
           <div className="mb-8">
-            <div className="flex justify-between mb-2">
-              <label className="font-semibold text-history-primary dark:text-history-light">WHERE</label>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xl font-bold text-history-primary dark:text-history-light">WHERE</h2>
               {selectedLocation && (
-                <span className="text-history-secondary font-medium">{selectedLocation}</span>
+                <div className="ml-auto px-3 py-1 bg-history-secondary/20 rounded-full text-history-secondary font-medium">
+                  {selectedLocation}
+                </div>
               )}
             </div>
             <div className="relative">
@@ -106,11 +109,11 @@ const GameLayout1: React.FC<GameLayout1Props> = ({ onComplete, gameMode = 'solo'
               </div>
             </div>
           </div>
-          
+
           {/* Submit Button */}
-          <div className="flex justify-center">
+          <div className="mt-auto w-full px-4 pb-4 md:px-0 md:pb-0">
             <Button 
-              className="game-button"
+              className="w-full max-w-md mx-auto flex items-center justify-center game-button"
               onClick={onComplete}
             >
               <span>Submit Guess</span>

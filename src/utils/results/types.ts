@@ -44,6 +44,7 @@ export interface RoundResult {
   earnedBadges?: Badge[];
   source_citation?: string;
   hintDebts?: HintDebt[];
+  confidence?: number;
 }
 
 // Maximum values for calculations

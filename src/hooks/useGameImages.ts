@@ -13,6 +13,8 @@ export interface GameImage {
   longitude: number;
   location_name: string;
   firebase_url?: string;
+  confidence?: number;
+  source_citation?: string | null;
 }
 
 // No placeholder images - we will only use optimized images from the database
@@ -42,7 +44,7 @@ export function useGameImages(gameId?: string) {
       // Query the images table for ready images that have optimized images
       const { data, error } = await supabase
         .from('images')
-        .select('id, title, description, year, latitude, longitude, location_name, mobile_image_url, desktop_image_url, firebase_url')
+        .select('id, title, description, year, latitude, longitude, location_name, mobile_image_url, desktop_image_url, firebase_url, confidence, source_citation')
         .eq('ready', true);
 
       console.log('Fetched raw image data:', data);
@@ -103,6 +105,8 @@ export function useGameImages(gameId?: string) {
               longitude: image.longitude || 0,
               location_name: image.location_name || 'Unknown Location',
               firebase_url: image.firebase_url,
+              confidence: image.confidence,
+              source_citation: image.source_citation,
             };
           }
 
@@ -161,6 +165,8 @@ export function useGameImages(gameId?: string) {
             longitude: image.longitude || 0,
             location_name: image.location_name || 'Unknown Location',
             firebase_url: image.firebase_url,
+            confidence: image.confidence,
+            source_citation: image.source_citation,
           };
         } catch (err) {
           console.error('Error processing image:', image.id, err);

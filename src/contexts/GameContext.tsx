@@ -41,6 +41,7 @@ export interface GameImage {
   location_name: string;
   url: string; // Keep processed url field
   firebase_url?: string; // Optional Firebase image URL
+  confidence?: number; // Add confidence score
 }
 
 // Define the context state shape
@@ -478,7 +479,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
       const { data: imageBatch, error: fetchError } = await supabase
         .from('images')
-        .select('id, title, description, latitude, longitude, year, image_url, location_name, firebase_url') 
+        .select('id, title, description, latitude, longitude, year, image_url, location_name, firebase_url, confidence, source_citation') 
         .eq('ready', true)
         .limit(20);
         
@@ -509,7 +510,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
               image_url: img.image_url, // keep original for reference if needed
               location_name: img.location_name || 'Unknown Location',
               url: img.firebase_url, // Use firebase_url directly
-              firebase_url: img.firebase_url
+              firebase_url: img.firebase_url,
+              confidence: img.confidence,
+              source_citation: img.source_citation
             } as GameImage;
           }
 
@@ -532,7 +535,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             image_url: img.image_url,
             location_name: img.location_name || 'Unknown Location',
             url: finalUrl,
-            firebase_url: img.firebase_url
+            firebase_url: img.firebase_url ?? undefined,
+            confidence: img.confidence,
+            source_citation: img.source_citation
           } as GameImage;
         })
       );

@@ -302,8 +302,9 @@ const RoundResultsPage = () => {
           imageDescription: img.description || 'No description.',
           imageUrl: img.url || 'placeholder.jpg',
           source_citation: img.source_citation,
+          confidence: img.confidence ?? 0,
           earnedBadges: earnedBadges,
-        isCorrect: isCorrect,
+          isCorrect: isCorrect,
           // Include other potential fields if defined in the imported type
           // roundNumber: ctxResult.roundIndex + 1, // Example if needed
           // gameId: roomId, // Example if needed

@@ -210,7 +210,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           <Card className="overflow-hidden">
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xl font-bold text-history-primary dark:text-history-light">WHEN</h2>
+                <label className="font-semibold text-history-primary dark:text-history-light">WHEN</label>
                 <div className="ml-auto px-3 py-1 bg-history-secondary/20 rounded-full text-history-secondary font-medium">{selectedYear}</div>
               </div>
               <YearSelector 
@@ -222,10 +222,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           
           <Card className="overflow-hidden">
             <CardContent className="p-4">
-              
-              <div className="flex items-center mb-2">
-                <h2 className="text-xl font-bold text-history-primary dark:text-history-light">WHERE</h2>
-              </div>
+     
               <LocationSelector 
                 selectedLocation={null} 
                 onLocationSelect={() => {}} 

@@ -181,22 +181,28 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
           {/* Left Column */}
           <div className="space-y-6">
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 text-center">
-              <h2 className="text-2xl font-bold mb-1 text-history-primary dark:text-history-light">Your Score</h2>
+              <h2 className="text-2xl font-bold mb-1 text-gray-900 dark:text-gray-100">Your Score</h2>
               {(xpDebt > 0 || accDebt > 0) && (
                 <div className="text-xs text-red-500 dark:text-red-400 mb-5">(Hint cost deducted)</div>
               )}
               
               <div className="flex justify-center items-center gap-6 mb-4">
                 <div className="flex flex-col items-center">
-                  <div className="flex flex-col items-center justify-center bg-blue-100 dark:bg-blue-900/30 rounded-full w-24 h-24 mb-2">
-                    <div className="text-blue-600 dark:text-blue-400 font-bold text-xl">{netAccuracy.toFixed(0)}%</div>
+                  <div className="flex flex-col items-center justify-center mb-2">
+                    <div className="flex items-center gap-1.5 px-4 py-1.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium rounded-full text-base">
+                      <Target className="h-3.5 w-3.5" />
+                      {netAccuracy.toFixed(0)}%
+                    </div>
                     {accDebt > 0 && <div className="text-xs text-red-500 font-semibold mt-1">(-{accDebt.toFixed(0)}%)</div>}
                   </div>
                   <div className="text-sm text-muted-foreground">Accuracy</div>
                 </div>
                 <div className="flex flex-col items-center">
-                  <div className="flex flex-col items-center justify-center bg-green-100 dark:bg-green-900/30 rounded-full w-24 h-24 mb-2">
-                    <div className="text-green-600 dark:text-green-400 font-bold text-xl">+{formatInteger(netXP)} XP</div>
+                  <div className="flex flex-col items-center justify-center mb-2">
+                    <div className="flex items-center gap-1.5 px-4 py-1.5 bg-green-500/10 text-green-600 dark:text-green-400 font-medium rounded-full text-base">
+                      <Zap className="h-3.5 w-3.5" />
+                      +{formatInteger(netXP)} XP
+                    </div>
                     {xpDebt > 0 && <div className="text-xs text-red-500 font-semibold mt-1">(-{formatInteger(xpDebt)} XP)</div>}
                   </div>
                   <div className="text-sm text-muted-foreground">Experience</div>
@@ -220,8 +226,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   </div>
                   {result.source_citation && (
                     <Button 
-                      variant="link"
-                      className="text-history-primary p-0 h-auto" 
+                      className="w-full bg-white text-gray-900 hover:bg-gray-100 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
                       onClick={() => setSourceModalOpen(true)} // This opens the modal
                     >
                       Source
@@ -236,7 +241,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
           <div className="space-y-6">
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4">
               <div className="border-b border-border pb-3 mb-3 flex justify-between items-center">
-                <h2 className="font-bold text-lg text-history-primary dark:text-history-light flex items-center">
+                <h2 className="font-bold text-lg text-gray-900 dark:text-gray-100 flex items-center">
                   <Calendar className="mr-2 h-4 w-4" />
                   When
                 </h2>
@@ -267,7 +272,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4">
               <div className="border-b border-border pb-3 mb-3 flex justify-between items-center">
-                <h2 className="font-bold text-lg text-history-primary dark:text-history-light flex items-center">
+                <h2 className="font-bold text-lg text-gray-900 dark:text-gray-100 flex items-center">
                   <MapPin className="mr-2 h-4 w-4" />
                   Where
                 </h2>

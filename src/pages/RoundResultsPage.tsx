@@ -408,7 +408,7 @@ const RoundResultsPage = () => {
         result={resultForLayout}
         avatarUrl={profile?.avatar_image_url || profile?.avatar_url || '/assets/default-avatar.png'}
         nextRoundButton={
-          <Button onClick={handleNext} disabled={navigating} className="bg-history-primary hover:bg-history-primary/90 text-white">
+          <Button onClick={handleNext} disabled={navigating} className="bg-white hover:bg-gray-100 text-gray-900 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700">
             {navigating ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
             <span className="ml-2">{roundNumber === images.length ? 'Finish Game' : 'Next Round'}</span>
           </Button>
@@ -440,7 +440,7 @@ const RoundResultsPage = () => {
                 </svg>
               </Button>
             )}
-            <Button onClick={handleNext} className="h-12 px-6 rounded-full font-bold text-lg">
+            <Button onClick={handleNext} className="h-12 px-6 rounded-full font-bold text-lg bg-white hover:bg-gray-100 text-gray-900 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700">
               {roundNumber === images.length ? 'Finish Game' : 'Next Round'}
             </Button>
           </div>

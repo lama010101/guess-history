@@ -32,10 +32,10 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
       </div>
       
       {onSubmit && (
-        <div className="mt-auto w-full sticky bottom-0 bg-background pt-2 pb-4 lg:pb-0 lg:pt-4 lg:static">
+        <div className="fixed bottom-0 left-0 right-0 lg:static bg-background lg:bg-transparent p-4 lg:p-0 z-10">
           <Button 
             onClick={onSubmit}
-            className="w-full lg:w-full max-w-2xl mx-auto px-8 py-6 text-lg font-semibold shadow-lg lg:shadow-none"
+            className="w-full max-w-md mx-auto flex items-center justify-center text-lg font-semibold px-8 py-6 bg-white text-black hover:bg-gray-200 disabled:bg-gray-400 disabled:text-gray-600 disabled:opacity-100 shadow-lg"
             disabled={!hasSelectedLocation}
           >
             Submit Guess

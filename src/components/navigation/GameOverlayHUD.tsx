@@ -105,12 +105,7 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
             </Badge>
           </div>
           
-          {/* Display hint debts if they exist */}
-          {(xpDebt > 0 || accDebt > 0) && (
-            <div className="text-xs text-white/80 mt-1">
-              Hint penalties: -{xpDebt} XP, -{accDebt}%
-            </div>
-          )}
+
         </div>
         
         {/* Right side - Fullscreen button */}
@@ -147,6 +142,11 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
               <Badge variant="default" className="text-xs">
                 {`${hintsUsed}/14`}
               </Badge>
+              {(xpDebt > 0 || accDebt > 0) && (
+                <span className="ml-2 text-xs font-semibold text-yellow-200 bg-yellow-700/80 rounded px-2 py-0.5">
+                  -{xpDebt}XP, -{accDebt}%
+                </span>
+              )}
             </Button>
           )}
         </div>

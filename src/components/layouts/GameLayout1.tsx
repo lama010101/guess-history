@@ -10,6 +10,8 @@ import YearSelector from '@/components/game/YearSelector';
 import LocationSelector from '@/components/game/LocationSelector';
 import TimerDisplay from '@/components/game/TimerDisplay';
 import LazyImage from '@/components/ui/LazyImage';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 // Helper function to format time as MM:SS
 const formatTime = (seconds: number): string => {
@@ -205,23 +207,33 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       <div className="flex-grow p-4 lg:p-8 lg:overflow-y-auto lg:h-screen">
         <div className="max-w-5xl mx-auto">
           <div className="space-y-6">
-            <div className="pb-0.5 sm:pb-4">
-              <YearSelector 
-                selectedYear={selectedYear}
-                onChange={onYearChange}
-              />
-            </div>
+            <Card className="overflow-hidden">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-bold uppercase">When</h3>
+                  <span className="text-orange-500 bg-orange-100 rounded-full px-4 py-1 font-semibold text-base">{selectedYear}</span>
+                </div>
+                <YearSelector 
+                  selectedYear={selectedYear}
+                  onChange={onYearChange}
+                />
+              </CardContent>
+            </Card>
             
-            <div className="pt-0.5 sm:pt-4">
-              <LocationSelector 
-                selectedLocation={null} 
-                onLocationSelect={() => {}} 
-                onCoordinatesSelect={handleCoordinatesSelect}
-                onSubmit={handleSubmitGuess}
-                hasSelectedLocation={!!currentGuess}
-                avatarUrl={avatarUrl}
-              />
-            </div>
+            <Card className="overflow-hidden">
+              <CardContent className="p-4">
+                <LocationSelector 
+                  selectedLocation={null} 
+                  onLocationSelect={() => {}} 
+                  onCoordinatesSelect={handleCoordinatesSelect}
+                  onSubmit={handleSubmitGuess}
+                  hasSelectedLocation={!!currentGuess}
+                  avatarUrl={avatarUrl}
+                />
+                {/* Render the location label below the map, e.g., WHERE Foggaret... */}
+
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

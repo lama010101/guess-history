@@ -1,6 +1,7 @@
 import React from 'react';
 import HomeMap from '@/components/HomeMap';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 interface LocationSelectorProps {
   selectedLocation: string | null;
@@ -9,6 +10,7 @@ interface LocationSelectorProps {
   onSubmit?: () => void;
   hasSelectedLocation?: boolean;
   avatarUrl?: string;
+  locationLabel?: string;
 }
 
 const LocationSelector: React.FC<LocationSelectorProps> = ({
@@ -20,8 +22,8 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
   avatarUrl
 }) => {
   return (
-    <div className="mb-8 w-full flex flex-col h-full">
-      <div className="h-64 lg:h-[500px] w-full rounded-lg overflow-hidden shadow-lg mb-4">
+    <div className="w-full flex flex-col h-full">
+      <div className="w-full rounded-lg overflow-hidden mb-4" style={{ height: '300px' }}>
         <HomeMap 
           onLocationSelect={onLocationSelect}
           onCoordinatesSelect={onCoordinatesSelect}

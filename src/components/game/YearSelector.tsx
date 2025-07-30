@@ -47,28 +47,9 @@ const YearSelector: React.FC<YearSelectorProps> = ({
   };
 
   return (
-    <div className="mb-8">
-      <div className="flex justify-between mb-2">
-        <label className="font-semibold text-history-primary dark:text-history-light">WHEN</label>
-        {isEditing ? (
-          <input
-            type="number"
-            value={yearInput}
-            onChange={handleInputChange}
-            onBlur={handleInputBlur}
-            onKeyDown={handleKeyDown}
-            min={1850}
-            max={currentYear}
-            className="w-16 text-right font-medium bg-transparent border-b border-history-secondary focus:outline-none focus:border-history-primary"
-            autoFocus
-          />
-        ) : (
-          <Badge variant="selectedValue" onClick={handleYearClick} className="cursor-pointer hover:text-history-primary">
-            {selectedYear}
-          </Badge>
-        )}
-      </div>
-      <div className="relative">
+    <div className="w-full">
+      {/* Badge is now handled in the parent component */}
+      <div className="relative mb-6">
         <input 
           type="range" 
           min={1850} 
@@ -99,8 +80,8 @@ const YearSelector: React.FC<YearSelectorProps> = ({
                 className="absolute flex flex-col items-center"
                 style={{ left: `${position}%`, transform: 'translateX(-50%)' }}
               >
-                <div className="w-0.5 h-2 bg-[#dadada] -mt-2"></div>
-                <div className="text-xs text-[#dadada] mt-1">{year}</div>
+                <div className="w-0.5 h-2 bg-gray-600 dark:bg-gray-400 -mt-2"></div>
+                <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">{year}</div>
               </div>
             );
           })}

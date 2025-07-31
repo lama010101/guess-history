@@ -494,7 +494,7 @@ const HomePage = () => {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-gray-900 border border-gray-700 rounded-xl p-8 flex flex-col items-center space-y-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-            <p className="text-white text-lg font-medium">Loading 5 random images</p>
+            <p className="text-white text-lg font-medium">Loading 5 random events</p>
           </div>
         </div>
       )}

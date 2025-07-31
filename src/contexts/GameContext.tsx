@@ -481,7 +481,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         .from('images')
         .select('id, title, description, latitude, longitude, year, image_url, location_name, firebase_url, confidence, source_citation') 
         .eq('ready', true)
-        .limit(20);
+        .limit(5);
         
       if (fetchError) {
         console.error("Error fetching images:", fetchError);
@@ -493,8 +493,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         throw new Error(`Database only contains ${imageBatch?.length || 0} images. Need 5 to start.`);
       }
 
-      const shuffledBatch = shuffleArray(imageBatch);
-      const selectedImages = shuffledBatch.slice(0, 5);
+      // We already limited the query to 5, but shuffle locally for additional randomness
+      const selectedImages = shuffleArray(imageBatch);
 
       const processedImages = await Promise.all(
         selectedImages.map(async (img) => {

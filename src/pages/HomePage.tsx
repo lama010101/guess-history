@@ -66,6 +66,7 @@ const HomePage = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingMode, setPendingMode] = useState<string | null>(null);
   const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false);
+  const [showLoadingPopup, setShowLoadingPopup] = useState(false);
   // Timer states
   const [isSoloTimerEnabled, setIsSoloTimerEnabled] = useState(false);
   const [isFriendsTimerEnabled, setIsFriendsTimerEnabled] = useState(false);
@@ -132,13 +133,27 @@ const HomePage = () => {
       return;
     }
 
+    setShowLoadingPopup(true);
+
     if (mode === 'time-attack') {
       // For friends mode, use the friends timer settings
       if (isFriendsTimerEnabled) {
-        await startGame?.({ timerSeconds: friendsTimerSeconds, timerEnabled: true });
-        // The startGame function will handle navigation to the correct route
+        try {
+          await startGame?.({ timerSeconds: friendsTimerSeconds, timerEnabled: true });
+          // The startGame function will handle navigation to the correct route
+        } catch (error) {
+          console.error('Error starting game:', error);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to start the game. Please try again.",
+          });
+        } finally {
+          setShowLoadingPopup(false);
+        }
         return;
       } else {
+        setShowLoadingPopup(false);
         setIsFriendsModalOpen(true);
         return;
       }
@@ -151,6 +166,7 @@ const HomePage = () => {
         title: "Error",
         description: "Unable to start game. Please try again.",
       });
+      setShowLoadingPopup(false);
       return;
     }
     
@@ -165,7 +181,7 @@ const HomePage = () => {
               hintsPerGame: 5, // TODO: Make hints configurable
             }
           : {};
-          
+        
         await startGame?.(gameSettings);
         // startGame handles navigation internally
       } catch (error) {
@@ -175,17 +191,21 @@ const HomePage = () => {
           title: "Error",
           description: "Failed to start the game. Please try again.",
         });
+      } finally {
+        setShowLoadingPopup(false);
       }
     }
   }, [user, gameContext, startGame, isLoading, navigate, toast, setPendingMode, setShowAuthModal, setIsFriendsModalOpen, isSoloTimerEnabled, practiceTimerSeconds, isFriendsTimerEnabled, friendsTimerSeconds]);
   
   const handleStartFriendsGame = useCallback(async (settings: { timerSeconds: number; hintsPerGame: number }) => {
     setIsFriendsModalOpen(false);
+    setShowLoadingPopup(true);
     
     // Check if user is authenticated (either guest or registered)
     if (!user) {
       setPendingMode('time-attack');
       setShowAuthModal(true);
+      setShowLoadingPopup(false);
       return;
     }
     
@@ -196,17 +216,13 @@ const HomePage = () => {
         title: "Error",
         description: "Unable to start game. Please try again.",
       });
+      setShowLoadingPopup(false);
       return;
     }
     
     if (!isLoading) {
       try {
-        // Call startGame with the settings from the friends modal
-        await startGame?.({ 
-          timerSeconds: settings.timerSeconds, 
-          hintsPerGame: settings.hintsPerGame,
-          timerEnabled: settings.timerSeconds > 0
-        });
+        await startGame?.(settings);
         // startGame handles navigation internally
       } catch (error) {
         console.error('Error starting friends game:', error);
@@ -215,10 +231,11 @@ const HomePage = () => {
           title: "Error",
           description: "Failed to start the game. Please try again.",
         });
+      } finally {
+        setShowLoadingPopup(false);
       }
     }
-  }, [user, gameContext, startGame, isLoading, navigate, toast, setPendingMode, setShowAuthModal, setIsFriendsModalOpen, isSoloTimerEnabled, practiceTimerSeconds, isFriendsTimerEnabled, friendsTimerSeconds]);
-
+  }, [user, gameContext, startGame, isLoading, toast]);
 
   useEffect(() => {
     if (user && pendingMode && gameContext && startGame) {
@@ -471,6 +488,17 @@ const HomePage = () => {
           </div>
         </div>
       </div>
+      
+      {/* Loading Popup */}
+      {showLoadingPopup && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-gray-900 border border-gray-700 rounded-xl p-8 flex flex-col items-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            <p className="text-white text-lg font-medium">Loading 5 random images</p>
+          </div>
+        </div>
+      )}
+      
       <GlobalSettingsModal 
         isOpen={isSettingsModalOpen} 
         onClose={() => setIsSettingsModalOpen(false)}

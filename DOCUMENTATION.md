@@ -82,6 +82,73 @@ For example:
 - `/round-results` (page) fetches round data and user scores
 - `ResultsLayout2` (layout) receives this data and handles the visual presentation
 
+## Landing Page Implementation
+
+The landing page is the main entry point of the application, featuring a dynamic hero section with rotating historical images and a clear call-to-action.
+
+### Key Components
+
+1. **Main Landing Page (`src/pages/LandingPage.tsx`)**
+   - Serves as the container for all landing page components
+   - Manages authentication modal state
+   - Handles scroll behavior for navigation
+   - Coordinates between different landing page sections
+
+2. **Hero Section (`src/components/landing/RedesignedHeroSection.tsx`)**
+   - Displays a full-screen carousel of historical images
+   - Features the main call-to-action button
+   - Handles image preloading and error states
+   - Implements smooth transitions between images
+
+3. **Hero Images (`src/assets/hero/`)**
+   - **Location**: `src/assets/hero/`
+   - **Supported Formats**: `.webp`, `.jpg`, `.jpeg`, `.png`
+   - **Dynamic Loading**: All images in this directory are automatically included in the carousel
+   - **No Naming Restrictions**: Any valid image file will be detected and included
+
+### Features
+
+- **Image Carousel**:
+  - Rotates through historical images every 3 seconds
+  - Smooth fade transitions between images
+  - Preloads all images for seamless viewing
+  - Fallback UI for loading and error states
+
+- **Responsive Design**:
+  - Adapts to different screen sizes
+  - Maintains readability across devices
+  - Optimized image loading based on viewport
+
+- **Performance Optimizations**:
+  - Lazy loading of images
+  - WebP format for faster loading
+  - Efficient memory management for image carousel
+
+### Implementation Details
+
+1. **Image Management**:
+   - Images are preloaded on component mount
+   - Uses `LazyImage` component for optimized loading
+   - Includes error handling for failed image loads
+   - Fallback to placeholder if images fail to load
+
+2. **Animation**:
+   - Smooth fade transitions between images
+   - Staggered animations for text elements
+   - Subtle hover effects on interactive elements
+
+3. **Accessibility**:
+   - Proper ARIA labels for screen readers
+   - Keyboard navigation support
+   - Sufficient color contrast for readability
+
+### Dependencies
+
+- React Hooks (`useState`, `useEffect`)
+- Custom `LazyImage` component for optimized loading
+- Tailwind CSS for styling
+- Lucide Icons for UI elements
+
 ### Layout Components (`src/components/layouts/`)
 
 These reusable layout components provide consistent UI structures across different pages:

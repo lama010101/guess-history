@@ -2,21 +2,10 @@ import { useState, useEffect } from "react";
 import LazyImage from '@/components/ui/LazyImage';
 import { Button } from "@/components/ui/button";
 
-// Explicit list of hero images located in the public/images/hero directory.
-// Add or remove entries as you update the folder.
-const heroImages: string[] = [
-  '/images/hero/HERO (1).webp',
-  '/images/hero/HERO (2).webp',
-  '/images/hero/HERO (3).webp',
-  '/images/hero/hero (8).webp',
-  '/images/hero/hero (9).webp',
-  '/images/hero/hero (12).webp',
-  '/images/hero/hero (14).webp',
-  '/images/hero/hero (17).webp',
-  '/images/hero/hero (18).webp',
-  '/images/hero/hero (19).webp',
-  '/images/hero/hero (22).webp',
-];
+// Dynamically import all images from src/assets/hero directory (any extension)
+// This makes the component automatically use any images placed in that folder.
+const heroImageModules = import.meta.glob('@/assets/hero/*.{webp,jpg,jpeg,png}', { eager: true });
+const heroImages = Object.values(heroImageModules).map((mod: any) => mod.default) as string[];
 
 interface RedesignedHeroSectionProps {
   onAuthModalOpen?: () => void;
@@ -28,31 +17,25 @@ const RedesignedHeroSection = ({ onAuthModalOpen }: RedesignedHeroSectionProps) 
   const [imagesLoading, setImagesLoading] = useState(true);
 
   useEffect(() => {
-    const preload = async () => {
+    // Preload images before setting them to the state to ensure they are cached
+    const preloadImages = async () => {
       try {
         await Promise.all(
-          heroImages.map(
-            (url) =>
-              new Promise<void>((resolve) => {
-                const img = new Image();
-                img.src = url;
-                img.onload = () => resolve();
+          heroImages.map(url => new Promise((resolve, reject) => {
+            const img = new Image();
+            img.src = url;
+            img.onload = resolve;
             img.onerror = reject;
-          });
-        const loaded = await Promise.all(heroImages.map(load));
-              })
-          )
+          }))
         );
-
-        setCarouselImages(loaded);
+        setCarouselImages(heroImages);
       } catch (error) {
-        console.error('Error loading hero images:', error);
+        console.error('Failed to load hero images:', error);
       } finally {
         setImagesLoading(false);
       }
     };
-
-    loadImages();
+    preloadImages();
   }, []);
 
   useEffect(() => {

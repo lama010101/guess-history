@@ -35,23 +35,11 @@ const LandingPage: React.FC = () => {
         console.log('Loading hero images...');
         setImagesLoading(true);
         
-        // Manually define the image paths
-        const imageUrls = [
-          '/IMAGES/hero/HERO (1).webp',
-          '/IMAGES/hero/HERO (2).webp',
-          '/IMAGES/hero/HERO (3).webp',
-          '/IMAGES/hero/hero (8).webp',
-          '/IMAGES/hero/hero (9).webp',
-          '/IMAGES/hero/hero (12).webp',
-          '/IMAGES/hero/hero (14).webp',
-          '/IMAGES/hero/hero (17).webp',
-          '/IMAGES/hero/hero (18).webp',
-          '/IMAGES/hero/hero (19).webp',
-          '/IMAGES/hero/hero (22).webp'
-        ];
-        
-        setCarouselImages(imageUrls);
-        console.log('Loaded hero images:', imageUrls);
+        // Dynamically import all images from src/assets/hero directory (any extension)
+        const heroImageModules = import.meta.glob('@/assets/hero/*.{webp,jpg,jpeg,png}', { eager: true });
+        const heroImages = Object.values(heroImageModules).map((mod: any) => mod.default) as string[];
+        setCarouselImages(heroImages);
+        console.log('Loaded hero images:', heroImages);
       } catch (error) {
         console.error('Error loading images:', error);
       } finally {
@@ -161,7 +149,8 @@ const LandingPage: React.FC = () => {
           <span className="mt-2 text-sm opacity-80">No signup needed - Play immediately as a guest</span>
         </main>
       </section>
-      {/* How does it work section */}
+      
+      {/* How does it work section - Temporarily hidden for reimplementation
       <section
         className="relative z-10 flex flex-col items-center justify-center text-center bg-black py-16 px-4"
         style={{ minHeight: '100vh', height: 'auto' }}
@@ -206,7 +195,6 @@ const LandingPage: React.FC = () => {
             <p className="text-base text-gray-600">See how close you were, get the real answer, and read a short story about the event.</p>
           </div>
         </div>
-        {/* Responsive: match hero height on desktop */}
         <style>{`
           @media (min-width: 768px) {
             section[style*='min-height: 100vh'] {
@@ -216,6 +204,7 @@ const LandingPage: React.FC = () => {
           }
         `}</style>
       </section>
+      */}
       {/* Authentication modal */}
       <AuthModal
         isOpen={authOpen}

@@ -158,11 +158,19 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
               className="flex flex-col sm:flex-row gap-4"
             >
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="km" id="km" />
+                <RadioGroupItem 
+                    value="km" 
+                    id="km" 
+                    className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500" 
+                  />
                 <Label htmlFor="km">Kilometers (km)</Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="miles" id="miles" />
+                <RadioGroupItem 
+                    value="miles" 
+                    id="miles" 
+                    className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500" 
+                  />
                 <Label htmlFor="miles">Miles (mi)</Label>
               </div>
             </RadioGroup>

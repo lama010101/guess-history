@@ -38,18 +38,51 @@ export const NavMenu = () => {
   } | null>(null);
   const [avatar, setAvatar] = useState<Avatar | null>(null);
 
+  // Fetch profile data helper
+  const fetchProfileData = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, avatar_image_url, avatar_id, avatar_name, display_name')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return;
+      }
+
+      setProfile(data);
+
+      if (data?.avatar_id) {
+        const { data: avatarData, error: avatarError } = await supabase
+          .from('avatars')
+          .select('*')
+          .eq('id', data.avatar_id)
+          .single();
+        if (!avatarError) setAvatar(avatarData);
+      }
+    } catch (error) {
+      console.error('Error in profile fetch:', error);
+    }
+  };
+
   // Fetch profile data when user changes
   useEffect(() => {
     if (user) {
-      const fetchProfileData = async () => {
-        try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('first_name, last_name, avatar_image_url, avatar_id, avatar_name, display_name')
-            .eq('id', user.id)
-            .single();
+      fetchProfileData();
+    } else {
+      setProfile(null);
+      setAvatar(null);
+    }
+  }, [user]);
 
-          if (error) {
+  // Listen for avatarUpdated event to refresh data
+  useEffect(() => {
+    window.addEventListener('avatarUpdated', fetchProfileData);
+    return () => window.removeEventListener('avatarUpdated', fetchProfileData);
+  }, [user, fetchProfileData]);
             console.error('Error fetching profile:', error);
             return;
           }

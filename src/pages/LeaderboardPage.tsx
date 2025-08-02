@@ -303,8 +303,10 @@ const LeaderboardPage = () => {
           </div>
         )}
       </div>
+      {/* Auth Modal for guest sign up */}
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </div>
   );
 };
 
-export default LeaderboardPage; // Export with new name 
+export default LeaderboardPage; // Export with new name

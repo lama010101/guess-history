@@ -116,7 +116,8 @@ const AvatarsTab: React.FC<AvatarsTabProps> = ({
           title: "Avatar updated",
           description: "Your profile avatar has been updated successfully.",
         });
-        onAvatarUpdated();
+        window.dispatchEvent(new Event('avatarUpdated'));
+      onAvatarUpdated();
       } else {
         toast({
           title: "Update failed",

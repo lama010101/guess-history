@@ -55,6 +55,19 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
     fetchUserAvatar();
   }, [user]);
 
+  // Listen for global avatarUpdated event
+  useEffect(() => {
+    const handler = () => {
+      if (user) {
+        fetchUserProfile(user.id).then((profile) => {
+          setAvatarUrl(profile?.avatar_image_url || profile?.avatar_url || null);
+        });
+      }
+    };
+    window.addEventListener('avatarUpdated', handler);
+    return () => window.removeEventListener('avatarUpdated', handler);
+  }, [user]);
+
   return (
     <header className="sticky top-0 z-50 bg-black/0 backdrop-blur-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -67,13 +80,12 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
           {/* Global Score in center/right */}
           <div className="flex items-center">
             <Badge 
-              variant="xp" 
-              className="text-lg flex items-center gap-1 mr-4 cursor-pointer hover:bg-history-primary/80" 
-              aria-label={`Global XP: ${formatInteger(globalXP)}`}
+              variant="secondary" 
+              className="px-3 py-1 bg-history-primary text-white hover:bg-history-primary/90 cursor-pointer"
               onClick={() => navigate('/test/leaderboard')}
             >
-              <Award className="h-4 w-4" />
-              <span>{formatInteger(globalXP)}</span>
+              <Award className="h-4 w-4 mr-1" />
+              {formatInteger(globalXP || 0)} XP
             </Badge>
             
             {/* Avatar/Menu button on the right */}

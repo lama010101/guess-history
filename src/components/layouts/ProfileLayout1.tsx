@@ -159,9 +159,9 @@ const ProfileLayout1 = () => {
         />
         {isGuest && (
           <div className="my-4 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700">
-            <p>You are currently playing as a guest. Upgrade your account to save your progress.</p>
+            <p>You are currently playing as a guest. Register to save your progress.</p>
             <Button onClick={() => setShowUpgradeForm(!showUpgradeForm)} className="mt-2">
-              {showUpgradeForm ? 'Cancel' : 'Upgrade Account'}
+              {showUpgradeForm ? 'Cancel' : 'Register'}
             </Button>
             {showUpgradeForm && (
               <div className="mt-4">
@@ -179,9 +179,8 @@ const ProfileLayout1 = () => {
         )}
         
         <Tabs defaultValue="stats">
-          <TabsList className="grid grid-cols-5 mb-8">
+          <TabsList className="grid grid-cols-4 mb-8">
             <TabsTrigger value="stats">Stats</TabsTrigger>
-            <TabsTrigger value="badges">Badges</TabsTrigger>
             <TabsTrigger value="avatars">Avatars</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
             <TabsTrigger value="account">Account</TabsTrigger>
@@ -191,9 +190,7 @@ const ProfileLayout1 = () => {
             <StatsTab stats={stats || getDefaultStats()} isLoading={statsLoading} />
           </TabsContent>
           
-          <TabsContent value="badges">
-            <BadgesTab badgeEvaluations={badgeEvaluations} isLoading={badgesLoading} />
-          </TabsContent>
+
           
           <TabsContent value="avatars">
             <AvatarsTab 
@@ -220,7 +217,7 @@ const ProfileLayout1 = () => {
             {isGuest && (
               <div className="text-center p-8 glass-card rounded-xl">
                   <h3 className="text-lg font-semibold text-history-primary dark:text-history-light">Account Management</h3>
-                  <p className="text-gray-600 dark:text-gray-400 mt-2">Please upgrade your account to manage your email, password, and other account settings.</p>
+                  <p className="text-gray-600 dark:text-gray-400 mt-2">Register to manage your email, password, and other account settings.</p>
               </div>
             )}
           </TabsContent>

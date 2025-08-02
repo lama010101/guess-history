@@ -159,7 +159,7 @@ const LeaderboardPage = () => {
           </div>
         </Alert>
       )}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden max-w-4xl mx-auto">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg overflow-hidden max-w-4xl mx-auto">
         <Table>
           <TableHeader>
             <TableRow>

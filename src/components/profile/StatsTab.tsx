@@ -86,7 +86,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading }) => {
           </div>
           
           {(stats.time_accuracy > 0 || stats.location_accuracy > 0 || stats.challenge_accuracy > 0) && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+            <div className="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm">
               <h4 className="font-medium mb-3 text-history-primary dark:text-history-light">Accuracy Breakdown</h4>
               
               <div className="space-y-3">

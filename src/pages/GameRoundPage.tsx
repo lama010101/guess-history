@@ -352,7 +352,7 @@ const GameRoundPage = () => {
   if (!imageForRound) {
      return (
       <div className="fixed inset-0 bg-gray-100 dark:bg-gray-900 flex items-center justify-center z-50">
-        <div className="text-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+        <div className="text-center p-6 bg-white dark:bg-gray-900 rounded-lg shadow-md">
           <h2 className="text-xl font-semibold text-yellow-600 mb-3">Image Not Found</h2>
           <p className="text-muted-foreground">Could not load image for round {roundNumber}.</p>
            <button 

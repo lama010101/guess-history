@@ -220,7 +220,7 @@ const AvatarsTab: React.FC<AvatarsTabProps> = ({
               <div 
                 key={avatar.id}
                 ref={isLastItem ? lastAvatarRef : null}
-                className={`relative bg-white dark:bg-gray-800 rounded-lg p-3 text-center shadow-sm border-2 ${
+                className={`relative bg-white dark:bg-gray-900 rounded-lg p-3 text-center shadow-sm border-2 ${
                   isSelected ? 'border-history-primary' : 'border-transparent'
                 } hover:border-history-primary/50 transition-colors cursor-pointer`}
                 onClick={() => handleSelectAvatar(avatar.id)}

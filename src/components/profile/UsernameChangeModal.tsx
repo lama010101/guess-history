@@ -76,6 +76,8 @@ export const UsernameChangeModal: React.FC<UsernameChangeModalProps> = ({
       });
       
       onUsernameUpdated(newUsername.trim());
+      // Dispatch global event for username sync
+      window.dispatchEvent(new CustomEvent('usernameUpdated', { detail: newUsername.trim() }));
       onClose();
     } catch (error) {
       console.error('Error in handleSaveUsername:', error);

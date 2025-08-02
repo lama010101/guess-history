@@ -215,14 +215,7 @@ export const NavProfile = () => {
             </Link>
           </DropdownMenuItem>
 
-          {!isGuest && (
-            <DropdownMenuItem asChild>
-              <Link to="/test/account" className="flex items-center">
-                <UserCog className="mr-2 h-4 w-4" />
-                <span>Account</span>
-              </Link>
-            </DropdownMenuItem>
-          )}
+
           <DropdownMenuItem
             onClick={handleSignOut}
             className="text-red-600 focus:text-red-600 cursor-pointer"

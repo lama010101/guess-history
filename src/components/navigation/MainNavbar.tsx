@@ -55,7 +55,7 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
     fetchUserAvatar();
   }, [user]);
 
-  // Listen for global avatarUpdated event
+  // Listen for avatarUpdated and usernameUpdated events to refresh profile data
   useEffect(() => {
     const handler = () => {
       if (user) {
@@ -65,7 +65,11 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
       }
     };
     window.addEventListener('avatarUpdated', handler);
-    return () => window.removeEventListener('avatarUpdated', handler);
+    window.addEventListener('usernameUpdated', handler);
+    return () => {
+      window.removeEventListener('avatarUpdated', handler);
+      window.removeEventListener('usernameUpdated', handler);
+    };
   }, [user]);
 
   return (

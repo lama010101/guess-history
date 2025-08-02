@@ -97,21 +97,21 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
             className="flex flex-col sm:flex-row gap-4"
           >
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="light" id="light" />
+              <RadioGroupItem value="light" id="light" className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" />
               <Label htmlFor="light" className="flex items-center">
                 <Sun className="h-4 w-4 mr-2" />
                 Light
               </Label>
             </div>
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="dark" id="dark" />
+              <RadioGroupItem value="dark" id="dark" className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" />
               <Label htmlFor="dark" className="flex items-center">
                 <Moon className="h-4 w-4 mr-2" />
                 Dark
               </Label>
             </div>
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="system" id="system" />
+              <RadioGroupItem value="system" id="system" className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" />
               <Label htmlFor="system" className="flex items-center">
                 <Monitor className="h-4 w-4 mr-2" />
                 System
@@ -161,7 +161,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
                 <RadioGroupItem 
                     value="km" 
                     id="km" 
-                    className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500" 
+                    className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" 
                   />
                 <Label htmlFor="km">Kilometers (km)</Label>
               </div>
@@ -169,7 +169,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
                 <RadioGroupItem 
                     value="miles" 
                     id="miles" 
-                    className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500" 
+                    className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" 
                   />
                 <Label htmlFor="miles">Miles (mi)</Label>
               </div>

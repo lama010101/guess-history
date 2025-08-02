@@ -44,7 +44,7 @@ export const NavMenu = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('first_name, last_name, avatar_image_url, avatar_id, avatar_name, display_name')
+        .select('first_name, last_name, avatar_url, avatar_image_url, avatar_id, avatar_name, display_name')
         .eq('id', user.id)
         .single();
 
@@ -78,40 +78,15 @@ export const NavMenu = () => {
     }
   }, [user]);
 
-  // Listen for avatarUpdated event to refresh data
+  // Listen for avatarUpdated and usernameUpdated events to refresh data
   useEffect(() => {
     window.addEventListener('avatarUpdated', fetchProfileData);
-    return () => window.removeEventListener('avatarUpdated', fetchProfileData);
+    window.addEventListener('usernameUpdated', fetchProfileData);
+    return () => {
+      window.removeEventListener('avatarUpdated', fetchProfileData);
+      window.removeEventListener('usernameUpdated', fetchProfileData);
+    };
   }, [user, fetchProfileData]);
-            console.error('Error fetching profile:', error);
-            return;
-          }
-
-          setProfile(data);
-
-          // If avatar_id exists, fetch the avatar details
-          if (data?.avatar_id) {
-            const { data: avatarData, error: avatarError } = await supabase
-              .from('avatars')
-              .select('*')
-              .eq('id', data.avatar_id)
-              .single();
-
-            if (avatarError) {
-              console.error('Error fetching avatar:', avatarError);
-              return;
-            }
-
-            setAvatar(avatarData);
-          }
-        } catch (error) {
-          console.error('Error in profile fetch:', error);
-        }
-      };
-
-      fetchProfileData();
-    }
-  }, [user]);
 
   const handleRestrictedFeatureClick = (e: React.MouseEvent) => {
     if (isGuest) {
@@ -146,9 +121,9 @@ export const NavMenu = () => {
             <div className="px-3 py-3 mb-1">
               <div className="flex items-center space-x-3">
                 <div className="flex-shrink-0">
-                  {(avatar?.firebase_url || profile.avatar_image_url) ? (
+                  {(avatar?.firebase_url || profile?.avatar_image_url || profile?.avatar_url) ? (
                     <img
-                      src={avatar?.firebase_url || profile.avatar_image_url || ''}
+                      src={avatar?.firebase_url || profile?.avatar_image_url || profile?.avatar_url || ''}
                       alt="User avatar"
                       className="h-12 w-12 rounded-full object-cover border-2 border-history-primary/30"
                       onError={(e) => {
@@ -221,9 +196,18 @@ export const NavMenu = () => {
             </Link>
           </DropdownMenuItem>
           
+          {!isGuest && (
+            <DropdownMenuItem asChild>
+              <Link to="/test/profile" className="flex items-center">
+                <User className="mr-2 h-4 w-4" />
+                <span>Profile</span>
+              </Link>
+            </DropdownMenuItem>
+          )}
+          
           <DropdownMenuItem 
             onClick={signOut}
-            className={`flex items-center ${isGuest ? 'bg-white text-black hover:bg-gray-100' : 'text-red-500 hover:text-red-600'}`}
+            className={`flex items-center ${isGuest ? 'bg-white text-black hover:bg-gray-100 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700' : 'text-red-500 hover:text-red-600'}`}
           >
             <LogOut className="mr-2 h-4 w-4" />
             <span>{isGuest ? "Register to save progress" : "Sign Out"}</span>

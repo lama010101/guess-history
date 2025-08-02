@@ -10,6 +10,9 @@ import { AuthModal } from "@/components/AuthModal";
 interface ProfileFromSupabase {
   id: string;
   display_name: string | null;
+  avatar_image_url?: string | null;
+  avatar_url?: string | null;
+  avatar_name?: string | null;
 }
 
 interface LeaderboardEntry {
@@ -18,6 +21,8 @@ interface LeaderboardEntry {
   games_played: number;
   display_name: string;
   accuracy: number;
+  avatar_url?: string;
+  avatar_name?: string;
 }
 
 const LeaderboardPage = () => {
@@ -58,7 +63,7 @@ const LeaderboardPage = () => {
           return;
         }
         
-        // Fetch profiles for display names
+        // Fetch profiles for display names and avatars
         const userIds = metrics.map((m: any) => m.user_id);
         console.log('Fetching profiles for user IDs:', userIds);
         
@@ -67,12 +72,12 @@ const LeaderboardPage = () => {
           if (userIds.length === 1) {
             profilesResponse = await supabase
               .from('profiles')
-              .select('id, display_name')
+              .select('id, display_name, avatar_image_url, avatar_url, avatar_name')
               .eq('id', userIds[0]);
           } else { // userIds.length > 1
             profilesResponse = await supabase
               .from('profiles')
-              .select('id, display_name')
+              .select('id, display_name, avatar_image_url, avatar_url, avatar_name')
               .in('id', userIds);
           }
         } else {
@@ -97,22 +102,21 @@ const LeaderboardPage = () => {
         
         console.log('Profiles data:', profiles);
         
-        // Merge metrics with profile data if available
+        // Merge metrics with profile data - only include registered users with proper profiles
         const leaderboardData: LeaderboardEntry[] = [];
-        for (const m of (metrics as any[])) { // Assuming metrics items are { user_id: string, ... }
-          const currentProfile = profiles.find((p: ProfileFromSupabase) => p.id === m.user_id);
+        for (const m of (metrics as any[])) {
+          const currentProfile = profiles.find((p: any) => p.id === m.user_id);
           
-          // Determine display name - use profile name if available, otherwise generate a default
-          const displayName = currentProfile?.display_name || `User ${m.user_id.substring(0, 6)}`;
-          
-          // Skip users with display names starting with 'User ' or empty/null
-          if (displayName && !displayName.startsWith('User ')) {
+          // Only include users with proper profiles (not guest users)
+          if (currentProfile?.display_name) {
             leaderboardData.push({
               user_id: m.user_id,
               xp: m.xp_total || 0,
               games_played: m.games_played || 0,
               accuracy: m.overall_accuracy || 0,
-              display_name: displayName,
+              display_name: currentProfile.display_name,
+              avatar_url: currentProfile.avatar_image_url || currentProfile.avatar_url,
+              avatar_name: currentProfile.avatar_name,
             });
           }
         }
@@ -254,7 +258,7 @@ const LeaderboardPage = () => {
                 Rank {sortConfig.key === 'user_id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </TableHead>
               <TableHead className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => handleSort('display_name')}>
-                Name {sortConfig.key === 'display_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                Player {sortConfig.key === 'display_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </TableHead>
               <TableHead className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => handleSort('xp')}>
                 XP {sortConfig.key === 'xp' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
@@ -274,16 +278,30 @@ const LeaderboardPage = () => {
               <TableRow><TableCell colSpan={5} className="text-center">No data found</TableCell></TableRow>
             ) : (
               sortedLeaderboard.slice(0, displayCount).map((entry, idx) => (
-                <TableRow 
-                  key={entry.user_id} 
-                  className={entry.user_id === user?.id 
-                    ? 'bg-history-primary text-white dark:bg-history-primary dark:text-white font-semibold'
-                    : ''
-                  }
-                >
-                  <TableCell>{idx + 1}</TableCell>
-                  <TableCell>{entry.display_name}</TableCell>
-                  <TableCell>{Math.round(entry.xp).toLocaleString()}</TableCell>
+                <TableRow key={entry.user_id} className={entry.user_id === user?.id ? 'bg-history-primary/10' : ''}>
+                  <TableCell className="font-medium">#{idx + 1}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-3">
+                      {entry.avatar_url ? (
+                        <img 
+                          src={entry.avatar_url} 
+                          alt={entry.display_name}
+                          className="h-8 w-8 rounded-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                          <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                            {entry.display_name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                      <span>{entry.display_name}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-semibold">{entry.xp.toLocaleString()}</TableCell>
                   <TableCell>{Math.round(entry.accuracy)}%</TableCell>
                   <TableCell>{entry.games_played}</TableCell>
                 </TableRow>

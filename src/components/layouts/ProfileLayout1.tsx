@@ -22,6 +22,7 @@ import {
   UserStats,
   UserSettings
 } from '@/utils/profile/profileService';
+import { AuthModal } from "@/components/AuthModal";
 
 // Import tab components
 import ProfileHeader from '@/components/profile/ProfileHeader';
@@ -51,8 +52,7 @@ const ProfileLayout1 = () => {
   const [statsLoading, setStatsLoading] = useState(true);
   const [settingsLoading, setSettingsLoading] = useState(true);
 
-  const [showUpgradeForm, setShowUpgradeForm] = useState(false);
-  const [email, setEmail] = useState('');
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
     fetchGlobalMetrics();
@@ -119,16 +119,7 @@ const ProfileLayout1 = () => {
     xp_total: stats?.total_xp || 0, year_bullseye: 0, location_bullseye: 0
   });
   
-  const handleUpgrade = async () => {
-    if (!email) return;
-    try {
-      await upgradeUser(email);
-      setShowUpgradeForm(false);
-      // Optionally, show a success message
-    } catch (error) {
-      console.error('Failed to upgrade user:', error);
-    }
-  };
+
 
   const refreshData = async () => {
     if (!user) return;
@@ -161,21 +152,9 @@ const ProfileLayout1 = () => {
         {isGuest && (
           <div className="my-4 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700">
             <p>You are currently playing as a guest. Register to save your progress.</p>
-            <Button onClick={() => setShowUpgradeForm(!showUpgradeForm)} className="mt-2">
-              {showUpgradeForm ? 'Cancel' : 'Register'}
+            <Button onClick={() => setShowAuthModal(true)} className="mt-2">
+              Register to save progress
             </Button>
-            {showUpgradeForm && (
-              <div className="mt-4">
-                <Input 
-                  type="email" 
-                  placeholder="Enter your email" 
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)} 
-                  className="mb-2"
-                />
-                <Button onClick={handleUpgrade}>Submit</Button>
-              </div>
-            )}
           </div>
         )}
         
@@ -224,6 +203,11 @@ const ProfileLayout1 = () => {
           </TabsContent>
         </Tabs>
       </div>
+      
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+      />
     </div>
   );
 };

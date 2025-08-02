@@ -23,8 +23,13 @@ interface LeaderboardEntry {
 const LeaderboardPage = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const { isGuest } = useAuth();
+  const [sortConfig, setSortConfig] = useState<{ key: keyof LeaderboardEntry; direction: 'asc' | 'desc' }>({ key: 'xp', direction: 'desc' });
+  const [currentUserRank, setCurrentUserRank] = useState<LeaderboardEntry | null>(null);
+  const [displayCount, setDisplayCount] = useState(20);
+  const [hasMore, setHasMore] = useState(true);
+  const { user, isGuest } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -112,6 +117,12 @@ const LeaderboardPage = () => {
           }
         }
         
+        // Find current user's rank
+        if (user) {
+          const currentUserEntry = leaderboardData.find(entry => entry.user_id === user.id);
+          setCurrentUserRank(currentUserEntry || null);
+        }
+        
         console.log('Leaderboard data:', leaderboardData);
         setLeaderboard(leaderboardData);
       } catch (err) {
@@ -130,14 +141,90 @@ const LeaderboardPage = () => {
     }, 60000); // Refresh every minute
     
     return () => clearInterval(refreshInterval);
-  }, []);
+  }, [user]);
+
+  const loadMore = async () => {
+    if (isLoadingMore || !hasMore) return;
+    
+    setIsLoadingMore(true);
+    const newDisplayCount = displayCount + 20;
+    setDisplayCount(newDisplayCount);
+    
+    // Check if we have more data to load
+    if (newDisplayCount >= sortedLeaderboard.length) {
+      setHasMore(false);
+    }
+    
+    setIsLoadingMore(false);
+  };
+
+  const handleSort = (key: keyof LeaderboardEntry) => {
+    setSortConfig(prevConfig => ({
+      key,
+      direction: prevConfig.key === key && prevConfig.direction === 'desc' ? 'asc' : 'desc'
+    }));
+  };
+
+  const sortedLeaderboard = [...leaderboard].sort((a, b) => {
+    const aValue = a[sortConfig.key];
+    const bValue = b[sortConfig.key];
+    
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+    }
+    
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      return sortConfig.direction === 'asc' 
+        ? aValue.localeCompare(bValue) 
+        : bValue.localeCompare(aValue);
+    }
+    
+    return 0;
+  });
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center justify-center gap-3 mb-8">
-        <ListOrdered className="h-8 w-8 text-history-primary" />
-        <h1 className="text-3xl font-bold text-history-primary">Leaderboard</h1>
-      </div>
+      {/* Title without icon and in all caps */}
+      <h1 className="text-3xl font-bold text-history-primary dark:text-white text-center mb-8 uppercase">
+        Leaderboard
+      </h1>
+      
+      {/* Current user card */}
+      {currentUserRank && (
+        <div className="max-w-2xl mx-auto mb-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border border-history-primary/20">
+            <h3 className="text-lg font-semibold mb-3 text-center text-history-primary dark:text-white">
+              Your Ranking
+            </h3>
+            <div className="grid grid-cols-4 gap-4 text-center">
+              <div>
+                <div className="text-2xl font-bold text-history-primary dark:text-white">
+                  #{leaderboard.findIndex(entry => entry.user_id === user?.id) + 1}
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Rank</div>
+              </div>
+              <div>
+                <div className="text-lg font-semibold text-history-primary dark:text-white">
+                  {currentUserRank.display_name}
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Name</div>
+              </div>
+              <div>
+                <div className="text-lg font-semibold text-history-primary dark:text-white">
+                  {Math.round(currentUserRank.xp).toLocaleString()}
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">XP</div>
+              </div>
+              <div>
+                <div className="text-lg font-semibold text-history-primary dark:text-white">
+                  {Math.round(currentUserRank.accuracy)}%
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Accuracy</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {isGuest && (
         <Alert className="mb-6 bg-amber-50 border-amber-200 text-amber-800 max-w-4xl mx-auto">
@@ -163,21 +250,37 @@ const LeaderboardPage = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Rank</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>XP</TableHead>
-              <TableHead>Accuracy</TableHead>
-              <TableHead>Games Played</TableHead>
+              <TableHead className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => handleSort('user_id')}>
+                Rank {sortConfig.key === 'user_id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => handleSort('display_name')}>
+                Name {sortConfig.key === 'display_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => handleSort('xp')}>
+                XP {sortConfig.key === 'xp' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => handleSort('accuracy')}>
+                Accuracy {sortConfig.key === 'accuracy' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => handleSort('games_played')}>
+                Games {sortConfig.key === 'games_played' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow><TableCell colSpan={5} className="text-center">Loading...</TableCell></TableRow>
-            ) : leaderboard.length === 0 ? (
+            ) : sortedLeaderboard.length === 0 ? (
               <TableRow><TableCell colSpan={5} className="text-center">No data found</TableCell></TableRow>
             ) : (
-              leaderboard.map((entry, idx) => (
-                <TableRow key={entry.user_id}>
+              sortedLeaderboard.slice(0, displayCount).map((entry, idx) => (
+                <TableRow 
+                  key={entry.user_id} 
+                  className={entry.user_id === user?.id 
+                    ? 'bg-history-primary text-white dark:bg-history-primary dark:text-white font-semibold'
+                    : ''
+                  }
+                >
                   <TableCell>{idx + 1}</TableCell>
                   <TableCell>{entry.display_name}</TableCell>
                   <TableCell>{Math.round(entry.xp).toLocaleString()}</TableCell>
@@ -188,6 +291,17 @@ const LeaderboardPage = () => {
             )}
           </TableBody>
         </Table>
+        {hasMore && sortedLeaderboard.length > displayCount && (
+          <div className="text-center py-4">
+            {isLoadingMore ? (
+              <div className="animate-spin h-6 w-6 border-2 border-history-primary border-t-transparent rounded-full mx-auto"></div>
+            ) : (
+              <Button onClick={loadMore} variant="outline">
+                Load More
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

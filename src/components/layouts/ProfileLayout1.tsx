@@ -42,7 +42,7 @@ const ProfileLayout1 = () => {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [metrics, setMetrics] = useState<Record<BadgeRequirementCode, number> | null>(null);
-  const [avatars, setAvatars] = useState<{ id: string; name: string; image_url: string }[]>([]);
+  const [avatars, setAvatars] = useState<Avatar[]>([]);
   const [badgeEvaluations, setBadgeEvaluations] = useState<BadgeEvaluation[]>([]);
   
   const [isLoading, setIsLoading] = useState(true);
@@ -156,6 +156,7 @@ const ProfileLayout1 = () => {
           isLoading={isLoading}
           onEditProfile={() => {}}
           avatar={avatar}
+          onProfileUpdate={refreshData}
         />
         {isGuest && (
           <div className="my-4 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700">

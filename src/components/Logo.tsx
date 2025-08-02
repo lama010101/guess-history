@@ -9,7 +9,7 @@ const Logo = ({
   return <Link to="/test" className={`flex items-center ${className}`}>
       <h1 className="text-sm md:text-lg font-serif font-bold tracking-tight">
         <span className="text-white">GUESS-</span>
-        <span className="text-history-secondary">HISTORY</span>
+        <span className="text-orange-500">HISTORY</span>
       </h1>
     </Link>;
 };

@@ -66,7 +66,12 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
           
           {/* Global Score in center/right */}
           <div className="flex items-center">
-            <Badge variant="xp" className="text-lg flex items-center gap-1 mr-4" aria-label={`Global XP: ${formatInteger(globalXP)}`}>
+            <Badge 
+              variant="xp" 
+              className="text-lg flex items-center gap-1 mr-4 cursor-pointer hover:bg-history-primary/80" 
+              aria-label={`Global XP: ${formatInteger(globalXP)}`}
+              onClick={() => navigate('/test/leaderboard')}
+            >
               <Award className="h-4 w-4" />
               <span>{formatInteger(globalXP)}</span>
             </Badge>

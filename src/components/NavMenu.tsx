@@ -21,8 +21,8 @@ import {
   LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabaseClient";
-import { Avatar } from "@/types/avatar";
+import { supabase } from "@/integrations/supabase/client";
+import { Avatar } from '@/utils/profile/profileService';
 
 export const NavMenu = () => {
   const navigate = useNavigate();
@@ -190,10 +190,10 @@ export const NavMenu = () => {
           
           <DropdownMenuItem 
             onClick={signOut}
-            className="flex items-center text-red-500 hover:text-red-600"
+            className={`flex items-center ${isGuest ? 'bg-white text-black hover:bg-gray-100' : 'text-red-500 hover:text-red-600'}`}
           >
             <LogOut className="mr-2 h-4 w-4" />
-            <span>{isGuest ? "End Guest Session" : "Sign Out"}</span>
+            <span>{isGuest ? "Register to save progress" : "Sign Out"}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

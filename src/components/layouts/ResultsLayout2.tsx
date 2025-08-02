@@ -167,7 +167,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   const userIcon = useMemo(() => createUserIcon(avatarUrl), [avatarUrl]);
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 pb-20">
+    <div className="min-h-screen bg-gray-100 dark:bg-black text-gray-900 dark:text-gray-100 pb-20">
       <ResultsHeader 
         round={round}
         totalRounds={totalRounds}
@@ -180,7 +180,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left Column */}
           <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 text-center">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-6 text-center">
               <h2 className="text-2xl font-bold mb-1 text-gray-900 dark:text-gray-100">Your Score</h2>
               {(xpDebt > 0 || accDebt > 0) && (
                 <div className="text-xs text-red-500 dark:text-red-400 mb-5">(Hint cost deducted)</div>
@@ -210,7 +210,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg overflow-hidden">
               <div className="relative w-full aspect-video overflow-hidden rounded-t-lg">
                 <img src={result.imageUrl} alt={result.imageTitle} className="w-full h-full object-cover" />
               </div>
@@ -226,7 +226,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   </div>
                   {result.source_citation && (
                     <Button 
-                      className="w-full bg-white text-gray-900 hover:bg-gray-100 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+                      className="px-2 py-1 h-auto text-xs bg-white text-gray-900 hover:bg-gray-100 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
                       onClick={() => setSourceModalOpen(true)} // This opens the modal
                     >
                       Source
@@ -239,7 +239,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
           {/* Right Column */}
           <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-4">
               <div className="border-b border-border pb-3 mb-3 flex justify-between items-center">
                 <h2 className="font-bold text-lg text-gray-900 dark:text-gray-100 flex items-center">
                   <Calendar className="mr-2 h-4 w-4" />
@@ -270,7 +270,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-4">
               <div className="border-b border-border pb-3 mb-3 flex justify-between items-center">
                 <h2 className="font-bold text-lg text-gray-900 dark:text-gray-100 flex items-center">
                   <MapPin className="mr-2 h-4 w-4" />

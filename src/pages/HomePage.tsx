@@ -273,7 +273,7 @@ const HomePage = () => {
             {gameContext ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
                 {/* Practice Mode Card */}
-                <div className="bg-black/40 backdrop-blur-sm rounded-xl p-6 flex flex-col items-center border border-orange-500/20 hover:border-orange-500/40 transition-all">
+                <div className="bg-black/40 backdrop-blur-sm rounded-xl p-6 flex flex-col items-center border border-gray-700/20 hover:border-gray-600/40 transition-all">
                   <div className={`${iconContainerStyle} ${practiceColor}`}>
                     <Target className={iconStyle} />
                   </div>
@@ -288,7 +288,7 @@ const HomePage = () => {
                           id="solo-timer-toggle" 
                           checked={isSoloTimerEnabled}
                           onCheckedChange={setIsSoloTimerEnabled}
-                          className="data-[state=checked]:bg-orange-500 h-4 w-8"
+                          className="data-[state=checked]:bg-gray-600 h-4 w-8"
                         />
                         <Label htmlFor="solo-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm text-white">
                           <Timer className="h-3 w-3" />
@@ -296,7 +296,7 @@ const HomePage = () => {
                         </Label>
                       </div>
                       {isSoloTimerEnabled && (
-                        <span className="text-sm font-medium text-orange-400">
+                        <span className="text-sm font-medium text-gray-300">
                           {formatTime(practiceTimerSeconds)}
                         </span>
                       )}
@@ -342,7 +342,7 @@ const HomePage = () => {
                   
                   {/* Start Button */}
                   <Button 
-                    className="w-full bg-orange-500 hover:bg-orange-600 text-white mt-auto flex items-center justify-center gap-2"
+                    className="w-full bg-gray-700 hover:bg-gray-600 text-white mt-auto flex items-center justify-center gap-2"
                     onClick={() => handleStartGame('classic')}
                     disabled={isLoading}
                   >
@@ -352,7 +352,7 @@ const HomePage = () => {
                 </div>
                 
                 {/* Friends Mode Card */}
-                <div className="bg-black/40 backdrop-blur-sm rounded-xl p-6 flex flex-col items-center border border-blue-500/20 hover:border-blue-500/40 transition-all relative">
+                <div className="bg-black/40 backdrop-blur-sm rounded-xl p-6 flex flex-col items-center border border-gray-700/20 hover:border-gray-600/40 transition-all relative">
                   {/* Overlay for guest users */}
                   {isGuest && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-xl z-10">
@@ -377,7 +377,7 @@ const HomePage = () => {
                           id="friends-timer-toggle" 
                           checked={isFriendsTimerEnabled}
                           onCheckedChange={setIsFriendsTimerEnabled}
-                          className="data-[state=checked]:bg-blue-500 h-4 w-8"
+                          className="data-[state=checked]:bg-gray-600 h-4 w-8"
                         />
                         <Label htmlFor="friends-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm text-white">
                           <Timer className="h-3 w-3" />
@@ -385,7 +385,7 @@ const HomePage = () => {
                         </Label>
                       </div>
                       {isFriendsTimerEnabled && (
-                        <span className="text-sm font-medium text-blue-400">
+                        <span className="text-sm font-medium text-gray-300">
                           {formatTime(friendsTimerSeconds)}
                         </span>
                       )}
@@ -431,7 +431,7 @@ const HomePage = () => {
                   
                   {/* Start Button */}
                   <Button 
-                    className="w-full bg-blue-500 hover:bg-blue-600 text-white mt-auto flex items-center justify-center gap-2"
+                    className="w-full bg-gray-700 hover:bg-gray-600 text-white mt-auto flex items-center justify-center gap-2"
                     onClick={() => handleStartGame('time-attack')}
                     disabled={isLoading || isGuest}
                   >
@@ -441,7 +441,7 @@ const HomePage = () => {
                 </div>
                 
                 {/* Challenge Mode Card */}
-                <div className="bg-black/40 backdrop-blur-sm rounded-xl p-6 flex flex-col items-center border border-purple-500/20 hover:border-purple-500/40 transition-all relative">
+                <div className="bg-black/40 backdrop-blur-sm rounded-xl p-6 flex flex-col items-center border border-gray-800/20 hover:border-gray-700/40 transition-all relative">
                   {/* Coming Soon Overlay */}
                   <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-xl z-10">
                     <div className="text-center p-4">
@@ -462,7 +462,7 @@ const HomePage = () => {
                   
                   {/* Start Button (Disabled) */}
                   <Button 
-                    className="w-full bg-purple-500/50 text-white/70 cursor-not-allowed mt-auto flex items-center justify-center gap-2"
+                    className="w-full bg-gray-800/50 text-white/70 cursor-not-allowed mt-auto flex items-center justify-center gap-2"
                     disabled={true}
                   >
                     <Play className="h-4 w-4" />
@@ -474,12 +474,12 @@ const HomePage = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="animate-pulse">
-                    <div className="h-[450px] bg-black/30 backdrop-blur-sm rounded-xl p-6 border border-gray-700/30">
-                      <div className="h-16 w-16 bg-gray-700/50 rounded-full mx-auto mb-6"></div>
-                      <div className="h-6 bg-gray-700/50 rounded w-1/3 mx-auto mb-8"></div>
-                      <div className="h-4 bg-gray-700/50 rounded w-3/4 mx-auto mb-4"></div>
-                      <div className="h-4 bg-gray-700/50 rounded w-2/3 mx-auto mb-8"></div>
-                      <div className="h-10 bg-gray-700/50 rounded w-full mx-auto mt-auto"></div>
+                    <div className="h-[450px] bg-gray-900/30 backdrop-blur-sm rounded-xl p-6 border border-gray-800/30">
+                      <div className="h-16 w-16 bg-gray-800/50 rounded-full mx-auto mb-6"></div>
+                      <div className="h-6 bg-gray-800/50 rounded w-1/3 mx-auto mb-8"></div>
+                      <div className="h-4 bg-gray-800/50 rounded w-3/4 mx-auto mb-4"></div>
+                      <div className="h-4 bg-gray-800/50 rounded w-2/3 mx-auto mb-8"></div>
+                      <div className="h-10 bg-gray-800/50 rounded w-full mx-auto mt-auto"></div>
                     </div>
                   </div>
                 ))}

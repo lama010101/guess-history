@@ -412,7 +412,7 @@ const FinalResultsPage = () => {
           </div>
 
           {/* Round Summary Card - Moved to top */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md p-6 mb-8">
             <h2 className="text-xl font-bold text-history-primary dark:text-history-light mb-4">Round Summary</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* WHEN Score */}
@@ -468,7 +468,7 @@ const FinalResultsPage = () => {
             return (
               <div
                 key={image.id}
-                className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden"
+                className="bg-white dark:bg-gray-900 rounded-xl shadow-lg overflow-hidden"
               >
                 <div className="flex flex-col">
                   <div className="w-full h-40 sm:h-48 md:h-40 lg:h-48">

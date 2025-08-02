@@ -408,7 +408,7 @@ const RoundResultsPage = () => {
         result={resultForLayout}
         avatarUrl={profile?.avatar_image_url || profile?.avatar_url || '/assets/default-avatar.png'}
         nextRoundButton={
-          <Button onClick={handleNext} disabled={navigating} className="bg-white hover:bg-gray-100 text-gray-900 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700">
+          <Button onClick={handleNext} disabled={navigating} className="bg-white hover:bg-gray-100 text-gray-900 border border-gray-300">
             {navigating ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
             <span className="ml-2">{roundNumber === images.length ? 'Finish Game' : 'Next Round'}</span>
           </Button>
@@ -417,7 +417,7 @@ const RoundResultsPage = () => {
           <Button
             variant="outline"
             onClick={() => confirmNavigation(handleNavigateHome)}
-            className="h-12 w-12 rounded-full bg-white/90 hover:bg-white shadow-md"
+            className="h-12 w-12 rounded-full bg-white hover:bg-gray-100 shadow-md text-gray-900"
             aria-label="Go Home"
             title="Return to Home"
           >
@@ -431,7 +431,7 @@ const RoundResultsPage = () => {
                 variant="outline"
                 size="icon"
                 onClick={() => setShowRatingModal(true)}
-                className="h-12 w-12 rounded-full bg-white/90 hover:bg-white shadow-md"
+                className="h-12 w-12 rounded-full bg-white hover:bg-gray-100 shadow-md text-gray-900"
                 aria-label="Rate Image"
                 title="Rate this image"
               >
@@ -440,7 +440,7 @@ const RoundResultsPage = () => {
                 </svg>
               </Button>
             )}
-            <Button onClick={handleNext} className="h-12 px-6 rounded-full font-bold text-lg bg-white hover:bg-gray-100 text-gray-900 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700">
+            <Button onClick={handleNext} className="h-12 px-6 rounded-full font-normal text-lg bg-white hover:bg-gray-100 text-gray-900 border border-gray-300">
               {roundNumber === images.length ? 'Finish Game' : 'Next Round'}
             </Button>
           </div>

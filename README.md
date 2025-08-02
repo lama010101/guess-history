@@ -1,1 +1,1 @@
-refer to ARCHITECTURE_AND_CODE_GUIDELINES.md
+refer to PRD.md

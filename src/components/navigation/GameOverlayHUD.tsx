@@ -113,9 +113,10 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
           {onFullscreen && (
             <Button 
               size="icon"
+              variant="outline"
               onClick={onFullscreen}
-              className="h-9 w-9 bg-white hover:bg-white/90 text-black rounded-full border-none"
-              aria-label="Full Screen"
+              className="h-9 w-9 bg-white/80 hover:bg-white/90 text-black rounded-full border-none"
+              aria-label="Fullscreen"
               type="button"
             >
               <Maximize className="h-4 w-4" />
@@ -132,13 +133,13 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
             <Button 
               size="sm" 
               variant="outline" 
-              className="bg-white text-black hover:bg-white/90 border-none pointer-events-auto"
+              className="bg-white/80 text-black hover:bg-white/90 border-none pointer-events-auto"
               onClick={onHintV2Click}
               disabled={isHintDisabled}
             >
               <Sparkles className="h-4 w-4 mr-1" />
               <span className="mr-1">Hints</span>
-              <Badge variant="default" className="text-xs text-black">
+              <Badge variant="default" className="text-xs text-white">
                 {`${hintsUsed}/14`}
               </Badge>
               {(xpDebt > 0 || accDebt > 0) && (
@@ -155,7 +156,7 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
           <Button 
             size="icon"
             onClick={() => onConfirmNavigation(() => onNavigateHome())}
-            className="h-9 w-9 bg-white hover:bg-white/90 text-black rounded-full border-none"
+            className="h-9 w-9 bg-white/80 hover:bg-white/90 text-black rounded-full border-none"
             aria-label="Home"
           >
             <Home className="h-4 w-4" />

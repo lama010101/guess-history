@@ -157,7 +157,7 @@ html {
     --muted-foreground: 0 0% 45%;
     --accent: 0 0% 96%;
     --accent-foreground: 0 0% 10%;
-    --destructive: 0 84% 60%;
+    --destructive: 0 0% 10%; /* Dark gray for destructive */
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 90%;
     --input: 0 0% 90%;
@@ -166,30 +166,30 @@ html {
     
     /* Custom background colors for theme */
     --light-background: 0 0% 98%; /* Very light gray/white background */
-    --dark-background: 0 0% 10%; /* Very dark gray/black background */
+    --dark-background: 0 0% 3%; /* Pure black background */
   }
  
   .dark {
-    /* Dark mode */
-    --background: 0 0% 10%; /* Black background */
-    --foreground: 0 0% 98%; /* White text */
-    --card: 0 0% 15%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 15%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 50%; /* Medium gray for primary */
-    --primary-foreground: 0 0% 98%;
-    --secondary: 25 95% 53%; /* Orange for secondary/highlight */
+    /* Dark mode - pure black/dark gray */
+    --background: 0 0% 3%; /* Pure black background */
+    --foreground: 0 0% 95%; /* Near white text */
+    --card: 0 0% 8%; /* Very dark gray for cards */
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 0 0% 20%; /* Dark gray for primary */
+    --primary-foreground: 0 0% 95%;
+    --secondary: 25 95% 53%; /* Keep orange for secondary/highlight */
     --secondary-foreground: 0 0% 10%;
-    --muted: 0 0% 20%;
-    --muted-foreground: 0 0% 65%;
-    --accent: 0 0% 25%;
-    --accent-foreground: 0 0% 98%;
+    --muted: 0 0% 12%; /* Darker muted background */
+    --muted-foreground: 0 0% 70%;
+    --accent: 0 0% 15%; /* Dark accent */
+    --accent-foreground: 0 0% 95%;
     --destructive: 0 65% 45%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
-    --ring: 0 0% 80%;
+    --destructive-foreground: 0 0% 95%;
+    --border: 0 0% 15%; /* Dark border */
+    --input: 0 0% 12%; /* Dark input background */
+    --ring: 0 0% 60%; /* Lighter ring for focus */
   }
 
   * {

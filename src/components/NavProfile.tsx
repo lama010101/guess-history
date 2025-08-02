@@ -214,12 +214,7 @@ export const NavProfile = () => {
               <span>Profile</span>
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to="/test/settings" className="flex items-center">
-              <SettingsIcon className="mr-2 h-4 w-4" />
-              <span>Settings</span>
-            </Link>
-          </DropdownMenuItem>
+
           {!isGuest && (
             <DropdownMenuItem asChild>
               <Link to="/test/account" className="flex items-center">

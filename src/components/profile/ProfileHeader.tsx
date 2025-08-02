@@ -1,26 +1,49 @@
-import React from 'react';
+import React, { useState } from 'react';
 import LazyImage from '@/components/ui/LazyImage';
 import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
 import { UserProfile, Avatar } from '@/utils/profile/profileService';
+import { UsernameChangeModal } from './UsernameChangeModal';
+import { useAuth } from '@/contexts/AuthContext';
+import { AuthModal } from '@/components/AuthModal';
 
 interface ProfileHeaderProps {
   profile: UserProfile | null;
   isLoading: boolean;
   onEditProfile: () => void;
   avatar?: Avatar | null;
+  onProfileUpdate?: () => void;
 }
 
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({ 
   profile,
   isLoading,
   onEditProfile,
-  avatar
+  avatar,
+  onProfileUpdate
 }) => {
+  const { isGuest } = useAuth();
+  const [showUsernameModal, setShowUsernameModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  
   const getDisplayName = () => {
     if (isLoading) return '...';
     if (!profile) return 'Guest';
     return profile.display_name || 'User';
+  };
+  
+  const handleAvatarClick = () => {
+    if (isGuest) {
+      setShowAuthModal(true);
+    } else {
+      setShowUsernameModal(true);
+    }
+  };
+  
+  const handleUsernameUpdated = (newUsername: string) => {
+    if (onProfileUpdate) {
+      onProfileUpdate();
+    }
   };
   
   const getAvatarUrl = () => {
@@ -50,8 +73,8 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           </div>
           <Button 
             size="icon" 
-            className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-white dark:bg-gray-800 shadow"
-            onClick={onEditProfile}
+            className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-white dark:bg-gray-800 shadow cursor-pointer"
+            onClick={handleAvatarClick}
           >
             <Settings className="h-4 w-4" />
           </Button>
@@ -98,6 +121,20 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           )}
         </div>
       </div>
+      
+      <UsernameChangeModal
+        isOpen={showUsernameModal}
+        onClose={() => setShowUsernameModal(false)}
+        currentUsername={profile?.display_name || ''}
+        userId={profile?.id || ''}
+        onUsernameUpdated={handleUsernameUpdated}
+      />
+      
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        initialTab="signUp"
+      />
     </div>
   );
 };

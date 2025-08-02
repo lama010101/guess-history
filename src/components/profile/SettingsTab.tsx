@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserSettings } from '@/utils/profile/profileService';
 import { useSettingsStore } from '@/lib/useSettingsStore';
+import { useTheme } from 'next-themes';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -23,6 +24,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
   isLoading,
   onSettingsUpdated
 }) => {
+  const { theme, setTheme } = useTheme();
   const [updatedSettings, setUpdatedSettings] = useState<UserSettings>(settings);
   const { soundEnabled, toggleSound } = useSettingsStore();
   const [saving, setSaving] = useState(false);
@@ -80,17 +82,18 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
   
   return (
     <div className="glass-card rounded-xl p-6">
-      <h3 className="text-lg font-semibold mb-6 text-history-primary dark:text-history-light">Your Settings</h3>
+
       
       <div className="space-y-6">
         {/* Theme Setting */}
         <div>
           <Label className="mb-3 block text-history-primary dark:text-history-light">Theme</Label>
           <RadioGroup 
-            defaultValue={updatedSettings.theme} 
-            onValueChange={(value) => 
-              setUpdatedSettings({...updatedSettings, theme: value as 'light' | 'dark' | 'system'})
-            }
+            value={updatedSettings.theme} 
+            onValueChange={(value) => {
+              setUpdatedSettings({...updatedSettings, theme: value as 'light' | 'dark' | 'system'});
+              setTheme(value as 'light' | 'dark' | 'system');
+            }}
             className="flex flex-col sm:flex-row gap-4"
           >
             <div className="flex items-center space-x-2">
@@ -117,69 +120,84 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
           </RadioGroup>
         </div>
 
-        {/* Sound Setting */}
-        <div>
-          <Label className="mb-3 block text-history-primary dark:text-history-light">Sound</Label>
-          <div className="flex items-center space-x-3">
-            <Switch
-              id="sound-toggle"
-              checked={updatedSettings.sound_enabled ?? soundEnabled}
-              onCheckedChange={(checked) => {
-                setUpdatedSettings({ ...updatedSettings, sound_enabled: checked });
-                toggleSound(); // Update the global sound state
-              }}
-            />
-            <Label htmlFor="sound-toggle">
-              {updatedSettings.sound_enabled ? 'On' : 'Off'}
-            </Label>
+        {/* Sound Setting - Coming Soon */}
+        <div className="relative">
+          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-lg z-10 flex items-center justify-center">
+            <span className="text-sm font-medium text-white">Coming soon...</span>
+          </div>
+          <div className="opacity-50 pointer-events-none">
+            <Label className="mb-3 block text-history-primary dark:text-history-light">Sound</Label>
+            <div className="flex items-center space-x-3">
+              <Switch
+                id="sound-toggle"
+                checked={updatedSettings.sound_enabled ?? soundEnabled}
+                onCheckedChange={(checked) => {
+                  setUpdatedSettings({ ...updatedSettings, sound_enabled: checked });
+                  toggleSound(); // Update the global sound state
+                }}
+              />
+              <Label htmlFor="sound-toggle">
+                {updatedSettings.sound_enabled ? 'On' : 'Off'}
+              </Label>
+            </div>
           </div>
         </div>
 
-        {/* Distance Units Setting */}
-        <div>
-          <Label className="mb-3 block text-history-primary dark:text-history-light">Distance Units</Label>
-          <RadioGroup 
-            defaultValue={updatedSettings.distance_unit} 
-            onValueChange={(value) => 
-              setUpdatedSettings({...updatedSettings, distance_unit: value as 'km' | 'mi'})
-            }
-            className="flex flex-col sm:flex-row gap-4"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="km" id="km" />
-              <Label htmlFor="km">Kilometers (km)</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="miles" id="miles" />
-              <Label htmlFor="miles">Miles (mi)</Label>
-            </div>
-          </RadioGroup>
+        {/* Distance Units Setting - Coming Soon */}
+        <div className="relative">
+          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-lg z-10 flex items-center justify-center">
+            <span className="text-sm font-medium text-white">Coming soon...</span>
+          </div>
+          <div className="opacity-50 pointer-events-none">
+            <Label className="mb-3 block text-history-primary dark:text-history-light">Distance Units</Label>
+            <RadioGroup 
+              defaultValue={updatedSettings.distance_unit} 
+              onValueChange={(value) => 
+                setUpdatedSettings({...updatedSettings, distance_unit: value as 'km' | 'mi'})
+              }
+              className="flex flex-col sm:flex-row gap-4"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="km" id="km" />
+                <Label htmlFor="km">Kilometers (km)</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="miles" id="miles" />
+                <Label htmlFor="miles">Miles (mi)</Label>
+              </div>
+            </RadioGroup>
+          </div>
         </div>
         
-        {/* Language Setting */}
-        <div>
-          <Label htmlFor="language" className="mb-3 block text-history-primary dark:text-history-light">Language</Label>
-          <Select 
-            defaultValue={updatedSettings.language}
-            onValueChange={(value) => setUpdatedSettings({...updatedSettings, language: value})}
-          >
-            <SelectTrigger className="w-full sm:w-[240px]" id="language">
-              <SelectValue placeholder="Select Language" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="en">English</SelectItem>
-              <SelectItem value="fr">French</SelectItem>
-              <SelectItem value="es">Spanish</SelectItem>
-              <SelectItem value="de">German</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Language Setting - Coming Soon */}
+        <div className="relative">
+          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-lg z-10 flex items-center justify-center">
+            <span className="text-sm font-medium text-white">Coming soon...</span>
+          </div>
+          <div className="opacity-50 pointer-events-none">
+            <Label htmlFor="language" className="mb-3 block text-history-primary dark:text-history-light">Language</Label>
+            <Select 
+              defaultValue={updatedSettings.language}
+              onValueChange={(value) => setUpdatedSettings({...updatedSettings, language: value})}
+            >
+              <SelectTrigger className="w-full sm:w-[240px]" id="language">
+                <SelectValue placeholder="Select Language" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="en">English</SelectItem>
+                <SelectItem value="fr">French</SelectItem>
+                <SelectItem value="es">Spanish</SelectItem>
+                <SelectItem value="de">German</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         
         <div className="pt-4">
           <Button 
             onClick={handleSaveSettings}
             disabled={saving}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto bg-white text-black hover:bg-gray-100 border border-gray-300"
           >
             <SettingsIcon className="mr-2 h-4 w-4" />
             {saving ? "Saving..." : "Save Settings"}

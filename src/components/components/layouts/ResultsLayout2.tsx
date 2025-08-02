@@ -19,7 +19,7 @@ interface ResultsLayout2Props {
 
 const ResultsLayout2: React.FC<ResultsLayout2Props> = ({ onNext, round }) => {
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-100 dark:bg-black">
       {/* Sticky header with progress visualization */}
       <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 shadow-md">
         <div className="max-w-7xl mx-auto p-4 flex items-center justify-between">

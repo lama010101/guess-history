@@ -18,7 +18,7 @@ const HintDebtsCard: React.FC<HintDebtsCardProps> = ({ hintDebts }) => {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4">
+    <div className="bg-white dark:bg-gray-700 rounded-2xl shadow-lg p-4">
       <h2 className="font-bold text-lg text-history-primary dark:text-history-light flex items-center mb-3">
         <Zap className="mr-2 h-4 w-4" />
         Hint Debts

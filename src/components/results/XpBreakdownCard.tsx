@@ -15,7 +15,7 @@ const XpBreakdownCard: React.FC<XpBreakdownCardProps> = ({
   xpWhen 
 }) => {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4">
+    <div className="bg-white dark:bg-gray-700 rounded-2xl shadow-lg p-4">
       <h3 className="text-lg font-semibold mb-4 text-center">XP Breakdown</h3>
       
       <div className="space-y-4">

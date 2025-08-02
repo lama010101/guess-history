@@ -15,7 +15,7 @@ const LocationAccuracyCard: React.FC<LocationAccuracyCardProps> = ({
   actualPosition 
 }) => {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+    <div className="bg-white dark:bg-gray-700 rounded-2xl shadow-lg overflow-hidden">
       <div className="p-4 border-b border-border flex justify-between items-center">
         <h2 className="font-bold text-lg text-history-primary dark:text-history-light flex items-center">
           <MapPin className="mr-2 h-4 w-4" />

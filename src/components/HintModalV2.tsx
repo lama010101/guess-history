@@ -248,7 +248,7 @@ const HintModalV2 = ({
                           disabled={!canPurchase || purchasingHintId !== null || isLoading}
                           className={`w-full text-xs py-1 text-white ${
                             canPurchase 
-                              ? 'bg-black hover:bg-gray-800' 
+                              ? 'bg-black hover:bg-gray-700' 
                               : 'bg-gray-400 cursor-not-allowed'
                           }`}
                         >

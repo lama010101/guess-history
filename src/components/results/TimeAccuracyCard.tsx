@@ -20,7 +20,7 @@ const TimeAccuracyCard: React.FC<TimeAccuracyCardProps> = ({
   className = ""
 }) => {
   return (
-    <div className={`bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 ${className}`}>
+    <div className={`bg-white dark:bg-gray-700 rounded-2xl shadow-lg p-4 ${className}`}>
       <div className="border-b border-border pb-3 mb-3 flex justify-between items-center">
         <h2 className="font-bold text-lg text-history-primary dark:text-history-light flex items-center">
           <Calendar className="mr-2 h-4 w-4" />

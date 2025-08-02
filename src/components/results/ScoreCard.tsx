@@ -29,7 +29,7 @@ const ScoreCard: React.FC<ScoreCardProps> = ({
   const isPerfectScore = roundedLocationAccuracy >= 95 && roundedTimeAccuracy >= 95;
   
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4">
+    <div className="bg-white dark:bg-gray-700 rounded-2xl shadow-lg p-4">
       <h2 className="text-2xl font-bold mb-4 text-history-primary dark:text-history-light">This Round</h2>
       
       <div className="grid grid-cols-2 gap-4 mb-4">

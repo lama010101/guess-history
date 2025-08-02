@@ -73,7 +73,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           </div>
           <Button 
             size="icon" 
-            className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-white dark:bg-gray-800 shadow cursor-pointer"
+            className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-white dark:bg-gray-700 shadow cursor-pointer"
             onClick={handleAvatarClick}
           >
             <Settings className="h-4 w-4" />

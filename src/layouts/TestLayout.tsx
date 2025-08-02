@@ -15,7 +15,7 @@ const TestLayout = () => {
                        (location.pathname.includes('/round-results') && !location.pathname.includes('/final-results'));
   
   return (
-    <div className="min-h-screen flex flex-col bg-history-light dark:bg-history-dark">
+    <div className="min-h-screen flex flex-col bg-history-light dark:bg-black">
       {/* Navbar only shown for non-game pages */}
       {!isGameContext && (
         <nav className="sticky top-0 z-50 bg-transparent text-white">

@@ -20,7 +20,7 @@ const HistoricalImageCard: React.FC<HistoricalImageCardProps> = ({
   imageDescription 
 }) => {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+    <div className="bg-white dark:bg-gray-700 rounded-2xl shadow-lg overflow-hidden">
       <div className="relative w-full h-48">
         <LazyImage 
           src={imageUrl} 

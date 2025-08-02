@@ -112,7 +112,7 @@ const SubmitGuessButton: React.FC<SubmitGuessButtonProps> = ({
       <Button 
         onClick={handleSubmit}
         disabled={isDisabled}
-          className={`w-full py-6 text-lg font-semibold rounded-xl text-white shadow-lg transition-colors ${hasLocation ? 'bg-gray-700 hover:bg-gray-800' : 'bg-gray-700 hover:bg-gray-800'}`}
+          className={`w-full py-6 text-lg font-semibold rounded-xl text-white shadow-lg transition-colors ${hasLocation ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-700 hover:bg-gray-600'}`}
       >
         <span>{isSubmitting ? 'Submitting...' : 'Submit Guess'}</span>
         <ChevronRight className="ml-2 h-5 w-5" />

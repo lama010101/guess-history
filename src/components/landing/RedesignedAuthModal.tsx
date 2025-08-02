@@ -159,7 +159,7 @@ const RedesignedAuthModal = ({ open, onOpenChange }: RedesignedAuthModalProps) =
             
             <Button
               onClick={handleGoogleSignIn}
-              className="w-full py-4 text-left justify-center bg-black hover:bg-gray-800 text-white font-semibold"
+              className="w-full py-4 text-left justify-center bg-black hover:bg-gray-700 text-white font-semibold"
               disabled={isLoading}
             >
               <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -213,7 +213,7 @@ const RedesignedAuthModal = ({ open, onOpenChange }: RedesignedAuthModalProps) =
             
             <Button
               onClick={handleEmailSignIn}
-              className="w-full bg-black hover:bg-gray-800 text-white py-3 font-semibold"
+              className="w-full bg-black hover:bg-gray-700 text-white py-3 font-semibold"
               disabled={isLoading}
             >
               <Mail className="w-5 h-5 mr-3" />
@@ -234,7 +234,7 @@ const RedesignedAuthModal = ({ open, onOpenChange }: RedesignedAuthModalProps) =
             
             <Button
               onClick={handleGoogleSignIn}
-              className="w-full py-4 text-left justify-center bg-black hover:bg-gray-800 text-white font-semibold"
+              className="w-full py-4 text-left justify-center bg-black hover:bg-gray-700 text-white font-semibold"
               disabled={isLoading}
             >
               <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -288,7 +288,7 @@ const RedesignedAuthModal = ({ open, onOpenChange }: RedesignedAuthModalProps) =
             
             <Button
               onClick={handleEmailSignUp}
-              className="w-full bg-black hover:bg-gray-800 text-white py-3 font-semibold"
+              className="w-full bg-black hover:bg-gray-700 text-white py-3 font-semibold"
               disabled={isLoading}
             >
               <Mail className="w-5 h-5 mr-3" />

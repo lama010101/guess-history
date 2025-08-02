@@ -153,7 +153,7 @@ const AvatarsTab: React.FC<AvatarsTabProps> = ({
       
       {/* Current user avatar name and info */}
       {profile && profile.avatar_name && (
-        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
           <h4 className="font-medium mb-2 text-history-primary dark:text-history-light">Current Avatar</h4>
           <div className="text-base font-medium">{profile.avatar_name}</div>
         </div>
@@ -161,7 +161,7 @@ const AvatarsTab: React.FC<AvatarsTabProps> = ({
       
       {/* Selected Avatar Info and Save Button - Moved to top */}
       {selectedAvatar && selectedAvatarId !== profile?.avatar_id && (
-        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
           <h4 className="font-medium mb-2 text-history-primary dark:text-history-light">Selected Avatar</h4>
           <div className="flex items-start gap-4">
             <div className="h-20 w-20 bg-history-light dark:bg-history-dark rounded-full overflow-hidden flex-shrink-0">

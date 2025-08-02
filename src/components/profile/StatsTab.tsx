@@ -32,7 +32,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading }) => {
       ) : (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center shadow-sm">
+            <div className="bg-white dark:bg-gray-700 rounded-lg p-4 text-center shadow-sm">
               <div className="text-2xl font-bold text-history-primary dark:text-history-light">
                 {formatInteger(stats.games_played)}
               </div>
@@ -40,7 +40,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading }) => {
             </div>
             
             {stats.avg_accuracy > 0 && (
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center shadow-sm">
+              <div className="bg-white dark:bg-gray-700 rounded-lg p-4 text-center shadow-sm">
                 <div className="text-2xl font-bold text-history-primary dark:text-history-light">
                   {formatInteger(stats.avg_accuracy)}%
                 </div>
@@ -49,7 +49,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading }) => {
             )}
             
             {stats.best_accuracy > 0 && (
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center shadow-sm">
+              <div className="bg-white dark:bg-gray-700 rounded-lg p-4 text-center shadow-sm">
                 <div className="text-2xl font-bold text-history-primary dark:text-history-light">
                   {formatInteger(stats.best_accuracy)}%
                 </div>
@@ -58,7 +58,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading }) => {
             )}
             
             {stats.perfect_scores > 0 && (
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center shadow-sm">
+              <div className="bg-white dark:bg-gray-700 rounded-lg p-4 text-center shadow-sm">
                 <div className="text-2xl font-bold text-history-primary dark:text-history-light">
                   {formatInteger(stats.perfect_scores)}
                 </div>
@@ -67,7 +67,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading }) => {
             )}
             
             {stats.total_xp > 0 && (
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center shadow-sm">
+              <div className="bg-white dark:bg-gray-700 rounded-lg p-4 text-center shadow-sm">
                 <div className="text-2xl font-bold text-history-primary dark:text-history-light">
                   {formatInteger(stats.total_xp)}
                 </div>
@@ -76,7 +76,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading }) => {
             )}
             
             {stats.global_rank > 0 && (
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center shadow-sm">
+              <div className="bg-white dark:bg-gray-700 rounded-lg p-4 text-center shadow-sm">
                 <div className="text-2xl font-bold text-history-primary dark:text-history-light">
                   #{formatInteger(stats.global_rank)}
                 </div>

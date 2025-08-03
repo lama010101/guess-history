@@ -159,25 +159,27 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl w-full mx-auto bg-white p-6 rounded-lg shadow-lg border border-gray-200 text-black">
-        <DialogHeader className="mb-4">
-  <DialogTitle className="text-2xl font-bold text-black w-full flex justify-center items-center text-center">HINTS</DialogTitle>
+      <DialogContent className="h-screen w-screen bg-black text-white flex flex-col">
+        <DialogHeader className="p-4">
+  <DialogTitle className="text-2xl font-bold text-white w-full flex justify-center items-center text-center">HINTS</DialogTitle>
 </DialogHeader>
 
+        <div className="flex-grow overflow-y-auto px-4">
         <div className="flex justify-around mb-6 text-sm">
+  <style>{`.hint-modal-fixed-bottom-btn { position: fixed; left: 0; bottom: 0; width: 100vw; z-index: 50; background: #000; border-top: 1px solid #222; padding: 1.25rem 1.5rem; }`}</style>
           <div className="text-center">
-            <p className="text-gray-600">Accuracy Penalty</p>
-            <Badge className="mt-1 text-base bg-blue-100 text-blue-800 border border-blue-200">{accDebt}%</Badge>
+            <p className="text-white">Accuracy Penalty</p>
+            <Badge className="mt-1 text-base bg-blue-900 text-blue-100 border border-blue-700">-{accDebt}%</Badge>
           </div>
           <div className="text-center">
-            <p className="text-gray-600">Experience Penalty</p>
-            <Badge className="mt-1 text-base bg-green-100 text-green-800 border border-green-200">+{xpDebt} XP</Badge>
+            <p className="text-white">Experience Penalty</p>
+            <Badge className="mt-1 text-base bg-green-900 text-green-100 border border-green-700">-{xpDebt}XP</Badge>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-x-4">
-          <h3 className="text-center text-lg font-semibold mb-2 text-black">WHEN</h3>
-          <h3 className="text-center text-lg font-semibold mb-2 text-black">WHERE</h3>
+          <h3 className="text-center text-lg font-semibold mb-2 text-white">WHEN</h3>
+          <h3 className="text-center text-lg font-semibold mb-2 text-white">WHERE</h3>
           
           <div className="space-y-3">
             {hintsByColumn.when.map((hint) => (
@@ -204,15 +206,16 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
           </div>
         </div>
 
-        <div className="pt-6 mt-4">
-          <Button 
-            size="lg" 
-            className="w-full bg-gray-800 text-white hover:bg-gray-900" 
-            onClick={() => onOpenChange(false)}
-          >
-            Continue Guessing
-          </Button>
         </div>
+      <div className="p-4 border-t border-gray-800">
+  <Button 
+    size="lg" 
+    className="w-full bg-white text-black hover:bg-gray-200 font-semibold" 
+    onClick={() => onOpenChange(false)}
+  >
+    Continue Guessing
+  </Button>
+</div>
       </DialogContent>
     </Dialog>
   );

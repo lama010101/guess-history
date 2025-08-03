@@ -159,14 +159,13 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="h-screen w-screen bg-black text-white flex flex-col">
-        <DialogHeader className="p-4">
+      <DialogContent className="h-screen w-screen bg-black text-white overflow-y-auto p-0 border-0">
+        <DialogHeader className="sticky top-0 z-10 p-4 border-b border-gray-800 bg-black">
   <DialogTitle className="text-2xl font-bold text-white w-full flex justify-center items-center text-center">HINTS</DialogTitle>
 </DialogHeader>
 
-        <div className="flex-grow overflow-y-auto px-4">
+        <div className="p-4">
         <div className="flex justify-around mb-6 text-sm">
-  <style>{`.hint-modal-fixed-bottom-btn { position: fixed; left: 0; bottom: 0; width: 100vw; z-index: 50; background: #000; border-top: 1px solid #222; padding: 1.25rem 1.5rem; }`}</style>
           <div className="text-center">
             <p className="text-white">Accuracy Penalty</p>
             <Badge className="mt-1 text-base bg-blue-900 text-blue-100 border border-blue-700">-{accDebt}%</Badge>
@@ -207,7 +206,7 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
         </div>
 
         </div>
-      <div className="p-4 border-t border-gray-800">
+      <div className="sticky bottom-0 z-10 p-4 border-t border-gray-800 bg-black">
   <Button 
     size="lg" 
     className="w-full bg-white text-black hover:bg-gray-200 font-semibold" 

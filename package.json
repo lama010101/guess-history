@@ -76,6 +76,7 @@
   "devDependencies": {
     "@eslint/js": "^9.9.0",
     "@pinegrow/piny-vite": "^1.0.10",
+    "@rollup/rollup-linux-x64-gnu": "^4.6.1",
     "@tailwindcss/typography": "^0.5.15",
     "@types/canvas-confetti": "^1.9.0",
     "@types/leaflet": "^1.9.17",

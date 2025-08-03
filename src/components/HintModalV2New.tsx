@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Lock, CheckCircle, Sparkles } from 'lucide-react';
+import lockIcon from '@/assets/icons/lock.webp';
 import { HINT_TYPE_NAMES } from '@/constants/hints';
 
 interface Hint {
@@ -32,15 +32,24 @@ interface HintModalV2NewProps {
   isLoading: boolean;
 }
 
-// Renders a single hint as a large button with label and answer/lock logic
-const HintButtonUI: React.FC<{
-  hint: Hint;
+const getHintCostAndPenalty = (hint: Hint): { xp: number, acc: number } => {
+  return {
+    xp: hint.xp_cost || 0,
+    acc: hint.accuracy_penalty || 0
+  };
+};
+
+const HintButtonUI: React.FC<{ 
+  hint: Hint; 
   purchasedHintIds: string[];
   isLoading: boolean;
-  onPurchase: (hintId: string) => void;
+  onPurchase: (hint: Hint) => void;
 }> = ({ hint, purchasedHintIds, isLoading, onPurchase }) => {
-  const label1 = HINT_TYPE_NAMES[hint.type] ?? hint.type;
-  const label2 = `-${hint.xp_cost}XP -${hint.accuracy_penalty}%`;
+  const { xp: costXp, acc: penaltyAcc } = getHintCostAndPenalty(hint);
+  const label1 = HINT_TYPE_NAMES[hint.type] ?? 
+    hint.type.replace(/^\d+_/, '').replace(/_/g, ' ').replace(/(when|where)/g, '').trim();
+  const label2 = `-${penaltyAcc}% -${costXp}XP`;
+  
   const isPurchased = purchasedHintIds.includes(hint.id);
   const isLocked = hint.prerequisite && !purchasedHintIds.includes(hint.prerequisite);
 
@@ -49,11 +58,17 @@ const HintButtonUI: React.FC<{
       size="lg"
       variant={'outline'}
       disabled={isLoading || isLocked || isPurchased}
-      className={`w-full py-3 text-base font-semibold flex items-center justify-center ${isPurchased ? 'bg-green-600 text-white' : ''}`}
+      className={`w-full py-3 text-base font-semibold flex items-center justify-center rounded-full h-auto whitespace-normal break-words leading-tight
+        ${isPurchased 
+            ? 'bg-[#3e9b0a] text-white border-transparent' // exact green for purchased
+            : 'bg-white text-black border-gray-300 hover:bg-gray-100'
+        }
+        ${isLocked ? 'cursor-not-allowed !bg-gray-200 !text-gray-500 border-transparent opacity-70' : ''}`}
+      style={isPurchased ? { backgroundColor: '#3e9b0a', color: '#fff' } : {}}
       onClick={e => {
         e.preventDefault();
         e.stopPropagation();
-        if (!isPurchased && !isLocked) onPurchase(hint.id);
+        if (!isPurchased && !isLocked) onPurchase(hint);
       }}
       title={isLocked ? 'Unlock prerequisite first' : label1}
     >
@@ -64,17 +79,17 @@ const HintButtonUI: React.FC<{
            hint.text}
         </span>
       ) : isLocked ? (
-        <span className="flex items-center justify-center gap-1 text-xs break-words whitespace-normal">
-          <Lock className="h-4 w-4 shrink-0" />
+        <span className="flex items-center justify-center gap-2">
+          <img src={lockIcon} alt="Locked" className="h-4 w-4 shrink-0 invert" />
           <span className="flex flex-col items-center">
-            <span>{label1}</span>
-            <span className="text-gray-300">{label2}</span>
+            <span className="capitalize">{label1}</span>
+            <span className="text-xs text-gray-400 font-normal">{label2}</span>
           </span>
         </span>
       ) : (
-        <span className="flex flex-col items-center break-words whitespace-normal">
-          <span>{label1}</span>
-          <span className="text-xs text-gray-300">{label2}</span>
+        <span className="flex flex-col items-center">
+          <span className="capitalize">{label1}</span>
+          <span className="text-xs text-gray-400 font-normal">{label2}</span>
         </span>
       )}
     </Button>
@@ -91,146 +106,108 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
   onPurchaseHint,
   isLoading,
 }) => {
-  // Group hints by level and category
-  const hintsByLevel = React.useMemo(() => {
-    const grouped: Record<number, { when: Hint[], where: Hint[] }> = {
-      1: { when: [], where: [] },
-      2: { when: [], where: [] },
-      3: { when: [], where: [] },
-      4: { when: [], where: [] },
-      5: { when: [], where: [] },
-    };
+  const [purchasingHintId, setPurchasingHintId] = useState<string | null>(null);
 
-    availableHints.forEach(hint => {
-      // Determine category based on database column naming pattern
-      let category: 'when' | 'where';
-      if (hint.type.includes('_when_') || hint.type.endsWith('century') || hint.type.endsWith('decade') || hint.type.includes('time_diff') || hint.type === '5_when_clues') {
-          category = 'when';
-      } else {
-          category = 'where';
-      }
+  const isHintPurchased = (hintId: string): boolean => purchasedHintIds.includes(hintId);
 
-      if (grouped[hint.level]) {
-        grouped[hint.level][category].push(hint);
-      }
-    });
-    return grouped;
-  }, [availableHints]);
+  const HINT_DEPENDENCIES: Record<string, string | null> = {
+    '2_where_landmark_km': '2_where_landmark',
+    '2_when_event_years': '2_when_event',
+    '4_where_landmark_km': '4_where_landmark',
+    '4_when_event_years': '4_when_event',
+  };
 
-  const handlePurchase = async (hintId: string) => {
+  const getHintState = (hint: Hint): 'purchased' | 'locked' | 'available' => {
+    if (isHintPurchased(hint.id)) return 'purchased';
+    const dependencyType = HINT_DEPENDENCIES[hint.type];
+    if (dependencyType) {
+      const dependencyHint = availableHints.find(h => h.type === dependencyType);
+      if (dependencyHint && !isHintPurchased(dependencyHint.id)) return 'locked';
+    }
+    return 'available';
+  };
+
+  const handlePurchase = async (hint: Hint) => {
+    if (purchasingHintId) return;
+    setPurchasingHintId(hint.id);
     try {
-      await onPurchaseHint(hintId);
+      await onPurchaseHint(hint.id);
     } catch (error) {
-      console.error('Error purchasing hint:', error);
+      console.error("Error purchasing hint:", error);
+    } finally {
+      setPurchasingHintId(null);
     }
   };
 
+  const hintsByColumn = useMemo(() => {
+    const when: Hint[] = [];
+    const where: Hint[] = [];
+    
+    // Sort all hints by level
+    const sortedHints = [...availableHints].sort((a, b) => a.level - b.level);
+    
+    sortedHints.forEach(hint => {
+      if (hint.type.includes('when') || hint.type.includes('century') || hint.type.includes('decade') || hint.type === '5_when_clues') {
+        when.push(hint);
+      } else {
+        where.push(hint);
+      }
+    });
+    
+    return { when, where };
+  }, [availableHints]);
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-screen overflow-y-auto bg-white dark:bg-gray-900">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold flex items-center gap-2 text-black dark:text-white">
-            <Sparkles className="h-6 w-6 text-blue-500" />
-            Hints V2 ({purchasedHintIds.length}/14)
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="max-w-2xl w-full mx-auto bg-white p-6 rounded-lg shadow-lg border border-gray-200 text-black">
+        <DialogHeader className="mb-4">
+  <DialogTitle className="text-2xl font-bold text-black w-full flex justify-center items-center text-center">HINTS</DialogTitle>
+</DialogHeader>
 
-        <div className="space-y-4">
-          <div className="flex justify-between items-center p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
-            <div>
-              <span className="font-semibold text-black dark:text-white">Total XP Debt:</span>
-              <Badge variant="outline" className="ml-2">{xpDebt} XP</Badge>
-            </div>
-            <div>
-              <span className="font-semibold text-black dark:text-white">Accuracy Debt:</span>
-              <Badge variant="outline" className="ml-2">{accDebt}%</Badge>
-            </div>
+        <div className="flex justify-around mb-6 text-sm">
+          <div className="text-center">
+            <p className="text-gray-600">Accuracy Penalty</p>
+            <Badge className="mt-1 text-base bg-blue-100 text-blue-800 border border-blue-200">{accDebt}%</Badge>
+          </div>
+          <div className="text-center">
+            <p className="text-gray-600">Experience Penalty</p>
+            <Badge className="mt-1 text-base bg-green-100 text-green-800 border border-green-200">+{xpDebt} XP</Badge>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-x-4">
+          <h3 className="text-center text-lg font-semibold mb-2 text-black">WHEN</h3>
+          <h3 className="text-center text-lg font-semibold mb-2 text-black">WHERE</h3>
+          
+          <div className="space-y-3">
+            {hintsByColumn.when.map((hint) => (
+              <HintButtonUI 
+                key={`when-${hint.id}`}
+                hint={hint}
+                purchasedHintIds={purchasedHintIds}
+                isLoading={isLoading || purchasingHintId === hint.id}
+                onPurchase={handlePurchase}
+              />
+            ))}
           </div>
 
-          {Object.entries(hintsByLevel)
-            .sort(([a], [b]) => Number(a) - Number(b))
-            .map(([level, categoryHints]) => (
-              <div key={level} className="border border-gray-300 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800">
-                <div className="space-y-1">
-                  {/* Level / When / Where format */}
-                  {(() => {
-                    const whenHints = categoryHints.when || [];
-                    const whereHints = categoryHints.where || [];
-                    const maxLength = Math.max(whenHints.length, whereHints.length);
-
-                    if (level === '2' || level === '4') {
-                      // For level 2 and 4 we have paired rows (event/landmark + timeDiff/distance)
-                      const eventWhen = whenHints.find(h => h.type === (level === '2' ? '2_when_event' : '4_when_event'));
-                      const eventWhere = whereHints.find(h => h.type === (level === '2' ? '2_where_landmark' : '4_where_landmark'));
-                      const timeDiffWhen = whenHints.find(h => h.type === (level === '2' ? '2_when_event_years' : '4_when_event_years'));
-                      const distanceWhere = whereHints.find(h => h.type === (level === '2' ? '2_where_landmark_km' : '4_where_landmark_km'));
-
-                      return (
-                        <>
-                          {/* Row 1: Event / Landmark */}
-                          <div key={`${level}-event`} className="grid grid-cols-3 gap-2 items-center p-2 border border-gray-200 dark:border-gray-600 rounded text-xs">
-                            <div className="text-center font-bold text-black dark:text-white">{level}</div>
-                            <div className="text-center">
-                              {eventWhen ? <HintButtonUI hint={eventWhen} purchasedHintIds={purchasedHintIds} isLoading={isLoading} onPurchase={handlePurchase} /> : <span className="text-gray-500">—</span>}
-                            </div>
-                            <div className="text-center">
-                              {eventWhere ? <HintButtonUI hint={eventWhere} purchasedHintIds={purchasedHintIds} isLoading={isLoading} onPurchase={handlePurchase} /> : <span className="text-gray-500">—</span>}
-                            </div>
-                          </div>
-                          {/* Row 2: TimeDiff / Distance */}
-                          <div key={`${level}-timediff`} className="grid grid-cols-3 gap-2 items-center p-2 border border-gray-200 dark:border-gray-600 rounded text-xs">
-                            <div className="text-center font-bold text-black dark:text-white">{level}</div>
-                            <div className="text-center">
-                              {timeDiffWhen ? <HintButtonUI hint={timeDiffWhen} purchasedHintIds={purchasedHintIds} isLoading={isLoading} onPurchase={handlePurchase} /> : <span className="text-gray-500">—</span>}
-                            </div>
-                            <div className="text-center">
-                              {distanceWhere ? <HintButtonUI hint={distanceWhere} purchasedHintIds={purchasedHintIds} isLoading={isLoading} onPurchase={handlePurchase} /> : <span className="text-gray-500">—</span>}
-                            </div>
-                          </div>
-                        </>
-                      );
-                    } else if (level === '5') {
-                      // Render level 5 as a single row: Level / When / Where
-                      const whenHint = whenHints.find(h => h.type === '5_when_clues');
-                      const whereHint = whereHints.find(h => h.type === '5_where_clues');
-                      return (
-                        <div key={`${level}-single`} className="grid grid-cols-3 gap-2 items-center p-2 border border-gray-200 dark:border-gray-600 rounded text-xs">
-                          <div className="text-center font-bold text-black dark:text-white">{level}</div>
-                          <div className="text-center">
-                            {whenHint ? <HintButtonUI hint={whenHint} purchasedHintIds={purchasedHintIds} isLoading={isLoading} onPurchase={handlePurchase} /> : <span className="text-gray-500">—</span>}
-                          </div>
-                          <div className="text-center">
-                            {whereHint ? <HintButtonUI hint={whereHint} purchasedHintIds={purchasedHintIds} isLoading={isLoading} onPurchase={handlePurchase} /> : <span className="text-gray-500">—</span>}
-                          </div>
-                        </div>
-                      );
-                    } else {
-                      // Default rendering for other levels
-                      return Array.from({ length: maxLength }).map((_, index) => {
-                        const whenHint = whenHints[index];
-                        const whereHint = whereHints[index];
-                        return (
-                          <div key={`${level}-${index}`} className="grid grid-cols-3 gap-2 items-center p-2 border border-gray-200 dark:border-gray-600 rounded text-xs">
-                            <div className="text-center font-bold text-black dark:text-white">{level}</div>
-                            <div className="text-center">
-                              {whenHint ? <HintButtonUI hint={whenHint} purchasedHintIds={purchasedHintIds} isLoading={isLoading} onPurchase={handlePurchase} /> : <span className="text-gray-500">—</span>}
-                            </div>
-                            <div className="text-center">
-                              {whereHint ? <HintButtonUI hint={whereHint} purchasedHintIds={purchasedHintIds} isLoading={isLoading} onPurchase={handlePurchase} /> : <span className="text-gray-500">—</span>}
-                            </div>
-                          </div>
-                        );
-                      });
-                    }
-                  })()}
-                </div>
-              </div>
+          <div className="space-y-3">
+            {hintsByColumn.where.map((hint) => (
+              <HintButtonUI 
+                key={`where-${hint.id}`}
+                hint={hint}
+                purchasedHintIds={purchasedHintIds}
+                isLoading={isLoading || purchasingHintId === hint.id}
+                onPurchase={handlePurchase}
+              />
             ))}
+          </div>
         </div>
-        <div className="pt-4 border-t border-gray-300 dark:border-gray-700 mt-4">
+
+        <div className="pt-6 mt-4">
           <Button 
             size="lg" 
-            className="w-full"
+            className="w-full bg-gray-800 text-white hover:bg-gray-900" 
             onClick={() => onOpenChange(false)}
           >
             Continue Guessing

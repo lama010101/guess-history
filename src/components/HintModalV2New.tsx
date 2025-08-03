@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, MapPin } from 'lucide-react';
+import { Clock, MapPin, X } from 'lucide-react';
 import lockIcon from '@/assets/icons/lock.webp';
 import { HINT_TYPE_NAMES } from '@/constants/hints';
 
@@ -162,11 +162,22 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="h-screen w-screen bg-black text-white overflow-y-auto p-0 border-0">
         <DialogHeader className="sticky top-0 z-10 pt-4 px-4 border-b border-gray-800 bg-black">
-  <DialogTitle className="text-2xl font-bold text-white w-full flex justify-center items-center text-center">HINTS</DialogTitle>
-</DialogHeader>
+          <div className="relative flex items-center justify-center w-full">
+            <DialogTitle className="text-2xl font-bold text-white">HINTS</DialogTitle>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => onOpenChange(false)}
+              className="absolute right-0 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full h-8 w-8"
+            >
+              <X className="h-5 w-5" />
+              <span className="sr-only">Close</span>
+            </Button>
+          </div>
+        </DialogHeader>
 
-        <div className="p-4">
-        <div className="flex justify-around text-sm">
+        <div className="p-4 pt-2">
+          <div className="flex justify-around text-sm mt-2">
           <div className="text-center">
             <p className="text-white">Accuracy Penalty</p>
             <Badge className="mt-1 text-base bg-blue-900 text-blue-100 border border-blue-700">-{accDebt}%</Badge>

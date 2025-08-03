@@ -39,50 +39,55 @@ export const HINT_LEVEL_DESCRIPTIONS: Record<number, string> = {
   5: "Full Clues - Direct Location & Date"
 };
 
-// Hint type display names
+// Hint type names for display
 export const HINT_TYPE_NAMES: Record<string, string> = {
   // Level 1
-  'century': 'Century',
   'continent': 'Continent',
+  'century': 'Century',
+  
   // Level 2
-  'distant_event': 'Distant Event',
   'distant_landmark': 'Distant Landmark',
-  'distant_distance': 'Distance to Landmark',
-  'distant_time_diff': 'Time Difference (Far)',
+  'distant_distance': 'Distance Reference',
+  'distant_event': 'Historical Context',
+  'distant_time_diff': 'Time Period Range',
+  
   // Level 3
-  'narrow_decade': 'Decade',
   'region': 'Region',
-  // Level 4
-  'contemporary_event': 'Contemporary Event',
+  'narrow_decade': 'Decade',
   'nearby_landmark': 'Nearby Landmark',
+  
+  // Level 4
+  'contemporary_event': 'Nearby Event',
   'nearby_distance': 'Distance Nearby',
   'close_time_diff': 'Time Difference (Close)',
+  
   // Level 5
-  'when_clues': 'Date/Period Clues',
   'where_clues': 'Location Clues',
+  'when_clues': 'Time Clues',
+  
+  // New hint types with numeric prefixes
   // Level 1
-  '1_where_continent': "Continent",
   '1_when_century': "Century",
   
   // Level 2
-  '2_where_landmark': "Distant Landmark",
-  '2_where_landmark_km': "Distance Reference",
-  '2_when_event': "Historical Context",
-  '2_when_event_years': "Time Period Range",
+  '2_where_landmark': "Remote Landmark",
+  '2_where_landmark_km': "Distance",
+  '2_when_event': "Remote Event",
+  '2_when_event_years': "Years Difference",
   
   // Level 3
-  '3_where_region': "Region/Country",
+  '3_where_region': "Region",
   '3_when_decade': "Decade",
-  '4_where_landmark': "Nearby Landmark",
-  '4_where_landmark_km': "Nearby Distance",
   
   // Level 4
-  '4_when_event': "Contemporary Event",
-  '4_when_event_years': "Exact Time Period",
+  '4_where_landmark': "Nearby Landmark",
+  '4_where_landmark_km': "Distance",
+  '4_when_event': "Nearby Event",
+  '4_when_event_years': "Years Difference",
   
   // Level 5
   '5_where_clues': "Location Clues",
-  '5_when_clues': "Date Clues"
+  '5_when_clues': "Time Period Clues"
 };
 
 // Hint dependency map aligned with database schema
@@ -110,38 +115,6 @@ export const HINT_DEPENDENCIES: Record<string, string | null> = {
   // Level 5 - no dependencies
   '5_where_clues': null,
   '5_when_clues': null
-};
-
-// Hint type icons/emojis
-export const HINT_TYPE_ICONS: Record<string, string> = {
-  // Level 1
-  continent: "🌍",
-  century: "📅",
-  
-  // Level 2
-  distant_landmark: "🏛️",
-  distant_distance: "📏",
-  distant_event: "📚",
-  distant_time_diff: "⏳",
-  
-  // Level 3
-  region: "🗺️",
-  narrow_decade: "📆",
-  nearby_landmark: "🏰",
-  nearby_distance: "📍",
-  
-  // Level 4
-  contemporary_event: "📰",
-  close_time_diff: "⏱️",
-  
-  // Level 5
-  where_clues: "🧭",
-  when_clues: "📜",
-  
-  // Legacy mappings
-  decade: "📆",
-  where: "🌍",
-  when: "📅"
 };
 
 // Legacy hint penalty constant for backward compatibility

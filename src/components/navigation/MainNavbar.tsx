@@ -19,6 +19,19 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
   const { globalXP, fetchGlobalMetrics } = useGame();
   const { user } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 0);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+  const navigate = useNavigate();
+  const { globalXP, fetchGlobalMetrics } = useGame();
+  const { user } = useAuth();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   
   // Fetch global metrics when component mounts and periodically refresh
   useEffect(() => {
@@ -73,7 +86,11 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
   }, [user]);
 
   return (
-    <header className="sticky top-0 z-50 bg-black/0 backdrop-blur-none">
+    <header
+      className={`sticky top-0 z-50 transition-colors duration-300 ${
+        isScrolled ? 'bg-black/90 backdrop-blur' : 'bg-black/0 backdrop-blur-none'
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo on the left */}

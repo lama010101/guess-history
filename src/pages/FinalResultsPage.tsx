@@ -279,55 +279,51 @@ const FinalResultsPage = () => {
               </button>
             </div>
             {isRoundSummaryOpen && (
-              <div id="round-summary-content" className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div>
-                <h3 className="text-lg font-semibold text-history-primary dark:text-history-light mb-2 flex items-center">
-                  <Calendar className="h-4 w-4 mr-2 text-history-primary" />
-                  WHEN
-                </h3>
-                <div className="space-y-1">
-                  <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">Score</div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex flex-col items-center">
-                      <Badge variant="accuracy" className="text-sm">{formatInteger(totalWhenAccuracy)}%</Badge>
-                      {whenAccDebt > 0 && (
-                        <span className="text-xs font-medium text-red-600 dark:text-red-400 mt-0.5">-{formatInteger(whenAccDebt)}%</span>
-                      )}
+              <div id="round-summary-content" className="mt-4">
+                <div className="flex flex-row gap-6">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-history-primary dark:text-history-light mb-2 flex items-center">
+                      <Calendar className="h-4 w-4 mr-2 text-history-primary" />
+                      WHEN
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col items-center">
+                        <Badge variant="accuracy" className="text-sm">{formatInteger(totalWhenAccuracy)}%</Badge>
+                        {whenAccDebt > 0 && (
+                          <span className="text-xs font-medium text-red-600 dark:text-red-400 mt-0.5">-{formatInteger(whenAccDebt)}%</span>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <Badge variant="xp" className="text-sm">{formatInteger(totalWhenXP)} XP</Badge>
+                        {whenXpDebt > 0 && (
+                          <span className="text-xs font-medium text-red-600 dark:text-red-400 mt-0.5">-{formatInteger(whenXpDebt)} XP</span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex flex-col items-center">
-                      <Badge variant="xp" className="text-sm">{formatInteger(totalWhenXP)} XP</Badge>
-                      {whenXpDebt > 0 && (
-                        <span className="text-xs font-medium text-red-600 dark:text-red-400 mt-0.5">-{formatInteger(whenXpDebt)} XP</span>
-                      )}
+                  </div>
+                  
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-history-primary dark:text-history-light mb-2 flex items-center">
+                      <MapPin className="h-4 w-4 mr-2 text-history-primary" />
+                      WHERE
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col items-center">
+                        <Badge variant="accuracy" className="text-sm">{formatInteger(totalWhereAccuracy)}%</Badge>
+                        {whereAccDebt > 0 && (
+                          <span className="text-xs font-medium text-red-600 dark:text-red-400 mt-0.5">-{formatInteger(whereAccDebt)}%</span>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <Badge variant="xp" className="text-sm">{formatInteger(totalWhereXP)} XP</Badge>
+                        {whereXpDebt > 0 && (
+                          <span className="text-xs font-medium text-red-600 dark:text-red-400 mt-0.5">-{formatInteger(whereXpDebt)} XP</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-              
-              <div>
-                <h3 className="text-lg font-semibold text-history-primary dark:text-history-light mb-2 flex items-center">
-                  <MapPin className="h-4 w-4 mr-2 text-history-primary" />
-                  WHERE
-                </h3>
-                <div className="space-y-1">
-                  <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">Score</div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex flex-col items-center">
-                      <Badge variant="accuracy" className="text-sm">{formatInteger(totalWhereAccuracy)}%</Badge>
-                      {whereAccDebt > 0 && (
-                        <span className="text-xs font-medium text-red-600 dark:text-red-400 mt-0.5">-{formatInteger(whereAccDebt)}%</span>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <Badge variant="xp" className="text-sm">{formatInteger(totalWhereXP)} XP</Badge>
-                      {whereXpDebt > 0 && (
-                        <span className="text-xs font-medium text-red-600 dark:text-red-400 mt-0.5">-{formatInteger(whereXpDebt)} XP</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
             )}
           </section>
 

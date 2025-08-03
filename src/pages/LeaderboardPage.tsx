@@ -200,30 +200,33 @@ const LeaderboardPage = () => {
             <h3 className="text-lg font-semibold mb-3 text-center text-history-primary dark:text-white">
               Your Ranking
             </h3>
+            {/* Header row for labels */}
+            <div className="grid grid-cols-4 gap-4 text-center mb-1">
+              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Rank</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Name</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">XP</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Accuracy</div>
+            </div>
             <div className="grid grid-cols-4 gap-4 text-center">
               <div>
                 <div className="text-2xl font-bold text-history-primary dark:text-white">
                   #{leaderboard.findIndex(entry => entry.user_id === user?.id) + 1}
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Rank</div>
               </div>
               <div>
                 <div className="text-lg font-semibold text-history-primary dark:text-white">
                   {currentUserRank.display_name}
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Name</div>
               </div>
               <div>
                 <div className="text-lg font-semibold text-history-primary dark:text-white">
                   {Math.round(currentUserRank.xp).toLocaleString()}
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">XP</div>
               </div>
               <div>
                 <div className="text-lg font-semibold text-history-primary dark:text-white">
                   {Math.round(currentUserRank.accuracy)}%
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Accuracy</div>
               </div>
             </div>
           </div>

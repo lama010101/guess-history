@@ -4,28 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSettingsStore } from '@/lib/useSettingsStore';
 import { v4 as uuidv4 } from 'uuid'; // For generating unique game IDs
 import { Hint } from '@/hooks/useHintV2';
-
-// Define the structure for a user's guess coordinates
-export interface GuessCoordinates {
-  lat: number;
-  lng: number;
-}
-
-// Define the structure for the result of a single round
-export interface RoundResult {
-  roundIndex: number; // 0-based index
-  imageId: string;
-  guessCoordinates: GuessCoordinates | null;
-  actualCoordinates: { lat: number; lng: number };
-  distanceKm: number | null; // Distance in kilometers
-  score: number | null;
-  guessYear: number | null; // Added year guess
-  xpWhere?: number; // Location XP (0-100)
-  xpWhen?: number; // Time XP (0-100)
-  accuracy?: number; // Overall accuracy percentage for the round (0-100)
-  hintsUsed?: number; // Number of hints used in this round
-  hints?: Hint[]; // Hints purchased in this round
-}
+import { RoundResult, GuessCoordinates } from '@/types';
 
 // Define the structure of an image object based on actual schema
 export interface GameImage {

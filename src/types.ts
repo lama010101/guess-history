@@ -8,14 +8,21 @@ export interface Image {
   longitude: number;
 }
 
+export interface GuessCoordinates {
+  lat: number;
+  lng: number;
+}
+
 export interface RoundResult {
-  imageId: string;
   roundIndex: number;
-  guessYear: number | null;
+  imageId: string;
+  guessCoordinates?: GuessCoordinates | null;
+  actualCoordinates?: { lat: number; lng: number };
   distanceKm: number | null;
-  score: number;
-  hintsUsed: number;
+  score: number | null;
+  guessYear: number | null;
   xpWhen?: number;
   xpWhere?: number;
   accuracy?: number;
+  hintsUsed?: number;
 }

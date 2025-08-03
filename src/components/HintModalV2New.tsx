@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Clock, MapPin } from 'lucide-react';
 import lockIcon from '@/assets/icons/lock.webp';
 import { HINT_TYPE_NAMES } from '@/constants/hints';
 
@@ -58,7 +59,7 @@ const HintButtonUI: React.FC<{
       size="lg"
       variant={'outline'}
       disabled={isLoading || isLocked || isPurchased}
-      className={`w-full py-3 text-base font-semibold flex items-center justify-center rounded-full h-auto whitespace-normal break-words leading-tight
+      className={`w-full py-3 text-base font-semibold flex items-center justify-center rounded-[0.75rem] h-auto whitespace-normal break-words leading-tight
         ${isPurchased 
             ? 'bg-[#3e9b0a] text-white border-transparent' // exact green for purchased
             : 'bg-white text-black border-gray-300 hover:bg-gray-100'
@@ -160,12 +161,12 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="h-screen w-screen bg-black text-white overflow-y-auto p-0 border-0">
-        <DialogHeader className="sticky top-0 z-10 p-4 border-b border-gray-800 bg-black">
+        <DialogHeader className="sticky top-0 z-10 pt-4 px-4 border-b border-gray-800 bg-black">
   <DialogTitle className="text-2xl font-bold text-white w-full flex justify-center items-center text-center">HINTS</DialogTitle>
 </DialogHeader>
 
         <div className="p-4">
-        <div className="flex justify-around mb-6 text-sm">
+        <div className="flex justify-around text-sm">
           <div className="text-center">
             <p className="text-white">Accuracy Penalty</p>
             <Badge className="mt-1 text-base bg-blue-900 text-blue-100 border border-blue-700">-{accDebt}%</Badge>
@@ -176,9 +177,9 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-x-4">
-          <h3 className="text-center text-lg font-semibold mb-2 text-white">WHEN</h3>
-          <h3 className="text-center text-lg font-semibold mb-2 text-white">WHERE</h3>
+        <div className="grid grid-cols-2 gap-x-4 mt-6">
+          <h3 className="flex items-center justify-center text-center text-lg font-semibold mb-3 text-white"><Clock className="w-5 h-5 mr-2" />WHEN</h3>
+          <h3 className="flex items-center justify-center text-center text-lg font-semibold mb-3 text-white"><MapPin className="w-5 h-5 mr-2" />WHERE</h3>
           
           <div className="space-y-3">
             {hintsByColumn.when.map((hint) => (

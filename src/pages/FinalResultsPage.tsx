@@ -37,6 +37,7 @@ const FinalResultsPage = () => {
   const submittedGameIdRef = useRef<string | null>(null);
   
   const [isScrolled, setIsScrolled] = React.useState(false);
+  const [isRoundSummaryOpen, setIsRoundSummaryOpen] = React.useState(false);
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -242,7 +243,7 @@ const FinalResultsPage = () => {
       <main className="flex-grow p-4 sm:p-6 md:p-8 pb-36">
         <div className="max-w-4xl mx-auto w-full">
           <header className="text-center mb-8 sm:mb-12">
-            <h1 className="text-3xl sm:text-4xl font-bold mb-3 sm:mb-4 text-history-primary dark:text-history-light">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4 text-history-primary dark:text-history-light">
               FINAL SCORE
             </h1>
             <div className="flex justify-center items-center gap-4 mt-2">
@@ -257,8 +258,28 @@ const FinalResultsPage = () => {
             </div>
           </header>
 
-          <section className="bg-white dark:bg-gray-900 rounded-lg shadow-md p-6 mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <section className="bg-white dark:bg-gray-900 rounded-lg shadow-md p-4 mb-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-history-primary dark:text-history-light">ROUND SUMMARY</h2>
+              <button 
+                onClick={() => setIsRoundSummaryOpen(!isRoundSummaryOpen)}
+                className="text-sm text-gray-600 dark:text-gray-300 flex items-center"
+                aria-expanded={isRoundSummaryOpen}
+                aria-controls="round-summary-content"
+              >
+                Details
+                <svg 
+                  className={`ml-1 h-4 w-4 transition-transform ${isRoundSummaryOpen ? 'rotate-180' : ''}`} 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+            {isRoundSummaryOpen && (
+              <div id="round-summary-content" className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <div>
                 <h3 className="text-lg font-semibold text-history-primary dark:text-history-light mb-2 flex items-center">
                   <Calendar className="h-4 w-4 mr-2 text-history-primary" />
@@ -307,6 +328,7 @@ const FinalResultsPage = () => {
                 </div>
               </div>
             </div>
+            )}
           </section>
 
           <section className="grid gap-6 mb-8">

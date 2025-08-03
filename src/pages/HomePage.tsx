@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Target, Users, Timer, Lock, Play } from "lucide-react";
+import { Target, Users, Timer, Lock, Play, Moon } from "lucide-react";
 import GlobalSettingsModal from '@/components/GlobalSettingsModal';
 import FriendsGameModal from '@/components/FriendsGameModal';
 import { AuthModal } from '@/components/AuthModal';
@@ -27,6 +27,7 @@ const homePageStyle: React.CSSProperties = {
   backgroundPosition: 'center',
   backgroundRepeat: 'no-repeat',
   backgroundAttachment: 'fixed',
+  backgroundColor: '#121212', // Dark mode background
 };
 
 const contentStyle: React.CSSProperties = {
@@ -46,8 +47,8 @@ const contentStyle: React.CSSProperties = {
 };
 
 // Game mode icon styles
-const iconContainerStyle = "flex items-center justify-center w-16 h-16 rounded-full mb-4 mx-auto";
-const iconStyle = "w-8 h-8";
+const iconContainerStyle = "flex items-center justify-center w-32 h-32 rounded-full mb-4 mx-auto";
+const iconStyle = "w-32 h-32";
 
 // Game mode colors
 const practiceColor = "bg-orange-500/20 text-orange-500";
@@ -263,19 +264,22 @@ const HomePage = () => {
   return (
     <div style={homePageStyle}>
       {showGuestBadge && <GuestBadge username={profile?.display_name || 'Guest'} />}
-      <div style={contentStyle} className="flex items-center justify-center min-h-screen">
+      <div className="absolute inset-0 z-10 w-full h-full overflow-y-auto p-8 box-border backdrop-blur-sm bg-white/75 dark:bg-black/75 flex items-center justify-center min-h-screen">
         <div className="container mx-auto px-4">
-          {/* Game Mode Selection */}
           {isLoaded ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-              {/* Practice Mode Card */}
-              <div className="bg-white dark:bg-black/40 backdrop-blur-sm rounded-xl p-6 flex flex-col items-center border border-gray-200/20 dark:border-gray-700/20 hover:border-gray-300/40 dark:hover:border-gray-600/40 transition-all">
-                <div className={`${iconContainerStyle} ${practiceColor}`}>
-                  <Target className={iconStyle} />
-                </div>
-                <h2 className="text-xl font-bold text-black dark:text-white mb-6">Practice</h2>
-                <div className="w-full mb-6">
-                  <div className="flex items-center justify-between mb-2">
+              {/* Solo Card */}
+              <div className="flex flex-col items-center justify-center gap-0 py-4">
+                <img src="/src/assets/icons/solo.webp" alt="Solo" className="w-48 h-48 object-contain" />
+                <Button
+                  className="w-48 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-full uppercase flex items-center justify-center gap-2 text-lg py-3 -mt-8 z-10"
+                  onClick={() => handleStartGame('classic')}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Loading...' : 'Play Solo'}
+                </Button>
+                <div className="w-full mt-4">
+                  <div className="flex items-center justify-center mb-2">
                     <div className="flex items-center space-x-2">
                       <Switch
                         id="solo-timer-toggle"
@@ -284,19 +288,19 @@ const HomePage = () => {
                         className="data-[state=checked]:bg-gray-600 h-4 w-8"
                       />
                       <Label htmlFor="solo-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm text-black dark:text-white">
-                        <Timer className="h-3 w-3" />
+                        <Moon className="h-3 w-3" />
                         <span>Round Timer</span>
                       </Label>
                     </div>
                     {isSoloTimerEnabled && (
-                      <span className="text-sm font-medium text-gray-500 dark:text-gray-300">
+                      <span className="text-sm font-medium text-gray-500 dark:text-gray-300 ml-4">
                         {formatTime(practiceTimerSeconds)}
                       </span>
                     )}
                   </div>
                   {isSoloTimerEnabled && (
-                    <div className="relative mb-4">
-                       <div className="pt-6">
+                    <div className="relative mb-4 px-4">
+                       <div className="pt-2">
                         <Slider
                           value={[practiceTimerSeconds]}
                           min={minTimerValue}
@@ -309,22 +313,14 @@ const HomePage = () => {
                     </div>
                   )}
                 </div>
-                <Button
-                  className="w-full bg-gray-700 hover:bg-gray-600 text-white mt-auto flex items-center justify-center gap-2"
-                  onClick={() => handleStartGame('classic')}
-                  disabled={isLoading}
-                >
-                  <Play className="h-4 w-4" />
-                  {isLoading ? 'Loading...' : 'Start Practice'}
-                </Button>
               </div>
 
-              {/* Friends Mode Card */}
-              <div className="bg-white dark:bg-black/40 backdrop-blur-sm rounded-xl p-6 flex flex-col items-center border border-gray-200/20 dark:border-gray-800/20 hover:border-gray-300/40 dark:hover:border-gray-700/40 transition-all relative">
+              {/* Friends Card */}
+              <div className="relative flex flex-col items-center justify-center gap-0 py-4">
                 {isGuest && (
                   <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black/60 rounded-xl z-10">
                     <div className="text-center p-4">
-                      <Lock className="h-10 w-10 text-amber-400 mx-auto mb-3" />
+                      <img src="/src/assets/icons/lock.webp" alt="Locked" className="h-10 w-10 mx-auto mb-3" />
                       <p className="text-black dark:text-white text-sm">Sign in to challenge your friends and track your wins.</p>
                       <Button
                         className="mt-3 bg-amber-500 hover:bg-amber-600 text-black text-sm"
@@ -335,59 +331,20 @@ const HomePage = () => {
                     </div>
                   </div>
                 )}
-                <div className={`${iconContainerStyle} ${friendsColor}`}>
-                  <Users className={iconStyle} />
-                </div>
-                <h2 className="text-xl font-bold text-black dark:text-white mb-6">Friends</h2>
-                <div className="w-full mb-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id="friends-timer-toggle"
-                        checked={isFriendsTimerEnabled}
-                        onCheckedChange={setIsFriendsTimerEnabled}
-                        className="data-[state=checked]:bg-gray-600 h-4 w-8"
-                      />
-                      <Label htmlFor="friends-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm text-black dark:text-white">
-                        <Timer className="h-3 w-3" />
-                        <span>Round Timer</span>
-                      </Label>
-                    </div>
-                    {isFriendsTimerEnabled && (
-                      <span className="text-sm font-medium text-gray-500 dark:text-gray-300">
-                        {formatTime(friendsTimerSeconds)}
-                      </span>
-                    )}
-                  </div>
-                  {isFriendsTimerEnabled && (
-                    <div className="relative mb-4">
-                      <div className="pt-6">
-                        <Slider
-                          value={[friendsTimerSeconds]}
-                          min={minTimerValue}
-                          max={maxTimerValue}
-                          step={stepSize}
-                          onValueChange={(value) => setFriendsTimerSeconds(value[0])}
-                          className="w-full"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <img src="/src/assets/icons/friends.webp" alt="Friends" className="w-48 h-48 object-contain mt-8 md:mt-12" />
                 <Button
-                  className="w-full bg-gray-700 hover:bg-gray-600 text-white mt-auto flex items-center justify-center gap-2"
+                  className="w-48 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-full uppercase flex items-center justify-center gap-2 text-lg py-3 -mt-8 z-10 md:mt-0 md:self-center"
                   onClick={() => handleStartGame('friends')}
                   disabled={isLoading || isGuest}
                 >
-                  <Play className="h-4 w-4" />
-                  {isLoading ? 'Loading...' : 'Play with Friends'}
+                  {isLoading ? 'Loading...' : 'Play Friends'}
                 </Button>
               </div>
             </div>
           ) : (
             <div className="text-center p-4">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-              <p className="text-white text-lg font-medium">Loading...</p>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+              <p className="text-black dark:text-white text-lg font-medium mt-2">Loading...</p>
             </div>
           )}
         </div>

@@ -6,6 +6,7 @@ import { FullscreenControl } from 'react-leaflet-fullscreen';
 import 'react-leaflet-fullscreen/styles.css';
 import '@/styles/map-fullscreen.css';
 import { Badge } from "@/components/ui/badge";
+import { MapPin } from 'lucide-react';
 
 import AvatarMarker from './map/AvatarMarker';
 
@@ -99,7 +100,7 @@ const HomeMap: React.FC<HomeMapProps> = ({
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center mb-2">
-        <label className="font-semibold text-history-primary dark:text-history-light">WHERE</label>
+        <label className="font-semibold flex items-center text-history-primary dark:text-history-light"><MapPin className="w-4 h-4 mr-1" />WHERE</label>
         {markerPosition ? (
           <Badge variant="selectedValue" className="font-medium">
             {location}

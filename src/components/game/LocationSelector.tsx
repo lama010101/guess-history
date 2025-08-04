@@ -24,10 +24,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
 }) => {
   return (
     <div className="w-full flex flex-col h-full">
-      <div className="flex items-center text-xl font-bold text-history-primary dark:text-history-light">
-        <MapPin className="w-5 h-5 mr-2" />
-        <h2>WHERE</h2>
-      </div>
+
       <div className="w-full rounded-lg overflow-hidden mb-4" style={{ height: '300px' }}>
         <HomeMap 
           onLocationSelect={onLocationSelect}

@@ -8,7 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Clock, MapPin, X } from 'lucide-react';
-import lockIcon from '@/assets/icons/lock.webp';
+const lockIcon = '/icons/lock.webp';
 import { HINT_TYPE_NAMES } from '@/constants/hints';
 
 interface Hint {

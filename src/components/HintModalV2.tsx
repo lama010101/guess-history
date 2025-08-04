@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import lockIcon from '@/assets/icons/lock.webp';
+const lockIcon = '/icons/lock.webp';
 import { HINT_COSTS, HINT_TYPE_NAMES } from '@/constants/hints';
 import { Hint } from '@/hooks/useHintV2';
 

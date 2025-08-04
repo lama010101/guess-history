@@ -189,21 +189,21 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               <div className="flex justify-center items-center gap-6 mb-4">
                 <div className="flex flex-col items-center">
                   <div className="flex flex-col items-center justify-center mb-2">
-                    <div className="flex items-center gap-1.5 px-4 py-1.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium rounded-full text-base">
+                    <Badge variant="accuracy" className="text-base flex items-center gap-1.5">
                       <Target className="h-3.5 w-3.5" />
                       {netAccuracy.toFixed(0)}%
-                    </div>
-                    {accDebt > 0 && <div className="text-xs text-red-500 font-semibold mt-1">(-{accDebt.toFixed(0)}%)</div>}
+                    </Badge>
+                    {accDebt > 0 && <Badge variant="hint" className="text-xs text-red-500 font-semibold mt-1">(-{accDebt.toFixed(0)}%)</Badge>}
                   </div>
                   <div className="text-sm text-muted-foreground">Accuracy</div>
                 </div>
                 <div className="flex flex-col items-center">
                   <div className="flex flex-col items-center justify-center mb-2">
-                    <div className="flex items-center gap-1.5 px-4 py-1.5 bg-green-500/10 text-green-600 dark:text-green-400 font-medium rounded-full text-base">
+                    <Badge variant="xp" className="text-base flex items-center gap-1.5">
                       <Zap className="h-3.5 w-3.5" />
                       +{formatInteger(netXP)} XP
-                    </div>
-                    {xpDebt > 0 && <div className="text-xs text-red-500 font-semibold mt-1">(-{formatInteger(xpDebt)} XP)</div>}
+                    </Badge>
+                    {xpDebt > 0 && <Badge variant="hint" className="text-xs text-red-500 font-semibold mt-1">(-{formatInteger(xpDebt)} XP)</Badge>}
                   </div>
                   <div className="text-sm text-muted-foreground">Experience</div>
                 </div>

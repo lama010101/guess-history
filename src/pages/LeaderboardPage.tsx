@@ -207,28 +207,44 @@ const LeaderboardPage = () => {
               <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">XP</div>
               <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Accuracy</div>
             </div>
-            <div className="grid grid-cols-4 gap-4 text-center">
-              <div>
-                <div className="text-2xl font-bold text-history-primary dark:text-white">
-                  #{leaderboard.findIndex(entry => entry.user_id === user?.id) + 1}
-                </div>
-              </div>
-              <div>
-                <div className="text-lg font-semibold text-history-primary dark:text-white">
-                  {currentUserRank.display_name}
-                </div>
-              </div>
-              <div>
-                <div className="text-lg font-semibold text-history-primary dark:text-white">
-                  {Math.round(currentUserRank.xp).toLocaleString()}
-                </div>
-              </div>
-              <div>
-                <div className="text-lg font-semibold text-history-primary dark:text-white">
-                  {Math.round(currentUserRank.accuracy)}%
-                </div>
-              </div>
-            </div>
+            <div className="grid grid-cols-4 gap-4 text-center items-center">
+  <div>
+    <div className="text-2xl font-bold text-history-primary dark:text-white">
+      #{leaderboard.findIndex(entry => entry.user_id === user?.id) + 1}
+    </div>
+  </div>
+  <div>
+    <div className="flex items-center justify-center gap-2">
+      {currentUserRank.avatar_url ? (
+        <img
+          src={currentUserRank.avatar_url}
+          alt={currentUserRank.display_name}
+          className="h-8 w-8 rounded-full object-cover border-2 border-history-primary/30"
+          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        />
+      ) : (
+        <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+          <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+            {currentUserRank.display_name.charAt(0).toUpperCase()}
+          </span>
+        </div>
+      )}
+      <span className="text-lg font-semibold text-history-primary dark:text-white">
+        {currentUserRank.display_name}
+      </span>
+    </div>
+  </div>
+  <div>
+    <div className="text-lg font-semibold text-history-primary dark:text-white">
+      {Math.round(currentUserRank.xp).toLocaleString()}
+    </div>
+  </div>
+  <div>
+    <div className="text-lg font-semibold text-history-primary dark:text-white">
+      {Math.round(currentUserRank.accuracy)}%
+    </div>
+  </div>
+</div>
           </div>
         </div>
       )}
@@ -281,7 +297,14 @@ const LeaderboardPage = () => {
               <TableRow><TableCell colSpan={5} className="text-center">No data found</TableCell></TableRow>
             ) : (
               sortedLeaderboard.slice(0, displayCount).map((entry, idx) => (
-                <TableRow key={entry.user_id} className={entry.user_id === user?.id ? 'bg-history-primary/10' : ''}>
+                <TableRow
+  key={entry.user_id}
+  className={
+    entry.user_id === user?.id
+      ? 'bg-history-primary/10 dark:bg-history-primary/30 ring-2 ring-history-primary/60 dark:ring-history-primary/80'
+      : ''
+  }
+>
                   <TableCell className="font-medium">#{idx + 1}</TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-3">

@@ -366,7 +366,7 @@ const FriendsPage = () => {
         <TabsList className="mb-6">
           <TabsTrigger value="friends" className="flex items-center gap-2">
             <User className="h-4 w-4" />
-            My Friends
+            Your Friends
           </TabsTrigger>
           <TabsTrigger value="search" className="flex items-center gap-2">
             <Search className="h-4 w-4" />

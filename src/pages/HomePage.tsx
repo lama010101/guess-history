@@ -265,90 +265,97 @@ const HomePage = () => {
     <div style={homePageStyle}>
       {showGuestBadge && <GuestBadge username={profile?.display_name || 'Guest'} />}
       <div className="absolute inset-0 z-10 w-full h-full overflow-y-auto p-8 box-border backdrop-blur-sm bg-white/75 dark:bg-black/75 flex items-center justify-center min-h-screen">
-        <div className="container mx-auto px-4">
-          {isLoaded ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-              {/* Solo Card */}
-              <div className="flex flex-col items-center justify-center gap-0 py-4">
-                <img src="/src/assets/icons/solo.webp" alt="Solo" className="w-48 h-48 object-contain" />
-                <Button
-                  className="w-48 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-full uppercase flex items-center justify-center gap-2 text-lg py-3 -mt-8 z-10"
-                  onClick={() => handleStartGame('classic')}
-                  disabled={isLoading}
-                >
-                  {isLoading ? 'Loading...' : 'Play Solo'}
-                </Button>
-                <div className="w-full mt-4">
-                  <div className="flex items-center justify-center mb-2">
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id="solo-timer-toggle"
-                        checked={isSoloTimerEnabled}
-                        onCheckedChange={setIsSoloTimerEnabled}
-                        className="data-[state=checked]:bg-gray-600 h-4 w-8"
-                      />
-                      <Label htmlFor="solo-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm text-black dark:text-white">
-                        <Moon className="h-3 w-3" />
-                        <span>Round Timer</span>
-                      </Label>
-                    </div>
-                    {isSoloTimerEnabled && (
-                      <span className="text-sm font-medium text-gray-500 dark:text-gray-300 ml-4">
-                        {formatTime(practiceTimerSeconds)}
-                      </span>
-                    )}
-                  </div>
-                  {isSoloTimerEnabled && (
-                    <div className="relative mb-4 px-4">
-                       <div className="pt-2">
-                        <Slider
-                          value={[practiceTimerSeconds]}
-                          min={minTimerValue}
-                          max={maxTimerValue}
-                          step={stepSize}
-                          onValueChange={(value) => setPracticeTimerSeconds(value[0])}
-                          className="w-full"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Friends Card */}
-              <div className="relative flex flex-col items-center justify-center gap-0 py-4">
-                {isGuest && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black/60 rounded-xl z-10">
-                    <div className="text-center p-4">
-                      <img src="/src/assets/icons/lock.webp" alt="Locked" className="h-10 w-10 mx-auto mb-3" />
-                      <p className="text-black dark:text-white text-sm">Sign in to challenge your friends and track your wins.</p>
-                      <Button
-                        className="mt-3 bg-amber-500 hover:bg-amber-600 text-black text-sm"
-                        onClick={() => handleStartGame('friends')}
-                      >
-                        Sign In
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                <img src="/src/assets/icons/friends.webp" alt="Friends" className="w-48 h-48 object-contain mt-8 md:mt-12" />
-                <Button
-                  className="w-48 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-full uppercase flex items-center justify-center gap-2 text-lg py-3 -mt-8 z-10 md:mt-0 md:self-center"
-                  onClick={() => handleStartGame('friends')}
-                  disabled={isLoading || isGuest}
-                >
-                  {isLoading ? 'Loading...' : 'Play Friends'}
-                </Button>
-              </div>
+  {isLoaded ? (
+    <div className="flex flex-col items-start gap-12 md:flex-row md:gap-20 md:items-start">
+      {/* Solo Card */}
+      <div className="flex flex-col items-center justify-center gap-0 py-4">
+        <div
+          className="w-60 h-60 rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-yellow-300 via-orange-400 to-orange-600 cursor-pointer"
+          onClick={() => handleStartGame('classic')}
+        >
+          <img src="/src/assets/icons/solo.webp" alt="Solo" className="w-40 h-40 object-contain" />
+        </div>
+        <div
+          className="w-60 bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1 cursor-pointer"
+          onClick={() => handleStartGame('classic')}
+        >
+          Play Solo
+        </div>
+        <div className="w-full mt-4">
+          <div className="flex items-center justify-center mb-2">
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="solo-timer-toggle"
+                checked={isSoloTimerEnabled}
+                onCheckedChange={setIsSoloTimerEnabled}
+                className="mr-3 data-[state=checked]:bg-gray-600 h-4 w-8"
+              />
+              <Label htmlFor="solo-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm text-black dark:text-white">
+                <span>Round Timer</span>
+              </Label>
             </div>
-          ) : (
-            <div className="text-center p-4">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-              <p className="text-black dark:text-white text-lg font-medium mt-2">Loading...</p>
+            {isSoloTimerEnabled && (
+              <span className="text-sm font-bold text-orange-500 ml-4">
+                {formatTime(practiceTimerSeconds)}
+              </span>
+            )}
+          </div>
+          {isSoloTimerEnabled && (
+            <div className="relative mb-4 px-4">
+              <div className="pt-2">
+                <Slider
+                  value={[practiceTimerSeconds]}
+                  min={minTimerValue}
+                  max={maxTimerValue}
+                  step={stepSize}
+                  onValueChange={(value) => setPracticeTimerSeconds(value[0])}
+                  className="w-full"
+                />
+              </div>
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-300">
+                <span>5s</span>
+                <span>5m</span>
+              </div>
             </div>
           )}
         </div>
       </div>
+      {/* Friends Card */}
+      <div className="relative flex flex-col items-center justify-center gap-0 py-4">
+        {isGuest && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black/60 rounded-xl z-10">
+            <div className="text-center p-4">
+              <img src="/src/assets/icons/lock.webp" alt="Locked" className="h-10 w-10 mx-auto mb-3" />
+              <p className="text-black dark:text-white text-sm">Sign in to challenge your friends and track your wins.</p>
+              <Button
+                className="mt-3 bg-amber-500 hover:bg-amber-600 text-black text-sm"
+                onClick={() => handleStartGame('friends')}
+              >
+                Sign In
+              </Button>
+            </div>
+          </div>
+        )}
+        <div
+          className={`w-60 h-60 rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-cyan-300 via-sky-400 to-sky-600 ${isGuest ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}`}
+          onClick={() => !isGuest && handleStartGame('friends')}
+        >
+          <img src="/src/assets/icons/friends.webp" alt="Friends" className="w-40 h-40 object-contain" />
+        </div>
+        <div
+          className="w-60 bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1"
+        >
+          Play Friends
+        </div>
+      </div>
+    </div>
+  ) : (
+    <div className="text-center p-4">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+      <p className="text-black dark:text-white text-lg font-medium mt-2">Loading...</p>
+    </div>
+  )}
+</div>
       
       {/* Loading Popup */}
       {showLoadingPopup && (

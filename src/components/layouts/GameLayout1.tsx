@@ -11,6 +11,7 @@ import LocationSelector from '@/components/game/LocationSelector';
 import TimerDisplay from '@/components/game/TimerDisplay';
 import LazyImage from '@/components/ui/LazyImage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar, MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
@@ -20,7 +21,8 @@ const formatTime = (seconds: number): string => {
   const secs = seconds % 60;
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
-import { GameImage, GuessCoordinates, useGame } from '@/contexts/GameContext';
+import { GameImage, useGame } from '@/contexts/GameContext';
+import { GuessCoordinates } from '@/types';
 import { Hint } from '@/hooks/useHintV2';
 
 export interface GameLayout1Props {
@@ -160,7 +162,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   }
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-history-light dark:bg-history-dark">
+    <div className="min-h-screen flex flex-col lg:flex-row bg-background dark:bg-history-dark">
       {/* Image Section - Full width on mobile, half on desktop */}
       <div className="w-full h-[60vh] lg:w-1/2 lg:h-screen relative">
         <LazyImage
@@ -205,12 +207,15 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       )}
 
       {/* Input Sections - Full width on mobile, half on desktop */}
-      <div className="flex-grow p-4 lg:p-8 flex flex-col">
-        <div className="max-w-5xl mx-auto w-full space-y-6">
+      <div className="flex-grow px-2 py-4 md:px-4 lg:px-6 flex flex-col">
+        <div className="max-w-5xl mx-auto w-full space-y-4">
           <Card className="overflow-hidden">
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <label className="font-semibold text-history-primary dark:text-history-light">WHEN</label>
+                <div className="flex items-center font-semibold text-history-primary dark:text-history-light">
+                  <Calendar className="w-5 h-5 mr-2" />
+                  <label>WHEN</label>
+                </div>
                 <div className="ml-auto px-3 py-1 bg-history-secondary/20 rounded-full text-history-secondary font-medium">{selectedYear}</div>
               </div>
               <YearSelector 

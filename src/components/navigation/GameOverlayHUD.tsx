@@ -143,7 +143,7 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
                 {`${hintsUsed}/14`}
               </Badge>
               {(xpDebt > 0 || accDebt > 0) && (
-                <span className="ml-2 text-xs font-semibold text-yellow-200 bg-yellow-700/80 rounded px-2 py-0.5">
+                <span className="ml-2 text-xs font-semibold text-white bg-red-600/90 rounded px-2 py-0.5">
                   -{xpDebt}XP, -{accDebt}%
                 </span>
               )}

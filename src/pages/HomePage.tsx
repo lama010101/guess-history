@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Target, Users, Timer, Lock, Play, Moon } from "lucide-react";
 import GlobalSettingsModal from '@/components/GlobalSettingsModal';
-import FriendsGameModal from '@/components/FriendsGameModal';
+// FriendsGameModal removed - now using direct lobby navigation
 import { AuthModal } from '@/components/AuthModal';
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
@@ -64,9 +64,10 @@ const HomePage = () => {
   const [isLoadingUserSettings, setIsLoadingUserSettings] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingMode, setPendingMode] = useState<string | null>(null);
-  const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false);
+  // FriendsModal state removed - now using direct lobby navigation
   const [showLoadingPopup, setShowLoadingPopup] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  console.log('[HomePage] Render', { isLoaded, user, isGuest });
   // Timer states
   const [isSoloTimerEnabled, setIsSoloTimerEnabled] = useState(false);
   const [isFriendsTimerEnabled, setIsFriendsTimerEnabled] = useState(false);
@@ -105,6 +106,7 @@ const HomePage = () => {
         console.error('Error loading user data:', error);
       } finally {
         setIsLoaded(true);
+          console.log('[HomePage] loadUserData complete, isLoaded:', true);
       }
     };
 
@@ -120,6 +122,7 @@ const HomePage = () => {
   const { toast } = useToast();
 
   const handleStartGame = useCallback(async (mode: string) => {
+    console.log('[HomePage] handleStartGame start', mode, { user, isGuest });
     // Check if user is authenticated (either guest or registered)
     if (!user) {
       setPendingMode(mode);
@@ -136,27 +139,15 @@ const HomePage = () => {
 
     setShowLoadingPopup(true);
 
-    if (mode === 'time-attack') {
-      // For friends mode, use the friends timer settings
-      if (isFriendsTimerEnabled) {
-        try {
-          await startGame?.({ timerSeconds: friendsTimerSeconds, timerEnabled: true });
-        } catch (error) {
-          console.error('Error starting game:', error);
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to start the game. Please try again.",
-          });
-        } finally {
-          setShowLoadingPopup(false);
-        }
-        return;
-      } else {
-        setShowLoadingPopup(false);
-        setIsFriendsModalOpen(true);
-        return;
-      }
+    if (mode === 'friends') {
+      // For friends mode, create a new lobby and navigate to it.
+      // Timer settings will be configured inside the lobby by the host.
+      console.log('[HomePage] Play Friends clicked. Creating lobby...');
+      setShowLoadingPopup(false); // No loading popup needed, navigation should be fast.
+      const newRoomId = crypto.randomUUID().slice(0, 8);
+      console.log(`[HomePage] Navigating to /lobby/${newRoomId}`);
+      navigate(`lobby/${newRoomId}`);
+      return;
     }
     
     if (!gameContext) {
@@ -195,47 +186,9 @@ const HomePage = () => {
         setShowLoadingPopup(false);
       }
     }
-  }, [user, gameContext, startGame, isLoading, navigate, toast, setPendingMode, setShowAuthModal, setIsFriendsModalOpen, isSoloTimerEnabled, practiceTimerSeconds, isFriendsTimerEnabled, friendsTimerSeconds]);
+  }, [user, gameContext, startGame, isLoading, navigate, toast, setPendingMode, setShowAuthModal, isSoloTimerEnabled, practiceTimerSeconds, isFriendsTimerEnabled, friendsTimerSeconds, isGuest]);
   
-  const handleStartFriendsGame = useCallback(async (settings: { timerSeconds: number; hintsPerGame: number }) => {
-    setIsFriendsModalOpen(false);
-    setShowLoadingPopup(true);
-    
-    // Check if user is authenticated (either guest or registered)
-    if (!user) {
-      setPendingMode('time-attack');
-      setShowAuthModal(true);
-      setShowLoadingPopup(false);
-      return;
-    }
-    
-    if (!gameContext) {
-      console.error('Game context is not available');
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Unable to start game. Please try again.",
-      });
-      setShowLoadingPopup(false);
-      return;
-    }
-    
-    if (!isLoading) {
-      try {
-        await startGame?.(settings);
-        // startGame handles navigation internally
-      } catch (error) {
-        console.error('Error starting friends game:', error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to start the game. Please try again.",
-        });
-      } finally {
-        setShowLoadingPopup(false);
-      }
-    }
-  }, [user, gameContext, startGame, isLoading, toast]);
+  // handleStartFriendsGame removed - now using direct lobby navigation
 
   useEffect(() => {
     if (user && pendingMode && gameContext && startGame) {
@@ -321,7 +274,13 @@ const HomePage = () => {
         </div>
       </div>
       {/* Friends Card */}
-      <div className="relative flex flex-col items-center justify-center gap-0 py-4">
+      <div
+        className={`relative flex flex-col items-center justify-center gap-0 py-4 ${isGuest ? 'opacity-60' : 'cursor-pointer'}`}
+        onClick={() => {
+          console.log('[HomePage] Friends card clicked. isGuest:', isGuest);
+          if (!isGuest) handleStartGame('friends');
+        }}
+      >
         {isGuest && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black/60 rounded-xl z-10">
             <div className="text-center p-4">
@@ -336,15 +295,10 @@ const HomePage = () => {
             </div>
           </div>
         )}
-        <div
-          className={`w-60 h-60 rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-cyan-300 via-sky-400 to-sky-600 ${isGuest ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}`}
-          onClick={() => !isGuest && handleStartGame('friends')}
-        >
+        <div className="w-60 h-60 rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-cyan-300 via-sky-400 to-sky-600">
           <img src="/src/assets/icons/friends.webp" alt="Friends" className="w-40 h-40 object-contain" />
         </div>
-        <div
-          className="w-60 bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1"
-        >
+        <div className="w-60 bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1">
           Play Friends
         </div>
       </div>
@@ -373,12 +327,7 @@ const HomePage = () => {
         onSettingsUpdated={handleSettingsUpdated}
       />
       
-      <FriendsGameModal
-        isOpen={isFriendsModalOpen}
-        onClose={() => setIsFriendsModalOpen(false)}
-        onStartGame={handleStartFriendsGame}
-        isLoading={isLoading}
-      />
+      {/* FriendsGameModal removed - now using direct lobby navigation */}
       
       <AuthModal
         isOpen={showAuthModal}

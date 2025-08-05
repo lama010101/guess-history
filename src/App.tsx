@@ -22,7 +22,8 @@ import SettingsPage from "./pages/SettingsPage";
 import UserProfilePage from './pages/UserProfile';
 import ProtectedRoute from './components/ProtectedRoute';
 import GameRoomPage from "./pages/GameRoomPage";
-import FriendsPage from "./pages/FriendsPage";
+import FriendsPage from '@/pages/FriendsPage';
+import LobbyPage from '@/pages/LobbyPage';
 import AuthPage from "./pages/AuthPage";
 
 
@@ -142,6 +143,7 @@ const App = () => {
                         <Route path="friends" element={<FriendsPage />} />
                         <Route path="game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
                         <Route path="game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />
+                      <Route path="lobby/:roomId" element={<LobbyPage />} />
                       </Route>
                       {/* Final Results page with its own MainNavbar */}
                       <Route path="/test/game/room/:roomId/final" element={<FinalResultsPage />} />

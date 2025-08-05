@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guess History - Invite Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .btn {
+            @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200;
+        }
+        .btn-primary {
+            @apply bg-orange-500 text-white hover:bg-orange-600;
+        }
+        .btn-secondary {
+            @apply bg-gray-200 hover:bg-gray-300 text-gray-800;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-white rounded-xl shadow-lg p-6 space-y-6">
+        <div class="text-center">
+            <h1 class="text-2xl font-bold text-gray-900">🎮 Guess History</h1>
+            <p class="text-gray-600 mt-1">Generate invite links for multiplayer games</p>
+        </div>
+
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Game Mode</label>
+                <select id="gameMode" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                    <option value="async">Async (Play at your own pace)</option>
+                    <option value="sync">Sync (Real-time with friends)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Room Name (Optional)</label>
+                <input type="text" id="roomName" placeholder="e.g., Friday Game Night" 
+                       class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+            </div>
+
+            <button onclick="generateInvite()" class="w-full btn btn-primary py-3">
+                🎮 Generate Invite Link
+            </button>
+        </div>
+
+        <div id="result" class="hidden space-y-4">
+            <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p class="text-green-700">✅ Invite link generated successfully!</p>
+            </div>
+            
+            <div class="relative
+                <input type="text" id="inviteLink" readonly 
+                       class="w-full p-2 pr-10 border border-gray-300 rounded-lg bg-gray-50 text-sm font-mono overflow-x-auto">
+                <button onclick="copyToClipboard()" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                    📋
+                </button>
+            </div>
+            
+            <div class="text-center text-sm text-gray-500">
+                Share this link with friends to play together!
+            </div>
+        </div>
+
+        <div class="pt-4 border-t border-gray-200 text-center text-sm text-gray-500">
+            <p>Need help? Email support@guess-history.com</p>
+        </div>
+    </div>
+
+    <script>
+        // Replace with your actual API endpoint
+        const API_URL = 'https://your-supabase-project.functions.supabase.co/create-invite';
+        
+        async function generateInvite() {
+            const gameMode = document.getElementById('gameMode').value;
+            const roomName = document.getElementById('roomName').value;
+            
+            // Show loading state
+            const button = document.querySelector('button[onclick="generateInvite()"]');
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.innerHTML = '⌛ Generating...';
+            
+            try {
+                // Call your Supabase function
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        mode: gameMode,
+                        roomName: roomName || undefined
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to generate invite');
+                }
+                
+                const data = await response.json();
+                const inviteUrl = `${window.location.origin}/join?invite=${data.inviteId}`;
+                
+                // Show result
+                document.getElementById('inviteLink').value = inviteUrl;
+                document.getElementById('result').classList.remove('hidden');
+                
+                // Auto-scroll to result
+                document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+                
+            } catch (error) {
+                alert('Error generating invite. Please try again.');
+                console.error('Invite generation failed:', error);
+            } finally {
+                // Reset button
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        }
+        
+        function copyToClipboard() {
+            const copyText = document.getElementById('inviteLink');
+            copyText.select();
+            copyText.setSelectionRange(0, 99999);
+            document.execCommand('copy');
+            
+            // Show copied feedback
+            const copyBtn = document.querySelector('button[onclick="copyToClipboard()"]');
+            const originalText = copyBtn.innerHTML;
+            copyBtn.innerHTML = '✅ Copied!';
+            setTimeout(() => {
+                copyBtn.innerHTML = originalText;
+            }, 2000);
+        }
+        
+        // Handle URL parameters for pre-filled data
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('mode')) {
+                document.getElementById('gameMode').value = urlParams.get('mode');
+            }
+            if (urlParams.has('room')) {
+                document.getElementById('roomName').value = decodeURIComponent(urlParams.get('room'));
+            }
+        });
+    </script>
+</body>
+</html>

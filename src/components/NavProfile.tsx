@@ -1,4 +1,4 @@
-console.log('HELLO FROM SRC NavProfile');
+// NavProfile component
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGame } from "@/contexts/GameContext";
@@ -34,7 +34,6 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 
 export const NavProfile = () => {
-  console.log('NavProfile: Component mounting');
   const { user, signOut, isGuest } = useAuth();
   const { fetchGlobalMetrics } = useGame();
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -43,41 +42,70 @@ export const NavProfile = () => {
   const [error, setError] = useState<Error | null>(null);
   const navigate = useNavigate();
 
-  // Define helper to fetch profile data
-  const fetchProfileData = useCallback(async () => {
-    if (!user) return;
-    try {
-      console.log('NavProfile: Fetching profile for user:', user.id);
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('username, avatar_image_url, avatar_url, avatar_name, display_name')
-        .eq('id', user.id)
-        .single();
-      if (error) {
-        console.error('NavProfile: Error fetching user profile:', error.message);
-        setError(new Error(error.message));
-        setProfile(null);
-      } else {
-        console.log('NavProfile: Fetched profile:', data);
-        setProfile(data);
-      }
-    } catch (err) {
-      console.error('NavProfile: Unexpected error:', err);
-      setError(err instanceof Error ? err : new Error(String(err)));
+  // Component lifecycle handled via useEffect
+
+  // Effect for profile data state changes
+  useEffect(() => {
+    console.log('NavProfile: Profile state updated:', {
+      hasUser: !!user,
+      userId: user?.id || null,
+      profileLoaded: !!profile,
+      avatarUrl: profile?.avatar_image_url || profile?.avatar_url || null,
+      isLoading,
+      hasError: !!error
+    });
+  }, [user, profile, isLoading, error]);
+
+  // Separate effect for profile fetching to avoid render-time state updates
+  useEffect(() => {
+    if (!user) {
       setProfile(null);
-    } finally {
-      setIsLoading(false);
+      return;
     }
+
+    const fetchProfileData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('username, avatar_image_url, avatar_url, avatar_name, display_name')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          setError(new Error(error.message));
+          setProfile(null);
+        } else {
+          setProfile(data);
+        }
+      } catch (err) {
+        console.error('NavProfile: Unexpected error:', err);
+        setError(err instanceof Error ? err : new Error(String(err)));
+        setProfile(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfileData();
   }, [user]);
 
-  // Add debug log for component render
-  console.log('NavProfile: Component rendering with user:', user ? user.id : 'no user');
-
+  // Separate effect for metrics to avoid dependency cycles
   useEffect(() => {
-    if (user) {
-      fetchProfileData();
-    }
-  }, [user, fetchProfileData]);
+    if (!user) return;
+    
+    // Fetch metrics once on mount/user change
+    const loadMetrics = async () => {
+      try {
+        await fetchGlobalMetrics();
+      } catch (err) {
+        console.error('Error fetching global metrics:', err);
+      }
+    };
+    
+    loadMetrics();
+  }, [user, fetchGlobalMetrics]);
 
   const handleSignOut = async () => {
     try {
@@ -86,21 +114,6 @@ export const NavProfile = () => {
       console.error('Error signing out:', error);
     }
   };
-
-  useEffect(() => {
-    if (!user) {
-      setProfile(null);
-      return;
-    }
-    setIsLoading(true);
-    setError(null);
-    fetchProfileData();
-    fetchGlobalMetrics().catch(err => console.error('Error refreshing global metrics in NavProfile:', err));
-    const refreshInterval = setInterval(() => {
-      fetchGlobalMetrics().catch(err => console.error('Error refreshing global metrics in NavProfile:', err));
-    }, 5000);
-    return () => clearInterval(refreshInterval);
-  }, [user, fetchGlobalMetrics, fetchProfileData]);
 
   if (!user) {
     return (
@@ -136,15 +149,7 @@ export const NavProfile = () => {
     (user?.user_metadata as any)?.full_name ??
     (!isGuest ? user?.email : 'Guest');
 
-  // Add debug logs for state changes
-  console.log('NavProfile: Current state:', {
-    hasUser: !!user,
-    userId: user?.id,
-    profileLoaded: !!profile,
-    avatarUrl,
-    isLoading,
-    error: error?.message
-  });
+  // State changes are logged via useEffect hooks
 
   return (
     <div className="flex items-center">
@@ -231,7 +236,8 @@ export const NavProfile = () => {
         onClose={() => setShowAuthModal(false)}
         onAuthSuccess={() => {
           setShowAuthModal(false);
-          fetchProfileData();
+          // User will be updated by AuthContext, which will trigger our useEffect
+          // No need to manually fetch profile here
         }}
         initialTab="signUp"
       />

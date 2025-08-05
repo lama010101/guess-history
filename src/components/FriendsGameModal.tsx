@@ -53,16 +53,23 @@ const FriendsGameModal: React.FC<FriendsGameModalProps> = ({
     onClose();
   };
 
-  const [gameId] = useState(() => `game_${Math.random().toString(36).substr(2, 9)}`);
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
-  const gameUrl = `${window.location.origin}/play/${gameId}`;
+
+  // Generate invite link on open
+  useEffect(() => {
+    if (!isOpen) return;
+    const id = crypto.randomUUID().slice(0, 8);
+    const url = `${window.location.origin}/join?invite=${id}`;
+    setInviteUrl(url);
+  }, [isOpen]);
 
   const handleCopyUrl = () => {
     let copied = false;
     // Try execCommand('copy') with a temporary textarea (most reliable for user-initiated events)
     try {
       const textArea = document.createElement('textarea');
-      textArea.value = gameUrl;
+      textArea.value = (inviteUrl ?? '');
       textArea.setAttribute('readonly', '');
       textArea.style.position = 'absolute';
       textArea.style.left = '-9999px';
@@ -76,7 +83,7 @@ const FriendsGameModal: React.FC<FriendsGameModalProps> = ({
 
     // As a backup, try Clipboard API if available
     if (!copied && navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(gameUrl).then(() => {
+      navigator.clipboard.writeText((inviteUrl ?? '')).then(() => {
         setIsCopied(true);
         setTimeout(() => setIsCopied(false), 2000);
       }, () => {
@@ -94,10 +101,11 @@ const FriendsGameModal: React.FC<FriendsGameModalProps> = ({
 
   const handleStart = () => {
     const settings = {
+    inviteUrl: inviteUrl ?? '',
       hintsPerGame,
       timerEnabled,
       timerSeconds,
-      gameId,
+      
     };
     localStorage.setItem('friendsGameSettings', JSON.stringify(settings));
     onStartGame({ timerSeconds, hintsPerGame });
@@ -199,7 +207,7 @@ const FriendsGameModal: React.FC<FriendsGameModalProps> = ({
                   <input
                     type="text"
                     readOnly
-                    value={gameUrl}
+                    value={(inviteUrl ?? '')}
                     className="block w-full rounded-none rounded-l-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 text-sm py-2 px-3 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500"
                     onClick={(e) => (e.target as HTMLInputElement).select()}
                   />

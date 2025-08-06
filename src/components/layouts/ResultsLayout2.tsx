@@ -11,6 +11,7 @@ import { RoundResult as BaseRoundResult, XP_WHERE_MAX, XP_WHEN_MAX, HintDebt } f
 import { formatInteger } from '@/utils/format';
 import { HINT_TYPE_NAMES } from '@/constants/hints';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 // Import Leaflet components and CSS
 import { MapContainer, TileLayer, Marker, Popup, ZoomControl, useMap, Polyline } from 'react-leaflet';
@@ -167,7 +168,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   const userIcon = useMemo(() => createUserIcon(avatarUrl), [avatarUrl]);
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-black text-gray-900 dark:text-gray-100 pb-20">
+    <div className="min-h-screen bg-gray-100 dark:bg-[#000000] text-gray-900 dark:text-gray-100 pb-20">
       <ResultsHeader 
         round={round}
         totalRounds={totalRounds}
@@ -180,10 +181,10 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left Column */}
           <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-6 text-center">
+            <div className="bg-white dark:bg-[#202020] rounded-2xl shadow-lg p-6 text-center border border-gray-200 dark:border-gray-700">
               <h2 className="text-2xl font-bold mb-1 text-gray-900 dark:text-gray-100">Your Score</h2>
               {(xpDebt > 0 || accDebt > 0) && (
-                <div className="text-xs text-red-500 dark:text-red-400 mb-5">(Hint cost deducted)</div>
+                <div className="text-xs text-red-500 dark:text-red-500 mb-5">(Hint cost deducted)</div>
               )}
               
               <div className="flex justify-center items-center gap-6 mb-4">
@@ -193,7 +194,9 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                       <Target className="h-3.5 w-3.5" />
                       {netAccuracy.toFixed(0)}%
                     </Badge>
-                    {accDebt > 0 && <Badge variant="hint" className="text-xs text-red-500 font-semibold mt-1">(-{accDebt.toFixed(0)}%)</Badge>}
+                    {accDebt > 0 && <Badge variant="hint" className={cn("text-xs font-semibold mt-1", {
+                      "text-red-500 dark:text-red-500": accDebt > 0
+                    })}>(-{accDebt.toFixed(0)}%)</Badge>}
                   </div>
                   <div className="text-sm text-muted-foreground">Accuracy</div>
                 </div>
@@ -203,14 +206,16 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                       <Zap className="h-3.5 w-3.5" />
                       +{formatInteger(netXP)} XP
                     </Badge>
-                    {xpDebt > 0 && <Badge variant="hint" className="text-xs text-red-500 font-semibold mt-1">(-{formatInteger(xpDebt)} XP)</Badge>}
+                    {xpDebt > 0 && <Badge variant="hint" className={cn("text-xs font-semibold mt-1", {
+                      "text-red-500 dark:text-red-500": xpDebt > 0
+                    })}>(-{formatInteger(xpDebt)} XP)</Badge>}
                   </div>
                   <div className="text-sm text-muted-foreground">Experience</div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg overflow-hidden">
+            <div className="bg-white dark:bg-[#202020] rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
               <div className="relative w-full aspect-video overflow-hidden rounded-t-lg">
                 <img src={result.imageUrl} alt={result.imageTitle} className="w-full h-full object-cover" />
               </div>
@@ -239,7 +244,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
           {/* Right Column */}
           <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-4">
+            <div className="bg-white dark:bg-[#202020] rounded-2xl shadow-lg p-4 border border-gray-200 dark:border-gray-700">
               <div className="border-b border-border pb-3 mb-3 flex justify-between items-center">
                 <h2 className="font-bold text-lg text-gray-900 dark:text-gray-100 flex items-center">
                   <Calendar className="mr-2 h-4 w-4" />
@@ -270,7 +275,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-4">
+            <div className="bg-white dark:bg-[#202020] rounded-2xl shadow-lg p-4 border border-gray-200 dark:border-gray-700">
               <div className="border-b border-border pb-3 mb-3 flex justify-between items-center">
                 <h2 className="font-bold text-lg text-gray-900 dark:text-gray-100 flex items-center">
                   <MapPin className="mr-2 h-4 w-4" />

@@ -440,7 +440,7 @@ const RoundResultsPage = () => {
                 </svg>
               </Button>
             )}
-            <Button onClick={handleNext} className="h-12 px-6 rounded-xl font-semibold text-lg bg-black hover:bg-gray-800 text-white dark:bg-white dark:text-black dark:hover:bg-gray-200 shadow-lg transition-colors">
+            <Button onClick={handleNext} className="bg-black hover:bg-gray-800 text-white dark:bg-white dark:text-black dark:hover:bg-gray-200 rounded-xl h-12 px-6 shadow-lg transition-colors">
               {roundNumber === images.length ? 'Finish Game' : 'Next Round'}
             </Button>
           </div>

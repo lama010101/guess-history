@@ -18,14 +18,14 @@ const HintDebtsCard: React.FC<HintDebtsCardProps> = ({ hintDebts }) => {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-700 rounded-2xl shadow-lg p-4">
+    <div className="bg-white dark:bg-[#202020] rounded-2xl shadow-lg p-4 border border-gray-200 dark:border-gray-700">
       <h2 className="font-bold text-lg text-history-primary dark:text-history-light flex items-center mb-3">
         <Zap className="mr-2 h-4 w-4" />
         Hint Debts
       </h2>
       <ul className="space-y-2">
         {hintDebts.map((debt, index) => (
-          <li key={index} className="flex justify-between items-center text-sm p-2 rounded-md bg-gray-100 dark:bg-gray-700/50">
+          <li key={index} className="flex justify-between items-center text-sm p-2 rounded-md bg-gray-100 dark:bg-transparent">
             <span>{debt.label || getHintLabel(debt.hintId)}</span>
             <div className="flex items-center gap-3">
               {debt.xpDebt > 0 && <span className="font-semibold text-red-500">-{debt.xpDebt} XP</span>}

@@ -89,7 +89,7 @@ const ImageRatingModal: React.FC<ImageRatingModalProps> = ({ isOpen, onClose, im
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="flex flex-col gap-2">
-            <label>How good is the IMAGE?</label>
+            <label>IMAGE Quality & Accuracy</label>
             <Slider
               defaultValue={[5]}
               min={1}
@@ -104,7 +104,7 @@ const ImageRatingModal: React.FC<ImageRatingModalProps> = ({ isOpen, onClose, im
           </div>
           
           <div className="flex flex-col gap-2">
-            <label>Are the TITLE and DESCRIPTION accurate?</label>
+            <label>TITLE & DESCRIPTION accurate?</label>
             <div className="flex gap-2">
               <Button variant={descriptionAccurate === 'yes' ? 'default' : 'outline'} onClick={() => setDescriptionAccurate('yes')}>Yes</Button>
               <Button variant={descriptionAccurate === 'no' ? 'default' : 'outline'} onClick={() => setDescriptionAccurate('no')}>No</Button>
@@ -112,7 +112,7 @@ const ImageRatingModal: React.FC<ImageRatingModalProps> = ({ isOpen, onClose, im
           </div>
           
           <div className="flex flex-col gap-2">
-            <label>Is the LOCATION accurate?</label>
+            <label>LOCATION accurate?</label>
             <div className="flex gap-2">
               <Button variant={locationAccurate === 'yes' ? 'default' : 'outline'} onClick={() => setLocationAccurate('yes')}>Yes</Button>
               <Button variant={locationAccurate === 'no' ? 'default' : 'outline'} onClick={() => setLocationAccurate('no')}>No</Button>
@@ -120,7 +120,7 @@ const ImageRatingModal: React.FC<ImageRatingModalProps> = ({ isOpen, onClose, im
           </div>
 
           <div className="flex flex-col gap-2">
-            <label>Is the DATE Accurate?</label>
+            <label>DATE Accurate?</label>
             <div className="flex gap-2">
               <Button variant={dateAccurate === 'yes' ? 'default' : 'outline'} onClick={() => setDateAccurate('yes')}>Yes</Button>
               <Button variant={dateAccurate === 'no' ? 'default' : 'outline'} onClick={() => setDateAccurate('no')}>No</Button>
@@ -128,7 +128,7 @@ const ImageRatingModal: React.FC<ImageRatingModalProps> = ({ isOpen, onClose, im
           </div>
 
           <div className="flex flex-col gap-2">
-            <label htmlFor="comments">Your COMMENT</label>
+            <label htmlFor="comments">COMMENT</label>
             <Textarea 
               id="comments"
               placeholder="Leave a comment (optional)..."

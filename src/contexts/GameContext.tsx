@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useSettingsStore } from '@/lib/useSettingsStore';
 import { v4 as uuidv4 } from 'uuid'; // For generating unique game IDs
+import { getNewImages, recordPlayedImages } from '@/utils/imageHistory';
 import { Hint } from '@/hooks/useHintV2';
 import { RoundResult, GuessCoordinates } from '@/types';
 
@@ -456,27 +457,20 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       console.log(`[GameContext] [GameID: ${newGameId}] Starting new game, roomId: ${newRoomId}`);
       setRoomId(newRoomId);
 
-      const { data: imageBatch, error: fetchError } = await supabase
-        .from('images')
-        .select('id, title, description, latitude, longitude, year, image_url, location_name, firebase_url, confidence, source_citation') 
-        .eq('ready', true)
-        .limit(5);
+      // Hybrid no-repeat fetch
+      const { data: { user } } = await supabase.auth.getUser();
+      const imageBatch = await getNewImages(user?.id ?? null, 5);
         
-      if (fetchError) {
-        console.error("Error fetching images:", fetchError);
-        throw new Error(`Failed to fetch images: ${fetchError.message}`);
-      }
-
       if (!imageBatch || imageBatch.length < 5) {
         console.warn("Could not fetch at least 5 images, fetched:", imageBatch?.length);
         throw new Error(`Database only contains ${imageBatch?.length || 0} images. Need 5 to start.`);
       }
 
-      // We already limited the query to 5, but shuffle locally for additional randomness
-      const selectedImages = shuffleArray(imageBatch);
+      // We already limited to 5 from RPC, but shuffle locally for additional randomness
+      const selectedImages = shuffleArray(imageBatch as any);
 
       const processedImages = await Promise.all(
-        selectedImages.map(async (img) => {
+        selectedImages.map(async (img: any) => {
           // Prioritize firebase_url if it exists
           if (img.firebase_url) {
             return {
@@ -702,6 +696,20 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     setError(null);
     setIsLoading(false);
   }, [clearSavedGameState, gameId]);
+
+  // === Record played images when game ends ===
+  useEffect(() => {
+    (async () => {
+      if (images.length > 0 && roundResults.length === images.length) {
+        const { data: { user } } = await supabase.auth.getUser();
+        try {
+          await recordPlayedImages(user?.id ?? null, images.map((img) => img.id));
+        } catch (err) {
+          console.error('[GameContext] Failed to record played images', err);
+        }
+      }
+    })();
+  }, [images, roundResults]);
 
   // Timer initialization is handled in GameRoundPage.tsx
 

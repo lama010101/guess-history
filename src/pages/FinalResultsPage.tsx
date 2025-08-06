@@ -225,16 +225,16 @@ const FinalResultsPage = () => {
             <div className="flex items-center">
               <Logo />
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="accuracy" className="flex items-center gap-1 text-sm" aria-label={`Global Accuracy: ${Math.round(globalAccuracy || 0)}%`}>
-                <Target className="h-4 w-4" />
-                <span>{Math.round(globalAccuracy || 0)}%</span>
-              </Badge>
-              <Badge variant="xp" className="flex items-center gap-1 text-sm" aria-label={`Global XP: ${Math.round(globalXP || 0)}`}>
-                <Zap className="h-4 w-4" />
-                <span>{Math.round(globalXP || 0)}</span>
-              </Badge>
-            </div>
+            <div className="flex items-center gap-4">
+  <Badge variant="accuracy" className="flex items-center gap-1 text-lg" aria-label={`Global Accuracy: ${Math.round(globalAccuracy || 0)}%`}>
+    <Target className="h-4 w-4" />
+    <span>{Math.round(globalAccuracy || 0)}%</span>
+  </Badge>
+  <Badge variant="xp" className="flex items-center gap-1 text-lg" aria-label={`Global XP: ${Math.round(globalXP || 0)}`}>
+    <Zap className="h-4 w-4" />
+    <span>{Math.round(globalXP || 0)}</span>
+  </Badge>
+</div>
             <NavProfile />
           </div>
         </div>
@@ -280,7 +280,7 @@ const FinalResultsPage = () => {
             </div>
             {isRoundSummaryOpen && (
               <div id="round-summary-content" className="mt-4">
-                <div className="flex flex-row gap-6">
+                <div className="flex flex-row justify-center gap-16">
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-history-primary dark:text-history-light mb-2 flex items-center">
                       <Calendar className="h-4 w-4 mr-2 text-history-primary" />
@@ -342,7 +342,7 @@ const FinalResultsPage = () => {
           <Button onClick={() => alert("Share functionality coming soon!")} variant="outline" size="icon" className="h-12 w-12 rounded-full bg-white hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 shadow-md" aria-label="Share">
             <Share2 className="h-5 w-5" />
           </Button>
-          <Button onClick={handlePlayAgain} className="flex-1 bg-history-primary hover:bg-history-primary/90 text-white dark:bg-white dark:text-black dark:hover:bg-gray-100 gap-2 py-6 text-base" size="lg">
+          <Button onClick={handlePlayAgain} className="flex-1 bg-history-primary hover:bg-history-primary/90 text-white gap-2 py-6 text-base" size="lg">
             <Loader size={20} className="animate-spin mr-2" />
             Play Again
           </Button>

@@ -210,7 +210,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       <div className="flex-grow px-2 py-4 md:px-4 lg:px-6 flex flex-col">
         <div className="max-w-5xl mx-auto w-full space-y-4">
           <Card className="overflow-hidden dark:bg-[#202020]">
-            <CardContent className="p-4 lg:px-8 flex flex-col">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center font-semibold text-history-primary dark:text-history-light">
                   <Calendar className="w-5 h-5 mr-2" />
@@ -225,8 +225,8 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             </CardContent>
           </Card>
           
-          <Card className="overflow-hidden dark:bg-[#202020] flex-grow">
-            <CardContent className="p-4 lg:px-8 lg:min-h-[520px] flex flex-col justify-between">
+          <Card className="overflow-hidden dark:bg-[#202020]">
+            <CardContent className="p-4 lg:min-h-[520px] flex flex-col justify-between">
      
               <LocationSelector 
                 selectedLocation={null} 

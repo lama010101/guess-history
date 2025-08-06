@@ -70,7 +70,7 @@ const YearSelector: React.FC<YearSelectorProps> = ({
         </datalist>
         
         {/* Custom tick marks with labels */}
-        <div className="flex w-full relative mt-0">
+        <div className="flex w-full relative mt-0 px-2">
           {markers.map((year, index) => {
             // Calculate position percentage
             const position = ((year - 1850) / (currentYear - 1850)) * 100;

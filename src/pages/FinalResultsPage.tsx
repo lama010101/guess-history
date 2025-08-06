@@ -342,7 +342,7 @@ const FinalResultsPage = () => {
           <Button onClick={() => alert("Share functionality coming soon!")} variant="outline" size="icon" className="h-12 w-12 rounded-full bg-white hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 shadow-md" aria-label="Share">
             <Share2 className="h-5 w-5" />
           </Button>
-          <Button onClick={handlePlayAgain} className="flex-1 bg-history-primary hover:bg-history-primary/90 text-white gap-2 py-6 text-base" size="lg">
+          <Button onClick={handlePlayAgain} className="flex-1 bg-white text-black hover:bg-gray-100 gap-2 py-6 text-base" size="lg">
             <Loader size={20} className="animate-spin mr-2" />
             Play Again
           </Button>

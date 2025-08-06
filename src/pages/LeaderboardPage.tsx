@@ -300,9 +300,9 @@ const LeaderboardPage = () => {
                 <TableRow
   key={entry.user_id}
   className={
-    entry.user_id === user?.id
-      ? 'bg-history-primary/10 dark:bg-history-primary/30 ring-2 ring-history-primary/60 dark:ring-history-primary/80'
-      : ''
+    (entry.user_id === user?.id
+      ? 'bg-history-primary/10 dark:bg-history-primary/30 ring-2 ring-history-primary/60 dark:ring-history-primary/80 '
+      : '') + ' bg-[#202020] text-white'
   }
 >
                   <TableCell className="font-medium">#{idx + 1}</TableCell>

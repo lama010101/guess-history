@@ -159,12 +159,14 @@ const ProfileLayout1 = () => {
         )}
         
         <Tabs defaultValue="stats">
-          <TabsList className="grid grid-cols-4 mb-8">
-            <TabsTrigger value="stats">Stats</TabsTrigger>
-            <TabsTrigger value="avatars">Avatars</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-            <TabsTrigger value="account">Account</TabsTrigger>
-          </TabsList>
+          <div className="glass-card rounded-xl p-6 mb-8 bg-white dark:bg-[#202020]">
+            <TabsList className="grid grid-cols-4">
+              <TabsTrigger value="stats">Stats</TabsTrigger>
+              <TabsTrigger value="avatars">Avatars</TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
+              <TabsTrigger value="account">Account</TabsTrigger>
+            </TabsList>
+          </div>
           
           <TabsContent value="stats">
             <StatsTab stats={stats || getDefaultStats()} isLoading={statsLoading} />
@@ -195,7 +197,7 @@ const ProfileLayout1 = () => {
           <TabsContent value="account">
             {user && !isGuest && <AccountManagement />}
             {isGuest && (
-              <div className="text-center p-8 glass-card rounded-xl">
+              <div className="text-center p-8 glass-card rounded-xl bg-white dark:bg-[#202020]">
                   <h3 className="text-lg font-semibold text-history-primary dark:text-history-light">Account Management</h3>
                   <p className="text-gray-600 dark:text-gray-400 mt-2">Register to manage your email, password, and other account settings.</p>
               </div>

@@ -393,7 +393,7 @@ const FriendsPage = () => {
               {friends.map(friend => (
                 <div 
                   key={friend.id} 
-                  className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow flex items-center justify-between"
+                  className="p-4 bg-white dark:bg-[#202020] rounded-lg shadow flex items-center justify-between"
                 >
                   <div className="flex items-center">
                     <Avatar className="h-10 w-10 mr-4 cursor-pointer" onClick={() => openProfileModal(friend)}>
@@ -503,7 +503,7 @@ const FriendsPage = () => {
                 {displayUsers.map(user => (
                   <div 
                     key={user.id} 
-                    className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow flex items-center justify-between"
+                    className="p-4 bg-white dark:bg-[#202020] rounded-lg shadow flex items-center justify-between"
                   >
                     <div className="flex items-center">
                       <Avatar className="h-10 w-10 mr-4 cursor-pointer" onClick={() => openProfileModal(user)}>

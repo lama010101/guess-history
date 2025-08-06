@@ -5,12 +5,25 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const LobbyPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
-  const { session } = useAuth();
+  const { session, isLoading } = useAuth();
 
   if (!roomId) return <Navigate to="/" replace />;
 
-  // If you need JWT for the adapter, obtain it via Supabase session.
-  const jwt = session?.access_token ?? '';
+  if (isLoading) {
+    return (
+      <div className="w-full min-h-screen flex items-center justify-center p-4 md:p-8 bg-neutral-900 text-white">
+        <div className="spinner"></div>
+        <p className="ml-4">Authenticating...</p>
+      </div>
+    );
+  }
+
+  const jwt = session?.access_token;
+
+  if (!jwt) {
+    // Redirect or show an error if auth fails or is missing
+    return <Navigate to="/?error=auth_failed" replace />;
+  }
 
   return (
     <div className="w-full min-h-screen flex items-center justify-center p-4 md:p-8 bg-neutral-900 text-white">

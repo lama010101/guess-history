@@ -11,6 +11,13 @@ interface MultiplayerLobbyProps {
 export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ roomId, jwt }) => {
   const { isConnected, players, leaderboard, connect, adapter } = useGameRoom(roomId, jwt);
 
+  // Automatically connect on mount, only if we have a JWT
+  useEffect(() => {
+    if (jwt) {
+      connect();
+    }
+  }, [connect, jwt]);
+
   // derive hostId and self player
   const hostId = useMemo(() => {
     const host = players.find((p: any) => p.isHost);
@@ -21,11 +28,11 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ roomId, jwt 
   const isHost = selfPlayer?.id === hostId;
 
   // derive ready state stats
-  const readyCount = players.filter((p: any) => p.ready).length;
+  const readyCount = players.filter((p: any) => p.isReady).length;
 
   const handleToggleReady = () => {
-    const newReady = !selfPlayer?.ready;
-    adapter?.send('PLAYER_READY_TOGGLE', { ready: newReady });
+    const newReady = !selfPlayer?.isReady;
+    adapter?.send('PLAYER_READY_TOGGLE', { isReady: newReady });
   };
 
   const handleStartGame = () => {
@@ -34,7 +41,7 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ roomId, jwt 
   };
 
   const [copied, setCopied] = useState(false);
-  const inviteLink = `${window.location.origin}/lobby/${roomId}`;
+  const inviteLink = `${window.location.origin}/test/lobby/${roomId}`;
   const copyLink = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(inviteLink);
@@ -81,9 +88,9 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ roomId, jwt 
           <div className="flex space-x-3">
             <button
               onClick={handleToggleReady}
-              className={`px-4 py-2 rounded font-medium ${selfPlayer?.ready ? 'bg-green-600 hover:bg-green-700' : 'bg-neutral-600 hover:bg-neutral-500'}`}
+              className={`px-4 py-2 rounded font-medium ${selfPlayer?.isReady ? 'bg-green-600 hover:bg-green-700' : 'bg-neutral-600 hover:bg-neutral-500'}`}
             >
-              {selfPlayer?.ready ? 'Ready!' : 'Ready Up'}
+              {selfPlayer?.isReady ? 'Ready!' : 'Ready Up'}
             </button>
             
             {isHost && (
@@ -107,10 +114,10 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ roomId, jwt 
               <div key={player.id} className="flex items-center p-3 bg-neutral-800 rounded-lg">
                 <AvatarDisplay player={player} />
                 <div className="ml-3">
-                  <div className="font-medium">{player.username || 'Player'}</div>
+                  <div className="font-medium">{player.displayName || 'Player'}</div>
                   <div className="text-xs text-neutral-400 flex items-center">
                     {player.isHost && <span className="mr-2 text-yellow-500">Host</span>}
-                    {player.ready ? 
+                    {player.isReady ? 
                       <span className="text-green-500">Ready</span> : 
                       <span className="text-neutral-500">Not Ready</span>
                     }

@@ -21,8 +21,18 @@ export function useGameRoom(roomId: string, jwt: string) {
   }, [adapter]);
 
   useEffect(() => {
-    const unsubscribe = adapter.on('STATE', (data) => {
-      setState(prev => ({ ...prev, ...data }));
+    const unsubscribe = adapter.on('STATE', (event) => {
+      if (event?.data) {
+        // Merge server state (players, leaderboard, etc.) into local state
+        const transformed = { ...event.data } as any;
+        if (transformed.players && !Array.isArray(transformed.players)) {
+          transformed.players = Object.values(transformed.players);
+        }
+        if (transformed.leaderboard && !Array.isArray(transformed.leaderboard)) {
+          transformed.leaderboard = Object.values(transformed.leaderboard);
+        }
+        setState(prev => ({ ...prev, ...transformed }));
+      }
     });
     return unsubscribe;
   }, [adapter]);

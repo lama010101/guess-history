@@ -7,7 +7,7 @@
     "SUPABASE_SERVICE_ROLE_KEY": "${SUPABASE_SERVICE_ROLE_KEY}",
     "INVITE_HMAC_SECRET": "${INVITE_HMAC_SECRET}"
   },
-  "crons": [
-    "*/1 * * * *"
-  ]
+  "crons": {
+    "deadline-processor": "*/1 * * * *"
+  }
 }

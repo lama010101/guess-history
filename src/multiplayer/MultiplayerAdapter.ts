@@ -12,6 +12,7 @@ export interface MultiplayerAdapter {
 }
 
 export class PartyKitAdapter implements MultiplayerAdapter {
+  public selfId: string | null = null;
   private socket: WebSocket | null = null;
   private listeners: Map<string, ((data: any) => void)[]> = new Map();
   private currentState: any = null;
@@ -20,11 +21,22 @@ export class PartyKitAdapter implements MultiplayerAdapter {
   private maxReconnectAttempts = 5;
 
   async connect(roomId: string, jwt: string): Promise<void> {
+    // Derive own userId from JWT (sub claim)
+    try {
+      const payloadPart = jwt.split('.')[1];
+      const payloadJson = JSON.parse(atob(payloadPart.replace(/-/g, '+').replace(/_/g, '/')));
+      this.selfId = payloadJson.sub || null;
+    } catch {}
+
     if (this.socket) {
       this.disconnect();
     }
 
-    const partykitUrl = import.meta.env.VITE_PARTYKIT_URL || 'ws://localhost:1999';
+    const partykitUrl: string = (import.meta.env.VITE_PARTYKIT_URL as string) || (() => {
+      const [hostname] = location.host.split(':');
+      const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+      return `${protocol}://${hostname}:6497`;
+    })();
     const wsUrl = `${partykitUrl}/parties/main/${roomId}?jwt=${jwt}`;
 
     this.socket = new WebSocket(wsUrl);

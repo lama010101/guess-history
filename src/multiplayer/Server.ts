@@ -76,11 +76,22 @@ export default class Server implements PartyKitServer {
   // Internal in-memory state. For MVP it is the same object we persist.
   state: ServerState = {
     mode: "async",
+    hostId: null,
     players: {},
     game: { moves: {} },
   };
 
   constructor(readonly room: Room) {}
+
+  /** Helper: broadcast full state to every connection */
+  private broadcastState(room: Room) {
+    const payload = JSON.stringify({ type: "STATE", data: this.state });
+    for (const conn of Array.from(room.getConnections())) {
+      try {
+        conn.send(payload);
+      } catch {}
+    }
+  }
 
   // Validate Supabase JWT and send SERVER_STATE.
   async onConnect(connection: Connection, room: Room, ctx: ConnectionContext) {
@@ -114,11 +125,16 @@ export default class Server implements PartyKitServer {
         isReady: false,
         isConnected: true,
       };
+            // Set first player as host
+      if (!this.state.hostId) {
+        this.state.hostId = playerId;
+        this.state.players[playerId].isHost = true;
+      }
       await logEvent(room.id, playerId, "CONNECT", {});
     }
 
-    // Notify newcomer of full state
-    connection.send(JSON.stringify({ type: "STATE", data: this.state }));
+    // Send full state to all players
+    this.broadcastState(room);
   }
 
   async onMessage(
@@ -158,6 +174,17 @@ export default class Server implements PartyKitServer {
           playerId,
           roundIdx,
         }, room);
+        break;
+      }
+      case "PLAYER_READY_TOGGLE": {
+        const { isReady } = evt;
+        if (this.state.players[playerId]) {
+          this.state.players[playerId].isReady = !!isReady;
+          await logEvent(room.id, playerId, "PLAYER_READY_TOGGLE", { isReady });
+          // Broadcast updated state
+          await persistState(room.id, this.state, ++this.revision);
+          this.broadcastState(room);
+        }
         break;
       }
       default:
@@ -220,11 +247,13 @@ interface Player {
   displayName: string;
   avatar: string;
   isReady: boolean;
+  isHost?: boolean;
   isConnected?: boolean;
 }
 
 interface ServerState {
   mode: "sync" | "async";
+  hostId: string | null;
   players: Record<string, Player>;
   game: {
     moves: Record<string, Record<number, any>>;

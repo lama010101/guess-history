@@ -13,6 +13,9 @@ import { useGame } from "@/contexts/GameContext";
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from "@/components/ui/button";
+import soloIcon from '@/assets/icons/solo.webp';
+import friendsIcon from '@/assets/icons/friends.webp';
+import lockIcon from '@/assets/icons/lock.webp';
 
 const homePageStyle: React.CSSProperties = {
   position: 'fixed',
@@ -226,7 +229,7 @@ const HomePage = () => {
           className="w-60 h-60 rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-yellow-300 via-orange-400 to-orange-600 cursor-pointer"
           onClick={() => handleStartGame('classic')}
         >
-          <img src="/src/assets/icons/solo.webp" alt="Solo" className="w-40 h-40 object-contain" />
+          <img src={soloIcon} alt="Solo" className="w-40 h-40 object-contain" />
         </div>
         <div
           className="w-60 bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1 cursor-pointer"
@@ -284,7 +287,7 @@ const HomePage = () => {
         {isGuest && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black/60 rounded-xl z-10">
             <div className="text-center p-4">
-              <img src="/src/assets/icons/lock.webp" alt="Locked" className="h-10 w-10 mx-auto mb-3" />
+              <img src={lockIcon} alt="Locked" className="h-10 w-10 mx-auto mb-3" />
               <p className="text-black dark:text-white text-sm">Sign in to challenge your friends and track your wins.</p>
               <Button
                 className="mt-3 bg-amber-500 hover:bg-amber-600 text-black text-sm"
@@ -296,7 +299,7 @@ const HomePage = () => {
           </div>
         )}
         <div className="w-60 h-60 rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-cyan-300 via-sky-400 to-sky-600">
-          <img src="/src/assets/icons/friends.webp" alt="Friends" className="w-40 h-40 object-contain" />
+          <img src={friendsIcon} alt="Friends" className="w-40 h-40 object-contain" />
         </div>
         <div className="w-60 bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1">
           Play Friends

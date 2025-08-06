@@ -139,6 +139,38 @@ const FinalResultsPage = () => {
     navigate("/");
   };
 
+  // Share game results via Web Share API with clipboard fallback
+  const handleShare = async () => {
+    const shareText = `I scored ${totalScore} XP (${totalPercentage}% accuracy) in Guess History! Can you beat my score?`;
+    const shareData = {
+      title: 'Guess History - My Game Results',
+      text: shareText,
+      url: window.location.origin
+    } as ShareData;
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(`${shareText}\n${window.location.origin}`);
+        alert('Results copied to clipboard!');
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = `${shareText}\n${window.location.origin}`;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        alert('Results copied to clipboard!');
+      }
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        console.error('Error sharing results:', err);
+        alert('Could not share results. Please try again.');
+      }
+    }
+  };
+
   if (isContextLoading) {
     return (
       <div className="min-h-screen bg-history-light dark:bg-history-dark p-8 flex items-center justify-center">
@@ -339,7 +371,7 @@ const FinalResultsPage = () => {
 
       <footer className="fixed bottom-0 left-0 w-full z-50 bg-white/90 dark:bg-gray-900/95 backdrop-blur shadow-[0_-2px_12px_rgba(0,0,0,0.05)] px-4 py-3 flex justify-center items-center border-t border-gray-200 dark:border-gray-700">
         <div className="w-full max-w-md flex items-center justify-between gap-4">
-          <Button onClick={() => alert("Share functionality coming soon!")} variant="outline" size="icon" className="h-12 w-12 rounded-full bg-white hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 shadow-md" aria-label="Share">
+          <Button onClick={handleShare} variant="outline" size="icon" className="h-12 w-12 rounded-full bg-white hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 shadow-md" aria-label="Share your score">
             <Share2 className="h-5 w-5" />
           </Button>
           <Button onClick={handlePlayAgain} className="flex-1 bg-white text-black hover:bg-gray-100 gap-2 py-6 text-base" size="lg">

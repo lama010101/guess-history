@@ -164,7 +164,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-background dark:bg-history-dark">
       {/* Image Section - Full width on mobile, half on desktop */}
-      <div className="w-full h-[60vh] lg:w-1/2 lg:h-screen relative">
+      <div className="w-full h-[50vh] lg:w-1/2 lg:h-screen relative">
         <LazyImage
           src={image.firebase_url || image.url}
           alt={image.title}

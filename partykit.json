@@ -6,7 +6,7 @@
     "SUPABASE_URL": "${SUPABASE_URL}",
     "SUPABASE_SERVICE_ROLE_KEY": "${SUPABASE_SERVICE_ROLE_KEY}",
     "INVITE_HMAC_SECRET": "${INVITE_HMAC_SECRET}",
-    "MAX_PLAYERS": "2"
+    "MAX_PLAYERS": "8"
   },
   "parties": {
     "lobby": "server/lobby.ts"

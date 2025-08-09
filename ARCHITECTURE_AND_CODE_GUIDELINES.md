@@ -269,8 +269,9 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
   - Path: `/parties/lobby/:roomCode`
 
 - **Pages**:
-  - `src/pages/PlayWithFriends.tsx` — enter name, create or join room
-  - `src/pages/Room.tsx` — connects to lobby, shows players & chat, auto-reconnect
+  - `src/pages/PlayWithFriends.tsx` — uses authenticated display name automatically, create or join room (no manual name input)
+  - `src/pages/Room.tsx` — connects to lobby, shows players & chat, ready-up roster (ready/host), auto-reconnect, host can copy/share invite link
+  - Display names: `Room.tsx` sources the player's display name from `AuthContext` user metadata (fallback to email local-part); `?name` is no longer passed from the UI
 
 - **Routing**: `src/App.tsx`
   - `GET /play` → `PlayWithFriends`
@@ -278,7 +279,7 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
 
 - **Config**: `partykit.json`
   - `parties.lobby = "server/lobby.ts"`
-  - `vars.MAX_PLAYERS = "2"` (override per-env as needed)
+  - `vars.MAX_PLAYERS = "8"` (override per-env as needed)
 
 - **Environment**:
   - Frontend: `VITE_PARTYKIT_HOST` (e.g. `localhost:1999`)
@@ -290,8 +291,18 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
   - `npm run deploy:partykit` — deploy PartyKit
 
 - **Message shapes**:
-  - Client→Server: `join { name }`, `chat { message, timestamp }`
-  - Server→Client: `players { players: string[] }`, `chat { from, message, timestamp }`, `full`
+  - Client→Server: `join { name }`, `chat { message, timestamp }`, `ready { ready: boolean }`
+  - Server→Client: `players { players: string[] }`, `roster { players: { name, ready, host }[] }`, `chat { from, message, timestamp }`, `full`, `start { startedAt }`
+
+### Deterministic Images in Multiplayer
+
+- All players see the same images in the same order for a given room.
+- The server emits `start { startedAt }`. The client passes `roomId` and `seed = startedAt` to `GameContext.startGame()`.
+- `GameContext.startGame()` calls `getOrPersistRoomImages(roomId, seed, count)` which:
+  - If `public.game_sessions` has a row for `room_id`, returns those `image_ids` in stored order.
+  - Else, computes a seeded order from `images` (stable base order by `id`), upserts the record, and returns the first N.
+- Table: `public.game_sessions (room_id text pk, seed text, image_ids text[], started_at timestamptz)` with RLS for authenticated users.
+- Solo games continue to use per-user no-repeat selection via `getNewImages()` and local shuffle.
 
 ## Future Enhancements
 
@@ -308,3 +319,31 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
 - State compression
 - CDN integration for avatars
 - Real-time analytics dashboard
+
+## Multiplayer In-Round State Persistence
+
+To survive refresh and reconnects during a multiplayer game, we persist shared state per room and per round.
+
+- __Tables__:
+  - `public.game_sessions` adds `current_round_number integer` to track the latest round for a room.
+  - `public.room_rounds (room_id text, round_number int, started_at timestamptz, duration_sec int, pk(room_id, round_number))` stores the canonical start time and configured duration for each round in a room.
+
+- __Migrations__:
+  - `supabase/migrations/20250809_add_room_rounds_and_current_round.sql` creates `room_rounds`, enables RLS, policies for authenticated users, and adds `current_round_number` to `game_sessions`.
+
+- __Client utilities__:
+  - `src/utils/roomState.ts`
+    - `getOrCreateRoundState(roomId, roundNumber, durationSec)` → fetches or creates the `room_rounds` row and returns `{ started_at, duration_sec }`. Gracefully falls back if the table is missing.
+    - `setCurrentRoundInSession(roomId, roundNumber)` → upserts `game_sessions.current_round_number` for the room. Tolerates missing column/table.
+
+- __Timer restoration__:
+  - `src/pages/GameRoundPage.tsx` imports `getOrCreateRoundState()` and initializes the HUD timer by computing `remaining = duration_sec - (now - started_at)` to keep all players in sync after refresh.
+  - The same page calls `setCurrentRoundInSession(roomId, roundNumber)` on load to persist the active round for reconnect flows.
+
+- __Hint purchases restoration__:
+  - `src/hooks/useHintV2.ts` derives a stable round session ID from the URL: `<roomId>-r<roundNumber>`.
+  - Fetch and insert in `public.round_hints` both use this `round_id` so purchased hints are restored on refresh.
+
+Notes:
+- All DB interactions include fallbacks for environments where the migration hasn’t been applied yet.
+- UI remains unchanged; persistence is transparent to users.

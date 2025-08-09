@@ -2,10 +2,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState, useCallback } from 'react';
 import GameLayout1 from "@/components/layouts/GameLayout1";
 import { Loader, MapPin } from "lucide-react";
-import { useGame, GuessCoordinates } from '@/contexts/GameContext';
+import { useGame } from '@/contexts/GameContext';
+import { GuessCoordinates } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserProfile, fetchUserProfile } from '@/utils/profile/profileService';
 import { useToast } from "@/components/ui/use-toast";
+import { getOrCreateRoundState, setCurrentRoundInSession } from '@/utils/roomState';
 import { Button } from '@/components/ui/button';
 import { SegmentedProgressBar } from '@/components/ui';
 import {
@@ -87,6 +89,39 @@ const GameRoundPage = () => {
   const [isTimerActive, setIsTimerActive] = useState<boolean>(timerEnabled);
   const [hasTimedOut, setHasTimedOut] = useState<boolean>(false);
   const [hasGuessedLocation, setHasGuessedLocation] = useState<boolean>(false);
+
+  // Initialize round timer from shared room/round state (persisted in Supabase)
+  useEffect(() => {
+    let cancelled = false;
+    const initTimer = async () => {
+      if (!timerEnabled) {
+        setRemainingTime(0);
+        setIsTimerActive(false);
+        return;
+      }
+      if (!roomId || isNaN(roundNumber)) return;
+      try {
+        const state = await getOrCreateRoundState(roomId, roundNumber, roundTimerSec);
+        if (cancelled) return;
+        const elapsed = Math.floor((Date.now() - new Date(state.started_at).getTime()) / 1000);
+        const remain = Math.max(0, state.duration_sec - elapsed);
+        setRemainingTime(remain);
+        setIsTimerActive(true);
+      } catch (e) {
+        console.warn('[GameRoundPage] getOrCreateRoundState failed; using local timer init', e);
+      }
+    };
+    initTimer();
+    return () => { cancelled = true; };
+  }, [roomId, roundNumber, roundTimerSec, timerEnabled]);
+
+  // Persist the current round number to game_sessions so reconnect can restore it
+  useEffect(() => {
+    if (!roomId || isNaN(roundNumber)) return;
+    setCurrentRoundInSession(roomId, roundNumber).catch((e) => {
+      console.warn('[GameRoundPage] setCurrentRoundInSession failed', e);
+    });
+  }, [roomId, roundNumber]);
 
   // Determine the image for this round
   const imageForRound =

@@ -173,18 +173,24 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
 
       setAvailableHints(hints);
 
-      // ------------- Fetch already purchased hints for this user & image (round) -------------
+      // ------------- Fetch already purchased hints for this user & room-round -------------
       let purchasedHintIdsFromDb: string[] = [];
       try {
+        // Derive a unique round session ID in the format <roomId>-r<roundNumber>
+        const urlMatch = window.location.pathname.match(/room\/([^/]+)\/round\/(\d+)/);
+        const roomFromUrl = urlMatch ? urlMatch[1] : 'unknown_room';
+        const roundNumFromUrl = urlMatch ? urlMatch[2] : '0';
+        const roundSessionId = `${roomFromUrl}-r${roundNumFromUrl}`;
+
         const { data: purchases, error: purchaseError } = await supabase
           .from('round_hints' as any)
           .select('hint_id')
           .eq('user_id', user.id)
-          .eq('round_id', (imageData as any).round_id || imageData.id);
+          .eq('round_id', roundSessionId);
 
         if (purchaseError) throw purchaseError;
         purchasedHintIdsFromDb = (purchases ?? []).map((row: any) => row.hint_id);
-        addLog(`Fetched ${purchasedHintIdsFromDb.length} purchased hints for image ${imageData.id}`);
+        addLog(`Fetched ${purchasedHintIdsFromDb.length} purchased hints for round ${roundSessionId}`);
       } catch (error: any) {
         addLog(`Error fetching purchased hints: ${error.message || error}`);
       }

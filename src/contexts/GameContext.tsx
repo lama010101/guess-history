@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useSettingsStore } from '@/lib/useSettingsStore';
 import { v4 as uuidv4 } from 'uuid'; // For generating unique game IDs
-import { getNewImages, recordPlayedImages } from '@/utils/imageHistory';
+import { getNewImages, getOrPersistRoomImages, recordPlayedImages } from '@/utils/imageHistory';
 import { Hint } from '@/hooks/useHintV2';
 import { RoundResult, GuessCoordinates } from '@/types';
 
@@ -46,7 +46,7 @@ interface GameContextState {
   setHintsAllowed: (hints: number) => void;
   setRoundTimerSec: (seconds: number) => void;
   setTimerEnabled: (enabled: boolean) => void; // Function to enable/disable timer
-  startGame: (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string }) => Promise<void>; // Updated to accept settings incl. roomId
+  startGame: (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string; seed?: string }) => Promise<void>; // Updated to accept settings incl. roomId + seed
   recordRoundResult: (result: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'>, currentRoundIndex: number) => void;
   handleTimeUp?: (currentRoundIndex: number) => void;
   resetGame: () => void;
@@ -439,7 +439,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   }, []);
 
   // Function to fetch images and start a new game
-  const startGame = useCallback(async (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string }) => {
+  const startGame = useCallback(async (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string; seed?: string }) => {
     console.log("Starting new game...");
     clearSavedGameState(); // Clear any existing saved state
     setIsLoading(true);
@@ -456,20 +456,22 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         : `room_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       const newGameId = uuidv4();
       setGameId(newGameId);
-      console.log(`[GameContext] [GameID: ${newGameId}] Starting new game, roomId: ${newRoomId}`);
+      console.log(`[GameContext] [GameID: ${newGameId}] Starting new game, roomId: ${newRoomId}, seed: ${settings?.seed ?? 'none'}`);
       setRoomId(newRoomId);
 
       // Hybrid no-repeat fetch
       const { data: { user } } = await supabase.auth.getUser();
-      const imageBatch = await getNewImages(user?.id ?? null, 5);
+      const imageBatch = settings?.roomId
+        ? await getOrPersistRoomImages(newRoomId, `${newRoomId}-${settings?.seed ?? ''}`, 5)
+        : await getNewImages(user?.id ?? null, 5);
         
       if (!imageBatch || imageBatch.length < 5) {
         console.warn("Could not fetch at least 5 images, fetched:", imageBatch?.length);
         throw new Error(`Database only contains ${imageBatch?.length || 0} images. Need 5 to start.`);
       }
 
-      // We already limited to 5 from RPC, but shuffle locally for additional randomness
-      const selectedImages = shuffleArray(imageBatch as any);
+      // For solo play, shuffle locally; for multiplayer (roomId present), keep seeded order
+      const selectedImages = settings?.roomId ? (imageBatch as any) : shuffleArray(imageBatch as any);
 
       const processedImages = await Promise.all(
         selectedImages.map(async (img: any) => {

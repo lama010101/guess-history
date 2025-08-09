@@ -18,8 +18,11 @@ export function partyUrl(party: string, roomCode: string): string {
 export type LobbyServerMessage =
   | { type: 'players'; players: string[] }
   | { type: 'full' }
-  | { type: 'chat'; from: string; message: string; timestamp: string };
+  | { type: 'chat'; from: string; message: string; timestamp: string }
+  | { type: 'roster'; players: { name: string; ready: boolean; host: boolean }[] }
+  | { type: 'start'; startedAt: string };
 
 export type LobbyClientMessage =
   | { type: 'join'; name: string; token?: string }
-  | { type: 'chat'; message: string; timestamp: string };
+  | { type: 'chat'; message: string; timestamp: string }
+  | { type: 'ready'; ready: boolean };

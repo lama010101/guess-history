@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 
 function randomCode(len = 6): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -12,22 +13,21 @@ function randomCode(len = 6): string {
 
 const PlayWithFriends: React.FC = () => {
   const navigate = useNavigate();
-  const [name, setName] = useState<string>('Anonymous');
+  const { user } = useAuth();
   const [joinCode, setJoinCode] = useState<string>('');
 
   const validJoinCode = useMemo(() => /^[A-Z0-9]{6}$/.test(joinCode), [joinCode]);
 
   const handleCreate = useCallback(() => {
     const code = randomCode(6);
-    const params = new URLSearchParams({ name: name.trim() || 'Anonymous', host: '1' });
+    const params = new URLSearchParams({ host: '1' });
     navigate(`/room/${code}?${params.toString()}`);
-  }, [name, navigate]);
+  }, [navigate]);
 
   const handleJoin = useCallback(() => {
     if (!validJoinCode) return;
-    const q = new URLSearchParams({ name: name.trim() || 'Anonymous' }).toString();
-    navigate(`/room/${joinCode}?${q}`);
-  }, [validJoinCode, name, joinCode, navigate]);
+    navigate(`/room/${joinCode}`);
+  }, [validJoinCode, joinCode, navigate]);
 
   return (
     <div className="min-h-screen w-full bg-history-light dark:bg-black text-white">
@@ -35,15 +35,11 @@ const PlayWithFriends: React.FC = () => {
         <h1 className="text-3xl font-bold mb-6">Play with friends</h1>
 
         <div className="space-y-8">
-          <div>
-            <label className="block text-sm mb-2" htmlFor="name">Display name</label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Your name"
-              className="bg-neutral-900 border-neutral-700 text-white"
-            />
+          <div className="text-sm text-neutral-300">
+            Your account display name will be used automatically:
+            <span className="ml-2 font-medium text-white">
+              {(user?.user_metadata?.display_name || user?.user_metadata?.full_name || user?.user_metadata?.name || (user?.email ? user.email.split('@')[0] : 'Anonymous')) as string}
+            </span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -61,7 +57,7 @@ const PlayWithFriends: React.FC = () => {
             </Button>
           </div>
 
-          <p className="text-xs text-neutral-400">Rooms support up to 2 players. Share the 6-character code with a friend.</p>
+          <p className="text-xs text-neutral-400">Rooms support up to 8 players. Share the 6-character code with friends.</p>
         </div>
       </div>
     </div>

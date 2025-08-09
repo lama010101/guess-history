@@ -29,6 +29,8 @@ import AuthPage from "./pages/AuthPage";
 
 import LandingPage from "./pages/LandingPage";
 import RoundResultsPage from "./pages/RoundResultsPage";
+import PlayWithFriends from "./pages/PlayWithFriends";
+import Room from "./pages/Room";
 
 // Enhanced AuthRedirectHandler with better session handling
 const AuthRedirectHandler = () => {
@@ -130,6 +132,8 @@ const App = () => {
                     <GlobalXPLogger />
                     <Routes>
                       <Route path="/" element={<LandingPage />} />
+                      <Route path="/play" element={<PlayWithFriends />} />
+                      <Route path="/room/:roomCode" element={<Room />} />
                       <Route path="/test" element={<TestLayout />}>
                         <Route index element={<HomePage />} />
                         <Route path="auth" element={<AuthPage />} />

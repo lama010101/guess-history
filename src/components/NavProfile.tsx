@@ -208,6 +208,12 @@ export const NavProfile = () => {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
+            <Link to="/play" className="flex items-center">
+              <LayoutDashboard className="mr-2 h-4 w-4" />
+              <span>Play with friends</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
             <Link to="/test/leaderboard" className="flex items-center">
               <Award className="mr-2 h-4 w-4" />
               <span>Leaderboard</span>

@@ -66,9 +66,9 @@ partykit/
 - **TTL**: 15 minutes
 
 ### Room Management
-- **Base URL**: `ws://localhost:1999/parties/main/{roomId}`
-- **Authentication**: JWT token in query parameter
-- **Events**: `STATE`, `PLAYER_MOVE`, `PLAYER_SUBMITTED`, `LEADERBOARD_UPDATE`
+- **Base URL**: `ws(s)://<VITE_PARTYKIT_HOST>/parties/lobby/{roomCode}`
+- **Authentication**: none required yet (invite token enforcement planned)
+- **Events (Lobby)**: Server→Client: `players`, `chat`, `full`; Client→Server: `join`, `chat`
 
 ## Environment Variables
 
@@ -77,9 +77,7 @@ Required environment variables:
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 INVITE_HMAC_SECRET=your-hmac-secret
-PARTYKIT_URL=ws://localhost:1999  # or production URL
-PARTYKIT_DASH_KEY=your-partykit-dash-key
-VITE_PARTYKIT_URL=ws://localhost:1999  # for frontend
+VITE_PARTYKIT_HOST=localhost:1999  # ws(s) host:port used by frontend client
 ```
 
 ## Usage Patterns
@@ -142,7 +140,7 @@ npm run test:multiplayer
 ### Production Deployment
 ```bash
 # Deploy PartyKit
-npm run partykit:deploy
+npm run deploy:partykit
 
 # Deploy Supabase functions
 supabase functions deploy
@@ -259,6 +257,41 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
 - Provide clear feedback for connection states
 - Implement loading states for async operations
 - Handle edge cases gracefully
+
+## Multiplayer Lobby (PartyKit) Feature Map
+
+- **Server**: `server/lobby.ts`
+  - 2-player lobby, presence (players list), and chat
+  - Validates messages with zod; emits `players | chat | full`
+
+- **Client helper**: `src/lib/partyClient.ts`
+  - Builds WebSocket URL from `VITE_PARTYKIT_HOST`
+  - Path: `/parties/lobby/:roomCode`
+
+- **Pages**:
+  - `src/pages/PlayWithFriends.tsx` — enter name, create or join room
+  - `src/pages/Room.tsx` — connects to lobby, shows players & chat, auto-reconnect
+
+- **Routing**: `src/App.tsx`
+  - `GET /play` → `PlayWithFriends`
+  - `GET /room/:roomCode` → `Room`
+
+- **Config**: `partykit.json`
+  - `parties.lobby = "server/lobby.ts"`
+  - `vars.MAX_PLAYERS = "2"` (override per-env as needed)
+
+- **Environment**:
+  - Frontend: `VITE_PARTYKIT_HOST` (e.g. `localhost:1999`)
+  - Example file: `.env.example`
+
+- **Scripts (package.json)**:
+  - `npm run partykit:dev` — PartyKit dev on :1999
+  - `npm run dev:mp` — run Vite + PartyKit concurrently
+  - `npm run deploy:partykit` — deploy PartyKit
+
+- **Message shapes**:
+  - Client→Server: `join { name }`, `chat { message, timestamp }`
+  - Server→Client: `players { players: string[] }`, `chat { from, message, timestamp }`, `full`
 
 ## Future Enhancements
 

@@ -1,11 +1,15 @@
 {
   "name": "guess-history-multiplayer",
-  "main": "src/multiplayer/Server.ts",
+  "main": "server/lobby.ts",
   "compatibilityDate": "2025-08-04",
   "vars": {
     "SUPABASE_URL": "${SUPABASE_URL}",
     "SUPABASE_SERVICE_ROLE_KEY": "${SUPABASE_SERVICE_ROLE_KEY}",
-    "INVITE_HMAC_SECRET": "${INVITE_HMAC_SECRET}"
+    "INVITE_HMAC_SECRET": "${INVITE_HMAC_SECRET}",
+    "MAX_PLAYERS": "2"
+  },
+  "parties": {
+    "lobby": "server/lobby.ts"
   },
   "crons": {
     "deadline-processor": "*/1 * * * *"

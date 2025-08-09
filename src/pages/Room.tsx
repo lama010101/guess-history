@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { partyUrl, LobbyServerMessage, LobbyClientMessage } from '@/lib/partyClient';
+import { useGame } from '@/contexts/GameContext';
 
 interface ChatItem {
   id: string;
@@ -22,8 +23,10 @@ const Room: React.FC = () => {
   const { roomCode = '' } = useParams<{ roomCode: string }>();
   const [params] = useSearchParams();
   const navigate = useNavigate();
+  const { startGame } = useGame();
 
   const name = useMemo(() => (params.get('name')?.trim() || 'Anonymous').slice(0, 32), [params]);
+  const isHost = useMemo(() => params.get('host') === '1', [params]);
   const url = useMemo(() => partyUrl('lobby', roomCode), [roomCode]);
 
   const [players, setPlayers] = useState<string[]>([]);
@@ -34,6 +37,7 @@ const Room: React.FC = () => {
   const wsRef = useRef<WebSocket | null>(null);
   const retryRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startedRef = useRef(false);
 
   const cleanupSocket = () => {
     try {
@@ -130,6 +134,18 @@ const Room: React.FC = () => {
       cleanupSocket();
     };
   }, [connect, navigate, roomCode]);
+
+  // Auto-start game when two players are present. To avoid UI changes, we pick the host
+  // deterministically as the first joined player (players[0]) from the server roster.
+  useEffect(() => {
+    if (status === 'open' && players.length >= 2 && !startedRef.current && isHost) {
+      startedRef.current = true;
+      // Use lobby room code as the multiplayer roomId for the game context
+      startGame({ roomId: roomCode }).catch(() => {
+        startedRef.current = false; // allow retry in case of failure
+      });
+    }
+  }, [status, players, isHost, roomCode, startGame]);
 
   const sendChat = useCallback(() => {
     const ws = wsRef.current;

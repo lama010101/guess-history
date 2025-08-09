@@ -143,13 +143,11 @@ const HomePage = () => {
     setShowLoadingPopup(true);
 
     if (mode === 'friends') {
-      // For friends mode, create a new lobby and navigate to it.
-      // Timer settings will be configured inside the lobby by the host.
-      console.log('[HomePage] Play Friends clicked. Creating lobby...');
-      setShowLoadingPopup(false); // No loading popup needed, navigation should be fast.
-      const newRoomId = crypto.randomUUID().slice(0, 8);
-      console.log(`[HomePage] Navigating to /lobby/${newRoomId}`);
-      navigate(`lobby/${newRoomId}`);
+      // Route to the unified Play with Friends flow which uses PartyKit lobby at /room/:roomCode
+      // We deliberately avoid the old /test/lobby/:roomId route.
+      console.log('[HomePage] Play Friends clicked. Redirecting to /play');
+      setShowLoadingPopup(false);
+      navigate('/play');
       return;
     }
     

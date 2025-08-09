@@ -37,7 +37,7 @@ export class PartyKitAdapter implements MultiplayerAdapter {
       const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
       return `${protocol}://${hostname}:6497`;
     })();
-    const wsUrl = `${partykitUrl}/parties/main/${roomId}?jwt=${jwt}`;
+    const wsUrl = `${partykitUrl}/parties/lobby/${roomId}?jwt=${jwt}`;
 
     this.socket = new WebSocket(wsUrl);
 

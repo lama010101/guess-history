@@ -19,8 +19,8 @@ const PlayWithFriends: React.FC = () => {
 
   const handleCreate = useCallback(() => {
     const code = randomCode(6);
-    const q = new URLSearchParams({ name: name.trim() || 'Anonymous' }).toString();
-    navigate(`/room/${code}?${q}`);
+    const params = new URLSearchParams({ name: name.trim() || 'Anonymous', host: '1' });
+    navigate(`/room/${code}?${params.toString()}`);
   }, [name, navigate]);
 
   const handleJoin = useCallback(() => {

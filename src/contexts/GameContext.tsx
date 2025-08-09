@@ -46,7 +46,7 @@ interface GameContextState {
   setHintsAllowed: (hints: number) => void;
   setRoundTimerSec: (seconds: number) => void;
   setTimerEnabled: (enabled: boolean) => void; // Function to enable/disable timer
-  startGame: (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean }) => Promise<void>; // Updated to accept settings
+  startGame: (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string }) => Promise<void>; // Updated to accept settings incl. roomId
   recordRoundResult: (result: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'>, currentRoundIndex: number) => void;
   handleTimeUp?: (currentRoundIndex: number) => void;
   resetGame: () => void;
@@ -98,7 +98,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   }, [timerSeconds]);
 
   // Accept settings from startGame
-  const applyGameSettings = (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean }) => {
+  const applyGameSettings = (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string }) => {
     if (settings) {
       if (typeof settings.timerSeconds === 'number') setRoundTimerSec(settings.timerSeconds);
       if (typeof settings.hintsPerGame === 'number') setHintsAllowed(settings.hintsPerGame);
@@ -439,7 +439,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   }, []);
 
   // Function to fetch images and start a new game
-  const startGame = useCallback(async (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean }) => {
+  const startGame = useCallback(async (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string }) => {
     console.log("Starting new game...");
     clearSavedGameState(); // Clear any existing saved state
     setIsLoading(true);
@@ -451,7 +451,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     applyGameSettings(settings);
     
     try {
-      const newRoomId = `room_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const newRoomId = settings?.roomId && settings.roomId.trim().length > 0
+        ? settings.roomId
+        : `room_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       const newGameId = uuidv4();
       setGameId(newGameId);
       console.log(`[GameContext] [GameID: ${newGameId}] Starting new game, roomId: ${newRoomId}`);

@@ -381,3 +381,11 @@ To survive refresh and reconnects during a multiplayer game, we persist shared s
 
 Notes:
 - All DB interactions include fallbacks where feasible. UI remains unchanged; persistence is transparent to users.
+
+## Game Page Layout Tweaks (Mobile)
+
+- __Image section height__: On mobile, the image section in `src/components/layouts/GameLayout1.tsx` uses `h-[40vh]` (was `50vh`) to ensure the WHERE card is fully visible without scroll. Desktop remains `lg:h-screen`.
+- __Transparent bottom navbar__: The fixed bottom bar was made transparent so only the Submit button remains visible.
+  - `src/components/game/LocationSelector.tsx` → container class `bg-transparent` (was `bg-background`).
+  - `src/components/game/SubmitGuessButton.tsx` → container class `bg-transparent` (was `bg-white dark:bg-history-dark`).
+- __Buttons remain visible__: The actual buttons keep their own backgrounds for contrast and accessibility; only the bar behind them is transparent.

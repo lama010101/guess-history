@@ -108,20 +108,17 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
 
         </div>
         
-        {/* Right side - Fullscreen button */}
+        {/* Right side - Home button (moved to top-right) */}
         <div className="flex pointer-events-auto">
-          {onFullscreen && (
-            <Button 
-              size="icon"
-              variant="outline"
-              onClick={onFullscreen}
-              className="h-9 w-9 bg-white/80 hover:bg-white/90 text-black rounded-full border-none"
-              aria-label="Fullscreen"
-              type="button"
-            >
-              <Maximize className="h-4 w-4" />
-            </Button>
-          )}
+          <Button 
+            size="icon"
+            onClick={() => onConfirmNavigation(() => onNavigateHome())}
+            className="h-9 w-9 bg-white/80 hover:bg-white/90 text-black rounded-full border-none"
+            aria-label="Home"
+            type="button"
+          >
+            <Home className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -151,16 +148,19 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
           )}
         </div>
         
-        {/* Home button in lower right corner */}
+        {/* Fullscreen button in lower right corner */}
         <div className="pointer-events-auto">
-          <Button 
-            size="icon"
-            onClick={() => onConfirmNavigation(() => onNavigateHome())}
-            className="h-9 w-9 bg-white/80 hover:bg-white/90 text-black rounded-full border-none"
-            aria-label="Home"
-          >
-            <Home className="h-4 w-4" />
-          </Button>
+          {onFullscreen && (
+            <Button 
+              size="icon"
+              variant="outline"
+              onClick={onFullscreen}
+              className="h-9 w-9 bg-white/80 hover:bg-white/90 text-black rounded-full border-none"
+              aria-label="Fullscreen"
+            >
+              <Maximize className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     </div>

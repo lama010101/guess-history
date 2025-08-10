@@ -74,7 +74,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   onPurchaseHint,
   isHintLoading,
 }) => {
-  const [isImageFullScreen, setIsImageFullScreen] = useState(false);
+  const [isImageFullScreen, setIsImageFullScreen] = useState(true);
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
 
   const handleImageFullscreen = () => {
@@ -164,7 +164,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-background dark:bg-history-dark">
       {/* Image Section - Full width on mobile, half on desktop */}
-      <div className="w-full h-[50vh] lg:w-1/2 lg:h-screen relative">
+      <div className="w-full h-[40vh] lg:w-1/2 lg:h-screen relative">
         <LazyImage
           src={image.firebase_url || image.url}
           alt={image.title}

@@ -18,9 +18,21 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   const [isLoading, setIsLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [imgSrc, setImgSrc] = useState(image.placeholderUrl);
+  const [animateGuess, setAnimateGuess] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastTouchDist = useRef<number | null>(null);
+  const lastTapTimeRef = useRef<number>(0);
+  const lastTapPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const DOUBLE_TAP_MS = 300;
+  const DOUBLE_TAP_SLOP_PX = 30;
+
+  // Animate the GUESS button when entering fullscreen
+  useEffect(() => {
+    setAnimateGuess(true);
+    const t = setTimeout(() => setAnimateGuess(false), 2000);
+    return () => clearTimeout(t);
+  }, []);
 
   // Zoom controls
   const zoomIn = () => setZoom(z => Math.min(MAX_ZOOM, +(z + ZOOM_STEP).toFixed(2)));
@@ -77,6 +89,13 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
     }
   };
   
+  // Double-click to zoom in (desktop)
+  const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const newZoom = +(Math.min(MAX_ZOOM, zoom + 1)).toFixed(2);
+    zoomAtPoint(newZoom, e.clientX, e.clientY);
+  };
+  
   // Mouse wheel zoom
   const handleWheel = (e: WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -91,9 +110,31 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
 
   // Touch drag & pinch
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 1 && zoom > 1) {
-      setDragging(true);
-      setLastPos({ x: e.touches[0].clientX - offset.x, y: e.touches[0].clientY - offset.y });
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      const now = Date.now();
+      const dt = now - lastTapTimeRef.current;
+      const dx = touch.clientX - lastTapPosRef.current.x;
+      const dy = touch.clientY - lastTapPosRef.current.y;
+      const dist = Math.hypot(dx, dy);
+
+      // Detect double-tap to zoom in
+      if (dt > 0 && dt < DOUBLE_TAP_MS && dist < DOUBLE_TAP_SLOP_PX) {
+        e.preventDefault();
+        const newZoom = +(Math.min(MAX_ZOOM, zoom + 1)).toFixed(2);
+        zoomAtPoint(newZoom, touch.clientX, touch.clientY);
+        lastTapTimeRef.current = 0; // reset
+        return;
+      }
+      // Remember last tap for double-tap detection
+      lastTapTimeRef.current = now;
+      lastTapPosRef.current = { x: touch.clientX, y: touch.clientY };
+
+      // Start panning only if zoomed in
+      if (zoom > 1) {
+        setDragging(true);
+        setLastPos({ x: touch.clientX - offset.x, y: touch.clientY - offset.y });
+      }
     } else if (e.touches.length === 2) {
       setDragging(false);
       lastTouchDist.current = getTouchDist(e);
@@ -218,15 +259,16 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-[9999] bg-black flex items-center justify-center select-none overflow-hidden"
+      className="fixed inset-0 z-[9999] bg-black flex items-center justify-center select-none overflow-hidden touch-none w-screen"
+      style={{ height: '100dvh' }}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onWheel={handleWheel}
+      onDoubleClick={handleDoubleClick}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
-      onWheel={handleWheel}
-      style={{ touchAction: "none" }}
     >
       {/* Loading Spinner */}
       {isLoading && (
@@ -235,28 +277,10 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
         </div>
       )}
       {/* Zoom Controls - styled like map controls, vertical, top left */}
-      <div className="absolute top-6 left-6 z-[10001] flex flex-col rounded-lg bg-white/90 border border-gray-300 shadow-md overflow-hidden select-none">
-        <button
-          onClick={zoomIn}
-          disabled={zoom >= MAX_ZOOM}
-          className="w-10 h-10 flex items-center justify-center text-2xl font-bold border-b border-gray-200 hover:bg-gray-100 focus:outline-none disabled:opacity-40"
-          aria-label="Zoom in"
-          style={{ borderTopLeftRadius: 8, borderTopRightRadius: 8 }}
-        >
-          +
-        </button>
-        <div className="w-10 h-8 flex items-center justify-center text-xs font-medium bg-white/90 border-b border-gray-200">
+      <div className="absolute top-6 left-6 z-[10001] flex flex-col rounded-lg border border-gray-300 shadow-md overflow-hidden select-none">
+        <div className="min-w-[2.5rem] h-8 px-2 flex items-center justify-center text-xs font-semibold bg-white/80 text-black">
           {Math.round(zoom * 100)}%
         </div>
-        <button
-          onClick={zoomOut}
-          disabled={zoom <= MIN_ZOOM}
-          className="w-10 h-10 flex items-center justify-center text-2xl font-bold hover:bg-gray-100 focus:outline-none disabled:opacity-40"
-          aria-label="Zoom out"
-          style={{ borderBottomLeftRadius: 8, borderBottomRightRadius: 8 }}
-        >
-          –
-        </button>
       </div>
       
       {/* Instructions tooltip */}
@@ -279,7 +303,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
           ref={imgRef}
           src={imgSrc}
           alt={image.title}
-          className={`max-w-none max-h-none object-contain cursor-grab transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+          className={`h-full w-auto object-contain cursor-grab transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
           style={{
             background: "black",
             transform: `scale(${zoom}) translate(${offset.x / zoom}px,${offset.y / zoom}px)`,
@@ -297,15 +321,14 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
           }}
         />
       </div>
-      {/* Exit Button */}
+      {/* GUESS Button (bottom-right) */}
       <button
         onClick={onExit}
-        className="fixed top-4 right-4 z-[10000] p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
-        aria-label="Exit fullscreen"
+        className={`fixed bottom-4 right-4 z-[10000] rounded-full bg-orange-500 hover:bg-orange-400 active:bg-orange-600 text-black font-bold text-xs px-3 py-2 shadow-lg transition-all ${animateGuess ? 'animate-bounce' : ''}`}
+        aria-label="GUESS"
+        title="GUESS"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
-        </svg>
+        GUESS
       </button>
     </div>
   );

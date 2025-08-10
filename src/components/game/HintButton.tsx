@@ -10,18 +10,22 @@ interface HintButtonProps {
   className?: string;
   imageForRound?: GameImage | null;
   hintsAllowed?: number; // Allow overriding hints allowed from props
+  roomId?: string;
+  roundNumber?: number;
 }
 
 export const HintButton: React.FC<HintButtonProps> = ({ 
   onClick, 
   className = '', 
   imageForRound = null,
-  hintsAllowed: propHintsAllowed
+  hintsAllowed: propHintsAllowed,
+  roomId,
+  roundNumber
 }) => {
   const { 
     purchasedHintIds,
     isLoading,
-  } = useHintV2(imageForRound);
+  } = useHintV2(imageForRound, (roomId && roundNumber !== undefined) ? { roomId, roundNumber } : undefined);
   
   const hintsUsedCount = purchasedHintIds?.length || 0;
   const hintsAllowedCount = propHintsAllowed || 14;

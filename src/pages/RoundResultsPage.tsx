@@ -12,8 +12,10 @@ import { Badge } from '@/utils/badges/types';
 import { toast as sonnerToast } from '@/components/ui/sonner';
 import { ConfirmNavigationDialog } from '@/components/game/ConfirmNavigationDialog';
 import ImageRatingModal from '@/components/rating/ImageRatingModal';
+import { makeRoundId } from '@/utils/roomState';
 // Import RoundResult type from context if not already imported by ResultsLayout2 or define mapping
-import { RoundResult as ContextRoundResult, GameImage } from '@/contexts/GameContext';
+import { GameImage } from '@/contexts/GameContext';
+import { RoundResult as ContextRoundResult } from '@/types';
 // Import the RoundResult type expected by ResultsLayout2
 import { RoundResult as LayoutRoundResultType } from '@/utils/resultsFetching';
 // Import supabase client
@@ -122,8 +124,8 @@ const RoundResultsPage = () => {
 
     console.groupCollapsed(`Debug: Fetching Hint Debts for Round ${currentImage.id}`);
     console.log('currentImage.id:', currentImage.id, 'Type:', typeof currentImage.id);
-    // Build composite round session ID in the same format used when inserting
-    const roundSessionId = `${roomId}-r${roundNumber}`;
+    // Build composite round session ID using centralized helper
+    const roundSessionId = makeRoundId(roomId as string, roundNumber);
     console.log('Query Params:', { userId: user.id, roundSessionId });
 
     try {
@@ -376,8 +378,9 @@ const RoundResultsPage = () => {
   if (isContextLoading) {
     return (
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center p-4 bg-background rounded shadow">
-          <h2 className="text-xl font-semibold text-history-primary mb-2">Loading Results...</h2>
+        <div className="flex flex-col items-center space-y-3 p-4 bg-background rounded shadow">
+          <Loader className="h-8 w-8 animate-spin text-history-primary" />
+          <h2 className="text-xl font-semibold text-history-primary">Loading Results...</h2>
         </div>
       </div>
     );
@@ -388,8 +391,9 @@ const RoundResultsPage = () => {
   if (!resultForLayout) {
     return (
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center p-4 bg-background rounded shadow">
-          <h2 className="text-xl font-semibold text-history-primary mb-2">Preparing Results...</h2>
+        <div className="flex flex-col items-center space-y-3 p-4 bg-background rounded shadow">
+          <Loader className="h-8 w-8 animate-spin text-history-primary" />
+          <h2 className="text-xl font-semibold text-history-primary">Preparing Results...</h2>
         </div>
       </div>
     );

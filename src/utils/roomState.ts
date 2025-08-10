@@ -8,6 +8,14 @@ export interface RoomRoundState {
 }
 
 /**
+ * Build a canonical round session identifier for a given room and round number.
+ * Keep this centralized so all features (hints, results, etc.) remain consistent.
+ */
+export function makeRoundId(roomId: string, roundNumber: number): string {
+  return `${roomId}-r${roundNumber}`;
+}
+
+/**
  * Persist the current round number for a given room in game_sessions.
  * Uses upsert on room_id and tolerates missing column/table gracefully.
  */

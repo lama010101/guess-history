@@ -196,6 +196,14 @@ supabase functions deploy
 - Room lifecycle events
 - Error states and edge cases
 
+## Round Session ID and Hint Persistence
+
+- Central helper: `src/utils/roomState.ts: makeRoundId(roomId: string, roundNumber: number)` builds the canonical round session ID (`<roomId>-r<roundNumber>`). Use this everywhere round-scoped persistence is required (e.g., `round_hints`, results aggregation), instead of parsing URLs or hand-rolling strings.
+- Hint system V2: `src/hooks/useHintV2.ts` accepts an optional second parameter `opts?: { roomId?: string; roundNumber?: number }`. When provided, the hook uses `makeRoundId()` to read/write purchases in `round_hints`, avoiding any coupling to the route structure. Callers that don't have room context can omit this parameter and the hook will fall back to URL parsing for backward compatibility.
+- Call sites updated:
+  - `src/pages/GameRoundPage.tsx` now calls `useHintV2(imageForRound, { roomId, roundNumber })`.
+  - `src/pages/RoundResultsPage.tsx` uses `makeRoundId(roomId, roundNumber)` when querying hint debts.
+
 ## Lobby Timer Settings
 
 The multiplayer lobby supports a host-configurable round timer that synchronizes to all participants and is applied when the game starts.
@@ -365,9 +373,11 @@ To survive refresh and reconnects during a multiplayer game, we persist shared s
   - The same page calls `setCurrentRoundInSession(roomId, roundNumber)` on load to persist the active round for reconnect flows.
 
 - __Hint purchases restoration__:
-  - `src/hooks/useHintV2.ts` derives a stable round session ID from the URL: `<roomId>-r<roundNumber>`.
+  - Use the centralized helper `makeRoundId(roomId, roundNumber)` from `src/utils/roomState.ts` to construct the canonical round session ID (format: `${roomId}-r${roundNumber}`).
+  - `src/hooks/useHintV2.ts` accepts optional `{ roomId, roundNumber }`. Callers should pass these when available (e.g., `GameRoundPage`, `GameLayout2`, `HintButton`) to avoid URL parsing. The hook falls back to parsing the URL only if opts are omitted for backward compatibility.
   - Fetch and insert in `public.round_hints` both use this `round_id` so purchased hints are restored on refresh.
+  - Columns used in `public.round_hints` for debts and metadata: `xpDebt integer`, `accDebt integer`, `label text`, `hint_type text`, plus legacy `cost_xp`/`cost_accuracy`. Migration `20250728111000_add_missing_columns_to_round_hints.sql` maps legacy costs into `xpDebt`/`accDebt`.
+  - RLS policy: authenticated users can manage their own rows (policy: "Users can manage their round_hints").
 
 Notes:
-- All DB interactions include fallbacks for environments where the migration hasn’t been applied yet.
-- UI remains unchanged; persistence is transparent to users.
+- All DB interactions include fallbacks where feasible. UI remains unchanged; persistence is transparent to users.

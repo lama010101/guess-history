@@ -6,6 +6,7 @@ import { useLogs } from '@/contexts/LogContext';
 import { HINT_COSTS, HINT_DEPENDENCIES, HINT_TYPE_NAMES } from '@/constants/hints';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+import { makeRoundId } from '@/utils/roomState';
 
 // Hint interface definition
 export interface Hint {
@@ -44,7 +45,10 @@ export interface UseHintV2Return {
  * Enhanced hint system hook with Supabase integration
  * Provides functionality for fetching, purchasing, and managing hints
  */
-export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return => {
+export const useHintV2 = (
+  imageData: GameImage | null = null,
+  opts?: { roomId?: string; roundNumber?: number }
+): UseHintV2Return => {
   const { user } = useAuth();
   const { addLog } = useLogs();
   
@@ -177,10 +181,15 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
       let purchasedHintIdsFromDb: string[] = [];
       try {
         // Derive a unique round session ID in the format <roomId>-r<roundNumber>
-        const urlMatch = window.location.pathname.match(/room\/([^/]+)\/round\/(\d+)/);
-        const roomFromUrl = urlMatch ? urlMatch[1] : 'unknown_room';
-        const roundNumFromUrl = urlMatch ? urlMatch[2] : '0';
-        const roundSessionId = `${roomFromUrl}-r${roundNumFromUrl}`;
+        let roundSessionId: string;
+        if (opts?.roomId && typeof opts.roundNumber === 'number' && !isNaN(opts.roundNumber)) {
+          roundSessionId = makeRoundId(opts.roomId, opts.roundNumber);
+        } else {
+          const urlMatch = window.location.pathname.match(/room\/([^/]+)\/round\/(\d+)/);
+          const roomFromUrl = urlMatch ? urlMatch[1] : 'unknown_room';
+          const roundNumFromUrl = urlMatch ? parseInt(urlMatch[2], 10) : 0;
+          roundSessionId = makeRoundId(roomFromUrl, roundNumFromUrl);
+        }
 
         const { data: purchases, error: purchaseError } = await supabase
           .from('round_hints' as any)
@@ -201,7 +210,7 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
     } finally {
       setIsLoading(false);
     }
-  }, [imageData, user]);
+  }, [imageData, user, opts?.roomId, opts?.roundNumber]);
 
   // Purchase a hint
   const purchaseHint = useCallback(async (hintId: string) => {
@@ -229,10 +238,15 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
 
     try {
       // Derive a unique round session ID in the format <roomId>-r<roundNumber>
-      const urlMatch = window.location.pathname.match(/room\/([^/]+)\/round\/(\d+)/);
-      const roomFromUrl = urlMatch ? urlMatch[1] : 'unknown_room';
-      const roundNumFromUrl = urlMatch ? urlMatch[2] : '0';
-      const roundSessionId = `${roomFromUrl}-r${roundNumFromUrl}`;
+      let roundSessionId: string;
+      if (opts?.roomId && typeof opts.roundNumber === 'number' && !isNaN(opts.roundNumber)) {
+        roundSessionId = makeRoundId(opts.roomId, opts.roundNumber);
+      } else {
+        const urlMatch = window.location.pathname.match(/room\/([^/]+)\/round\/(\d+)/);
+        const roomFromUrl = urlMatch ? urlMatch[1] : 'unknown_room';
+        const roundNumFromUrl = urlMatch ? parseInt(urlMatch[2], 10) : 0;
+        roundSessionId = makeRoundId(roomFromUrl, roundNumFromUrl);
+      }
 
       const insertPayload = {
         id: uuidv4(),
@@ -272,7 +286,7 @@ export const useHintV2 = (imageData: GameImage | null = null): UseHintV2Return =
     } finally {
       setIsHintLoading(false);
     }
-  }, [availableHints, purchasedHintIds, user, imageData]);
+  }, [availableHints, purchasedHintIds, user, imageData, opts?.roomId, opts?.roundNumber]);
 
   // Set up realtime subscription for hint purchases
   useEffect(() => {

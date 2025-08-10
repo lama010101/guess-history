@@ -148,45 +148,10 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           return;
         }
 
-        // Load hint purchases from DB
-        const { data: hintPurchases, error: hintsError } = await supabase
-          .from('round_hints')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('game_id', gameId);
-
-        if (hintsError) {
-          console.error('Error loading hint purchases from DB:', hintsError);
-        } else if (hintPurchases && hintPurchases.length > 0) {
-          // Reconstruct hints state from DB
-          const reconstructedHints: Record<string, { where?: any; when?: any }> = {};
-          
-          hintPurchases.forEach(hint => {
-            const roundKey = hint.round_index.toString();
-            if (!reconstructedHints[roundKey]) {
-              reconstructedHints[roundKey] = {};
-            }
-            
-            const hintData = {
-              id: hint.hint_id,
-              label: hint.label,
-              cost: hint.cost,
-              xpDebt: hint.xp_debt,
-              accDebt: hint.acc_debt,
-              type: hint.hint_type
-            };
-            
-            if (hint.hint_type === 'where') {
-              reconstructedHints[roundKey].where = hintData;
-            } else if (hint.hint_type === 'when') {
-              reconstructedHints[roundKey].when = hintData;
-            }
-          });
-          
-          // Update the used hints state - need to find the correct setter
-          // This will be handled by the existing hint management system
-          console.log('Loaded hint purchases from DB:', reconstructedHints);
-        }
+        // Hints are persisted per round via round_id and managed by useHintV2.
+        // Reconstructing a game-wide hint state here is not supported with the current schema
+        // and is unnecessary. Hint debts and purchases are fetched where needed (e.g., RoundResultsPage).
+        console.log('Skipping legacy game-wide round_hints reconstruction; handled per-round via useHintV2.');
 
         if (dbResults && dbResults.length > 0) {
           const mappedResults: RoundResult[] = dbResults.map(dbResult => ({

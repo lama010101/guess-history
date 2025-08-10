@@ -15,6 +15,7 @@ import { useHintV2 } from '@/hooks/useHintV2';
 import LazyImage from '@/components/ui/LazyImage';
 import GameOverlayHUD from '@/components/navigation/GameOverlayHUD';
 import { useGame } from '@/contexts/GameContext';
+import { useNavigate, useParams } from 'react-router-dom';
 
 // Helper function to format time as MM:SS
 const formatTime = (seconds: number): string => {
@@ -33,6 +34,8 @@ const GameLayout2: React.FC<GameLayout2Props> = ({ onComplete, gameMode = 'solo'
   const navigate = useNavigate();
   const [isHintModalV2Open, setIsHintModalV2Open] = useState(false);
   const game = useGame();
+  const { roomId, roundNumber: roundNumberStr } = useParams<{ roomId: string; roundNumber: string }>();
+  const roundNumber = parseInt(roundNumberStr || '1', 10);
   const { totalGameAccuracy, totalGameXP, roundTimerSec, timerEnabled } = game;
   
   const { 
@@ -42,7 +45,7 @@ const GameLayout2: React.FC<GameLayout2Props> = ({ onComplete, gameMode = 'solo'
     accDebt,
     isLoading,
     purchaseHint
-  } = useHintV2();
+  } = useHintV2(undefined, (roomId && !Number.isNaN(roundNumber)) ? { roomId, roundNumber } : undefined);
 
   const handleHintClick = () => {
     setIsHintModalV2Open(true);

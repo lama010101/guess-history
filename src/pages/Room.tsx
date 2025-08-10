@@ -24,7 +24,7 @@ function isoNow() {
   return new Date().toISOString();
 }
 
-type RosterEntry = { name: string; ready: boolean; host: boolean };
+type RosterEntry = { id: string; name: string; ready: boolean; host: boolean };
 
 const Room: React.FC = () => {
   const { roomCode = '' } = useParams<{ roomCode: string }>();
@@ -38,7 +38,6 @@ const Room: React.FC = () => {
     const paramName = params.get('name')?.trim() || '';
     return (authName?.trim() || paramName || 'Anonymous').slice(0, 32);
   }, [user, params]);
-  const urlHostFlag = useMemo(() => params.get('host') === '1', [params]);
   const url = useMemo(() => partyUrl('lobby', roomCode), [roomCode]);
 
   const [players, setPlayers] = useState<string[]>([]);
@@ -48,6 +47,7 @@ const Room: React.FC = () => {
   const [status, setStatus] = useState<'connecting' | 'open' | 'closed' | 'full'>('connecting');
   const [ownReady, setOwnReady] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [ownId, setOwnId] = useState<string>('');
 
   const wsRef = useRef<WebSocket | null>(null);
   const retryRef = useRef(0);
@@ -105,8 +105,13 @@ const Room: React.FC = () => {
               break;
             case 'roster':
               if (Array.isArray(data.players)) {
-                const entries = data.players.map(p => ({ name: String(p.name), ready: !!p.ready, host: !!p.host }));
+                const entries = data.players.map(p => ({ id: String(p.id), name: String(p.name), ready: !!p.ready, host: !!p.host }));
                 setRoster(entries);
+              }
+              break;
+            case 'hello':
+              if (data.you && typeof data.you.id === 'string') {
+                setOwnId(data.you.id);
               }
               break;
             case 'settings':
@@ -198,10 +203,9 @@ const Room: React.FC = () => {
   }, [ownReady]);
 
   const isHost = useMemo(() => {
-    // Prefer roster host detection; fallback to URL host flag for initial render
-    const hostEntry = roster.find(r => r.host);
-    return hostEntry ? hostEntry.name === name : urlHostFlag;
-  }, [roster, name, urlHostFlag]);
+    // Determine host strictly from roster by connection id
+    return roster.some(r => r.host && r.id === ownId);
+  }, [roster, ownId]);
 
   // Format time similar to Play Solo UI
   const formatTime = useCallback((seconds: number): string => {
@@ -231,15 +235,18 @@ const Room: React.FC = () => {
 
   const copyInvite = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      // Share a clean invite URL without any query params like host=1
+      const inviteUrl = `${window.location.origin}/room/${encodeURIComponent(roomCode)}`;
+      await navigator.clipboard.writeText(inviteUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch (e) {
       // Fallback: open prompt
       // eslint-disable-next-line no-alert
-      window.prompt('Copy invite link:', window.location.href);
+      const inviteUrl = `${window.location.origin}/room/${encodeURIComponent(roomCode)}`;
+      window.prompt('Copy invite link:', inviteUrl);
     }
-  }, []);
+  }, [roomCode]);
 
   return (
     <div className="min-h-screen w-full bg-history-light dark:bg-black text-white">
@@ -325,7 +332,7 @@ const Room: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={r.ready ? 'text-green-400' : 'text-neutral-500'}>{r.ready ? 'Ready' : 'Not ready'}</span>
-                      {r.name === name && (
+                      {r.id === ownId && (
                         <Button size="sm" onClick={toggleReady} disabled={status !== 'open'} className={ownReady ? 'bg-green-600 hover:bg-green-500' : 'bg-history-primary hover:bg-history-primary/90'}>
                           {ownReady ? 'Unready' : "I'm Ready"}
                         </Button>

@@ -39,12 +39,13 @@ interface ChatMsg {
   message: string;
   timestamp: string; // ISO
 }
-type RosterEntry = { name: string; ready: boolean; host: boolean };
+type RosterEntry = { id: string; name: string; ready: boolean; host: boolean };
 type RosterMsg = { type: "roster"; players: RosterEntry[] };
 type StartMsg = { type: "start"; startedAt: string; durationSec: number; timerEnabled: boolean };
 type SettingsMsg = { type: "settings"; timerSeconds?: number; timerEnabled?: boolean };
+type HelloMsg = { type: "hello"; you: { id: string; name: string; host: boolean } };
 
-type Outgoing = PlayersMsg | FullMsg | ChatMsg | RosterMsg | StartMsg | SettingsMsg;
+type Outgoing = PlayersMsg | FullMsg | ChatMsg | RosterMsg | StartMsg | SettingsMsg | HelloMsg;
 
 // Env typing for vars
 type Env = { MAX_PLAYERS?: string };
@@ -95,6 +96,7 @@ export default class Lobby implements Party.Server {
 
     // New detailed roster with readiness and host
     const roster: RosterEntry[] = Array.from(this.players.entries()).map(([id, name]) => ({
+      id,
       name,
       ready: this.ready.get(id) === true,
       host: this.hostId === id,
@@ -131,6 +133,13 @@ export default class Lobby implements Party.Server {
           // New joins are not ready by default
           this.ready.set(conn.id, false);
           this.broadcastRoster();
+          // Identify this connection to the client
+          conn.send(
+            JSON.stringify({
+              type: "hello",
+              you: { id: conn.id, name: msg.name, host: this.hostId === conn.id },
+            } satisfies HelloMsg)
+          );
           // Send current timer settings to the newly joined client
           conn.send(
             JSON.stringify({

@@ -39,6 +39,7 @@ export async function getOrCreateRoundState(
   durationSec: number
 ): Promise<RoomRoundState> {
   try {
+    // 1) Try to read existing state
     const { data, error } = await supabase
       .from('room_rounds' as any)
       .select('room_id, round_number, started_at, duration_sec')
@@ -58,29 +59,60 @@ export async function getOrCreateRoundState(
       return data as RoomRoundState;
     }
 
-    const nowIso = new Date().toISOString();
-    const payload = {
+    // 2) Not found: insert a new row relying on server default for started_at
+    // Use upsert with ignoreDuplicates to avoid updates on conflict
+    const insertPayload = {
       room_id: roomId,
       round_number: roundNumber,
-      started_at: nowIso,
       duration_sec: durationSec,
-    };
+    } as any;
 
-    const { data: upserted, error: upErr } = await supabase
+    const { data: inserted, error: insertErr } = await supabase
       .from('room_rounds' as any)
-      .upsert(payload, { onConflict: 'room_id,round_number' } as any)
+      .upsert(insertPayload, { onConflict: 'room_id,round_number', ignoreDuplicates: true } as any)
       .select('room_id, round_number, started_at, duration_sec')
       .single();
 
-    if (upErr) {
-      if ((upErr as any).code !== '42P01') {
-        console.warn('[roomState] upsert error', upErr);
+    if (insertErr && (insertErr as any).code !== 'PGRST116') {
+      if ((insertErr as any).code !== '42P01') {
+        console.warn('[roomState] insert/upsert error', insertErr);
       }
-      // Fallback return
-      return payload as RoomRoundState;
+      // Best-effort fallback using client time (only when table missing or other errors)
+      return {
+        room_id: roomId,
+        round_number: roundNumber,
+        started_at: new Date().toISOString(),
+        duration_sec: durationSec,
+      };
     }
 
-    return upserted as RoomRoundState;
+    if (inserted) {
+      return inserted as RoomRoundState;
+    }
+
+    // 3) If row existed and was ignored by upsert, fetch it now
+    const { data: after, error: afterErr } = await supabase
+      .from('room_rounds' as any)
+      .select('room_id, round_number, started_at, duration_sec')
+      .eq('room_id', roomId)
+      .eq('round_number', roundNumber)
+      .maybeSingle();
+
+    if (afterErr && (afterErr as any).code !== 'PGRST116') {
+      if ((afterErr as any).code !== '42P01') {
+        console.warn('[roomState] follow-up select error', afterErr);
+      }
+    }
+
+    if (after) return after as RoomRoundState;
+
+    // Fallback if still not found
+    return {
+      room_id: roomId,
+      round_number: roundNumber,
+      started_at: new Date().toISOString(),
+      duration_sec: durationSec,
+    };
   } catch (e: any) {
     console.warn('[roomState] getOrCreateRoundState fallback due to error:', e?.message || e);
     // Fallback if anything goes wrong

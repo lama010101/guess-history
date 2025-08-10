@@ -196,6 +196,30 @@ supabase functions deploy
 - Room lifecycle events
 - Error states and edge cases
 
+## Lobby Timer Settings
+
+The multiplayer lobby supports a host-configurable round timer that synchronizes to all participants and is applied when the game starts.
+
+- **Client → Server message**: `settings`
+  - Shape: `{ type: 'settings'; timerSeconds?: number; timerEnabled?: boolean }`
+  - Sent by: Host only
+  - Behavior: Server validates/clamps values and stores in room state.
+
+- **Server → Client message**: `start`
+  - Shape: `{ type: 'start'; startedAt: string; durationSec: number; timerEnabled: boolean }`
+  - Includes the effective timer values used to initialize the round timer on all clients.
+
+- **Key files**:
+  - Server: `server/lobby.ts` — handles `settings` from host, clamps values, includes `durationSec` and `timerEnabled` in `start` broadcast.
+  - Shared types: `src/lib/partyClient.ts` — defines `LobbyClientMessage` and `LobbyServerMessage` including `settings` and extended `start`.
+  - Lobby UI: `src/pages/Room.tsx` — host-only timer toggle and slider (reuses Play Solo styling/logic); non-hosts see the selected duration. Uses `GameContext` setters to update `roundTimerSec` and `timerEnabled` and relies on an effect to send `settings` when changed.
+  - Solo settings reference: `src/components/game/GameSettings.tsx`.
+
+- **UI behavior**:
+  - Host sees a toggle (timer on/off) and a slider (5–300 seconds, step 5s) and the formatted time.
+  - Participants see the formatted time and a note that the host controls the timer.
+  - Timer values are also validated on the server.
+
 ## Migration Guide
 
 ### From Single Player to Multiplayer

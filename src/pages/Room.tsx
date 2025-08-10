@@ -2,6 +2,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Clock } from 'lucide-react';
 import { partyUrl, LobbyServerMessage, LobbyClientMessage } from '@/lib/partyClient';
 import { useGame } from '@/contexts/GameContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,7 +30,7 @@ const Room: React.FC = () => {
   const { roomCode = '' } = useParams<{ roomCode: string }>();
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const { startGame } = useGame();
+  const { startGame, roundTimerSec, timerEnabled, setRoundTimerSec, setTimerEnabled } = useGame();
   const { user } = useAuth();
 
   const name = useMemo(() => {
@@ -49,6 +53,7 @@ const Room: React.FC = () => {
   const retryRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startedRef = useRef(false);
+  const lastSentSettingsRef = useRef<{ sec: number; enabled: boolean } | null>(null);
 
   const cleanupSocket = () => {
     try {
@@ -104,6 +109,15 @@ const Room: React.FC = () => {
                 setRoster(entries);
               }
               break;
+            case 'settings':
+              // Live sync timer values from server (on join and when host changes settings)
+              if (typeof data.timerEnabled === 'boolean') {
+                setTimerEnabled(data.timerEnabled);
+              }
+              if (typeof data.timerSeconds === 'number') {
+                setRoundTimerSec(data.timerSeconds);
+              }
+              break;
             case 'full':
               setStatus('full');
               // Redirect to /play per spec
@@ -124,7 +138,7 @@ const Room: React.FC = () => {
             case 'start':
               if (!startedRef.current) {
                 startedRef.current = true;
-                startGame({ roomId: roomCode, seed: data.startedAt }).catch(() => {
+                startGame({ roomId: roomCode, seed: data.startedAt, timerSeconds: data.durationSec, timerEnabled: data.timerEnabled }).catch(() => {
                   startedRef.current = false;
                 });
               }
@@ -189,6 +203,32 @@ const Room: React.FC = () => {
     return hostEntry ? hostEntry.name === name : urlHostFlag;
   }, [roster, name, urlHostFlag]);
 
+  // Format time similar to Play Solo UI
+  const formatTime = useCallback((seconds: number): string => {
+    if (!seconds) return 'No timer';
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return remainingSeconds > 0 ? `${minutes}m${remainingSeconds}s` : `${minutes}m`;
+  }, []);
+
+  // Host sends current settings to server whenever they change (debounced by ref to avoid spam)
+  useEffect(() => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (!isHost) return;
+    const sec = Number(roundTimerSec) || 60;
+    const enabled = !!timerEnabled;
+    const last = lastSentSettingsRef.current;
+    if (!last || last.sec !== sec || last.enabled !== enabled) {
+      const payload: LobbyClientMessage = { type: 'settings', timerSeconds: sec, timerEnabled: enabled } as any;
+      try {
+        ws.send(JSON.stringify(payload));
+        lastSentSettingsRef.current = { sec, enabled };
+      } catch {}
+    }
+  }, [isHost, roundTimerSec, timerEnabled, status]);
+
   const copyInvite = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -223,7 +263,57 @@ const Room: React.FC = () => {
           <div className="rounded-md border border-neutral-800 p-4 bg-neutral-950/30">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold">Players</h2>
-              <span className="text-xs text-neutral-400">{players.length}/8</span>
+              <span className="text-xs text-neutral-400">{(roster.length || players.length)}/8</span>
+            </div>
+
+            {/* Round Timer (Host controls, everyone sees value) */}
+            <div className="mb-4 p-3 rounded bg-neutral-900/30 border border-neutral-800">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="h-4 w-4 text-history-primary" />
+                <h3 className="text-sm font-semibold">Round Timer</h3>
+                <div className="ml-auto px-2 py-0.5 rounded bg-history-secondary/20 text-history-secondary text-xs">
+                  {timerEnabled ? formatTime(roundTimerSec) : 'No timer'}
+                </div>
+              </div>
+
+              {isHost ? (
+                <div>
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Switch
+                      id="lobby-timer-enabled"
+                      checked={!!timerEnabled}
+                      onCheckedChange={setTimerEnabled}
+                    />
+                    <Label htmlFor="lobby-timer-enabled" className="text-xs">
+                      {timerEnabled ? 'Timer enabled' : 'No time limit'}
+                    </Label>
+                  </div>
+
+                  {timerEnabled && (
+                    <div className="px-1">
+                      <Slider
+                        value={[roundTimerSec || 60]}
+                        min={5}
+                        max={300}
+                        step={5}
+                        onValueChange={(v) => setRoundTimerSec(v[0])}
+                        className="my-3"
+                      />
+                      <div className="flex justify-between text-[10px] text-neutral-400 mt-1">
+                        <span>5s</span>
+                        <span>30s</span>
+                        <span>1m</span>
+                        <span>2m</span>
+                        <span>3m</span>
+                        <span>4m</span>
+                        <span>5m</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-xs text-neutral-400">Host controls the timer</div>
+              )}
             </div>
             <ul className="space-y-2">
               {roster.length > 0 ? (

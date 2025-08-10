@@ -9,7 +9,14 @@ create table if not exists public.room_rounds (
 
 -- Helpful indexes
 create index if not exists room_rounds_room_idx on public.room_rounds (room_id);
-create index if not exists room_rounds_started_idx on public.room_rounds (started_at);
+ create index if not exists room_rounds_started_idx on public.room_rounds (started_at);
+
+ -- Ensure server-side defaults and constraints (works for both fresh and existing tables)
+ alter table public.room_rounds
+   alter column started_at set default now();
+
+ alter table public.room_rounds
+   add constraint if not exists room_rounds_duration_check check (duration_sec > 0);
 
 -- Enable RLS and add permissive authenticated policies
 alter table public.room_rounds enable row level security;
@@ -42,6 +49,34 @@ begin
       to authenticated
       using (true)
       with check (true);
+  end if;
+end $$;
+
+-- Protect immutable fields from being changed by accidental upserts/updates
+create or replace function public.room_rounds_protect_immutable()
+returns trigger
+language plpgsql
+as $$
+begin
+  -- prevent changes after initial insert
+  if TG_OP = 'UPDATE' then
+    new.started_at := old.started_at;
+    new.duration_sec := old.duration_sec;
+  end if;
+  return new;
+end;
+$$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_trigger
+    where tgname = 'trg_room_rounds_protect_immutable'
+  ) then
+    create trigger trg_room_rounds_protect_immutable
+    before update on public.room_rounds
+    for each row
+    execute function public.room_rounds_protect_immutable();
   end if;
 end $$;
 

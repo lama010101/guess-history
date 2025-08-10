@@ -20,9 +20,12 @@ export type LobbyServerMessage =
   | { type: 'full' }
   | { type: 'chat'; from: string; message: string; timestamp: string }
   | { type: 'roster'; players: { name: string; ready: boolean; host: boolean }[] }
-  | { type: 'start'; startedAt: string };
+  | { type: 'settings'; timerSeconds?: number; timerEnabled?: boolean }
+  | { type: 'start'; startedAt: string; durationSec: number; timerEnabled: boolean };
 
 export type LobbyClientMessage =
   | { type: 'join'; name: string; token?: string }
   | { type: 'chat'; message: string; timestamp: string }
-  | { type: 'ready'; ready: boolean };
+  | { type: 'ready'; ready: boolean }
+  // Optional: host can send settings prior to start; server validates host
+  | { type: 'settings'; timerSeconds?: number; timerEnabled?: boolean };

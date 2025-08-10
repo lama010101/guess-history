@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSettingsStore } from '@/lib/useSettingsStore';
 import { v4 as uuidv4 } from 'uuid'; // For generating unique game IDs
 import { getNewImages, getOrPersistRoomImages, recordPlayedImages } from '@/utils/imageHistory';
+import { ROUNDS_PER_GAME } from '@/utils/gameCalculations';
 import { Hint } from '@/hooks/useHintV2';
 import { RoundResult, GuessCoordinates } from '@/types';
 
@@ -52,6 +53,7 @@ interface GameContextState {
   resetGame: () => void;
   fetchGlobalMetrics: () => Promise<void>;
   setProvisionalGlobalMetrics: (gameXP: number, gameAccuracy: number) => void;
+  hydrateRoomImages: (roomId: string) => Promise<void>;
 }
 
 // Create the context
@@ -462,62 +464,18 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       // Hybrid no-repeat fetch
       const { data: { user } } = await supabase.auth.getUser();
       const imageBatch = settings?.roomId
-        ? await getOrPersistRoomImages(newRoomId, `${newRoomId}-${settings?.seed ?? ''}`, 5)
-        : await getNewImages(user?.id ?? null, 5);
+        ? await getOrPersistRoomImages(newRoomId, `${newRoomId}-${settings?.seed ?? ''}`, ROUNDS_PER_GAME)
+        : await getNewImages(user?.id ?? null, ROUNDS_PER_GAME);
         
-      if (!imageBatch || imageBatch.length < 5) {
+      if (!imageBatch || imageBatch.length < ROUNDS_PER_GAME) {
         console.warn("Could not fetch at least 5 images, fetched:", imageBatch?.length);
-        throw new Error(`Database only contains ${imageBatch?.length || 0} images. Need 5 to start.`);
+        throw new Error(`Database only contains ${imageBatch?.length || 0} images. Need ${ROUNDS_PER_GAME} to start.`);
       }
 
       // For solo play, shuffle locally; for multiplayer (roomId present), keep seeded order
       const selectedImages = settings?.roomId ? (imageBatch as any) : shuffleArray(imageBatch as any);
 
-      const processedImages = await Promise.all(
-        selectedImages.map(async (img: any) => {
-          // Prioritize firebase_url if it exists
-          if (img.firebase_url) {
-            return {
-              id: img.id,
-              title: img.title || 'Untitled',
-              description: img.description || 'No description.',
-              latitude: img.latitude || 0,
-              longitude: img.longitude || 0,
-              year: img.year || 0,
-              image_url: img.image_url, // keep original for reference if needed
-              location_name: img.location_name || 'Unknown Location',
-              url: img.firebase_url, // Use firebase_url directly
-              firebase_url: img.firebase_url,
-              confidence: img.confidence,
-              source_citation: img.source_citation
-            } as GameImage;
-          }
-
-          // Fallback to existing logic if firebase_url is not present
-          let finalUrl = img.image_url;
-          if (finalUrl && !finalUrl.startsWith('http')) {
-            const { data: urlData } = supabase.storage.from('images').getPublicUrl(finalUrl);
-            finalUrl = urlData?.publicUrl || 'placeholder.jpg';
-          } else if (!finalUrl) {
-              finalUrl = 'placeholder.jpg';
-          }
-          
-          return {
-            id: img.id,
-            title: img.title || 'Untitled',
-            description: img.description || 'No description.',
-            latitude: img.latitude || 0,
-            longitude: img.longitude || 0,
-            year: img.year || 0,
-            image_url: img.image_url,
-            location_name: img.location_name || 'Unknown Location',
-            url: finalUrl,
-            firebase_url: img.firebase_url ?? undefined,
-            confidence: img.confidence,
-            source_citation: img.source_citation
-          } as GameImage;
-        })
-      );
+      const processedImages = await processRawImages(selectedImages);
 
       setImages(processedImages);
       console.log("Selected 5 images stored in context:", processedImages);
@@ -544,6 +502,73 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       // alert('Failed to start game. Please try again.'); 
     }
   }, [navigate, hintsAllowed, roundTimerSec, timerEnabled, clearSavedGameState]);
+
+  // Helper to process raw DB images into GameImage objects
+  const processRawImages = useCallback(async (selectedImages: any[]): Promise<GameImage[]> => {
+    return Promise.all(
+      selectedImages.map(async (img: any) => {
+        if (img.firebase_url) {
+          return {
+            id: img.id,
+            title: img.title || 'Untitled',
+            description: img.description || 'No description.',
+            latitude: img.latitude || 0,
+            longitude: img.longitude || 0,
+            year: img.year || 0,
+            image_url: img.image_url,
+            location_name: img.location_name || 'Unknown Location',
+            url: img.firebase_url,
+            firebase_url: img.firebase_url,
+            confidence: img.confidence,
+            source_citation: img.source_citation
+          } as GameImage;
+        }
+
+        let finalUrl = img.image_url;
+        if (finalUrl && !finalUrl.startsWith('http')) {
+          const { data: urlData } = supabase.storage.from('images').getPublicUrl(finalUrl);
+          finalUrl = urlData?.publicUrl || 'placeholder.jpg';
+        } else if (!finalUrl) {
+          finalUrl = 'placeholder.jpg';
+        }
+
+        return {
+          id: img.id,
+          title: img.title || 'Untitled',
+          description: img.description || 'No description.',
+          latitude: img.latitude || 0,
+          longitude: img.longitude || 0,
+          year: img.year || 0,
+          image_url: img.image_url,
+          location_name: img.location_name || 'Unknown Location',
+          url: finalUrl,
+          firebase_url: img.firebase_url ?? undefined,
+          confidence: img.confidence,
+          source_citation: img.source_citation
+        } as GameImage;
+      })
+    );
+  }, []);
+
+  // Hydrate images from game_sessions for a room (used on refresh when context is empty)
+  const hydrateRoomImages = useCallback(async (existingRoomId: string) => {
+    try {
+      if (!existingRoomId) return;
+      if (images && images.length > 0) return; // already hydrated
+      const { data: { user } } = await supabase.auth.getUser();
+      const batch = await getOrPersistRoomImages(existingRoomId, `${existingRoomId}`, ROUNDS_PER_GAME);
+      if (!batch || batch.length === 0) return;
+      const processed = await processRawImages(batch as any[]);
+      setImages(processed);
+      setRoomId(existingRoomId);
+      if (!gameId) {
+        // Generate a lightweight gameId so subsequent results can persist
+        setGameId(uuidv4());
+      }
+    } catch (e) {
+      console.warn('[GameContext] hydrateRoomImages failed', e);
+    }
+  }, [images, gameId, processRawImages]);
 
   const recordRoundResult = useCallback(async (resultData: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'>, currentRoundIndex: number) => {
     if (!gameId) {
@@ -743,6 +768,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     fetchGlobalMetrics,
     refreshGlobalMetrics,
     setProvisionalGlobalMetrics,
+    hydrateRoomImages,
   };
 
   return <GameContext.Provider value={contextValue}>{children}</GameContext.Provider>;

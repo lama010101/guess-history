@@ -19,7 +19,14 @@ const ReadyMessage = z.object({
   ready: z.boolean(),
 });
 
-const IncomingMessage = z.union([JoinMessage, ChatMessage, ReadyMessage]);
+const SettingsMessage = z.object({
+  type: z.literal("settings"),
+  // Allow optional fields so host can tweak independently
+  timerSeconds: z.number().int().min(5).max(600).optional(),
+  timerEnabled: z.boolean().optional(),
+});
+
+const IncomingMessage = z.union([JoinMessage, ChatMessage, ReadyMessage, SettingsMessage]);
 
 type Incoming = z.infer<typeof IncomingMessage>;
 
@@ -34,9 +41,10 @@ interface ChatMsg {
 }
 type RosterEntry = { name: string; ready: boolean; host: boolean };
 type RosterMsg = { type: "roster"; players: RosterEntry[] };
-type StartMsg = { type: "start"; startedAt: string };
+type StartMsg = { type: "start"; startedAt: string; durationSec: number; timerEnabled: boolean };
+type SettingsMsg = { type: "settings"; timerSeconds?: number; timerEnabled?: boolean };
 
-type Outgoing = PlayersMsg | FullMsg | ChatMsg | RosterMsg | StartMsg;
+type Outgoing = PlayersMsg | FullMsg | ChatMsg | RosterMsg | StartMsg | SettingsMsg;
 
 // Env typing for vars
 type Env = { MAX_PLAYERS?: string };
@@ -50,6 +58,9 @@ export default class Lobby implements Party.Server {
   private hostId: string | null = null;
   // Start flag to avoid duplicate starts
   private started = false;
+  // Timer settings (host-controlled)
+  private timerSeconds: number = 60;
+  private timerEnabled: boolean = true;
 
   constructor(readonly room: Party.Room) {}
 
@@ -120,7 +131,36 @@ export default class Lobby implements Party.Server {
           // New joins are not ready by default
           this.ready.set(conn.id, false);
           this.broadcastRoster();
+          // Send current timer settings to the newly joined client
+          conn.send(
+            JSON.stringify({
+              type: "settings",
+              timerSeconds: this.timerSeconds,
+              timerEnabled: this.timerEnabled,
+            } satisfies SettingsMsg)
+          );
           await this.logEvent("join", { id: conn.id, name: msg.name });
+          return;
+        }
+
+        if (msg.type === "settings") {
+          // Only host can adjust settings
+          if (conn.id !== this.hostId) return;
+          if (typeof msg.timerSeconds === "number") {
+            // Clamp as defense in depth; zod already validates
+            const clamped = Math.max(5, Math.min(600, msg.timerSeconds));
+            this.timerSeconds = clamped;
+          }
+          if (typeof msg.timerEnabled === "boolean") {
+            this.timerEnabled = msg.timerEnabled;
+          }
+          await this.logEvent("settings", { timerSeconds: this.timerSeconds, timerEnabled: this.timerEnabled });
+          // Broadcast updated settings to all participants for real-time sync
+          this.broadcast({
+            type: "settings",
+            timerSeconds: this.timerSeconds,
+            timerEnabled: this.timerEnabled,
+          });
           return;
         }
 
@@ -150,8 +190,10 @@ export default class Lobby implements Party.Server {
           if (!this.started && this.players.size > 0 && allReady) {
             this.started = true;
             const startedAt = new Date().toISOString();
-            this.broadcast({ type: "start", startedAt });
-            await this.logEvent("start", { startedAt });
+            const durationSec = Math.max(5, Math.min(600, this.timerSeconds || 60));
+            const timerEnabled = !!this.timerEnabled;
+            this.broadcast({ type: "start", startedAt, durationSec, timerEnabled });
+            await this.logEvent("start", { startedAt, durationSec, timerEnabled });
           }
           return;
         }

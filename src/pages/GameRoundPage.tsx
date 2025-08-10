@@ -74,7 +74,8 @@ const GameRoundPage = () => {
     roundTimerSec,
     timerEnabled,
     setGameId,
-    handleTimeUp
+    handleTimeUp,
+    hydrateRoomImages
   } = useGame();
   const { toast } = useToast();
 
@@ -104,8 +105,10 @@ const GameRoundPage = () => {
         const state = await getOrCreateRoundState(roomId, roundNumber, roundTimerSec);
         if (cancelled) return;
         const elapsed = Math.floor((Date.now() - new Date(state.started_at).getTime()) / 1000);
-        const remain = Math.max(0, state.duration_sec - elapsed);
-        setRemainingTime(remain);
+        // Clamp to protect against client/server clock skew giving extra time
+        const remainRaw = state.duration_sec - elapsed;
+        const clampedRemain = Math.max(0, Math.min(state.duration_sec, remainRaw));
+        setRemainingTime(clampedRemain);
         setIsTimerActive(true);
       } catch (e) {
         console.warn('[GameRoundPage] getOrCreateRoundState failed; using local timer init', e);
@@ -122,6 +125,13 @@ const GameRoundPage = () => {
       console.warn('[GameRoundPage] setCurrentRoundInSession failed', e);
     });
   }, [roomId, roundNumber]);
+
+  // Hydrate images from persistent room session on refresh
+  useEffect(() => {
+    if (!roomId) return;
+    if (images && images.length > 0) return;
+    hydrateRoomImages(roomId);
+  }, [roomId, images.length, hydrateRoomImages]);
 
   // Determine the image for this round
   const imageForRound =

@@ -112,11 +112,31 @@ const SubmitGuessButton: React.FC<SubmitGuessButtonProps> = ({
       <Button 
         onClick={handleSubmit}
         disabled={isDisabled}
-        className={`w-full py-6 text-lg font-semibold rounded-xl shadow-lg transition-colors !text-white ${hasLocation ? '!bg-orange-500 hover:!bg-orange-600' : '!bg-gray-400 cursor-not-allowed'}`}
+        className={`relative overflow-visible w-full py-6 text-lg font-semibold rounded-xl shadow-lg transition-colors !text-white ${hasLocation ? '!bg-orange-500 hover:!bg-orange-600' : '!bg-gray-400 cursor-not-allowed'}`}
       >
-        <span>{isSubmitting ? 'Submitting...' : 'Submit Guess'}</span>
-        <ChevronRight className="ml-2 h-5 w-5" />
+        {/* Sparkle FX when enabled */}
+        {hasLocation && (
+          <>
+            {/* subtle outer glow */}
+            <span className="pointer-events-none absolute -inset-0.5 rounded-2xl bg-[radial-gradient(closest-side,rgba(255,255,255,0.35),transparent)] blur-md" />
+            {/* sparkles */}
+            <span className="pointer-events-none absolute -top-1 left-6 h-2 w-2 rotate-45 bg-yellow-200 shadow-[0_0_8px_2px_rgba(250,204,21,0.8)] animate-[sparkle_1.3s_ease-in-out_infinite]" />
+            <span className="pointer-events-none absolute -bottom-1 right-8 h-1.5 w-1.5 rotate-45 bg-white/90 shadow-[0_0_6px_2px_rgba(255,255,255,0.8)] animate-[sparkle_1.6s_ease-in-out_infinite_200ms]" />
+            <span className="pointer-events-none absolute -top-2 right-4 h-1 w-1 rotate-45 bg-yellow-300 animate-[sparkle_1.1s_ease-in-out_infinite_120ms]" />
+          </>
+        )}
+        <span className="relative z-10 flex items-center">
+          <span>{isSubmitting ? 'Submitting...' : 'Submit Guess'}</span>
+          <ChevronRight className="ml-2 h-5 w-5" />
+        </span>
       </Button>
+      {/* Local keyframes for sparkle animation */}
+      <style>{`
+        @keyframes sparkle {
+          0%, 100% { transform: translateY(0) scale(0.8) rotate(45deg); opacity: .5; }
+          50% { transform: translateY(-3px) scale(1.25) rotate(45deg); opacity: 1; }
+        }
+      `}</style>
       </div>
     </div>
   );

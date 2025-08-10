@@ -49,20 +49,27 @@ const AvatarMarker: React.FC<AvatarMarkerProps> = React.memo(({ lat, lng, imageU
 
   // Build Leaflet DivIcon when state changes
   const divIcon: DivIcon = useMemo(() => {
-    const circleSize = sizePx / 4; // Tailwind class mapping helper (approx.)
-    const commonClasses = `rounded-full`;
+    // Visual avatar diameter in pixels (existing code used sizePx/4)
+    const avatarPx = Math.max(8, Math.round(sizePx / 4));
+    const haloPx = avatarPx * 2; // halo twice the avatar size
 
-    let html = '';
+    const wrapperStyle = `position:relative; width:${sizePx}px; height:${sizePx}px; display:flex; align-items:center; justify-content:center;`;
+    const haloStyle = `position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:${haloPx}px; height:${haloPx}px; border-radius:9999px; background:rgba(251,146,60,0.5);`;
+    const baseImgStyle = `width:${avatarPx}px; height:${avatarPx}px; border-radius:9999px; box-shadow:0 2px 6px rgba(0,0,0,0.25);`;
+
+    let inner = '';
     if (!isLoaded && !hasError) {
       // Placeholder – dark pulsating circle
-      html = `<div aria-busy="true" aria-live="polite" class="${commonClasses} bg-black dark:bg-gray-200 animate-pulse"></div>`;
+      inner = `<div aria-busy="true" aria-live="polite" style="${baseImgStyle} background:#000; opacity:0.85;" class="dark:bg-gray-200 animate-pulse"></div>`;
     } else if (hasError || !imageUrl) {
       // Error fallback – simple pin emoji within circle
-      html = `<div class="${commonClasses} w-${circleSize} h-${circleSize} flex items-center justify-center bg-history-secondary text-white text-xs border-2 border-white shadow-md">📍</div>`;
+      inner = `<div style="${baseImgStyle}; background:#ea580c; color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; border:2px solid #fff;">📍</div>`;
     } else {
       // Actual avatar image
-      html = `<img src="${imageUrl}" alt="Player avatar" class="${commonClasses} w-${circleSize} h-${circleSize} border-2 border-white shadow-md object-cover" />`;
+      inner = `<img src="${imageUrl}" alt="Player avatar" style="${baseImgStyle}; object-fit:cover; border:2px solid #fff;" />`;
     }
+
+    const html = `<div style="${wrapperStyle}"><div style="${haloStyle}"></div>${inner}</div>`;
 
     return L.divIcon({
       html,

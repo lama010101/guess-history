@@ -37,7 +37,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
         <div className="fixed bottom-0 left-0 right-0 lg:static bg-transparent p-4 lg:p-0 z-10">
           <Button 
             onClick={onSubmit}
-            className={`w-full max-w-md mx-auto flex items-center justify-center text-lg font-semibold px-8 py-6 text-white shadow-lg ${hasSelectedLocation ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-700 text-gray-400'}`}
+            className={`w-full max-w-md mx-auto flex items-center justify-center text-lg font-semibold px-8 py-6 !text-white shadow-lg ${hasSelectedLocation ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-700'}`}
             disabled={!hasSelectedLocation}
           >
             Submit Guess

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Clock } from 'lucide-react';
+import { Clock, X } from 'lucide-react';
 import { partyUrl, LobbyServerMessage, LobbyClientMessage } from '@/lib/partyClient';
 import { useGame } from '@/contexts/GameContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -262,6 +262,16 @@ const Room: React.FC = () => {
                 {copied ? 'Link copied!' : 'Share invite link'}
               </Button>
             )}
+            {/* Close button (icon) to leave the lobby */}
+            <Button
+              size="icon"
+              onClick={() => navigate('/play')}
+              className="h-9 w-9 rounded-full bg-neutral-800 hover:bg-neutral-700"
+              aria-label="Close lobby"
+              type="button"
+            >
+              <X className="h-4 w-4" />
+            </Button>
             <Button onClick={() => navigate('/play')} variant="ghost" className="text-neutral-300">Leave</Button>
           </div>
         </div>

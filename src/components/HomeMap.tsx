@@ -129,7 +129,7 @@ const HomeMap: React.FC<HomeMapProps> = ({
           <FullscreenHandler />
           
           {markerPosition && (
-            <AvatarMarker lat={markerPosition[0]} lng={markerPosition[1]} imageUrl={avatarUrl ?? undefined} sizePx={40} />
+            <AvatarMarker lat={markerPosition[0]} lng={markerPosition[1]} imageUrl={avatarUrl ?? undefined} sizePx={100} />
           )}
           
           <FullscreenControl position="topright" />

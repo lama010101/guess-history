@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 
 interface YearSelectorProps {
   selectedYear: number;
@@ -50,18 +51,13 @@ const YearSelector: React.FC<YearSelectorProps> = ({
     <div className="w-full">
       {/* Badge is now handled in the parent component */}
       <div className="relative mb-6">
-        <input 
-          type="range" 
-          min={1850} 
-          max={currentYear} 
-          value={selectedYear} 
-          onChange={e => onChange(parseInt(e.target.value))} 
+        <Slider
+          value={[selectedYear]}
+          min={1850}
+          max={currentYear}
           step={1}
-          className="time-slider w-full" 
-          aria-valuemin={1850}
-          aria-valuemax={currentYear}
-          aria-valuenow={selectedYear}
-          list="year-markers"
+          onValueChange={(v) => onChange(v[0])}
+          className="w-full my-2"
         />
         <datalist id="year-markers">
           {markers.map(year => (

@@ -389,3 +389,31 @@ Notes:
   - `src/components/game/LocationSelector.tsx` → container class `bg-transparent` (was `bg-background`).
   - `src/components/game/SubmitGuessButton.tsx` → container class `bg-transparent` (was `bg-white dark:bg-history-dark`).
 - __Buttons remain visible__: The actual buttons keep their own backgrounds for contrast and accessibility; only the bar behind them is transparent.
+
+## Fullscreen Round Image & Guess Button FX
+
+- __Fullscreen image height__:
+  - Component: `src/components/layouts/FullscreenZoomableImage.tsx`
+  - Container now uses `style={{ height: '100dvh', minHeight: '100vh' }}` to ensure the image area fills the entire viewport height across browsers (mobile dynamic viewport units + fallback).
+  - The image element keeps `className="h-full w-auto object-contain"` so the photo respects aspect ratio while filling height.
+
+- __Sparkling GUESS/Submit animations__:
+  - Overlay GUESS button (fullscreen): same component as above; replaced bounce with lightweight sparkle bursts positioned around the button. Uses local `@keyframes sparkle` and Tailwind arbitrary `animate-[sparkle_... ]` utilities.
+  - Main submit button: `src/components/game/SubmitGuessButton.tsx` adds subtle glow + three sparkles when a location is selected (enabled state). Disabled state unchanged.
+  - Both components define a small inline `<style>` block for the `sparkle` keyframes to avoid global CSS changes.
+
+## UI Polish: Slider and Map Avatar Halo
+
+- __Shared Slider Styling__
+  - File: `src/components/ui/slider.tsx`
+  - Track shows a neutral line: `bg-gray-300` in light, `dark:bg-white` in dark.
+  - Filled range is hidden to remove the trailing orange segment.
+  - Thumb size doubled to 32px (h-8 w-8) for better touch ergonomics.
+  - Touch/focus halo: a semi-transparent orange disk renders via a pseudo-element and appears on `:focus-visible` and `:active`.
+
+- __Map Avatar Halo__
+  - File: `src/components/map/AvatarMarker.tsx`
+  - Avatar marker now renders with a semi-transparent orange halo behind it (rgba(251,146,60,0.5)).
+  - Halo diameter is 2× the avatar visual size (avatar ≈ `sizePx/4`, halo ≈ `sizePx/2`).
+  - Implemented with an inline-styled wrapper to avoid reliance on dynamic Tailwind class names in `L.divIcon` HTML.
+  - Error/placeholder states remain intact; only visuals were enhanced.

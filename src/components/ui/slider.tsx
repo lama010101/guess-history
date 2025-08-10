@@ -15,10 +15,16 @@ const Slider = React.forwardRef<
     )}
     {...props}
   >
-    <SliderPrimitive.Track className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-transparent border-none">
-      <SliderPrimitive.Range className="absolute h-full bg-history-secondary" />
+    {/* Track: neutral line (gray on light, white on dark) */}
+    <SliderPrimitive.Track className="relative h-1 w-full grow overflow-hidden rounded-full bg-gray-300 dark:bg-white border-none">
+      {/* Hide filled range to remove trailing orange line */}
+      <SliderPrimitive.Range className="hidden" />
     </SliderPrimitive.Track>
-    <SliderPrimitive.Thumb className="block h-4 w-4 rounded-full border-2 border-history-secondary bg-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
+    {/* Thumb: ~33% smaller than previous (21px), 100% orange, halo persists */}
+    <SliderPrimitive.Thumb
+      className="relative block h-[21px] w-[21px] rounded-full bg-orange-500 border-2 border-orange-500 transition-colors focus-visible:outline-none focus-visible:ring-0 disabled:pointer-events-none disabled:opacity-50
+                 after:content-[''] after:absolute after:-inset-[10.5px] after:rounded-full after:bg-orange-500/50 after:opacity-50 after:pointer-events-none after:transition-opacity"
+    />
   </SliderPrimitive.Root>
 ))
 Slider.displayName = SliderPrimitive.Root.displayName

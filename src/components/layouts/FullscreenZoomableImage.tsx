@@ -11,14 +11,13 @@ const ZOOM_STEP = 0.2;
 const WHEEL_ZOOM_FACTOR = 0.1; // Smaller factor for smoother wheel zooming
 
 const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image, onExit }) => {
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(2);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [imgSrc, setImgSrc] = useState(image.placeholderUrl);
-  const [animateGuess, setAnimateGuess] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastTouchDist = useRef<number | null>(null);
@@ -27,12 +26,6 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   const DOUBLE_TAP_MS = 300;
   const DOUBLE_TAP_SLOP_PX = 30;
 
-  // Animate the GUESS button when entering fullscreen
-  useEffect(() => {
-    setAnimateGuess(true);
-    const t = setTimeout(() => setAnimateGuess(false), 2000);
-    return () => clearTimeout(t);
-  }, []);
 
   // Zoom controls
   const zoomIn = () => setZoom(z => Math.min(MAX_ZOOM, +(z + ZOOM_STEP).toFixed(2)));
@@ -223,7 +216,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   
   // Reset pan/zoom on open/close and handle image preloading
   useEffect(() => {
-    setZoom(1);
+    setZoom(2);
     setOffset({ x: 0, y: 0 });
     setIsLoading(true);
     setImageError(false);
@@ -260,7 +253,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
     <div
       ref={containerRef}
       className="fixed inset-0 z-[9999] bg-black flex items-center justify-center select-none overflow-hidden touch-none w-screen"
-      style={{ height: '100dvh' }}
+      style={{ height: '100dvh', minHeight: '100vh' }}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
@@ -324,12 +317,43 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
       {/* GUESS Button (bottom-right) */}
       <button
         onClick={onExit}
-        className={`fixed bottom-4 right-4 z-[10000] rounded-full bg-orange-500 hover:bg-orange-400 active:bg-orange-600 text-black font-bold text-xs px-3 py-2 shadow-lg transition-all ${animateGuess ? 'animate-bounce' : ''}`}
+        className={`fixed bottom-4 right-4 z-[10000] rounded-full bg-orange-500 hover:bg-orange-400 active:bg-orange-600 text-black font-bold text-xs px-3 py-2 shadow-lg transition-all relative overflow-visible`}
         aria-label="GUESS"
         title="GUESS"
       >
-        GUESS
+        {/* Continuous animated border */}
+        <span aria-hidden="true" className="gh-anim-border"></span>
+        <span className="relative z-10">GUESS</span>
       </button>
+
+      {/* Local CSS for continuous animated border */}
+      <style>{`
+        @keyframes gh-rotate {
+          to { transform: rotate(360deg); }
+        }
+        .gh-anim-border {
+          position: absolute;
+          inset: -3px; /* slightly outside button to avoid clipping */
+          border-radius: 9999px;
+          padding: 3px; /* border thickness */
+          pointer-events: none;
+          background: conic-gradient(
+            from 0deg,
+            rgba(251,146,60,0) 0deg,
+            rgba(251,146,60,1) 90deg,
+            rgba(251,146,60,0) 180deg,
+            rgba(251,146,60,1) 270deg,
+            rgba(251,146,60,0) 360deg
+          );
+          animation: gh-rotate 2.25s linear infinite;
+          /* Hollow center so only the border shows */
+          -webkit-mask: 
+            linear-gradient(#000 0 0) content-box,
+            linear-gradient(#000 0 0);
+          -webkit-mask-composite: xor;
+                  mask-composite: exclude;
+        }
+      `}</style>
     </div>
   );
 };

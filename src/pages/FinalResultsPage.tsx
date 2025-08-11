@@ -37,7 +37,7 @@ const FinalResultsPage = () => {
   const submittedGameIdRef = useRef<string | null>(null);
   
   const [isScrolled, setIsScrolled] = React.useState(false);
-  const [isRoundSummaryOpen, setIsRoundSummaryOpen] = React.useState(false);
+  const [isRoundSummaryOpen, setIsRoundSummaryOpen] = React.useState(true);
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -290,12 +290,12 @@ const FinalResultsPage = () => {
             </div>
           </header>
 
-          <section className="bg-white dark:bg-gray-900 rounded-lg shadow-md p-4 mb-8">
+          <section className="bg-[#202020] rounded-lg shadow-md p-4 mb-8 text-white">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-history-primary dark:text-history-light">ROUND SUMMARY</h2>
+              <h2 className="text-lg font-bold">GAME SUMMARY</h2>
               <button 
                 onClick={() => setIsRoundSummaryOpen(!isRoundSummaryOpen)}
-                className="text-sm text-gray-600 dark:text-gray-300 flex items-center"
+                className="text-sm text-gray-300 flex items-center"
                 aria-expanded={isRoundSummaryOpen}
                 aria-controls="round-summary-content"
               >
@@ -312,44 +312,44 @@ const FinalResultsPage = () => {
             </div>
             {isRoundSummaryOpen && (
               <div id="round-summary-content" className="mt-4">
-                <div className="flex flex-row justify-center gap-16">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-history-primary dark:text-history-light mb-2 flex items-center">
-                      <Calendar className="h-4 w-4 mr-2 text-history-primary" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="rounded-lg bg-[#262626] p-4">
+                    <h3 className="text-lg font-semibold mb-2 flex items-center">
+                      <Calendar className="h-4 w-4 mr-2" />
                       WHEN
                     </h3>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-4">
                       <div className="flex flex-col items-center">
                         <Badge variant="accuracy" className="text-sm">{formatInteger(totalWhenAccuracy)}%</Badge>
                         {whenAccDebt > 0 && (
-                          <span className="text-xs font-medium text-red-600 dark:text-red-400 mt-0.5">-{formatInteger(whenAccDebt)}%</span>
+                          <span className="text-xs font-medium text-red-400 mt-0.5">-{formatInteger(whenAccDebt)}%</span>
                         )}
                       </div>
                       <div className="flex flex-col items-center">
                         <Badge variant="xp" className="text-sm">{formatInteger(totalWhenXP)} XP</Badge>
                         {whenXpDebt > 0 && (
-                          <span className="text-xs font-medium text-red-600 dark:text-red-400 mt-0.5">-{formatInteger(whenXpDebt)} XP</span>
+                          <span className="text-xs font-medium text-red-400 mt-0.5">-{formatInteger(whenXpDebt)} XP</span>
                         )}
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-history-primary dark:text-history-light mb-2 flex items-center">
-                      <MapPin className="h-4 w-4 mr-2 text-history-primary" />
+
+                  <div className="rounded-lg bg-[#2a2a2a] p-4">
+                    <h3 className="text-lg font-semibold mb-2 flex items-center">
+                      <MapPin className="h-4 w-4 mr-2" />
                       WHERE
                     </h3>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-4">
                       <div className="flex flex-col items-center">
                         <Badge variant="accuracy" className="text-sm">{formatInteger(totalWhereAccuracy)}%</Badge>
                         {whereAccDebt > 0 && (
-                          <span className="text-xs font-medium text-red-600 dark:text-red-400 mt-0.5">-{formatInteger(whereAccDebt)}%</span>
+                          <span className="text-xs font-medium text-red-400 mt-0.5">-{formatInteger(whereAccDebt)}%</span>
                         )}
                       </div>
                       <div className="flex flex-col items-center">
                         <Badge variant="xp" className="text-sm">{formatInteger(totalWhereXP)} XP</Badge>
                         {whereXpDebt > 0 && (
-                          <span className="text-xs font-medium text-red-600 dark:text-red-400 mt-0.5">-{formatInteger(whereXpDebt)} XP</span>
+                          <span className="text-xs font-medium text-red-400 mt-0.5">-{formatInteger(whereXpDebt)} XP</span>
                         )}
                       </div>
                     </div>
@@ -359,11 +359,17 @@ const FinalResultsPage = () => {
             )}
           </section>
 
+          <h2 className="text-lg font-bold text-history-primary dark:text-history-light mb-4">BREAKDOWN</h2>
+
           <section className="grid gap-6 mb-8">
             {images.map((image, index) => {
               const result = roundResults?.[index];
               if (!result) return null;
-              return <RoundResultCard key={image.id} image={image} result={result} index={index} />;
+              return (
+                <div key={image.id} className="bg-[#202020] rounded-lg">
+                  <RoundResultCard image={image} result={result} index={index} />
+                </div>
+              );
             })}
           </section>
         </div>

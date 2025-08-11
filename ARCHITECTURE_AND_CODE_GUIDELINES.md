@@ -446,3 +446,20 @@ Notes:
   - File: `src/pages/FinalResultsPage.tsx`
   - Styles: `bg-orange-500 text-white hover:bg-orange-600` with existing sizing retained.
   - Icon: replaced spinner `Loader` with `RefreshCw` (replay icon) from `lucide-react`.
+
+### Final Score page structural/style updates
+
+- All primary cards use dark background `#202020` on Final Results page.
+  - Files/Sections: `src/pages/FinalResultsPage.tsx`
+    - Summary card: section container `bg-[#202020]`.
+    - Each round result is wrapped in `div.bg-[#202020].rounded-lg` around `RoundResultCard` when rendered by FinalResultsPage.
+
+- "ROUND SUMMARY" renamed to "GAME SUMMARY" and expanded by default.
+  - State: `isRoundSummaryOpen` default set to `true`.
+
+- "WHEN" and "WHERE" grouped side-by-side as mini-cards.
+  - Layout: `grid grid-cols-1 sm:grid-cols-2 gap-4` inside the summary content.
+  - Styles: Each mini-card has its own rounded dark background (`#262626` and `#2a2a2a`) and padding.
+
+- Added label "BREAKDOWN" below Game Summary and above per-round cards.
+  - Element: `h2.text-lg.font-bold` with existing color scheme.

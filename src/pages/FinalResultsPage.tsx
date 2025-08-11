@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { Share2, Loader, Home, MapPin, Calendar, Target, Zap } from "lucide-react";
+import { Share2, Loader, Home, MapPin, Calendar, Target, Zap, RefreshCw } from "lucide-react";
 import RoundResultCard from '@/components/RoundResultCard';
 import { useGame } from "@/contexts/GameContext";
 import { Badge } from "@/components/ui/badge";
@@ -374,8 +374,8 @@ const FinalResultsPage = () => {
           <Button onClick={handleShare} variant="outline" size="icon" className="h-12 w-12 rounded-full bg-white hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 shadow-md" aria-label="Share your score">
             <Share2 className="h-5 w-5" />
           </Button>
-          <Button onClick={handlePlayAgain} className="flex-1 bg-white text-black hover:bg-gray-100 gap-2 py-6 text-base" size="lg">
-            <Loader size={20} className="animate-spin mr-2" />
+          <Button onClick={handlePlayAgain} className="flex-1 bg-orange-500 text-white hover:bg-orange-600 gap-2 py-6 text-base" size="lg">
+            <RefreshCw className="h-5 w-5" />
             Play Again
           </Button>
           <Button onClick={handleHome} variant="outline" size="icon" className="h-12 w-12 rounded-full bg-white hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 shadow-md" aria-label="Home">

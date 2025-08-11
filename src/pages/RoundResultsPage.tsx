@@ -389,14 +389,8 @@ const RoundResultsPage = () => {
   // Handle case where results for this specific round aren't found in context yet OR image is missing
   // If result is not yet ready, show a simple loading state. Do NOT redirect.
   if (!resultForLayout) {
-    return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-3 p-4 bg-background rounded shadow">
-          <Loader className="h-8 w-8 animate-spin text-history-primary" />
-          <h2 className="text-xl font-semibold text-history-primary">Preparing Results...</h2>
-        </div>
-      </div>
-    );
+    // Skip showing an intermediate page; wait silently until results are ready
+    return null;
   }
 
 
@@ -412,7 +406,7 @@ const RoundResultsPage = () => {
         result={resultForLayout}
         avatarUrl={profile?.avatar_image_url || profile?.avatar_url || '/assets/default-avatar.png'}
         nextRoundButton={
-          <Button onClick={handleNext} disabled={navigating} className="bg-black hover:bg-gray-800 text-white dark:bg-white dark:text-black dark:hover:bg-gray-200 rounded-xl h-12 px-6 shadow-lg transition-colors">
+          <Button onClick={handleNext} disabled={navigating} className="rounded-xl bg-orange-500 text-white font-semibold text-sm px-4 py-2 shadow-lg hover:bg-orange-500 active:bg-orange-500 transition-colors">
             {navigating ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
             <span className="ml-2">{roundNumber === images.length ? 'Finish Game' : 'Next Round'}</span>
           </Button>
@@ -444,7 +438,7 @@ const RoundResultsPage = () => {
                 </svg>
               </Button>
             )}
-            <Button onClick={handleNext} className="bg-black hover:bg-gray-800 text-white dark:bg-white dark:text-black dark:hover:bg-gray-200 rounded-xl h-12 px-6 shadow-lg transition-colors">
+            <Button onClick={handleNext} className="rounded-xl bg-orange-500 text-white font-semibold text-sm px-8 py-2 shadow-lg hover:bg-orange-500 active:bg-orange-500 transition-colors">
               {roundNumber === images.length ? 'Finish Game' : 'Next Round'}
             </Button>
           </div>

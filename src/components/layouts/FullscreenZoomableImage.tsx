@@ -318,7 +318,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000]">
         <button
           onClick={onExit}
-          className="rounded-full bg-orange-500 text-white font-semibold text-sm px-32 py-2 shadow-lg hover:bg-orange-500 active:bg-orange-500 will-change-transform"
+          className="rounded-xl bg-orange-500 text-white font-semibold text-sm px-32 py-2 shadow-lg hover:bg-orange-500 active:bg-orange-500 will-change-transform"
           style={{ animation: 'attentionPulse 10s ease-in-out infinite' }}
           aria-label="GUESS"
           title="GUESS"

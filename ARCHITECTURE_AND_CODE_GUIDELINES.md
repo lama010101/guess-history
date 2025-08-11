@@ -419,3 +419,30 @@ Notes:
   - Halo diameter is 2× the avatar visual size (avatar ≈ `sizePx/4`, halo ≈ `sizePx/2`).
   - Implemented with an inline-styled wrapper to avoid reliance on dynamic Tailwind class names in `L.divIcon` HTML.
   - Error/placeholder states remain intact; only visuals were enhanced.
+
+## UI Styling Consistency: Orange Buttons & Font
+
+- Orange action buttons now use a consistent border radius matching the Submit button.
+  - Components updated: `src/pages/RoundResultsPage.tsx` (both "Next Round" buttons) and `src/components/layouts/FullscreenZoomableImage.tsx` ("GUESS" button) now use `rounded-xl` with `bg-orange-500 text-white`.
+  - Hover/active states preserved (`hover:bg-orange-500` or `hover:bg-orange-600` as originally specified by component).
+
+- Global font set to Montserrat for consistent typography.
+  - `tailwind.config.ts` sets `theme.extend.fontFamily.sans` and `serif` to `Montserrat`.
+  - Root `index.css` imports Montserrat from Google Fonts to ensure the font is available at runtime.
+  - Note: `src/index.css` already enforced Montserrat via CSS; keeping Tailwind config aligned avoids class-level font drift.
+
+## Results & Final Score UX Tweaks
+
+- Round Results bottom "Next Round" button width increased.
+  - File: `src/pages/RoundResultsPage.tsx`
+  - Change: bottom button horizontal padding doubled (`px-4` → `px-8`), height unchanged (`py-2`).
+  - The top navbar Next button was not changed, per requirement.
+
+- Removed intermediate "Preparing Results..." screen after submitting a guess.
+  - File: `src/pages/RoundResultsPage.tsx`
+  - Behavior: when results are not ready, the page now returns `null`, avoiding the transitional loading view until data is present.
+
+- Final Score page "Play Again" button restyled and icon updated.
+  - File: `src/pages/FinalResultsPage.tsx`
+  - Styles: `bg-orange-500 text-white hover:bg-orange-600` with existing sizing retained.
+  - Icon: replaced spinner `Loader` with `RefreshCw` (replay icon) from `lucide-react`.

@@ -84,7 +84,7 @@ const LandingPage: React.FC = () => {
         <Button
           onClick={() => setAuthOpen(true)}
           variant="secondary"
-          className={`bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2 rounded-full shadow-md transition-all duration-500
+          className={`bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2 rounded-xl shadow-md transition-all duration-500
             ${navVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
           `}
         >

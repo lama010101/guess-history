@@ -3,8 +3,6 @@ import { Button } from "@/components/ui/button";
 import { AuthModal } from "@/components/AuthModal";
 import { useAuth } from "@/contexts/AuthContext";
 
-import symbolImg from "../../IMAGES/assets/symbol.png";
-
 const SLIDE_DURATION_MS = 3000;
 
 const LandingPage: React.FC = () => {
@@ -71,20 +69,19 @@ const LandingPage: React.FC = () => {
     <div className="relative min-h-screen w-full overflow-x-hidden bg-black">
       {/* Fixed Top Bar - Overlays Hero */}
       <header
-        className={`fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-6 py-4 transition-all duration-500
+        className={`fixed top-0 left-0 right-0 z-30 grid grid-cols-3 items-center px-6 py-4 transition-all duration-500
           ${navVisible ? 'bg-black/80' : 'bg-transparent'}
         `}
       >
-        <div className="flex items-center gap-2 text-white text-xl font-bold select-none">
-          <img src={symbolImg} alt="Guess History symbol" className="h-6 w-6" />
+        <div className="text-white text-xl font-bold select-none col-start-2 justify-self-center whitespace-nowrap">
           <span>
-            GUESS-<span className="text-orange-500">HISTORY</span>
+            GUESS‑<span className="text-orange-500">HISTORY</span>
           </span>
         </div>
         <Button
           onClick={() => setAuthOpen(true)}
           variant="secondary"
-          className={`bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2 rounded-xl shadow-md transition-all duration-500
+          className={`bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2 rounded-xl shadow-md transition-all duration-500 col-start-3 justify-self-end
             ${navVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
           `}
         >
@@ -141,12 +138,12 @@ const LandingPage: React.FC = () => {
           </h1>
           <p className="mt-8 text-lg md:text-2xl drop-shadow-lg">Time travel through historical events.</p>
           <Button
-            className="mt-14 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-4 rounded-full shadow-xl flex items-center gap-2"
+            className="mt-14 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-4 rounded-xl shadow-xl flex items-center gap-2"
             onClick={() => setAuthOpen(true)}
           >
             <span>Start Guessing</span>
           </Button>
-          <span className="mt-2 text-sm opacity-80">No signup needed - Play immediately as a guest</span>
+          <span className="mt-4 text-sm opacity-80">No signup needed - Play immediately as a guest</span>
         </main>
       </section>
       

@@ -78,13 +78,13 @@ const LandingPage: React.FC = () => {
         <div className="flex items-center gap-2 text-white text-xl font-bold select-none">
           <img src={symbolImg} alt="Guess History symbol" className="h-6 w-6" />
           <span>
-            GUESS-<span className="text-orange-500">HISTORY</span>
+            <span className="text-white">G-</span><span className="text-orange-500">HISTORY</span>
           </span>
         </div>
         <Button
           onClick={() => setAuthOpen(true)}
           variant="secondary"
-          className={`bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2 rounded-xl shadow-md transition-all duration-500
+          className={`bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2 rounded-xl shadow-md transition-all duration-500 scale-90
             ${navVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
           `}
         >
@@ -141,7 +141,7 @@ const LandingPage: React.FC = () => {
           </h1>
           <p className="mt-8 text-lg md:text-2xl drop-shadow-lg">Time travel through historical events.</p>
           <Button
-            className="mt-14 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-4 rounded-full shadow-xl flex items-center gap-2"
+            className="mt-12 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-4 rounded-full shadow-xl flex items-center gap-2 scale-90"
             onClick={() => setAuthOpen(true)}
           >
             <span>Start Guessing</span>

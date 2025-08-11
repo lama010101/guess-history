@@ -467,3 +467,16 @@ Notes:
 
 - Mobile layout consistency for WHEN/WHERE mini-cards
   - Forced 2-column grid at all breakpoints (`grid-cols-2`) so they remain side-by-side even on mobile.
+
+## Landing Page UI Tweaks
+
+- Header logo updated to `G-HISTORY`.
+  - File: `src/pages/LandingPage.tsx`
+  - Colors: `G-` in white, `HISTORY` in orange (`text-orange-500`).
+
+- Play buttons reduced in size by ~10%.
+  - Header CTA "Jump In Now": added `scale-90`.
+  - Hero "Start Guessing" button: added `scale-90`.
+
+- Reduced spacing between the two Play buttons.
+  - Hero button top margin decreased `mt-14` → `mt-12`.

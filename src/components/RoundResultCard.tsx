@@ -20,7 +20,7 @@ const RoundResultCard: React.FC<RoundResultCardProps> = ({ image, result, index 
   const roundPercentage = result.accuracy ?? ((result.xpWhere ?? 0) + (result.xpWhen ?? 0)) / 2;
 
   return (
-    <article key={image.id} className="bg-white dark:bg-gray-900 rounded-xl shadow-lg overflow-hidden">
+    <article key={image.id} className="bg-white dark:bg-transparent rounded-xl shadow-lg overflow-hidden">
       <div className="flex flex-col">
         <div className="w-full h-40 sm:h-48">
           <LazyImage src={image.url} alt={`Round ${index + 1} - ${image.title}`} className="w-full h-full object-cover" skeletonClassName="w-full h-full" />
@@ -58,7 +58,7 @@ const RoundResultCard: React.FC<RoundResultCardProps> = ({ image, result, index 
           {isOpen && (
             <div className="details mt-4" id={`details-${image.id}`}>
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="flex-1 p-3 rounded-lg bg-gray-100 dark:bg-gray-800">
+                  <div className="flex-1 p-3 rounded-lg bg-gray-100 dark:bg-[#262626]">
                     <h4 className="flex items-center mb-2 text-sm font-medium text-history-primary dark:text-history-light"><Calendar className="h-4 w-4 mr-1" />WHEN</h4>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600 dark:text-gray-400">{yearDifference} years off</span>
@@ -68,7 +68,7 @@ const RoundResultCard: React.FC<RoundResultCardProps> = ({ image, result, index 
                       </div>
                     </div>
                   </div>
-                  <div className="flex-1 p-3 rounded-lg bg-gray-100 dark:bg-gray-800">
+                  <div className="flex-1 p-3 rounded-lg bg-gray-100 dark:bg-[#2a2a2a]">
                     <h4 className="flex items-center mb-2 text-sm font-medium text-history-primary dark:text-history-light"><MapPin className="h-4 w-4 mr-1" />WHERE</h4>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600 dark:text-gray-400">{formatInteger(result.distanceKm || 0)} kms off</span>

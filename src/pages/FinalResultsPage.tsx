@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Share2, Loader, Home, MapPin, Calendar, Target, Zap, RefreshCw } from "lucide-react";
 import RoundResultCard from '@/components/RoundResultCard';
 import { useGame } from "@/contexts/GameContext";
@@ -37,7 +37,7 @@ const FinalResultsPage = () => {
   const submittedGameIdRef = useRef<string | null>(null);
   
   const [isScrolled, setIsScrolled] = React.useState(false);
-  const [isRoundSummaryOpen, setIsRoundSummaryOpen] = React.useState(true);
+  const [isRoundSummaryOpen, setIsRoundSummaryOpen] = React.useState(false);
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -254,8 +254,11 @@ const FinalResultsPage = () => {
       <nav className={`sticky top-0 z-50 text-white transition-all duration-300 ${isScrolled ? 'bg-white/90 dark:bg-gray-900/90 backdrop-blur shadow-lg' : 'bg-transparent'}`}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
-              <Logo />
+            <div className="flex items-center select-none">
+              <Link to="/" aria-label="Home" className="text-xl font-bold">
+                <span className="text-white">G-</span>
+                <span className="text-orange-500">H</span>
+              </Link>
             </div>
             <div className="flex items-center gap-4">
   <Badge variant="accuracy" className="flex items-center gap-1 text-lg" aria-label={`Global Accuracy: ${Math.round(globalAccuracy || 0)}%`}>
@@ -274,10 +277,8 @@ const FinalResultsPage = () => {
 
       <main className="flex-grow p-4 sm:p-6 md:p-8 pb-36">
         <div className="max-w-4xl mx-auto w-full">
-          <header className="text-center mb-8 sm:mb-12">
-            <h1 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4 text-history-primary dark:text-history-light">
-              FINAL SCORE
-            </h1>
+          <div className="max-w-md mx-auto bg-[#202020] border border-orange-500 rounded-lg p-6 text-white mb-8 sm:mb-12">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4 text-center">FINAL SCORE</h1>
             <div className="flex justify-center items-center gap-4 mt-2">
               <Badge variant="accuracy" className="text-lg flex items-center gap-1" aria-label={`Accuracy: ${totalPercentage}%`}>
                 <Target className="h-4 w-4" />
@@ -288,7 +289,7 @@ const FinalResultsPage = () => {
                 <span>{totalScore}</span>
               </Badge>
             </div>
-          </header>
+          </div>
 
           <section className="bg-[#202020] rounded-lg shadow-md p-4 mb-8 text-white">
             <div className="flex items-center justify-between">
@@ -314,11 +315,11 @@ const FinalResultsPage = () => {
               <div id="round-summary-content" className="mt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="rounded-lg bg-[#262626] p-4">
-                    <h3 className="text-lg font-semibold mb-2 flex items-center">
+                    <h3 className="text-lg font-semibold mb-2 flex items-center justify-center text-center">
                       <Calendar className="h-4 w-4 mr-2" />
                       WHEN
                     </h3>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-center gap-4">
                       <div className="flex flex-col items-center">
                         <Badge variant="accuracy" className="text-sm">{formatInteger(totalWhenAccuracy)}%</Badge>
                         {whenAccDebt > 0 && (
@@ -335,11 +336,11 @@ const FinalResultsPage = () => {
                   </div>
 
                   <div className="rounded-lg bg-[#2a2a2a] p-4">
-                    <h3 className="text-lg font-semibold mb-2 flex items-center">
+                    <h3 className="text-lg font-semibold mb-2 flex items-center justify-center text-center">
                       <MapPin className="h-4 w-4 mr-2" />
                       WHERE
                     </h3>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-center gap-4">
                       <div className="flex flex-col items-center">
                         <Badge variant="accuracy" className="text-sm">{formatInteger(totalWhereAccuracy)}%</Badge>
                         {whereAccDebt > 0 && (
@@ -366,7 +367,7 @@ const FinalResultsPage = () => {
               const result = roundResults?.[index];
               if (!result) return null;
               return (
-                <div key={image.id} className="bg-[#202020] rounded-lg">
+                <div key={image.id} className="bg-[#202020] rounded-lg p-2">
                   <RoundResultCard image={image} result={result} index={index} />
                 </div>
               );
@@ -377,14 +378,14 @@ const FinalResultsPage = () => {
 
       <footer className="fixed bottom-0 left-0 w-full z-50 bg-white/90 dark:bg-gray-900/95 backdrop-blur shadow-[0_-2px_12px_rgba(0,0,0,0.05)] px-4 py-3 flex justify-center items-center border-t border-gray-200 dark:border-gray-700">
         <div className="w-full max-w-md flex items-center justify-between gap-4">
-          <Button onClick={handleShare} variant="outline" size="icon" className="h-12 w-12 rounded-full bg-white hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 shadow-md" aria-label="Share your score">
+          <Button onClick={handleShare} variant="outline" size="icon" className="h-12 w-12 rounded-full bg-white text-black hover:bg-gray-100 dark:bg-white dark:hover:bg-gray-100 dark:text-black shadow-md" aria-label="Share your score">
             <Share2 className="h-5 w-5" />
           </Button>
           <Button onClick={handlePlayAgain} className="flex-1 bg-orange-500 text-white hover:bg-orange-600 gap-2 py-6 text-base" size="lg">
             <RefreshCw className="h-5 w-5" />
             Play Again
           </Button>
-          <Button onClick={handleHome} variant="outline" size="icon" className="h-12 w-12 rounded-full bg-white hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 shadow-md" aria-label="Home">
+          <Button onClick={handleHome} variant="outline" size="icon" className="h-12 w-12 rounded-full bg-white text-black hover:bg-gray-100 dark:bg-white dark:hover:bg-gray-100 dark:text-black shadow-md" aria-label="Home">
             <Home className="h-5 w-5" />
           </Button>
         </div>

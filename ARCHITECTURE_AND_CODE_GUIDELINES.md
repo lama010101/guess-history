@@ -468,15 +468,16 @@ Notes:
 - Mobile layout consistency for WHEN/WHERE mini-cards
   - Forced 2-column grid at all breakpoints (`grid-cols-2`) so they remain side-by-side even on mobile.
 
-## Landing Page UI Tweaks
+### Home Page UI Tweaks
 
-- Header logo updated to `G-HISTORY`.
-  - File: `src/pages/LandingPage.tsx`
-  - Colors: `G-` in white, `HISTORY` in orange (`text-orange-500`).
+- Logo text updated to "G-HISTORY" with original letter colors.
+  - File: `src/components/Logo.tsx`
+  - Change: `GUESS-` → `G-`, `HISTORY` remains orange.
 
-- Play buttons reduced in size by ~10%.
-  - Header CTA "Jump In Now": added `scale-90`.
-  - Hero "Start Guessing" button: added `scale-90`.
-
-- Reduced spacing between the two Play buttons.
-  - Hero button top margin decreased `mt-14` → `mt-12`.
+- Play button sizing reduced and spacing tightened; top tiles match bar width.
+  - File: `src/pages/HomePage.tsx`
+  - Bottom bars width reduced ~10%: `w-60` → `w-[13.5rem]`.
+  - Top gradient tiles set to the same width: `w-[13.5rem]`.
+  - Top gradient tiles are square (1:1): `h-[13.5rem]`.
+  - Inter-card gap reduced by 15% using arbitrary values:
+    - `gap-12 md:gap-20` → `gap-[1.7rem] md:gap-[2.55rem]`.

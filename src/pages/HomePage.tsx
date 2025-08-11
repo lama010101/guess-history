@@ -220,17 +220,17 @@ const HomePage = () => {
       {showGuestBadge && <GuestBadge username={profile?.display_name || 'Guest'} />}
       <div className="absolute inset-0 z-10 w-full h-full overflow-y-auto p-8 box-border backdrop-blur-sm bg-white/75 dark:bg-black/75 flex items-center justify-center min-h-screen">
   {isLoaded ? (
-    <div className="flex flex-col items-start gap-12 md:flex-row md:gap-20 md:items-start">
+    <div className="flex flex-col items-start gap-[1.7rem] md:flex-row md:gap-[2.55rem] md:items-start">
       {/* Solo Card */}
       <div className="flex flex-col items-center justify-center gap-0 py-4">
         <div
-          className="w-60 h-60 rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-yellow-300 via-orange-400 to-orange-600 cursor-pointer"
+          className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-yellow-300 via-orange-400 to-orange-600 cursor-pointer"
           onClick={() => handleStartGame('classic')}
         >
           <img src={soloIcon} alt="Solo" className="w-40 h-40 object-contain" />
         </div>
         <div
-          className="w-60 bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1 cursor-pointer"
+          className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1 cursor-pointer"
           onClick={() => handleStartGame('classic')}
         >
           Play Solo
@@ -296,10 +296,10 @@ const HomePage = () => {
             </div>
           </div>
         )}
-        <div className="w-60 h-60 rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-cyan-300 via-sky-400 to-sky-600">
+        <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-cyan-300 via-sky-400 to-sky-600">
           <img src={friendsIcon} alt="Friends" className="w-40 h-40 object-contain" />
         </div>
-        <div className="w-60 bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1">
+        <div className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1">
           Play Friends
         </div>
       </div>

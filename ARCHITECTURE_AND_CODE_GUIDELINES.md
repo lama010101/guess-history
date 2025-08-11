@@ -463,3 +463,7 @@ Notes:
 
 - Added label "BREAKDOWN" below Game Summary and above per-round cards.
   - Element: `h2.text-lg.font-bold` with existing color scheme.
+  - Alignment: Added left padding (`pl-4`) to align with Game Summary content padding.
+
+- Mobile layout consistency for WHEN/WHERE mini-cards
+  - Forced 2-column grid at all breakpoints (`grid-cols-2`) so they remain side-by-side even on mobile.

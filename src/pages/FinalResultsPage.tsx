@@ -312,7 +312,7 @@ const FinalResultsPage = () => {
             </div>
             {isRoundSummaryOpen && (
               <div id="round-summary-content" className="mt-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="rounded-lg bg-[#262626] p-4">
                     <h3 className="text-lg font-semibold mb-2 flex items-center">
                       <Calendar className="h-4 w-4 mr-2" />
@@ -359,7 +359,7 @@ const FinalResultsPage = () => {
             )}
           </section>
 
-          <h2 className="text-lg font-bold text-history-primary dark:text-history-light mb-4">BREAKDOWN</h2>
+          <h2 className="text-lg font-bold text-history-primary dark:text-history-light mb-4 pl-4">BREAKDOWN</h2>
 
           <section className="grid gap-6 mb-8">
             {images.map((image, index) => {

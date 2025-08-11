@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
 
+/* stylelint-disable at-rule-no-unknown */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -111,10 +112,7 @@
     outline: 2px solid hsl(var(--primary));
     outline-offset: 2px;
   }
-  .time-slider:focus::-ms-thumb {
-    /* MS Edge does not support outline on thumb directly, consider other focus indication if needed */
-    /* For example, a box-shadow or slightly larger thumb */
-  }
+  /* Removed Edge (::ms-thumb) focus rule as EdgeHTML is obsolete and previous ruleset was empty. */
 }
 
 @layer base {

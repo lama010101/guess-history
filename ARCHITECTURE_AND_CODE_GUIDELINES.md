@@ -396,6 +396,8 @@ Notes:
   - Component: `src/components/layouts/FullscreenZoomableImage.tsx`
   - Container now uses `style={{ height: '100dvh', minHeight: '100vh' }}` to ensure the image area fills the entire viewport height across browsers (mobile dynamic viewport units + fallback).
   - The image element keeps `className="h-full w-auto object-contain"` so the photo respects aspect ratio while filling height.
+  - Default zoom level on open is **250%** (`zoom = 2.5`).
+  - The fullscreen **GUESS** button is compact and centered at the bottom (`fixed bottom-6 left-1/2 -translate-x-1/2`), with a solid orange background (`bg-orange-500 text-white`, no hover color change) and rounded-full shape. Width is increased via horizontal padding (`px-16`) while keeping height the same (`py-2`).
 
 - __Sparkling GUESS/Submit animations__:
   - Overlay GUESS button (fullscreen): same component as above; replaced bounce with lightweight sparkle bursts positioned around the button. Uses local `@keyframes sparkle` and Tailwind arbitrary `animate-[sparkle_... ]` utilities.

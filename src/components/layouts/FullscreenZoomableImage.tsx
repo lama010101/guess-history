@@ -11,7 +11,7 @@ const ZOOM_STEP = 0.2;
 const WHEEL_ZOOM_FACTOR = 0.1; // Smaller factor for smoother wheel zooming
 
 const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image, onExit }) => {
-  const [zoom, setZoom] = useState(2);
+  const [zoom, setZoom] = useState(2.5);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
@@ -216,7 +216,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   
   // Reset pan/zoom on open/close and handle image preloading
   useEffect(() => {
-    setZoom(2);
+    setZoom(2.5);
     setOffset({ x: 0, y: 0 });
     setIsLoading(true);
     setImageError(false);
@@ -314,46 +314,29 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
           }}
         />
       </div>
-      {/* GUESS Button (bottom-right) */}
-      <button
-        onClick={onExit}
-        className={`fixed bottom-4 right-4 z-[10000] rounded-full bg-orange-500 hover:bg-orange-400 active:bg-orange-600 text-black font-bold text-xs px-3 py-2 shadow-lg transition-all relative overflow-visible`}
-        aria-label="GUESS"
-        title="GUESS"
-      >
-        {/* Continuous animated border */}
-        <span aria-hidden="true" className="gh-anim-border"></span>
-        <span className="relative z-10">GUESS</span>
-      </button>
-
-      {/* Local CSS for continuous animated border */}
-      <style>{`
-        @keyframes gh-rotate {
-          to { transform: rotate(360deg); }
-        }
-        .gh-anim-border {
-          position: absolute;
-          inset: -3px; /* slightly outside button to avoid clipping */
-          border-radius: 9999px;
-          padding: 3px; /* border thickness */
-          pointer-events: none;
-          background: conic-gradient(
-            from 0deg,
-            rgba(251,146,60,0) 0deg,
-            rgba(251,146,60,1) 90deg,
-            rgba(251,146,60,0) 180deg,
-            rgba(251,146,60,1) 270deg,
-            rgba(251,146,60,0) 360deg
-          );
-          animation: gh-rotate 2.25s linear infinite;
-          /* Hollow center so only the border shows */
-          -webkit-mask: 
-            linear-gradient(#000 0 0) content-box,
-            linear-gradient(#000 0 0);
-          -webkit-mask-composite: xor;
-                  mask-composite: exclude;
-        }
-      `}</style>
+      {/* Compact GUESS button (bottom-center, solid orange) */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000]">
+        <button
+          onClick={onExit}
+          className="rounded-full bg-orange-500 text-white font-semibold text-sm px-32 py-2 shadow-lg hover:bg-orange-500 active:bg-orange-500 will-change-transform"
+          style={{ animation: 'attentionPulse 10s ease-in-out infinite' }}
+          aria-label="GUESS"
+          title="GUESS"
+        >
+          GUESS
+        </button>
+        <style>{`
+          @keyframes attentionPulse {
+            /* idle most of the time */
+            0%, 80%, 100% { transform: scale(1); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.30), 0 4px 6px -4px rgba(0,0,0,0.30); }
+            /* stronger double pulse window */
+            84% { transform: scale(1.14); box-shadow: 0 25px 35px -5px rgba(0,0,0,0.45), 0 12px 16px -4px rgba(0,0,0,0.45), 0 0 0 6px rgba(249,115,22,0.35); }
+            88% { transform: scale(1);   box-shadow: 0 10px 15px -3px rgba(0,0,0,0.30), 0 4px 6px -4px rgba(0,0,0,0.30); }
+            92% { transform: scale(1.14); box-shadow: 0 25px 35px -5px rgba(0,0,0,0.45), 0 12px 16px -4px rgba(0,0,0,0.45), 0 0 0 6px rgba(249,115,22,0.35); }
+            96% { transform: scale(1);   box-shadow: 0 10px 15px -3px rgba(0,0,0,0.30), 0 4px 6px -4px rgba(0,0,0,0.30); }
+          }
+        `}</style>
+      </div>
     </div>
   );
 };

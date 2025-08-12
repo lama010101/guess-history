@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
-import { Share2, Loader, Home, MapPin, Calendar, Target, Zap, RefreshCw } from "lucide-react";
+import { Share2, Loader, Home, Target, Zap, RefreshCw } from "lucide-react";
 import RoundResultCard from '@/components/RoundResultCard';
 import { useGame } from "@/contexts/GameContext";
 import { Badge } from "@/components/ui/badge";
@@ -218,29 +218,13 @@ const FinalResultsPage = () => {
   
   const { finalXP, finalPercent } = calculateFinalScore(roundScores);
   
-  let whenXpDebt = 0;
-  let whereXpDebt = 0;
-  let whenAccDebt = 0;
-  let whereAccDebt = 0;
-  let totalWhenXP = 0;
-  let totalWhereXP = 0;
-
-  roundResults.forEach((result, index) => {
-    const hintsUsed = result.hintsUsed || 0;
-    const whenHints = Math.floor(hintsUsed / 2);
-    const whereHints = hintsUsed - whenHints;
-    
-    whenXpDebt += whenHints * HINT_PENALTY.XP;
-    whenAccDebt += whenHints * HINT_PENALTY.ACCURACY_PERCENT;
-    whereXpDebt += whereHints * HINT_PENALTY.XP;
-    whereAccDebt += whereHints * HINT_PENALTY.ACCURACY_PERCENT;
-
+  const totalWhenXP = roundResults.reduce((sum, result, index) => {
     const img = images[index];
-    if (result && img) {
-      totalWhenXP += calculateTimeAccuracy(result.guessYear || 0, img.year || 0);
-      totalWhereXP += calculateLocationAccuracy(result.distanceKm || 0);
-    }
-  });
+    return sum + (result && img ? calculateTimeAccuracy(result.guessYear || 0, img.year || 0) : 0);
+  }, 0);
+  const totalWhereXP = roundResults.reduce((sum, result) => {
+    return sum + calculateLocationAccuracy(result.distanceKm || 0);
+  }, 0);
 
   const totalHintPenalty = roundResults.reduce((sum, result) => sum + (result.hintsUsed || 0) * HINT_PENALTY.XP, 0);
   const netFinalXP = Math.max(0, Math.round(finalXP - totalHintPenalty));
@@ -300,7 +284,6 @@ const FinalResultsPage = () => {
                 aria-expanded={isRoundSummaryOpen}
                 aria-controls="round-summary-content"
               >
-                Details
                 <svg 
                   className={`ml-1 h-4 w-4 transition-transform ${isRoundSummaryOpen ? 'rotate-180' : ''}`} 
                   fill="none" 
@@ -313,46 +296,30 @@ const FinalResultsPage = () => {
             </div>
             {isRoundSummaryOpen && (
               <div id="round-summary-content" className="mt-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="rounded-lg bg-[#262626] p-4">
-                    <h3 className="text-lg font-semibold mb-2 flex items-center justify-center text-center">
-                      <Calendar className="h-4 w-4 mr-2" />
-                      WHEN
-                    </h3>
-                    <div className="flex items-center justify-center gap-4">
-                      <div className="flex flex-col items-center">
-                        <Badge variant="accuracy" className="text-sm">{formatInteger(totalWhenAccuracy)}%</Badge>
-                        {whenAccDebt > 0 && (
-                          <span className="text-xs font-medium text-red-400 mt-0.5">-{formatInteger(whenAccDebt)}%</span>
-                        )}
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <Badge variant="xp" className="text-sm">{formatInteger(totalWhenXP)} XP</Badge>
-                        {whenXpDebt > 0 && (
-                          <span className="text-xs font-medium text-red-400 mt-0.5">-{formatInteger(whenXpDebt)} XP</span>
-                        )}
-                      </div>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm">Time Accuracy</span>
+                      <span className="text-sm">{formatInteger(totalWhenAccuracy)}%</span>
+                    </div>
+                    <div className="w-full h-3 rounded-full bg-gray-300">
+                      <div
+                        className="h-3 rounded-full bg-orange-500"
+                        style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhenAccuracy)))}%` }}
+                      />
                     </div>
                   </div>
 
-                  <div className="rounded-lg bg-[#2a2a2a] p-4">
-                    <h3 className="text-lg font-semibold mb-2 flex items-center justify-center text-center">
-                      <MapPin className="h-4 w-4 mr-2" />
-                      WHERE
-                    </h3>
-                    <div className="flex items-center justify-center gap-4">
-                      <div className="flex flex-col items-center">
-                        <Badge variant="accuracy" className="text-sm">{formatInteger(totalWhereAccuracy)}%</Badge>
-                        {whereAccDebt > 0 && (
-                          <span className="text-xs font-medium text-red-400 mt-0.5">-{formatInteger(whereAccDebt)}%</span>
-                        )}
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <Badge variant="xp" className="text-sm">{formatInteger(totalWhereXP)} XP</Badge>
-                        {whereXpDebt > 0 && (
-                          <span className="text-xs font-medium text-red-400 mt-0.5">-{formatInteger(whereXpDebt)} XP</span>
-                        )}
-                      </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm">Location Accuracy</span>
+                      <span className="text-sm">{formatInteger(totalWhereAccuracy)}%</span>
+                    </div>
+                    <div className="w-full h-3 rounded-full bg-gray-300">
+                      <div
+                        className="h-3 rounded-full bg-orange-500"
+                        style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhereAccuracy)))}%` }}
+                      />
                     </div>
                   </div>
                 </div>

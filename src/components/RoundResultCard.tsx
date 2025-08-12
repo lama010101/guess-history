@@ -27,7 +27,7 @@ const RoundResultCard: React.FC<RoundResultCardProps> = ({ image, result, index 
         </div>
         <div className="p-4">
           <div className="cursor-pointer w-full" onClick={() => setIsOpen(!isOpen)} tabIndex={0} role="button" aria-expanded={isOpen} aria-controls={`details-${image.id}`}>
-            <h3 className="text-lg font-bold text-history-primary dark:text-history-light">{image.title || ""}</h3>
+            <h3 className="text-lg font-normal text-history-primary dark:text-history-light">{image.title || ""}</h3>
             <div className="flex items-center justify-between mt-1">
               <div className="flex items-center space-x-2">
                 <Badge variant="accuracy" className="flex items-center gap-1" aria-label={`Accuracy: ${formatInteger(roundPercentage)}%`}>
@@ -40,7 +40,6 @@ const RoundResultCard: React.FC<RoundResultCardProps> = ({ image, result, index 
                 </Badge>
               </div>
               <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                Details
                 <svg 
                   className={`ml-1 h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
                   fill="none" 

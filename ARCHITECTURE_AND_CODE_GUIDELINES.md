@@ -513,16 +513,21 @@ UI specifics applied in `HintModalV2New`:
 - "ROUND SUMMARY" renamed to "GAME SUMMARY" and expanded by default.
   - State: `isRoundSummaryOpen` default set to `true`.
 
-- "WHEN" and "WHERE" grouped side-by-side as mini-cards.
-  - Layout: `grid grid-cols-1 sm:grid-cols-2 gap-4` inside the summary content.
-  - Styles: Each mini-card has its own rounded dark background (`#262626` and `#2a2a2a`) and padding.
+- Replaced "WHEN" and "WHERE" mini-cards with two stacked progress bars.
+  - Labels: "Time Accuracy" and "Location Accuracy".
+  - Visuals: Orange fill (`bg-orange-500` or `#f97316`) on a subtle neutral track; rounded bars with concise labels to the left.
+  - Implementation: simple nested `div`s styled with Tailwind for width, height, background, and rounded corners. Percentages computed via existing utilities and formatted with `formatInteger`.
 
 - Added label "BREAKDOWN" below Game Summary and above per-round cards.
   - Element: `h2.text-lg.font-bold` with existing color scheme.
   - Alignment: Added left padding (`pl-4`) to align with Game Summary content padding.
 
-- Mobile layout consistency for WHEN/WHERE mini-cards
-  - Forced 2-column grid at all breakpoints (`grid-cols-2`) so they remain side-by-side even on mobile.
+- Removed "Details" text labels; chevron icon remains for toggling.
+  - Locations: Game Summary toggle and each breakdown card (`RoundResultCard`).
+  - Rationale: declutters UI while preserving affordance.
+
+- Breakdown image titles use regular font weight (was bold) for better visual hierarchy.
+  - File: `src/components/RoundResultCard.tsx`
 
 ### Home Page UI Tweaks
 

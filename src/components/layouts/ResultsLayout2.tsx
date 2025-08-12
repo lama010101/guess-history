@@ -354,14 +354,23 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               </div>
             </div>
 
+            {/* Desktop-only action buttons directly under the Where card */}
+            <div className="hidden lg:flex justify-center items-center space-x-4 mt-4">
+              {extraButtons}
+              {nextRoundButton}
+              {homeButton}
+            </div>
+
             {result.hintDebts && result.hintDebts.length > 0 && (
               <HintDebtsCard hintDebts={result.hintDebts} />
             )}
           </div>
         </div>
 
-        <div className="mt-8 flex justify-center items-center space-x-4 md:col-span-2">
+        {/* Mobile/tablet action buttons at bottom; hidden on desktop */}
+        <div className="mt-8 flex justify-center items-center space-x-4 md:col-span-2 lg:hidden">
           {extraButtons}
+          {nextRoundButton}
           {homeButton}
         </div>
       </div>

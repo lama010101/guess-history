@@ -238,6 +238,17 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
               />
             </CardContent>
           </Card>
+
+          {/* Desktop-only submit button placed outside and below the card */}
+          <div className="hidden lg:block">
+            <Button
+              onClick={handleSubmitGuess}
+              disabled={!currentGuess}
+              className={`${currentGuess ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-700'} w-full max-w-md mx-auto flex items-center justify-center text-lg font-semibold px-8 py-6 !text-white shadow-lg rounded-xl`}
+            >
+              Submit Guess
+            </Button>
+          </div>
         </div>
 
         

@@ -84,7 +84,12 @@ const HintButtonUI: React.FC<{
         </span>
       ) : isLocked ? (
         <span className="flex items-center justify-center gap-2">
-          <img src="/icons/lock.webp" alt="Locked" className="h-4 w-4 shrink-0 bg-transparent" />
+          <img
+            src="/icons/lock.webp"
+            alt="Locked"
+            className="h-4 w-4 shrink-0 bg-transparent object-contain"
+            style={{ backgroundColor: 'transparent', filter: 'none', mixBlendMode: 'normal' }}
+          />
           <span className="flex flex-col items-center">
             <span className="capitalize">{label1}</span>
             <span className="text-xs text-red-500 font-normal">{label2}</span>

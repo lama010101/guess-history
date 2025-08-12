@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { UserProfile, fetchUserProfile } from '@/utils/profile/profileService';
 import ResultsLayout2 from "@/components/layouts/ResultsLayout2"; // Use the original layout
 import { useToast } from "@/components/ui/use-toast";
-import { Loader, Home, ChevronRight } from 'lucide-react';
+import { Loader, Home, ChevronRight, ThumbsUp } from 'lucide-react';
 import { useGame } from '@/contexts/GameContext'; 
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -406,7 +406,11 @@ const RoundResultsPage = () => {
         result={resultForLayout}
         avatarUrl={profile?.avatar_image_url || profile?.avatar_url || '/assets/default-avatar.png'}
         nextRoundButton={
-          <Button onClick={handleNext} disabled={navigating} className="rounded-xl bg-orange-500 text-white font-semibold text-sm px-4 py-2 shadow-lg hover:bg-orange-500 active:bg-orange-500 transition-colors">
+          <Button 
+            onClick={handleNext} 
+            disabled={navigating} 
+            className="rounded-xl bg-orange-500 text-white font-semibold text-sm px-8 py-2 shadow-lg hover:bg-orange-500 active:bg-orange-500 transition-colors min-w-[160px]"
+          >
             {navigating ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
             <span className="ml-2">{roundNumber === images.length ? 'Finish Game' : 'Next Round'}</span>
           </Button>
@@ -433,14 +437,9 @@ const RoundResultsPage = () => {
                 aria-label="Rate Image"
                 title="Rate this image"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-star">
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                </svg>
+                <ThumbsUp size={20} />
               </Button>
             )}
-            <Button onClick={handleNext} className="rounded-xl bg-orange-500 text-white font-semibold text-sm px-8 py-2 shadow-lg hover:bg-orange-500 active:bg-orange-500 transition-colors">
-              {roundNumber === images.length ? 'Finish Game' : 'Next Round'}
-            </Button>
           </div>
         }
       />

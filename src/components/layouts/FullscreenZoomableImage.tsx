@@ -282,12 +282,12 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
         Use mouse wheel or pinch to zoom, drag to pan
       </div>
       {/* Image */}
-      <div className="relative w-full h-full flex items-center justify-center">
+      <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
         {/* Placeholder Image */}
         <img
           src={image.placeholderUrl}
           alt={`${image.title} placeholder`}
-          className={`absolute inset-0 w-full h-full object-contain filter blur-lg scale-105 transition-opacity duration-300`}
+          className={`absolute inset-0 h-screen w-auto filter blur-lg transition-opacity duration-300`}
           style={{ opacity: isLoading ? 1 : 0 }}
           aria-hidden="true"
         />
@@ -296,7 +296,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
           ref={imgRef}
           src={imgSrc}
           alt={image.title}
-          className={`h-full w-auto object-contain cursor-grab transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+          className={`h-screen w-auto cursor-grab transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
           style={{
             background: "black",
             transform: `scale(${zoom}) translate(${offset.x / zoom}px,${offset.y / zoom}px)`,
@@ -318,7 +318,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000]">
         <button
           onClick={onExit}
-          className="rounded-xl bg-orange-500 text-white font-semibold text-sm px-32 py-2 shadow-lg hover:bg-orange-500 active:bg-orange-500 will-change-transform"
+          className="inline-flex items-center justify-center rounded-xl bg-orange-500 text-white font-semibold text-sm px-32 h-[50px] shadow-lg hover:bg-orange-500 active:bg-orange-500 will-change-transform"
           style={{ animation: 'attentionPulse 10s ease-in-out infinite' }}
           aria-label="GUESS"
           title="GUESS"

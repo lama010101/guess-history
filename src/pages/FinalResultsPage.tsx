@@ -35,9 +35,10 @@ const FinalResultsPage = () => {
     setProvisionalGlobalMetrics
   } = useGame();
   const submittedGameIdRef = useRef<string | null>(null);
+  const provisionalAppliedRef = useRef<boolean>(false);
   
   const [isScrolled, setIsScrolled] = React.useState(false);
-  const [isRoundSummaryOpen, setIsRoundSummaryOpen] = React.useState(false);
+  const [isRoundSummaryOpen, setIsRoundSummaryOpen] = React.useState(true);
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -50,7 +51,35 @@ const FinalResultsPage = () => {
 
   useEffect(() => {
     const updateMetricsAndFetchGlobal = async () => {
-      if (roundResults.length === 0 || !images.length || !gameId || submittedGameIdRef.current === gameId) {
+      // Need results and images to compute provisional values
+      if (roundResults.length === 0 || !images.length) {
+        return;
+      }
+
+      // Compute game totals immediately and set provisional navbar metrics synchronously
+      const roundScores = roundResults.map((result, index) => {
+        const img = images[index];
+        if (!result || !img) return { roundXP: 0, roundPercent: 0 };
+        const locationXP = calculateLocationAccuracy(result.distanceKm || 0);
+        const timeXP = calculateTimeAccuracy(result.guessYear || 0, img.year || 0);
+        const roundXP = locationXP + timeXP;
+        const roundPercent = (roundXP / 200) * 100;
+        return { roundXP, roundPercent };
+      });
+
+      const { finalXP, finalPercent } = calculateFinalScore(roundScores);
+      const totalHintPenalty = roundResults.reduce((sum, result) => sum + (result.hintsUsed || 0) * HINT_PENALTY.XP, 0);
+      const netFinalXP = Math.max(0, Math.round(finalXP - totalHintPenalty));
+
+      // Set provisional global metrics BEFORE any network/auth calls to update navbar instantly
+      // Guard so we only apply once per mount to avoid additive increases
+      if (!provisionalAppliedRef.current) {
+        setProvisionalGlobalMetrics(netFinalXP, finalPercent);
+        provisionalAppliedRef.current = true;
+      }
+
+      // If no gameId (yet) or already submitted, skip persistence but keep provisional values
+      if (!gameId || submittedGameIdRef.current === gameId) {
         if (submittedGameIdRef.current === gameId) {
           console.log(`Metrics for gameId ${gameId} already submitted`);
         }
@@ -60,25 +89,17 @@ const FinalResultsPage = () => {
       console.log('Processing game results to update user metrics...');
       submittedGameIdRef.current = gameId;
 
-      const roundScores = roundResults.map((result, index) => {
+      // Compute breakdown accuracies for persistence
+      const totalWhenXP = roundResults.reduce((sum, result, index) => {
         const img = images[index];
-        if (!result || !img) return { roundXP: 0, roundPercent: 0 };
-        
-        const locationXP = calculateLocationAccuracy(result.distanceKm || 0);
-        const timeXP = calculateTimeAccuracy(result.guessYear || 0, img.year || 0);
-        const roundXP = locationXP + timeXP;
-        const roundPercent = (roundXP / 200) * 100;
-        
-        return { roundXP, roundPercent };
-      });
+        return sum + (result && img ? calculateTimeAccuracy(result.guessYear || 0, img.year || 0) : 0);
+      }, 0);
+      const totalWhereXP = roundResults.reduce((sum, result) => sum + calculateLocationAccuracy(result.distanceKm || 0), 0);
+      const totalWhenAccuracy = totalWhenXP > 0 ? (totalWhenXP / (roundResults.length * 100)) * 100 : 0;
+      const totalWhereAccuracy = totalWhereXP > 0 ? (totalWhereXP / (roundResults.length * 100)) * 100 : 0;
 
-      const { finalXP, finalPercent } = calculateFinalScore(roundScores);
-
-      let totalHintPenalty = roundResults.reduce((sum, result) => sum + (result.hintsUsed || 0) * HINT_PENALTY.XP, 0);
-      const netFinalXP = Math.max(0, Math.round(finalXP - totalHintPenalty));
-      
+      // Ensure we have a user (anonymous or registered)
       let { data: { user } } = await supabase.auth.getUser();
-      
       if (!user) {
         try {
           const { data, error } = await supabase.auth.signInAnonymously();
@@ -89,19 +110,10 @@ const FinalResultsPage = () => {
           return;
         }
       }
-      
       if (!user) {
         console.error('Still no user ID available after anonymous sign-in attempt');
         return;
       }
-
-      const totalWhenXP = roundResults.reduce((sum, result, index) => {
-        const img = images[index];
-        return sum + (result && img ? calculateTimeAccuracy(result.guessYear || 0, img.year || 0) : 0);
-      }, 0);
-      const totalWhereXP = roundResults.reduce((sum, result) => sum + calculateLocationAccuracy(result.distanceKm || 0), 0);
-      const totalWhenAccuracy = totalWhenXP > 0 ? (totalWhenXP / (roundResults.length * 100)) * 100 : 0;
-      const totalWhereAccuracy = totalWhereXP > 0 ? (totalWhereXP / (roundResults.length * 100)) * 100 : 0;
 
       const metricsUpdate = {
         gameAccuracy: finalPercent,
@@ -112,9 +124,7 @@ const FinalResultsPage = () => {
         yearBullseye: roundResults.some(result => result.guessYear === images.find(img => img.id === result.imageId)?.year),
         locationBullseye: roundResults.some(result => (result.distanceKm || 0) < 10)
       };
-      
-      setProvisionalGlobalMetrics(netFinalXP, finalPercent);
-      
+
       try {
         const success = await updateUserMetrics(user.id, metricsUpdate, gameId);
         if (success) {
@@ -124,7 +134,7 @@ const FinalResultsPage = () => {
         console.error('Error during metrics update:', error);
       }
     };
-    
+
     updateMetricsAndFetchGlobal();
   }, [roundResults, images, gameId, setProvisionalGlobalMetrics, refreshGlobalMetrics]);
 
@@ -302,9 +312,9 @@ const FinalResultsPage = () => {
                       <span className="text-sm">Time Accuracy</span>
                       <span className="text-sm">{formatInteger(totalWhenAccuracy)}%</span>
                     </div>
-                    <div className="w-full h-3 rounded-full bg-gray-300">
+                    <div className="w-full h-1.5 rounded-full bg-gray-300">
                       <div
-                        className="h-3 rounded-full bg-orange-500"
+                        className="h-1.5 rounded-full bg-orange-500"
                         style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhenAccuracy)))}%` }}
                       />
                     </div>
@@ -315,9 +325,9 @@ const FinalResultsPage = () => {
                       <span className="text-sm">Location Accuracy</span>
                       <span className="text-sm">{formatInteger(totalWhereAccuracy)}%</span>
                     </div>
-                    <div className="w-full h-3 rounded-full bg-gray-300">
+                    <div className="w-full h-1.5 rounded-full bg-gray-300">
                       <div
-                        className="h-3 rounded-full bg-orange-500"
+                        className="h-1.5 rounded-full bg-orange-500"
                         style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhereAccuracy)))}%` }}
                       />
                     </div>

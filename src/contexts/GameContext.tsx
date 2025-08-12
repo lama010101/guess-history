@@ -118,6 +118,15 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   const [globalAccuracy, setGlobalAccuracy] = useState<number>(0);
   const [globalXP, setGlobalXP] = useState<number>(0);
   const [gamesPlayedForAvg, setGamesPlayedForAvg] = useState<number>(0);
+  
+  // Refs mirroring global metrics to support stable provisional updater without stale closures
+  const globalXPRef = React.useRef<number>(0);
+  const globalAccuracyRef = React.useRef<number>(0);
+  const gamesPlayedForAvgRef = React.useRef<number>(0);
+
+  useEffect(() => { globalXPRef.current = globalXP; }, [globalXP]);
+  useEffect(() => { globalAccuracyRef.current = globalAccuracy; }, [globalAccuracy]);
+  useEffect(() => { gamesPlayedForAvgRef.current = gamesPlayedForAvg; }, [gamesPlayedForAvg]);
   const navigate = useNavigate();
 
   // Save game state to DB whenever it changes
@@ -260,39 +269,41 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       setGlobalXP(0);
       setGamesPlayedForAvg(0);
     }
-  }, [gameId, globalAccuracy, globalXP]); // Added gameId, globalAccuracy, globalXP to dependencies as they are used in logging or implicitly affect the outcome of re-fetch logic
+  }, []);
 
   // Function to optimistically update global metrics for immediate UI feedback
+  // Stable identity to avoid triggering effects that depend on it
   const setProvisionalGlobalMetrics = useCallback((gameXP: number, gameAccuracy: number) => {
-    console.log(`[GameContext] Setting provisional global metrics. Game XP: ${gameXP}, Game Acc: ${gameAccuracy}`);
-    console.log(`[GameContext] Current global XP: ${globalXP}, Global Acc: ${globalAccuracy}, Games Played (for avg): ${gamesPlayedForAvg}`);
+    const prevXP = Number(globalXPRef.current) || 0;
+    const prevAcc = Number(globalAccuracyRef.current) || 0;
+    const prevGames = Math.max(0, Number(gamesPlayedForAvgRef.current) || 0);
 
-    const newProvisionalXP = globalXP + gameXP;
-    // Ensure gamesPlayedForAvg is a non-negative integer before incrementing
-    const currentGamesCount = Math.max(0, gamesPlayedForAvg || 0);
-    const newTotalGamesForAvg = currentGamesCount + 1;
-    
-    let newProvisionalAccuracy;
-    if (newTotalGamesForAvg === 1) {
-      newProvisionalAccuracy = gameAccuracy;
-    } else {
-      // Weighted average: (current_avg * old_games_count + new_game_accuracy) / new_total_games_count
-      // Ensure globalAccuracy is a number before using in calculation
-      const currentAvgAccuracy = Number(globalAccuracy) || 0;
-      newProvisionalAccuracy = ((currentAvgAccuracy * currentGamesCount) + gameAccuracy) / newTotalGamesForAvg;
-    }
-    // Clamp accuracy between 0 and 100 and round to a reasonable number of decimals
-    newProvisionalAccuracy = Math.max(0, Math.min(100, parseFloat(newProvisionalAccuracy.toFixed(2))));
+    console.log('[GameContext] Setting provisional global metrics.', {
+      gameXP,
+      gameAccuracy,
+      prevXP,
+      prevAcc,
+      prevGames
+    });
+
+    const newProvisionalXP = prevXP + gameXP;
+    const newTotalGamesForAvg = prevGames + 1;
+
+    const weightedAcc = newTotalGamesForAvg === 1
+      ? gameAccuracy
+      : ((prevAcc * prevGames) + gameAccuracy) / newTotalGamesForAvg;
+    const newProvisionalAccuracy = Math.max(0, Math.min(100, parseFloat(weightedAcc.toFixed(2))));
 
     setGlobalXP(newProvisionalXP);
     setGlobalAccuracy(newProvisionalAccuracy);
-    setGamesPlayedForAvg(newTotalGamesForAvg); // Update games played count for next provisional update
-    
-    // We don't need to do anything special for guest users here
-    // The database update will be handled by updateUserMetrics in FinalResultsPage
+    setGamesPlayedForAvg(newTotalGamesForAvg);
 
-    console.log(`[GameContext] Provisional metrics updated: New Global XP: ${newProvisionalXP}, New Global Acc: ${newProvisionalAccuracy}, New Games Played (for avg): ${newTotalGamesForAvg}`);
-  }, [globalXP, globalAccuracy, gamesPlayedForAvg]);
+    console.log('[GameContext] Provisional metrics updated', {
+      newProvisionalXP,
+      newProvisionalAccuracy,
+      newTotalGamesForAvg
+    });
+  }, []);
 
   // Update game accuracy and XP whenever round results change
   useEffect(() => {

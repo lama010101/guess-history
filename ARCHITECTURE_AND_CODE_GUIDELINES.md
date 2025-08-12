@@ -78,7 +78,30 @@ SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 INVITE_HMAC_SECRET=your-hmac-secret
 VITE_PARTYKIT_HOST=localhost:1999  # ws(s) host:port used by frontend client
+# Optional: email confirmation redirect for Supabase
+VITE_AUTH_EMAIL_REDIRECT_TO=https://your-domain.com/auth/callback
 ```
+
+## Authentication and Signup Flow (Supabase)
+
+- **Primary auth code**:
+  - `src/contexts/AuthContext.tsx` → `signUpWithEmail(email, password)`
+  - `src/components/AuthModal.tsx` → UI that calls the auth methods
+  - `src/integrations/supabase/client.ts` → Supabase client with a fetch interceptor
+
+- **Redirect handling**:
+  - If `VITE_AUTH_EMAIL_REDIRECT_TO` is defined, it is passed to Supabase as `emailRedirectTo`.
+  - A global fetch interceptor strips `redirect_to` from `/auth/v1/signup` calls to prevent 500s when local/invalid URLs sneak in.
+
+- **Anonymous upgrade fallback**:
+  - If `supabase.auth.signUp(...)` returns “Database error saving new user” (500), the client will auto:
+    1) Ensure an anonymous session via `signInAnonymously()`
+    2) Upgrade the current user with `updateUser({ email })` and `updateUser({ password })`
+  - This bypasses a fresh insert into `auth.users` and is resilient to transient insert failures.
+
+- **Supabase trigger guidance**:
+  - If you maintain a DB trigger that creates a row in `public.profiles` on `auth.users` insert, ensure the function matches the current schema and uses `SECURITY DEFINER`.
+  - Quick unblock: disable the trigger if it causes 500s; the app creates profiles on first sign-in anyway.
 
 ## Usage Patterns
 
@@ -258,6 +281,15 @@ supabase table list
 **Avatar not displaying**: Check avatar URL format
 **Leaderboard not updating**: Ensure proper event emission
 
+**Database error saving new user / creating anonymous user (500)**:
+- Cause: failing DB trigger/function on `auth.users` insert (often profile-creation function out of sync or missing privileges)
+- App behavior: client falls back to anonymous upgrade path; however, if anonymous creation also fails, fix the DB trigger.
+- Quick unblock (disable trigger):
+```sql
+drop trigger if exists on_auth_user_created on auth.users;
+```
+- Proper fix: update the trigger function to match `public.profiles` schema and mark it `security definer`.
+
 ### Debug Commands
 
 ```bash
@@ -381,6 +413,30 @@ To survive refresh and reconnects during a multiplayer game, we persist shared s
 
 Notes:
 - All DB interactions include fallbacks where feasible. UI remains unchanged; persistence is transparent to users.
+
+## Hint System (UI + Constants) — Canonical Files
+
+To avoid confusion from legacy duplicates, the following are the only files you should modify for the Hint System UI/logic:
+
+- `src/components/HintModalV2New.tsx` — The active Hint Modal rendered by `GameLayout1` and `GameLayout2`.
+- `src/hooks/useHintV2.ts` — Source of truth for hint loading, costs/penalties, and purchase persistence.
+- `src/constants/hints.ts` — Centralized constants for `HINT_COSTS`, `HINT_TYPE_NAMES`, and `HINT_DEPENDENCIES`.
+- `src/components/layouts/GameLayout1.tsx` and `src/components/layouts/GameLayout2.tsx` — Open/close and render the modal.
+- `src/components/game/HintButton.tsx` — Triggers opening the modal in context.
+- `src/components/results/HintDebtsCard.tsx` — Displays hint debts in results.
+
+Legacy/duplicate files slated for removal (do not edit):
+
+- `src/components/HintModalV2.tsx` — superseded by `HintModalV2New`.
+- `src/components/components/` tree — old `HintModal` and duplicate layouts.
+- `src/utils/hintUtils.ts` — not used.
+
+UI specifics applied in `HintModalV2New`:
+
+- Lock icon imported from `src/assets/icons/lock.webp`.
+- Red warning under title: “Using a hint will reduce your score.”
+- Penalty values (badges and buttons) shown in red.
+- Continue button: white text on orange background.
 
 ## Game Page Layout Tweaks (Mobile)
 

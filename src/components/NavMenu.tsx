@@ -18,6 +18,7 @@ import {
   Menu as MenuIcon,
   Settings,
   Lock,
+  User,
   LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ export const NavMenu = () => {
   const [profile, setProfile] = useState<{ 
     first_name: string | null; 
     last_name: string | null;
+    avatar_url: string | null;
     avatar_image_url: string | null;
     avatar_id: string | null;
     avatar_name: string | null;
@@ -207,7 +209,7 @@ export const NavMenu = () => {
           
           <DropdownMenuItem 
             onClick={signOut}
-            className={`flex items-center ${isGuest ? 'bg-white text-black hover:bg-gray-100 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700' : 'text-red-500 hover:text-red-600'}`}
+            className={`flex items-center ${isGuest ? 'bg-white text-black hover:bg-gray-100 dark:bg-white dark:text-black dark:hover:bg-gray-100' : 'text-red-500 hover:text-red-600'}`}
           >
             <LogOut className="mr-2 h-4 w-4" />
             <span>{isGuest ? "Register to save progress" : "Sign Out"}</span>

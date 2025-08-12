@@ -8,8 +8,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Clock, MapPin, X } from 'lucide-react';
-const lockIcon = '/icons/lock.webp';
-import { HINT_TYPE_NAMES } from '@/constants/hints';
+import { toast } from 'sonner';
+import { HINT_TYPE_NAMES, HINT_DEPENDENCIES } from '@/constants/hints';
 
 interface Hint {
   id: string;
@@ -52,13 +52,13 @@ const HintButtonUI: React.FC<{
   const label2 = `-${penaltyAcc}% -${costXp}XP`;
   
   const isPurchased = purchasedHintIds.includes(hint.id);
-  const isLocked = hint.prerequisite && !purchasedHintIds.includes(hint.prerequisite);
+  const isLocked = !!(hint.prerequisite && !purchasedHintIds.includes(hint.prerequisite));
 
   return (
     <Button
       size="lg"
       variant={'outline'}
-      disabled={isLoading || isLocked || isPurchased}
+      disabled={isLoading || isPurchased}
       className={`w-full py-3 text-base font-semibold flex items-center justify-center rounded-[0.75rem] h-auto whitespace-normal break-words leading-tight
         ${isPurchased 
             ? 'bg-[#3e9b0a] text-white border-transparent' // exact green for purchased
@@ -66,10 +66,15 @@ const HintButtonUI: React.FC<{
         }
         ${isLocked ? 'cursor-not-allowed !bg-gray-200 !text-gray-500 border-transparent opacity-70' : ''}`}
       style={isPurchased ? { backgroundColor: '#3e9b0a', color: '#fff' } : {}}
+      aria-disabled={isLocked}
       onClick={e => {
         e.preventDefault();
         e.stopPropagation();
-        if (!isPurchased && !isLocked) onPurchase(hint);
+        if (isLocked) {
+          toast.error('You must first use the related hint above.');
+          return;
+        }
+        if (!isPurchased) onPurchase(hint);
       }}
       title={isLocked ? 'Unlock prerequisite first' : label1}
     >
@@ -81,16 +86,16 @@ const HintButtonUI: React.FC<{
         </span>
       ) : isLocked ? (
         <span className="flex items-center justify-center gap-2">
-          <img src={lockIcon} alt="Locked" className="h-4 w-4 shrink-0 invert" />
+          <img src="/icons/lock.webp" alt="Locked" className="h-4 w-4 shrink-0" />
           <span className="flex flex-col items-center">
             <span className="capitalize">{label1}</span>
-            <span className="text-xs text-gray-400 font-normal">{label2}</span>
+            <span className="text-xs text-red-500 font-normal">{label2}</span>
           </span>
         </span>
       ) : (
         <span className="flex flex-col items-center">
           <span className="capitalize">{label1}</span>
-          <span className="text-xs text-gray-400 font-normal">{label2}</span>
+          <span className="text-xs text-red-500 font-normal">{label2}</span>
         </span>
       )}
     </Button>
@@ -111,12 +116,7 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
 
   const isHintPurchased = (hintId: string): boolean => purchasedHintIds.includes(hintId);
 
-  const HINT_DEPENDENCIES: Record<string, string | null> = {
-    '2_where_landmark_km': '2_where_landmark',
-    '2_when_event_years': '2_when_event',
-    '4_where_landmark_km': '4_where_landmark',
-    '4_when_event_years': '4_when_event',
-  };
+  // Dependencies are defined centrally in `src/constants/hints.ts`
 
   const getHintState = (hint: Hint): 'purchased' | 'locked' | 'available' => {
     if (isHintPurchased(hint.id)) return 'purchased';
@@ -174,23 +174,26 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
               <span className="sr-only">Close</span>
             </Button>
           </div>
+          <p className="text-red-500 text-center mt-1">Using a hint will reduce your score.</p>
         </DialogHeader>
 
-        <div className="p-4 pt-2">
-          <div className="flex justify-around text-sm mt-2">
-          <div className="text-center">
-            <p className="text-white">Accuracy Penalty</p>
-            <Badge className="mt-1 text-base bg-blue-900 text-blue-100 border border-blue-700">-{accDebt}%</Badge>
+        <div className="p-4 pt-1">
+          <div className="mt-1 rounded-lg border border-gray-800 bg-gray-900/60 p-3">
+            <div className="flex justify-around text-sm">
+              <div className="text-center">
+                <p className="text-white">Accuracy Penalty</p>
+                <Badge className="mt-1 text-base bg-blue-900 text-red-500 border border-blue-700">-{accDebt}%</Badge>
+              </div>
+              <div className="text-center">
+                <p className="text-white">Experience Penalty</p>
+                <Badge className="mt-1 text-base bg-green-900 text-red-500 border border-green-700">-{xpDebt}XP</Badge>
+              </div>
+            </div>
           </div>
-          <div className="text-center">
-            <p className="text-white">Experience Penalty</p>
-            <Badge className="mt-1 text-base bg-green-900 text-green-100 border border-green-700">-{xpDebt}XP</Badge>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-x-4 mt-6">
-          <h3 className="flex items-center justify-center text-center text-lg font-semibold mb-3 text-white"><Clock className="w-5 h-5 mr-2" />WHEN</h3>
-          <h3 className="flex items-center justify-center text-center text-lg font-semibold mb-3 text-white"><MapPin className="w-5 h-5 mr-2" />WHERE</h3>
+          <div className="grid grid-cols-2 gap-x-4 mt-6">
+            <h3 className="flex items-center justify-center text-center text-lg font-semibold mb-3 text-white"><Clock className="w-5 h-5 mr-2" />WHEN</h3>
+            <h3 className="flex items-center justify-center text-center text-lg font-semibold mb-3 text-white"><MapPin className="w-5 h-5 mr-2" />WHERE</h3>
           
           <div className="space-y-3">
             {hintsByColumn.when.map((hint) => (
@@ -221,7 +224,7 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
       <div className="sticky bottom-0 z-10 p-4 border-t border-gray-800 bg-black">
   <Button 
     size="lg" 
-    className="w-full bg-white text-black hover:bg-gray-200 font-semibold" 
+    className="w-full bg-orange-600 text-white hover:bg-orange-700 font-semibold" 
     onClick={() => onOpenChange(false)}
   >
     Continue Guessing

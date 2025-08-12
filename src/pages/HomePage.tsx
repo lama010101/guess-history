@@ -285,10 +285,10 @@ const HomePage = () => {
         {isGuest && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black/60 rounded-xl z-10">
             <div className="text-center p-4">
-              <img src={lockIcon} alt="Locked" className="h-10 w-10 mx-auto mb-3" />
+              <img src={lockIcon} alt="Locked" className="h-20 w-20 mx-auto mb-3" />
               <p className="text-black dark:text-white text-sm">Sign in to challenge your friends and track your wins.</p>
               <Button
-                className="mt-3 bg-amber-500 hover:bg-amber-600 text-black text-sm"
+                className="mt-3 bg-blue-600 hover:bg-blue-700 text-white text-sm"
                 onClick={() => handleStartGame('friends')}
               >
                 Sign In

@@ -46,18 +46,18 @@ export const HINT_TYPE_NAMES: Record<string, string> = {
   'century': 'Century',
   
   // Level 2
-  'distant_landmark': 'Distant Landmark',
-  'distant_distance': 'Distance Reference',
+  'distant_landmark': 'Far Landmark',
+  'distant_distance': 'Far Reference',
   'distant_event': 'Historical Context',
   'distant_time_diff': 'Time Period Range',
   
   // Level 3
   'region': 'Region',
   'narrow_decade': 'Decade',
-  'nearby_landmark': 'Nearby Landmark',
+  'nearby_landmark': 'Near Landmark',
   
   // Level 4
-  'contemporary_event': 'Nearby Event',
+  'contemporary_event': 'Near Event',
   'nearby_distance': 'Distance Nearby',
   'close_time_diff': 'Time Difference (Close)',
   
@@ -70,24 +70,24 @@ export const HINT_TYPE_NAMES: Record<string, string> = {
   '1_when_century': "Century",
   
   // Level 2
-  '2_where_landmark': "Remote Landmark",
+  '2_where_landmark': "Far Landmark",
   '2_where_landmark_km': "Distance",
-  '2_when_event': "Remote Event",
-  '2_when_event_years': "Years Difference",
+  '2_when_event': "Far Event",
+  '2_when_event_years': "Years",
   
   // Level 3
   '3_where_region': "Region",
   '3_when_decade': "Decade",
   
   // Level 4
-  '4_where_landmark': "Nearby Landmark",
+  '4_where_landmark': "Near Landmark",
   '4_where_landmark_km': "Distance",
-  '4_when_event': "Nearby Event",
-  '4_when_event_years': "Years Difference",
+  '4_when_event': "Near Event",
+  '4_when_event_years': "Years",
   
   // Level 5
   '5_where_clues': "Location Clues",
-  '5_when_clues': "Time Period Clues"
+  '5_when_clues': "Time Clues"
 };
 
 // Hint dependency map aligned with database schema

@@ -8,7 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Clock, MapPin, X } from 'lucide-react';
-import { toast } from 'sonner';
+ 
 import { HINT_TYPE_NAMES, HINT_DEPENDENCIES } from '@/constants/hints';
 
 interface Hint {
@@ -45,7 +45,8 @@ const HintButtonUI: React.FC<{
   purchasedHintIds: string[];
   isLoading: boolean;
   onPurchase: (hint: Hint) => void;
-}> = ({ hint, purchasedHintIds, isLoading, onPurchase }) => {
+  onLockedClick?: () => void;
+}> = ({ hint, purchasedHintIds, isLoading, onPurchase, onLockedClick }) => {
   const { xp: costXp, acc: penaltyAcc } = getHintCostAndPenalty(hint);
   const label1 = HINT_TYPE_NAMES[hint.type] ?? 
     hint.type.replace(/^\d+_/, '').replace(/_/g, ' ').replace(/(when|where)/g, '').trim();
@@ -70,10 +71,7 @@ const HintButtonUI: React.FC<{
       onClick={e => {
         e.preventDefault();
         e.stopPropagation();
-        if (isLocked) {
-          toast.error('You must first use the related hint above.');
-          return;
-        }
+        if (isLocked) { onLockedClick?.(); return; }
         if (!isPurchased) onPurchase(hint);
       }}
       title={isLocked ? 'Unlock prerequisite first' : label1}
@@ -86,7 +84,7 @@ const HintButtonUI: React.FC<{
         </span>
       ) : isLocked ? (
         <span className="flex items-center justify-center gap-2">
-          <img src="/icons/lock.webp" alt="Locked" className="h-4 w-4 shrink-0" />
+          <img src="/icons/lock.webp" alt="Locked" className="h-4 w-4 shrink-0 bg-transparent" />
           <span className="flex flex-col items-center">
             <span className="capitalize">{label1}</span>
             <span className="text-xs text-red-500 font-normal">{label2}</span>
@@ -113,6 +111,7 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
   isLoading,
 }) => {
   const [purchasingHintId, setPurchasingHintId] = useState<string | null>(null);
+  const [lockedInfoOpen, setLockedInfoOpen] = useState(false);
 
   const isHintPurchased = (hintId: string): boolean => purchasedHintIds.includes(hintId);
 
@@ -177,8 +176,8 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
           <p className="text-red-500 text-center mt-1">Using a hint will reduce your score.</p>
         </DialogHeader>
 
-        <div className="p-4 pt-1">
-          <div className="mt-1 rounded-lg border border-gray-800 bg-gray-900/60 p-3">
+        <div className="p-4 pt-0">
+          <div className="mt-0.5 rounded-lg border border-gray-800 bg-[#202020] p-3">
             <div className="flex justify-around text-sm">
               <div className="text-center">
                 <p className="text-white">Accuracy Penalty</p>
@@ -191,37 +190,42 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-4 mt-6">
-            <h3 className="flex items-center justify-center text-center text-lg font-semibold mb-3 text-white"><Clock className="w-5 h-5 mr-2" />WHEN</h3>
-            <h3 className="flex items-center justify-center text-center text-lg font-semibold mb-3 text-white"><MapPin className="w-5 h-5 mr-2" />WHERE</h3>
-          
-          <div className="space-y-3">
-            {hintsByColumn.when.map((hint) => (
-              <HintButtonUI 
-                key={`when-${hint.id}`}
-                hint={hint}
-                purchasedHintIds={purchasedHintIds}
-                isLoading={isLoading || purchasingHintId === hint.id}
-                onPurchase={handlePurchase}
-              />
-            ))}
+          <div className="grid grid-cols-2 gap-4 mt-6">
+            <div className="rounded-lg border border-gray-800 bg-[#202020] p-3">
+              <h3 className="flex items-center justify-center text-center text-lg font-semibold mb-3 text-white"><Clock className="w-5 h-5 mr-2" />WHEN</h3>
+              <div className="space-y-3">
+                {hintsByColumn.when.map((hint) => (
+                  <HintButtonUI 
+                    key={`when-${hint.id}`}
+                    hint={hint}
+                    purchasedHintIds={purchasedHintIds}
+                    isLoading={isLoading || purchasingHintId === hint.id}
+                    onPurchase={handlePurchase}
+                    onLockedClick={() => setLockedInfoOpen(true)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-gray-800 bg-[#202020] p-3">
+              <h3 className="flex items-center justify-center text-center text-lg font-semibold mb-3 text-white"><MapPin className="w-5 h-5 mr-2" />WHERE</h3>
+              <div className="space-y-3">
+                {hintsByColumn.where.map((hint) => (
+                  <HintButtonUI 
+                    key={`where-${hint.id}`}
+                    hint={hint}
+                    purchasedHintIds={purchasedHintIds}
+                    isLoading={isLoading || purchasingHintId === hint.id}
+                    onPurchase={handlePurchase}
+                    onLockedClick={() => setLockedInfoOpen(true)}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-3">
-            {hintsByColumn.where.map((hint) => (
-              <HintButtonUI 
-                key={`where-${hint.id}`}
-                hint={hint}
-                purchasedHintIds={purchasedHintIds}
-                isLoading={isLoading || purchasingHintId === hint.id}
-                onPurchase={handlePurchase}
-              />
-            ))}
-          </div>
         </div>
-
-        </div>
-      <div className="sticky bottom-0 z-10 p-4 border-t border-gray-800 bg-black">
+  <div className="sticky bottom-0 z-10 p-4 border-t border-gray-800 bg-black">
   <Button 
     size="lg" 
     className="w-full bg-orange-600 text-white hover:bg-orange-700 font-semibold" 
@@ -231,6 +235,18 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
   </Button>
 </div>
       </DialogContent>
+      {/* Locked info popup */}
+      <Dialog open={lockedInfoOpen} onOpenChange={setLockedInfoOpen}>
+        <DialogContent className="max-w-sm bg-[#202020] text-white">
+          <DialogHeader>
+            <DialogTitle>Hint Locked</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm">You must first use the related hint above.</p>
+          <div className="mt-4">
+            <Button className="w-full bg-orange-600 text-white hover:bg-orange-700" onClick={() => setLockedInfoOpen(false)}>OK</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };

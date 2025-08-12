@@ -11,7 +11,7 @@ const ZOOM_STEP = 0.2;
 const WHEEL_ZOOM_FACTOR = 0.1; // Smaller factor for smoother wheel zooming
 
 const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image, onExit }) => {
-  const [zoom, setZoom] = useState(2.5);
+  const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
@@ -216,7 +216,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   
   // Reset pan/zoom on open/close and handle image preloading
   useEffect(() => {
-    setZoom(2.5);
+    setZoom(1);
     setOffset({ x: 0, y: 0 });
     setIsLoading(true);
     setImageError(false);
@@ -287,8 +287,8 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
         <img
           src={image.placeholderUrl}
           alt={`${image.title} placeholder`}
-          className={`absolute inset-0 h-screen w-auto filter blur-lg transition-opacity duration-300`}
-          style={{ opacity: isLoading ? 1 : 0 }}
+          className={`absolute inset-0 w-auto filter blur-lg transition-opacity duration-300`}
+          style={{ opacity: isLoading ? 1 : 0, height: '100dvh' }}
           aria-hidden="true"
         />
         {/* Full-Resolution Image */}
@@ -296,9 +296,10 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
           ref={imgRef}
           src={imgSrc}
           alt={image.title}
-          className={`h-screen w-auto cursor-grab transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+          className={`w-auto cursor-grab transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
           style={{
             background: "black",
+            height: '100dvh',
             transform: `scale(${zoom}) translate(${offset.x / zoom}px,${offset.y / zoom}px)`,
             transition: dragging ? "none" : "transform 0.2s cubic-bezier(.23,1.01,.32,1)",
             touchAction: "none",

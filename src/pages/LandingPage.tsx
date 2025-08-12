@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AuthModal } from "@/components/AuthModal";
 import { useAuth } from "@/contexts/AuthContext";
+import { useGame } from "@/contexts/GameContext";
 
 const SLIDE_DURATION_MS = 3000;
 
@@ -12,6 +13,7 @@ const LandingPage: React.FC = () => {
   const [imagesLoading, setImagesLoading] = useState(true);
   const { user } = useAuth();
   const [navVisible, setNavVisible] = useState(false);
+  const { startGame, images, isLoading } = useGame();
 
   // Scroll event for navbar visibility
   useEffect(() => {
@@ -48,12 +50,12 @@ const LandingPage: React.FC = () => {
     loadImages();
   }, []);
 
-  // Redirect authenticated user straight to the home page
+  // Redirect authenticated user straight to the home page (avoid while auth modal is open or a game is starting)
   useEffect(() => {
-    if (user) {
+    if (user && !authOpen && !isLoading && images.length === 0) {
       window.location.replace("/test");
     }
-  }, [user]);
+  }, [user, authOpen, isLoading, images.length]);
 
   // Cycle through hero images every 3 seconds
   useEffect(() => {
@@ -211,8 +213,9 @@ const LandingPage: React.FC = () => {
           window.location.replace("/test");
         }}
         onGuestContinue={async () => {
-          setAuthOpen(false);
-          window.location.replace("/test");
+          // AuthModal already performed continueAsGuest before invoking this callback.
+          // Start a solo game programmatically; navigation is handled inside startGame.
+          await startGame?.();
         }}
       />
     </div>

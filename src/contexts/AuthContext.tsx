@@ -10,7 +10,7 @@ export interface AuthState {
   session: Session | null;
   isLoading: boolean;
   isGuest: boolean;
-  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signInWithEmail: (email: string, password?: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
@@ -91,14 +91,64 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await supabase.auth.signInWithOAuth({ provider: 'google' });
   };
 
-  const signInWithEmail = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+  const signInWithEmail = async (email: string, password?: string) => {
+    if (password && password.length > 0) {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/test` },
+      });
+      if (error) throw error;
+    }
   };
 
   const signUpWithEmail = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) throw error;
+    try {
+      const redirectTo = (import.meta as any)?.env?.VITE_AUTH_EMAIL_REDIRECT_TO as string | undefined;
+      const payload = redirectTo
+        ? { email, password, options: { emailRedirectTo: redirectTo } }
+        : { email, password };
+
+      const { error } = await supabase.auth.signUp(payload as any);
+      if (error) throw error;
+    } catch (err) {
+      console.error('Supabase signUp failed:', err);
+      // Fallback path: if database failed to create a new user (common with broken DB trigger),
+      // create/reuse an anonymous session and upgrade it to email+password, which avoids a fresh insert.
+      const message = (err as any)?.message || '';
+      const status = (err as any)?.status || (err as any)?.code;
+      const isDbSaveError = message.includes('Database error saving new user') || status === 500;
+
+      if (!isDbSaveError) throw err as any;
+
+      try {
+        // Ensure there is a signed-in user (anonymous). If not, sign in anonymously first.
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData?.session?.user) {
+          const { data: anonData, error: anonErr } = await supabase.auth.signInAnonymously();
+          if (anonErr) throw anonErr;
+          if (!anonData.user) throw new Error('Anonymous sign-in did not return a user');
+        }
+
+        // Now upgrade the current user with email and password.
+        const redirectTo = (import.meta as any)?.env?.VITE_AUTH_EMAIL_REDIRECT_TO as string | undefined;
+        const { error: emailErr } = await supabase.auth.updateUser(
+          redirectTo ? { email, options: { emailRedirectTo: redirectTo } as any } : { email } as any
+        );
+        if (emailErr) throw emailErr;
+
+        const { error: pwErr } = await supabase.auth.updateUser({ password });
+        if (pwErr) throw pwErr;
+
+        // Success: upgraded anonymous user to email/password account.
+        return;
+      } catch (upgradeErr) {
+        console.error('Anonymous upgrade fallback failed:', upgradeErr);
+        throw upgradeErr as any;
+      }
+    }
   };
 
   const signOut = async () => {

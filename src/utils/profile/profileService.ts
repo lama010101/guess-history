@@ -315,6 +315,8 @@ export async function createUserProfileIfNotExists(userId: string, displayName: 
       avatar_name: avatarName,
       avatar_image_url: avatarImageUrl,
       avatar_id: avatarId ?? null,
+      // Mark guest users when created from the guest flow
+      is_guest: (displayName && displayName.toLowerCase() === 'guest') ? true : undefined,
       updated_at: new Date().toISOString(),
     };
 

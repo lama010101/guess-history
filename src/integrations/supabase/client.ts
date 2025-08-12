@@ -8,6 +8,55 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+// Intercept fetch to strip redirect_to from signup if present (to avoid 500s when redirect isn't whitelisted)
+const originalFetch = window.fetch.bind(window);
+const interceptFetch: typeof fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+  try {
+    const makeRequest = (urlStr: string) => originalFetch(urlStr, init);
+    if (typeof input === 'string') {
+      if (input.includes('/auth/v1/signup') && input.includes('redirect_to=')) {
+        const url = new URL(input);
+        url.searchParams.delete('redirect_to');
+        console.debug('[supabase] Stripped redirect_to from signup request (string URL)');
+        return makeRequest(url.toString());
+      }
+      return originalFetch(input, init);
+    }
+    if (input instanceof URL) {
+      if (input.toString().includes('/auth/v1/signup') && input.searchParams.has('redirect_to')) {
+        const url = new URL(input.toString());
+        url.searchParams.delete('redirect_to');
+        console.debug('[supabase] Stripped redirect_to from signup request (URL instance)');
+        return makeRequest(url.toString());
+      }
+      return originalFetch(input, init);
+    }
+    // Request object case
+    const req = input as Request;
+    const href = req.url;
+    if (href.includes('/auth/v1/signup') && href.includes('redirect_to=')) {
+      const url = new URL(href);
+      url.searchParams.delete('redirect_to');
+      console.debug('[supabase] Stripped redirect_to from signup request (Request object)');
+      return originalFetch(url.toString(), init ?? { method: req.method, headers: req.headers });
+    }
+    return originalFetch(input, init);
+  } catch (e) {
+    // Fallback to original if anything goes wrong
+    return originalFetch(input as any, init);
+  }
+};
+
+// Force global override to catch any internal usage
+try {
+  // Only override in browser contexts
+  if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
+    window.fetch = interceptFetch as any;
+  }
+} catch {
+  // ignore
+}
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     persistSession: true,
@@ -30,5 +79,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
         document.cookie = `${key}=;domain=.guess-history.com;path=/;max-age=0;secure;samesite=lax`;
       }
     }
+  },
+  global: {
+    fetch: interceptFetch,
   }
 });

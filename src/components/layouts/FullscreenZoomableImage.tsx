@@ -11,7 +11,7 @@ const ZOOM_STEP = 0.2;
 const WHEEL_ZOOM_FACTOR = 0.1; // Smaller factor for smoother wheel zooming
 
 const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image, onExit }) => {
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(2.5);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
@@ -60,7 +60,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
 
   // Mouse drag
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (zoom === 1) return;
+    // Allow panning even at base zoom so users can view cropped sides
     setDragging(true);
     setLastPos({ x: e.clientX - offset.x, y: e.clientY - offset.y });
     // Change cursor to grabbing
@@ -123,11 +123,9 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
       lastTapTimeRef.current = now;
       lastTapPosRef.current = { x: touch.clientX, y: touch.clientY };
 
-      // Start panning only if zoomed in
-      if (zoom > 1) {
-        setDragging(true);
-        setLastPos({ x: touch.clientX - offset.x, y: touch.clientY - offset.y });
-      }
+      // Allow panning even at base zoom to reveal cropped sides
+      setDragging(true);
+      setLastPos({ x: touch.clientX - offset.x, y: touch.clientY - offset.y });
     } else if (e.touches.length === 2) {
       setDragging(false);
       lastTouchDist.current = getTouchDist(e);
@@ -184,21 +182,15 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
 
   // Constrain panning to prevent image from being moved too far outside view
   useEffect(() => {
-    if (zoom === 1) {
-      // Reset offset when at minimum zoom
-      setOffset({ x: 0, y: 0 });
-      return;
-    }
-    
     if (!imgRef.current || !containerRef.current) return;
     
     // Get image and container dimensions
     const img = imgRef.current.getBoundingClientRect();
     const container = containerRef.current.getBoundingClientRect();
     
-    // Calculate boundaries based on zoom level
-    const zoomedImgWidth = img.width * zoom;
-    const zoomedImgHeight = img.height * zoom;
+    // Use transformed size from getBoundingClientRect (already includes CSS scale)
+    const zoomedImgWidth = img.width;
+    const zoomedImgHeight = img.height;
     
     // Calculate maximum allowed offset to keep image partially visible
     const maxOffsetX = Math.max(0, (zoomedImgWidth - container.width) / 2);
@@ -288,7 +280,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
           src={image.placeholderUrl}
           alt={`${image.title} placeholder`}
           className={`absolute inset-0 w-auto filter blur-lg transition-opacity duration-300`}
-          style={{ opacity: isLoading ? 1 : 0, height: '100dvh' }}
+          style={{ opacity: isLoading ? 1 : 0, display: 'block', maxWidth: 'none' }}
           aria-hidden="true"
         />
         {/* Full-Resolution Image */}
@@ -299,12 +291,14 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
           className={`w-auto cursor-grab transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
           style={{
             background: "black",
-            height: '100dvh',
+            maxWidth: 'none',
             transform: `scale(${zoom}) translate(${offset.x / zoom}px,${offset.y / zoom}px)`,
             transition: dragging ? "none" : "transform 0.2s cubic-bezier(.23,1.01,.32,1)",
             touchAction: "none",
             userSelect: "none",
-            pointerEvents: "auto"
+            pointerEvents: "auto",
+            display: 'block',
+            flex: 'none'
           }}
           onMouseDown={handleMouseDown}
           draggable={false}

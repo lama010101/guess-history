@@ -258,6 +258,20 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
 1. **Add MultiplayerAdapter** to existing game components
 2. **Integrate AvatarSystem** for player display
 3. **Add LeaderboardSystem** for scoring
+
+## Fullscreen Image Behavior
+
+- Component: `src/components/layouts/FullscreenZoomableImage.tsx`
+- Goal: Maintain original aspect ratio; prevent width from shrinking on narrow screens; enable horizontal cropping with pan. Default zoom is 250% to avoid perceived shrinking while keeping ratio.
+- Container: fullscreen fixed container uses `height: 100dvh` (fallback `min-height: 100vh`) with `overflow: hidden`.
+- Image CSS (both placeholder and full-res):
+  - No explicit height/width constraints (ratio preserved by intrinsic sizing)
+  - `max-width: none` (overrides Tailwind img max-width)
+  - `display: block`
+- Interaction:
+  - Initial zoom set to 2.5 (250%) via CSS transform scale; wheel/pinch supported.
+  - Panning is enabled at any zoom level to reveal cropped left/right portions; offsets are clamped within bounds.
+
 4. **Update state management** to use multiplayer state
 5. **Add invite flow** for room creation/joining
 

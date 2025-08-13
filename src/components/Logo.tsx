@@ -8,7 +8,7 @@ const Logo = ({
 }: LogoProps) => {
   return <Link to="/test" className={`flex items-center ${className}`}>
       <h1 className="text-sm md:text-lg font-serif font-bold tracking-tight">
-        <span className="text-black dark:text-white">G-</span>
+        <span className="text-black dark:text-white">GUESS-</span>
         <span className="text-orange-500">HISTORY</span>
       </h1>
     </Link>;

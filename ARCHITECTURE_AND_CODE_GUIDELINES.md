@@ -426,6 +426,28 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
 
 Notes: All changes maintain dark mode styling and Montserrat typography. See commit history around this date for detailed diffs.
 
+## Home Page Navbar & Carousel (2025-08)
+
+- Navbar (Home route `/test` only)
+  - File: `src/layouts/TestLayout.tsx`
+  - Moved centered `Logo` out of the navbar for Home only. Left side shows global scores (Accuracy, XP). Right side shows profile (`NavProfile`).
+  - Other routes keep their existing navbar layout.
+
+- Logo text
+  - File: `src/components/Logo.tsx`
+  - Updated to display "GUESS-HISTORY".
+
+- Home page hero logo position
+  - File: `src/pages/HomePage.tsx`
+  - Added `<Logo />` absolutely positioned at ~1/3 viewport height (`top: 33vh`) and horizontally centered. Lives outside the navbar.
+
+- Mobile carousel for play cards
+  - File: `src/pages/HomePage.tsx`
+  - Wrapped play mode cards in a horizontal native carousel using CSS scroll-snap: `overflow-x-auto`, `snap-x snap-mandatory` on mobile; `md:overflow-visible md:snap-none` on desktop.
+  - Each card is a slide with `shrink-0 snap-center` to create paging.
+  - Renamed labels: "PLAY SOLO" → "SOLO", "PLAY FRIENDS" → "COMPETE".
+  - Added third card: "COLLABORATE" with a purple gradient. Icon placeholder (to be provided later). No click handler yet.
+
 ## Multiplayer In-Round State Persistence
 
 To survive refresh and reconnects during a multiplayer game, we persist shared state per room and per round.

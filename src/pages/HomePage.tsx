@@ -13,6 +13,7 @@ import { useGame } from "@/contexts/GameContext";
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from "@/components/ui/button";
+import Logo from '@/components/Logo';
 import soloIcon from '@/assets/icons/solo.webp';
 import friendsIcon from '@/assets/icons/friends.webp';
 import lockIcon from '@/assets/icons/lock.webp';
@@ -219,10 +220,14 @@ const HomePage = () => {
     <div style={homePageStyle}>
       {showGuestBadge && <GuestBadge username={profile?.display_name || 'Guest'} />}
       <div className="absolute inset-0 z-10 w-full h-full overflow-y-auto p-8 box-border backdrop-blur-sm bg-white/75 dark:bg-black/75 flex items-center justify-center min-h-screen">
+  {/* Centered logo at 1/3rd of the viewport height */}
+  <div className="absolute left-1/2 -translate-x-1/2 z-20" style={{ top: '33vh' }}>
+    <Logo />
+  </div>
   {isLoaded ? (
-    <div className="flex flex-col items-start gap-[1.7rem] md:flex-row md:gap-[2.55rem] md:items-start">
+    <div className="flex flex-row items-start gap-[1.7rem] md:flex-row md:gap-[2.55rem] md:items-start overflow-x-auto md:overflow-visible snap-x snap-mandatory md:snap-none px-2 -mx-2">
       {/* Solo Card */}
-      <div className="flex flex-col items-center justify-center gap-0 py-4">
+      <div className="flex flex-col items-center justify-center gap-0 py-4 shrink-0 snap-center">
         <div
           className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-yellow-300 via-orange-400 to-orange-600 cursor-pointer"
           onClick={() => handleStartGame('classic')}
@@ -233,7 +238,7 @@ const HomePage = () => {
           className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1 cursor-pointer"
           onClick={() => handleStartGame('classic')}
         >
-          Play Solo
+          SOLO
         </div>
         <div className="w-full mt-4">
           <div className="flex items-center justify-center mb-2">
@@ -276,7 +281,7 @@ const HomePage = () => {
       </div>
       {/* Friends Card */}
       <div
-        className={`relative flex flex-col items-center justify-center gap-0 py-4 ${isGuest ? 'opacity-60' : 'cursor-pointer'}`}
+        className={`relative flex flex-col items-center justify-center gap-0 py-4 shrink-0 snap-center ${isGuest ? 'opacity-60' : 'cursor-pointer'}`}
         onClick={() => {
           console.log('[HomePage] Friends card clicked. isGuest:', isGuest);
           if (!isGuest) handleStartGame('friends');
@@ -300,7 +305,16 @@ const HomePage = () => {
           <img src={friendsIcon} alt="Friends" className="w-40 h-40 object-contain" />
         </div>
         <div className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1">
-          Play Friends
+          COMPETE
+        </div>
+      </div>
+      {/* Collaborate Card */}
+      <div className="flex flex-col items-center justify-center gap-0 py-4 shrink-0 snap-center">
+        <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-purple-300 via-violet-500 to-purple-700">
+          {/* Icon to be provided later */}
+        </div>
+        <div className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1">
+          COLLABORATE
         </div>
       </div>
     </div>

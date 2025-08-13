@@ -251,13 +251,13 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       {/* Input Sections - Full width on mobile, half on desktop */}
       <div className="flex-grow px-2 py-4 md:px-4 lg:px-6 flex flex-col">
         <div className="max-w-5xl mx-auto w-full space-y-4">
-          <Card className="overflow-hidden dark:bg-[#333333]"> 
+          <Card className={cn("overflow-hidden dark:bg-[#333333]", highlightInputs && "ring-2 ring-orange-500 animate-pulse")}> 
             <CardContent className="p-4 flex flex-col">
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center font-semibold text-history-primary dark:text-history-light">
-                  <Calendar className="w-5 h-5 mr-2 text-gray-400" />
-                  <label className={cn(highlightInputs && "animate-pulse")}>When?</label>
-                </div>
+                <h2 className="font-bold text-lg text-gray-900 dark:text-gray-100 flex items-center">
+                  <Calendar className="mr-2 h-4 w-4 text-gray-400" />
+                  When
+                </h2>
                 {/* Editable year aligned with title, no 'year' text label */}
                 {yearInteracted && (
                   <input
@@ -285,23 +285,33 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                   />
                 )}
               </div>
-              <div className="flex-1 flex items-center">
+              <div className="flex-1 flex items-end">
                 <YearSelector 
                   selectedYear={selectedYear}
                   onChange={(y) => onYearChange(y)}
                   onFirstInteract={() => setYearInteracted(true)}
                 />
               </div>
+              {/* Mobile-only Home button under When card */}
+              <div className="lg:hidden mt-3">
+                <Button
+                  onClick={() => onConfirmNavigation(() => onNavigateHome())}
+                  variant="outline"
+                  className="w-full bg-white text-black hover:bg-gray-100 dark:bg-white dark:text-black dark:hover:bg-gray-100 rounded-xl px-6 py-6"
+                >
+                  <Home className="w-5 h-5 mr-2" /> Home
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden dark:bg-[#333333]">
+          <Card className={cn("overflow-hidden dark:bg-[#333333]", highlightInputs && "ring-2 ring-orange-500 animate-pulse")}>
             <CardContent className="p-4 flex flex-col justify-between">
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center font-semibold text-history-primary dark:text-history-light">
-                  <MapPin className="w-5 h-5 mr-2 text-gray-400" />
-                  <label className={cn(highlightInputs && "animate-pulse")}>Where?</label>
-                </div>
+                <h2 className="font-bold text-lg text-gray-900 dark:text-gray-100 flex items-center">
+                  <MapPin className="mr-2 h-4 w-4 text-gray-400" />
+                  Where
+                </h2>
                 {selectedLocationName && (
                   <span className="ml-auto text-orange-400 font-semibold truncate max-w-[60%] text-right">
                     {selectedLocationName}
@@ -321,16 +331,6 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
               {showSelectLocationPrompt && !currentGuess && (
                 <div className="mt-2 text-center text-sm text-gray-500 dark:text-gray-400">Select a location first</div>
               )}
-              {/* Mobile-only Home button under Where card */}
-              <div className="lg:hidden mt-3">
-                <Button
-                  onClick={() => onConfirmNavigation(() => onNavigateHome())}
-                  variant="outline"
-                  className="w-full bg-white text-black hover:bg-gray-100 dark:bg-white dark:text-black dark:hover:bg-gray-100 rounded-xl px-6 py-6"
-                >
-                  <Home className="h-5 w-5 mr-2" /> Home
-                </Button>
-              </div>
             </CardContent>
           </Card>
 

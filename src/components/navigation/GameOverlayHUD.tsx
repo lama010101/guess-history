@@ -69,8 +69,8 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
 
   return (
     <div className={`absolute inset-0 z-40 flex flex-col justify-between p-4 pointer-events-none game-overlay-hud ${className || ''}`}>
-      {/* Top bar - Score in center, Home button on right */}
-      <div className="flex justify-between items-start w-full">
+      {/* Top bar - Score centered, Home button on right */}
+      <div className="flex justify-between items-start w-full relative">
         {/* Left side - Timer */}
         <div className="pointer-events-auto">
           {timerEnabled && (
@@ -84,8 +84,8 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
           )}
         </div>
         
-        {/* Center - Score and accuracy */}
-        <div className="flex flex-col items-center bg-black/30 backdrop-blur-sm p-2 rounded-lg pointer-events-auto">
+        {/* Center - Score and accuracy (absolutely centered) */}
+        <div className="absolute left-1/2 -translate-x-1/2 top-0 flex flex-col items-center bg-black/30 backdrop-blur-sm p-2 rounded-lg pointer-events-auto">
           <div className="flex space-x-2">
             <Badge 
               variant="accuracy" 
@@ -108,9 +108,9 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
 
         </div>
         
-        {/* Right side - Home button (top-right) - shown only if handlers are provided */}
+        {/* Right side - Home button (top-right) - hidden on mobile */}
         {onNavigateHome && onConfirmNavigation && (
-          <div className="flex pointer-events-auto">
+          <div className="hidden lg:flex pointer-events-auto">
             <Button 
               size="icon"
               onClick={() => onConfirmNavigation(() => onNavigateHome())}

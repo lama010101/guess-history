@@ -184,14 +184,15 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
           {/* Left Column */}
           <div className="space-y-6">
             <div className="bg-white dark:bg-[#333333] rounded-2xl shadow-lg p-6 text-center">
-              <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">Your Score</h2>
+              <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-gray-100">Your Score</h2>
               {(xpDebt > 0 || accDebt > 0) && (
-                <div className="text-xs text-red-500 dark:text-red-500 mb-5">(Hint penalties deducted)</div>
+                <div className="text-xs text-red-500 dark:text-red-500 mb-3">(Hint penalties deducted)</div>
               )}
               
               <div className="flex justify-center items-center gap-6 mb-4">
                 <div className="flex flex-col items-center">
-                  <div className="flex flex-col items-center justify-center mb-2">
+                  <div className="text-sm text-muted-foreground mb-1">Accuracy</div>
+                  <div className="flex flex-col items-center justify-center">
                     <Badge variant="accuracy" className="text-base flex items-center gap-1.5">
                       <Target className="h-3.5 w-3.5" />
                       {netAccuracy.toFixed(0)}%
@@ -200,10 +201,10 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                       "text-red-500 dark:text-red-500": accDebt > 0
                     })}>(-{accDebt.toFixed(0)}%)</Badge>}
                   </div>
-                  <div className="text-sm text-muted-foreground">Accuracy</div>
                 </div>
                 <div className="flex flex-col items-center">
-                  <div className="flex flex-col items-center justify-center mb-2">
+                  <div className="text-sm text-muted-foreground mb-1">Experience</div>
+                  <div className="flex flex-col items-center justify-center">
                     <Badge variant="xp" className="text-base flex items-center gap-1.5">
                       <Zap className="h-3.5 w-3.5" />
                       +{formatInteger(netXP)} XP
@@ -212,7 +213,6 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                       "text-red-500 dark:text-red-500": xpDebt > 0
                     })}>(-{formatInteger(xpDebt)} XP)</Badge>}
                   </div>
-                  <div className="text-sm text-muted-foreground">Experience</div>
                 </div>
               </div>
             </div>
@@ -264,8 +264,9 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   <span className="text-foreground">Correct: </span>
                   <span className="ml-2 text-orange-400 font-semibold text-lg">{result.eventYear}</span>
                 </div>
-                <div className="mt-1 text-muted-foreground">
-                  Your guess: <span className="font-semibold text-orange-400 text-lg">{result.guessYear}</span>
+                <div className="flex items-center mt-1">
+                  <span className="text-foreground">Your guess:</span>
+                  <span className="ml-2 text-orange-400 font-semibold text-lg">{result.guessYear}</span>
                 </div>
               </div>
               <div className="flex justify-between items-center">
@@ -373,10 +374,9 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               </div>
             </div>
 
-            {/* Desktop-only action buttons directly under the Where card */}
+            {/* Desktop-only action buttons directly under the Where card (Next Round removed) */}
             <div className="hidden lg:flex justify-center items-center space-x-4 mt-4">
               {extraButtons}
-              {nextRoundButton}
               {homeButton}
             </div>
 
@@ -386,10 +386,9 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
           </div>
         </div>
 
-        {/* Mobile/tablet action buttons at bottom; hidden on desktop */}
+        {/* Mobile/tablet action buttons at bottom; hidden on desktop (Next Round removed) */}
         <div className="mt-8 flex justify-center items-center space-x-4 md:col-span-2 lg:hidden">
           {extraButtons}
-          {nextRoundButton}
           {homeButton}
         </div>
       </div>

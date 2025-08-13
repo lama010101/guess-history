@@ -90,7 +90,7 @@ const GameLayout2: React.FC<GameLayout2Props> = ({ onComplete, gameMode = 'solo'
           {/* When - Date Section */}
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-3">
-              <Calendar className="h-5 w-5 text-history-primary dark:text-history-light" />
+              <Calendar className="h-5 w-5 text-gray-400" />
               <h2 className="text-xl font-bold text-history-primary dark:text-history-light">WHEN</h2>
               <div className="ml-auto px-3 py-1 bg-history-secondary/20 rounded-full text-history-secondary font-medium">1932</div>
             </div>
@@ -115,7 +115,7 @@ const GameLayout2: React.FC<GameLayout2Props> = ({ onComplete, gameMode = 'solo'
           {/* Where - Map Section */}
           <div className="flex-grow mb-8">
             <div className="flex items-center gap-2 mb-3">
-              <MapPin className="h-5 w-5 text-history-primary dark:text-history-light" />
+              <MapPin className="h-5 w-5 text-gray-400" />
               <h2 className="text-xl font-bold text-history-primary dark:text-history-light">WHERE</h2>
               <div className="ml-auto px-3 py-1 bg-history-secondary/20 rounded-full text-history-secondary font-medium">Central Europe</div>
             </div>

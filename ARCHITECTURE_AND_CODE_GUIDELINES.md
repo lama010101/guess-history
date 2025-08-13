@@ -398,6 +398,21 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
 - CDN integration for avatars
 - Real-time analytics dashboard
 
+## UI Adjustments: Game & Round Results (2025-08)
+
+- Game page
+  - `src/components/navigation/GameOverlayHUD.tsx`: Centered score badges in top overlay; hide Home button on mobile.
+  - `src/components/layouts/GameLayout1.tsx`: Moved mobile Home button under When card; pushed `YearSelector` to card bottom; set When/Where icons to light grey; restored 1s highlight animation on exit fullscreen.
+  - `src/components/layouts/GameLayout2.tsx`: Set When/Where icons to light grey.
+
+- Round Results page
+  - `src/components/results/ResultsHeader.tsx`: Round text weight set to normal.
+  - `src/components/layouts/ResultsLayout2.tsx`: Reduced spacing under "Your Score"; labels (Accuracy/Experience) moved above values; matched "Your guess" styling to "Correct:"; removed in-layout bottom Next Round buttons.
+  - `src/components/results/HintDebtsCard.tsx`: Removed border; maintain dark background.
+  - `src/pages/RoundResultsPage.tsx`: Made top Next Round button more compact (kept rounded-xl per standard).
+
+Notes: All changes maintain dark mode styling and Montserrat typography. See commit history around this date for detailed diffs.
+
 ## Multiplayer In-Round State Persistence
 
 To survive refresh and reconnects during a multiplayer game, we persist shared state per room and per round.

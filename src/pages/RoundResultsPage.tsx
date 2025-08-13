@@ -409,7 +409,7 @@ const RoundResultsPage = () => {
           <Button 
             onClick={handleNext} 
             disabled={navigating} 
-            className="rounded-xl bg-orange-500 text-white font-semibold text-sm px-8 py-2 shadow-lg hover:bg-orange-500 active:bg-orange-500 transition-colors min-w-[160px]"
+            className="rounded-xl bg-orange-500 text-white font-semibold text-sm px-5 py-2 shadow-lg hover:bg-orange-500 active:bg-orange-500 transition-colors min-w-[120px]"
           >
             {navigating ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
             <span className="ml-2">{roundNumber === images.length ? 'Finish Game' : 'Next Round'}</span>

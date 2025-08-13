@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, WheelEvent } from "react";
-import { X } from "lucide-react";
+import { Maximize } from "lucide-react";
 
 interface FullscreenZoomableImageProps {
   image: { url: string; placeholderUrl: string; title: string };
@@ -19,6 +19,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   const [isLoading, setIsLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [imgSrc, setImgSrc] = useState(image.placeholderUrl);
+  const [showHint, setShowHint] = useState(true);
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastTouchDist = useRef<number | null>(null);
@@ -68,6 +69,8 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
     if (imgRef.current) {
       imgRef.current.style.cursor = 'grabbing';
     }
+    // Hide hint on first interaction
+    if (showHint) setShowHint(false);
   };
   
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -100,6 +103,8 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
     
     // Apply zoom centered at mouse position
     zoomAtPoint(newZoom, e.clientX, e.clientY);
+    // Hide hint on first interaction
+    if (showHint) setShowHint(false);
   };
 
   // Touch drag & pinch
@@ -127,6 +132,8 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
       // Allow panning even at base zoom to reveal cropped sides
       setDragging(true);
       setLastPos({ x: touch.clientX - offset.x, y: touch.clientY - offset.y });
+      // Hide hint on first interaction
+      if (showHint) setShowHint(false);
     } else if (e.touches.length === 2) {
       setDragging(false);
       lastTouchDist.current = getTouchDist(e);
@@ -209,10 +216,12 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   
   // Reset pan/zoom on open/close and handle image preloading
   useEffect(() => {
-    setZoom(1);
+    // Default zoom at 150%
+    setZoom(1.5);
     setOffset({ x: 0, y: 0 });
     setIsLoading(true);
     setImageError(false);
+    setShowHint(true);
     
     // Set initial state with placeholder
     setImgSrc(image.placeholderUrl);
@@ -242,6 +251,13 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
     };
   }, [image.url]);
 
+  // Auto-hide instructions after 3 seconds
+  useEffect(() => {
+    if (!showHint) return;
+    const t = setTimeout(() => setShowHint(false), 3000);
+    return () => clearTimeout(t);
+  }, [showHint, image.url]);
+
   return (
     <div
       ref={containerRef}
@@ -262,26 +278,27 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
           <div className="w-16 h-16 border-4 border-gray-300 border-t-history-primary rounded-full animate-spin"></div>
         </div>
       )}
-      {/* Zoom Controls - styled like map controls, vertical, top left */}
-      <div className="absolute top-6 left-6 z-[10001] flex flex-col rounded-lg border border-gray-300 shadow-md overflow-hidden select-none">
+      {/* Zoom percentage badge - bottom left */}
+      <div className="absolute bottom-6 left-6 z-[10001] flex flex-col rounded-lg border border-gray-300 shadow-md overflow-hidden select-none">
         <div className="min-w-[2.5rem] h-8 px-2 flex items-center justify-center text-xs font-semibold bg-white/80 text-black">
           {Math.round(zoom * 100)}%
         </div>
       </div>
       
       {/* Instructions tooltip */}
-      <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm pointer-events-none transition-opacity duration-300" 
-           style={{ opacity: isLoading ? 0 : 0.8 }}>
-        Use mouse wheel or pinch to zoom, drag to pan
-      </div>
+      {(!isLoading && showHint) && (
+        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm pointer-events-none transition-opacity duration-300">
+          Use mouse wheel or pinch to zoom, drag to pan
+        </div>
+      )}
       {/* Image */}
       <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
         {/* Placeholder Image */}
         <img
           src={image.placeholderUrl}
           alt={`${image.title} placeholder`}
-          className={`absolute inset-0 w-auto filter blur-lg transition-opacity duration-300`}
-          style={{ opacity: isLoading ? 1 : 0, display: 'block', maxWidth: 'none' }}
+          className={`absolute inset-0 filter blur-lg transition-opacity duration-300`}
+          style={{ height: '100%', width: 'auto', opacity: isLoading ? 1 : 0, display: 'block', maxWidth: 'none', objectFit: 'cover', objectPosition: 'center' }}
           aria-hidden="true"
         />
         {/* Full-Resolution Image */}
@@ -289,10 +306,14 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
           ref={imgRef}
           src={imgSrc}
           alt={image.title}
-          className={`w-auto cursor-grab transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+          className={`cursor-grab transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
           style={{
             background: "black",
+            height: '100%',
+            width: 'auto',
             maxWidth: 'none',
+            objectFit: 'cover',
+            objectPosition: 'center',
             transform: `scale(${zoom}) translate(${offset.x / zoom}px,${offset.y / zoom}px)`,
             transition: dragging ? "none" : "transform 0.2s cubic-bezier(.23,1.01,.32,1)",
             touchAction: "none",
@@ -316,10 +337,10 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
           onClick={onExit}
           className="inline-flex items-center justify-center rounded-full bg-orange-500/60 text-white w-12 h-12 shadow-lg hover:bg-orange-500/70 active:bg-orange-500/70"
           style={{ animation: 'attentionPulse 10s ease-in-out infinite' }}
-          aria-label="Close fullscreen"
-          title="Close fullscreen"
+          aria-label="Exit fullscreen"
+          title="Exit fullscreen"
         >
-          <X className="w-6 h-6" />
+          <Maximize className="w-6 h-6" />
         </button>
         <style>{`
           @keyframes attentionPulse {

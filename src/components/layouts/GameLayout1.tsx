@@ -79,6 +79,11 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
   const [selectedLocationName, setSelectedLocationName] = useState<string | null>(null);
   const [isImmersiveOpen, setIsImmersiveOpen] = useState(false);
+  // Inline editable year input state for header
+  const [yearInput, setYearInput] = useState<string>(String(selectedYear));
+  useEffect(() => {
+    setYearInput(String(selectedYear));
+  }, [selectedYear]);
 
   // Admin-configurable flags via env (fallbacks match spec defaults)
   const immersiveEnabled = ((import.meta as any).env?.VITE_IMMERSIVE_ENABLED ?? 'true') === 'true';
@@ -246,7 +251,30 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                   <Calendar className="w-5 h-5 mr-2 text-gray-400" />
                   <label>When?</label>
                 </div>
-                <span className="ml-auto text-orange-400 font-semibold">{selectedYear}</span>
+                {/* Editable year aligned with title, no 'year' text label */}
+                <input
+                  type="number"
+                  value={yearInput}
+                  onChange={(e) => setYearInput(e.target.value)}
+                  onBlur={() => {
+                    const parsed = parseInt(yearInput, 10);
+                    const clamped = isNaN(parsed) ? selectedYear : Math.max(1850, Math.min(2025, parsed));
+                    if (clamped !== selectedYear) onYearChange(clamped);
+                    setYearInput(String(clamped));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      (e.currentTarget as HTMLInputElement).blur();
+                    } else if (e.key === 'Escape') {
+                      setYearInput(String(selectedYear));
+                      (e.currentTarget as HTMLInputElement).blur();
+                    }
+                  }}
+                  className="ml-auto w-24 bg-transparent border-b border-gray-500 focus:outline-none focus:border-orange-500 text-right text-white"
+                  min={1850}
+                  max={2025}
+                  aria-label="Edit year"
+                />
               </div>
               <YearSelector 
                 selectedYear={selectedYear}

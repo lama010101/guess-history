@@ -186,7 +186,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
             <div className="bg-white dark:bg-[#333333] rounded-2xl shadow-lg p-6 text-center">
               <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">Your Score</h2>
               {(xpDebt > 0 || accDebt > 0) && (
-                <div className="text-xs text-red-500 dark:text-red-500 mb-5">(Hint cost deducted)</div>
+                <div className="text-xs text-red-500 dark:text-red-500 mb-5">(Hint penalties deducted)</div>
               )}
               
               <div className="flex justify-center items-center gap-6 mb-4">

@@ -21,7 +21,7 @@ const HintDebtsCard: React.FC<HintDebtsCardProps> = ({ hintDebts }) => {
     <div className="bg-white dark:bg-[#202020] rounded-2xl shadow-lg p-4 border border-gray-200 dark:border-gray-700">
       <h2 className="font-bold text-lg text-history-primary dark:text-history-light flex items-center mb-3">
         <Zap className="mr-2 h-4 w-4" />
-        Hint Debts
+        Hint Penalties
       </h2>
       <ul className="space-y-2">
         {hintDebts.map((debt, index) => (

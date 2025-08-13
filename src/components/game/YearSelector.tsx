@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Slider } from "@/components/ui/slider";
 
 interface YearSelectorProps {
   selectedYear: number;
   onChange: (year: number) => void;
+  onFirstInteract?: () => void;
 }
 
-const YearSelector: React.FC<YearSelectorProps> = ({ selectedYear, onChange }) => {
+const YearSelector: React.FC<YearSelectorProps> = ({ selectedYear, onChange, onFirstInteract }) => {
   const minYear = 1850;
   const maxYear = 2025;
+  const hasInteractedRef = useRef(false);
 
   return (
     <div className="w-full">
@@ -19,7 +21,13 @@ const YearSelector: React.FC<YearSelectorProps> = ({ selectedYear, onChange }) =
           min={minYear}
           max={maxYear}
           step={1}
-          onValueChange={(v) => onChange(v[0])}
+          onValueChange={(v) => {
+            if (!hasInteractedRef.current) {
+              hasInteractedRef.current = true;
+              onFirstInteract?.();
+            }
+            onChange(v[0]);
+          }}
           className="w-full my-2"
         />
         {/* Endpoint labels without ticks */}

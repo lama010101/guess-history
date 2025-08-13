@@ -452,6 +452,33 @@ To avoid confusion from legacy duplicates, the following are the only files you 
   - Inline editable year input aligned with the “When?” title; no extra 'year' label.
   - `YearSelector` slider shows endpoints 1850 and 2025 without ticks.
   - Duplicate year displays removed; only the inline input + slider remain.
+
+#### Recent refinements (When/Where, Hints, Mobile Home)
+
+- Year visibility and styling
+  - File: `src/components/layouts/GameLayout1.tsx`
+  - Behavior: the inline year is hidden until the user first moves the slider.
+  - State: `yearInteracted` toggled by `YearSelector.onFirstInteract()`.
+  - Styling: when shown, year input uses orange text (`text-orange-400`) for emphasis.
+- `YearSelector` interaction hook
+  - File: `src/components/game/YearSelector.tsx`
+  - Added optional prop `onFirstInteract?: () => void` fired on the first slider move; debounced with a ref to only fire once.
+- Hints button styling and count
+  - Files: `GameLayout1.tsx` (desktop action row and mobile bottom navbar)
+  - Style: white button with black text; inline black pill displays `{used}/14` hints.
+  - Example: `<span class="... bg-black text-white ...">{purchasedHints.length}/14</span>`.
+- Submit prompt behavior
+  - File: `GameLayout1.tsx`
+  - The "Select a location first" message only appears after the user clicks Submit with no guess (`showSelectLocationPrompt`).
+  - Removed previous always-visible prompts on desktop and inside `LocationSelector`.
+- Mobile Home relocation and duplicate submit removal
+  - File: `src/components/game/LocationSelector.tsx`
+  - Removed the mobile fixed bottom bar containing Home + a duplicate Submit button.
+  - File: `GameLayout1.tsx`
+  - Added a mobile-only Home button under the Where card. The global mobile bottom navbar retains Hints + Submit (with icon).
+- Compact desktop cards
+  - File: `GameLayout1.tsx`
+  - Removed `lg:min-h-[520px]` from When and Where cards to reduce blank space on desktop.
 - `src/hooks/useHintV2.ts` — Source of truth for hint loading, costs/penalties, and purchase persistence.
 - `src/constants/hints.ts` — Centralized constants for `HINT_COSTS`, `HINT_TYPE_NAMES`, and `HINT_DEPENDENCIES`.
 - `src/components/layouts/GameLayout1.tsx` and `src/components/layouts/GameLayout2.tsx` — Open/close and render the modal.

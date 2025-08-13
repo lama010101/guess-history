@@ -82,6 +82,10 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const [highlightInputs, setHighlightInputs] = useState(false);
   // Inline editable year input state for header
   const [yearInput, setYearInput] = useState<string>(String(selectedYear));
+  // Track if the slider has been interacted with; controls showing the year
+  const [yearInteracted, setYearInteracted] = useState(false);
+  // Track whether to show the 'Select a location first' prompt after a failed submit
+  const [showSelectLocationPrompt, setShowSelectLocationPrompt] = useState(false);
   useEffect(() => {
     setYearInput(String(selectedYear));
   }, [selectedYear]);
@@ -159,6 +163,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const handleSubmitGuess = () => {
     if (!currentGuess) {
       console.error('No location selected');
+      setShowSelectLocationPrompt(true);
       return;
     }
     
@@ -247,46 +252,51 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       <div className="flex-grow px-2 py-4 md:px-4 lg:px-6 flex flex-col">
         <div className="max-w-5xl mx-auto w-full space-y-4">
           <Card className="overflow-hidden dark:bg-[#333333]"> 
-            <CardContent className="p-4">
+            <CardContent className="p-4 flex flex-col">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center font-semibold text-history-primary dark:text-history-light">
                   <Calendar className="w-5 h-5 mr-2 text-gray-400" />
                   <label className={cn(highlightInputs && "animate-pulse")}>When?</label>
                 </div>
                 {/* Editable year aligned with title, no 'year' text label */}
-                <input
-                  type="number"
-                  value={yearInput}
-                  onChange={(e) => setYearInput(e.target.value)}
-                  onBlur={() => {
-                    const parsed = parseInt(yearInput, 10);
-                    const clamped = isNaN(parsed) ? selectedYear : Math.max(1850, Math.min(2025, parsed));
-                    if (clamped !== selectedYear) onYearChange(clamped);
-                    setYearInput(String(clamped));
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      (e.currentTarget as HTMLInputElement).blur();
-                    } else if (e.key === 'Escape') {
-                      setYearInput(String(selectedYear));
-                      (e.currentTarget as HTMLInputElement).blur();
-                    }
-                  }}
-                  className="ml-auto w-24 bg-transparent border-b border-gray-500 focus:outline-none focus:border-orange-500 text-right text-white"
-                  min={1850}
-                  max={2025}
-                  aria-label="Edit year"
+                {yearInteracted && (
+                  <input
+                    type="number"
+                    value={yearInput}
+                    onChange={(e) => setYearInput(e.target.value)}
+                    onBlur={() => {
+                      const parsed = parseInt(yearInput, 10);
+                      const clamped = isNaN(parsed) ? selectedYear : Math.max(1850, Math.min(2025, parsed));
+                      if (clamped !== selectedYear) onYearChange(clamped);
+                      setYearInput(String(clamped));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        (e.currentTarget as HTMLInputElement).blur();
+                      } else if (e.key === 'Escape') {
+                        setYearInput(String(selectedYear));
+                        (e.currentTarget as HTMLInputElement).blur();
+                      }
+                    }}
+                    className="ml-auto w-24 bg-transparent border-b border-gray-500 focus:outline-none focus:border-orange-500 text-right text-orange-400 font-semibold"
+                    min={1850}
+                    max={2025}
+                    aria-label="Edit year"
+                  />
+                )}
+              </div>
+              <div className="flex-1 flex items-center">
+                <YearSelector 
+                  selectedYear={selectedYear}
+                  onChange={(y) => onYearChange(y)}
+                  onFirstInteract={() => setYearInteracted(true)}
                 />
               </div>
-              <YearSelector 
-                selectedYear={selectedYear}
-                onChange={onYearChange}
-              />
             </CardContent>
           </Card>
-          
+
           <Card className="overflow-hidden dark:bg-[#333333]">
-            <CardContent className="p-4 lg:min-h-[520px] flex flex-col justify-between">
+            <CardContent className="p-4 flex flex-col justify-between">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center font-semibold text-history-primary dark:text-history-light">
                   <MapPin className="w-5 h-5 mr-2 text-gray-400" />
@@ -308,6 +318,19 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                 avatarUrl={avatarUrl}
                 onHome={() => onConfirmNavigation(() => onNavigateHome())}
               />
+              {showSelectLocationPrompt && !currentGuess && (
+                <div className="mt-2 text-center text-sm text-gray-500 dark:text-gray-400">Select a location first</div>
+              )}
+              {/* Mobile-only Home button under Where card */}
+              <div className="lg:hidden mt-3">
+                <Button
+                  onClick={() => onConfirmNavigation(() => onNavigateHome())}
+                  variant="outline"
+                  className="w-full bg-white text-black hover:bg-gray-100 dark:bg-white dark:text-black dark:hover:bg-gray-100 rounded-xl px-6 py-6"
+                >
+                  <Home className="h-5 w-5 mr-2" /> Home
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
@@ -322,22 +345,19 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             </Button>
             <Button
               onClick={handleHintClick}
-              className="bg-gray-800 hover:bg-gray-700 text-white rounded-xl px-6 py-6 text-lg font-semibold"
-              variant="default"
+              className="bg-white text-black hover:bg-gray-100 dark:bg-white dark:text-black dark:hover:bg-gray-100 rounded-xl px-6 py-6 text-lg font-semibold"
+              variant="outline"
             >
-              Hints
+              <span>Hints</span>
+              <span className="ml-2 inline-flex items-center rounded-full bg-black text-white text-xs px-2 py-0.5">{purchasedHintIds.length}/14</span>
             </Button>
             <Button
               onClick={handleSubmitGuess}
-              disabled={!currentGuess}
               className={`${currentGuess ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-700'} w-full max-w-md flex items-center justify-center text-lg font-semibold px-8 py-6 !text-white shadow-lg rounded-xl`}
             >
               <Send className="h-5 w-5 mr-2" /> Submit Guess
             </Button>
           </div>
-          {!currentGuess && (
-            <div className="hidden lg:block text-center text-sm text-gray-500 dark:text-gray-400 mt-2">Select a location first</div>
-          )}
         </div>
 
         
@@ -347,13 +367,13 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-[#1f1f1f]/95 backdrop-blur border-t border-gray-200 dark:border-gray-700 p-2 flex items-center gap-2">
         <Button
           onClick={handleHintClick}
-          className="basis-1/4 shrink-0 grow-0 h-12 rounded-xl bg-gray-800 hover:bg-gray-700 text-white text-base font-semibold"
+          className="basis-1/4 shrink-0 grow-0 h-12 rounded-xl bg-white text-black hover:bg-gray-100 dark:bg-white dark:text-black dark:hover:bg-gray-100 text-base font-semibold"
         >
-          Hints
+          <span>Hints</span>
+          <span className="ml-2 inline-flex items-center rounded-full bg-black text-white text-xs px-2 py-0.5">{purchasedHintIds.length}/14</span>
         </Button>
         <Button
           onClick={handleSubmitGuess}
-          disabled={!currentGuess}
           className={`${currentGuess ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-700'} basis-3/4 h-12 rounded-xl text-white text-base font-semibold flex items-center justify-center`}
         >
           <Send className="h-5 w-5 mr-2" /> Submit Guess

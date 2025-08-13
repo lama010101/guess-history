@@ -3,6 +3,9 @@ import { Button } from "@/components/ui/button";
 import { AuthModal } from "@/components/AuthModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGame } from "@/contexts/GameContext";
+import { Badge } from "@/components/ui/badge";
+import { Award, Target } from "lucide-react";
+import { formatInteger } from "@/utils/format";
 
 const SLIDE_DURATION_MS = 3000;
 
@@ -13,7 +16,7 @@ const LandingPage: React.FC = () => {
   const [imagesLoading, setImagesLoading] = useState(true);
   const { user } = useAuth();
   const [navVisible, setNavVisible] = useState(false);
-  const { startGame, images, isLoading } = useGame();
+  const { startGame, images, isLoading, globalXP, globalAccuracy, fetchGlobalMetrics } = useGame();
 
   // Scroll event for navbar visibility
   useEffect(() => {
@@ -27,6 +30,11 @@ const LandingPage: React.FC = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Ensure global metrics are available on the landing page
+  useEffect(() => {
+    fetchGlobalMetrics?.();
+  }, [fetchGlobalMetrics]);
 
   // Load hero images
   useEffect(() => {
@@ -75,11 +83,26 @@ const LandingPage: React.FC = () => {
           ${navVisible ? 'bg-black/80' : 'bg-transparent'}
         `}
       >
-        <div className="text-white text-xl font-bold select-none col-start-2 justify-self-center whitespace-nowrap">
-          <span>
-            GUESS‑<span className="text-orange-500">HISTORY</span>
-          </span>
+        {/* Global scores (top-left) */}
+        <div className="col-start-1 justify-self-start flex items-center gap-2">
+          <Badge 
+            variant="accuracy" 
+            className="flex items-center gap-1 text-sm"
+            aria-label={`Global Accuracy: ${Math.round(globalAccuracy || 0)}%`}
+          >
+            <Target className="h-4 w-4" />
+            <span>{Math.round(globalAccuracy || 0)}%</span>
+          </Badge>
+          <Badge 
+            variant="xp" 
+            className="flex items-center gap-1 text-sm"
+            aria-label={`Global XP: ${formatInteger(globalXP || 0)}`}
+          >
+            <Award className="h-4 w-4" />
+            <span>{formatInteger(globalXP || 0)}</span>
+          </Badge>
         </div>
+        {/* Right-side call to action */}
         <Button
           onClick={() => setAuthOpen(true)}
           variant="secondary"

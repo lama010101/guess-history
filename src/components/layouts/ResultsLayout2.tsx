@@ -232,7 +232,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                     <span className="text-muted-foreground">{result.confidence !== undefined ? `${(result.confidence <= 1 ? result.confidence * 100 : result.confidence).toFixed(0)}%` : 'N/A'}</span>
                     {result.source_citation && (
                       <Button 
-                        className="px-2 py-1 h-auto text-xs bg-white text-gray-900 hover:bg-gray-100 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+                        className="px-2 py-1 h-auto text-xs bg-black text-white hover:bg-black/90 border border-black dark:bg-black dark:text-white dark:hover:bg-black"
                         onClick={() => setSourceModalOpen(true)}
                       >
                         Source
@@ -266,7 +266,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                 </div>
                 <div className="flex items-center mt-1">
                   <span className="text-foreground">Your guess:</span>
-                  <span className="ml-2 text-orange-400 font-semibold text-lg">{result.guessYear}</span>
+                  <span className="ml-2 font-semibold text-lg text-gray-900 dark:text-white">{result.guessYear}</span>
                 </div>
               </div>
               <div className="flex justify-between items-center">

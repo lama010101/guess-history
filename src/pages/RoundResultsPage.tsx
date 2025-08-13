@@ -433,7 +433,7 @@ const RoundResultsPage = () => {
               variant="outline"
               size="sm"
               onClick={() => setShowRatingModal(true)}
-              className="px-2 py-1 h-auto text-xs rounded-md bg-white hover:bg-gray-100 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+              className="px-2 py-1 h-auto text-xs rounded-md bg-black text-white hover:bg-black/90 border border-black dark:bg-black dark:text-white dark:hover:bg-black"
               aria-label="Rate Image"
               title="Rate this image"
             >

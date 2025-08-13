@@ -32,7 +32,7 @@ const TimeAccuracyCard: React.FC<TimeAccuracyCardProps> = ({
       </div>
       
       <div className="flex justify-between text-sm mb-4">
-        <div>Your guess: <span className="font-medium">{Math.round(guessYear)}</span></div>
+        <div>Your guess: <span className="font-medium text-gray-900 dark:text-white">{Math.round(guessYear)}</span></div>
         <div>Actual: <span className="font-medium">{Math.round(eventYear)}</span></div>
       </div>
       

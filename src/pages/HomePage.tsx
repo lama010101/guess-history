@@ -220,12 +220,12 @@ const HomePage = () => {
     <div style={homePageStyle}>
       {showGuestBadge && <GuestBadge username={profile?.display_name || 'Guest'} />}
       <div className="absolute inset-0 z-10 w-full h-full overflow-y-auto p-8 box-border backdrop-blur-sm bg-white/75 dark:bg-black/75 flex items-center justify-center min-h-screen">
-  {/* Centered logo at 1/3rd of the viewport height */}
-  <div className="absolute left-1/2 -translate-x-1/2 z-20" style={{ top: '33vh' }}>
+  {/* Logo at 20% of the viewport height */}
+  <div className="absolute left-1/2 -translate-x-1/2 z-20" style={{ top: '20vh' }}>
     <Logo />
   </div>
   {isLoaded ? (
-    <div className="flex flex-row items-start gap-[1.7rem] md:flex-row md:gap-[2.55rem] md:items-start overflow-x-auto md:overflow-visible snap-x snap-mandatory md:snap-none px-2 -mx-2">
+    <div className="flex flex-row items-start gap-[3rem] md:flex-row md:gap-[4rem] md:items-start overflow-x-auto md:overflow-visible snap-x snap-mandatory md:snap-none carousel-center-padding no-scrollbar px-2">
       {/* Solo Card */}
       <div className="flex flex-col items-center justify-center gap-0 py-4 shrink-0 snap-center">
         <div

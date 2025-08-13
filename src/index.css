@@ -435,6 +435,18 @@ document:has(.leaflet-fullscreen-on) .hud-element,
   }
 }
 
+@layer utilities {
+  /* Hide scrollbars cross-browser */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Center first/last cards in a horizontal snap carousel */
+  .carousel-center-padding { padding-left: calc(50vw - 6.75rem); padding-right: calc(50vw - 6.75rem); }
+  @media (min-width: 768px) {
+    .carousel-center-padding { padding-left: 0; padding-right: 0; }
+  }
+}
+
 .map-placeholder {
   background-color: #e0e0e0;
   background-image: radial-gradient(circle, #d0d0d0 1px, transparent 1px);

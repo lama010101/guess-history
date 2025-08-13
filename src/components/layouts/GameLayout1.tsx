@@ -12,7 +12,7 @@ import LocationSelector from '@/components/game/LocationSelector';
 import TimerDisplay from '@/components/game/TimerDisplay';
 import LazyImage from '@/components/ui/LazyImage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, MapPin, Home } from 'lucide-react';
+import { Calendar, MapPin, Home, Send } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
@@ -79,6 +79,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
   const [selectedLocationName, setSelectedLocationName] = useState<string | null>(null);
   const [isImmersiveOpen, setIsImmersiveOpen] = useState(false);
+  const [highlightInputs, setHighlightInputs] = useState(false);
   // Inline editable year input state for header
   const [yearInput, setYearInput] = useState<string>(String(selectedYear));
   useEffect(() => {
@@ -97,6 +98,9 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
 
   const handleExitImageFullscreen = () => {
     setIsImageFullScreen(false);
+    // Animate When/Where cards for 1 second to draw attention
+    setHighlightInputs(true);
+    window.setTimeout(() => setHighlightInputs(false), 1000);
   };
 
   const [isHintModalV2Open, setIsHintModalV2Open] = useState(false);
@@ -199,13 +203,10 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           <GameOverlayHUD 
             remainingTime={formatTime(remainingTime)}
             rawRemainingTime={remainingTime}
-            onHintV2Click={handleHintClick} // Wire up the new button to the same V2 handler
             hintsUsed={purchasedHints.length}
             hintsAllowed={14}
             currentAccuracy={totalGameAccuracy}
             currentScore={totalGameXP}
-            onNavigateHome={onNavigateHome}
-            onConfirmNavigation={onConfirmNavigation}
             onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
             imageUrl={image.firebase_url || image.url}
             onFullscreen={handleImageFullscreen}
@@ -227,6 +228,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             placeholderUrl: image.firebase_url || image.url
           }}
           onExit={handleExitImageFullscreen}
+          currentRound={currentRound}
         />
       )}
 
@@ -244,12 +246,12 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       {/* Input Sections - Full width on mobile, half on desktop */}
       <div className="flex-grow px-2 py-4 md:px-4 lg:px-6 flex flex-col">
         <div className="max-w-5xl mx-auto w-full space-y-4">
-          <Card className="overflow-hidden dark:bg-[#333333]">
+          <Card className="overflow-hidden dark:bg-[#333333]"> 
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center font-semibold text-history-primary dark:text-history-light">
                   <Calendar className="w-5 h-5 mr-2 text-gray-400" />
-                  <label>When?</label>
+                  <label className={cn(highlightInputs && "animate-pulse")}>When?</label>
                 </div>
                 {/* Editable year aligned with title, no 'year' text label */}
                 <input
@@ -288,7 +290,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center font-semibold text-history-primary dark:text-history-light">
                   <MapPin className="w-5 h-5 mr-2 text-gray-400" />
-                  <label>Where?</label>
+                  <label className={cn(highlightInputs && "animate-pulse")}>Where?</label>
                 </div>
                 {selectedLocationName && (
                   <span className="ml-auto text-orange-400 font-semibold truncate max-w-[60%] text-right">
@@ -309,7 +311,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             </CardContent>
           </Card>
 
-          {/* Desktop-only submit button placed outside and below the card */}
+          {/* Desktop-only bottom actions: Home, Hints, Submit */}
           <div className="hidden lg:flex items-center justify-center gap-3">
             <Button
               onClick={() => onConfirmNavigation(() => onNavigateHome())}
@@ -319,11 +321,18 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
               <Home className="h-5 w-5 mr-2" /> Home
             </Button>
             <Button
+              onClick={handleHintClick}
+              className="bg-gray-800 hover:bg-gray-700 text-white rounded-xl px-6 py-6 text-lg font-semibold"
+              variant="default"
+            >
+              Hints
+            </Button>
+            <Button
               onClick={handleSubmitGuess}
               disabled={!currentGuess}
               className={`${currentGuess ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-700'} w-full max-w-md flex items-center justify-center text-lg font-semibold px-8 py-6 !text-white shadow-lg rounded-xl`}
             >
-              Submit Guess
+              <Send className="h-5 w-5 mr-2" /> Submit Guess
             </Button>
           </div>
           {!currentGuess && (
@@ -332,6 +341,23 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
         </div>
 
         
+      </div>
+
+      {/* Mobile bottom navbar: Hints (25%) + Submit (75%), no Home */}
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-[#1f1f1f]/95 backdrop-blur border-t border-gray-200 dark:border-gray-700 p-2 flex items-center gap-2">
+        <Button
+          onClick={handleHintClick}
+          className="basis-1/4 shrink-0 grow-0 h-12 rounded-xl bg-gray-800 hover:bg-gray-700 text-white text-base font-semibold"
+        >
+          Hints
+        </Button>
+        <Button
+          onClick={handleSubmitGuess}
+          disabled={!currentGuess}
+          className={`${currentGuess ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-700'} basis-3/4 h-12 rounded-xl text-white text-base font-semibold flex items-center justify-center`}
+        >
+          <Send className="h-5 w-5 mr-2" /> Submit Guess
+        </Button>
       </div>
 
       {/* V2 Hint Modal */}

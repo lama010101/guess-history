@@ -4,6 +4,7 @@ import { Maximize } from "lucide-react";
 interface FullscreenZoomableImageProps {
   image: { url: string; placeholderUrl: string; title: string };
   onExit: () => void;
+  currentRound?: number;
 }
 
 const MIN_ZOOM = 1;
@@ -11,7 +12,7 @@ const MAX_ZOOM = 4;
 const ZOOM_STEP = 0.2;
 const WHEEL_ZOOM_FACTOR = 0.1; // Smaller factor for smoother wheel zooming
 
-const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image, onExit }) => {
+const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image, onExit, currentRound = 1 }) => {
   const [zoom, setZoom] = useState(1.5);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
@@ -19,7 +20,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   const [isLoading, setIsLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [imgSrc, setImgSrc] = useState(image.placeholderUrl);
-  const [showHint, setShowHint] = useState(true);
+  const [showHint, setShowHint] = useState(currentRound === 1);
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastTouchDist = useRef<number | null>(null);
@@ -221,7 +222,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
     setOffset({ x: 0, y: 0 });
     setIsLoading(true);
     setImageError(false);
-    setShowHint(true);
+    setShowHint(currentRound === 1);
     
     // Set initial state with placeholder
     setImgSrc(image.placeholderUrl);
@@ -249,7 +250,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
       fullImage.onload = null;
       fullImage.onerror = null;
     };
-  }, [image.url]);
+  }, [image.url, currentRound]);
 
   // Auto-hide instructions after 3 seconds
   useEffect(() => {
@@ -288,7 +289,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
       {/* Instructions tooltip */}
       {(!isLoading && showHint) && (
         <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm pointer-events-none transition-opacity duration-300">
-          Use mouse wheel or pinch to zoom, drag to pan
+          Use mouse wheel to zoom, drag to pan
         </div>
       )}
       {/* Image */}
@@ -331,8 +332,8 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
           }}
         />
       </div>
-      {/* Close Fullscreen button (bottom-right, orange 60% opaque background) */}
-      <div className="fixed bottom-6 right-6 z-[10000]">
+      {/* Close Fullscreen button (bottom-center, orange 60% opaque background) */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000]">
         <button
           onClick={onExit}
           className="inline-flex items-center justify-center rounded-full bg-orange-500/60 text-white w-12 h-12 shadow-lg hover:bg-orange-500/70 active:bg-orange-500/70"

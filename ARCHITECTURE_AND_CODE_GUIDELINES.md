@@ -433,6 +433,25 @@ Notes:
 To avoid confusion from legacy duplicates, the following are the only files you should modify for the Hint System UI/logic:
 
 - `src/components/HintModalV2New.tsx` — The active Hint Modal rendered by `GameLayout1` and `GameLayout2`.
+
+### Game Page Controls — HUD and Bottom Navbar
+
+- Files:
+  - `src/components/layouts/GameLayout1.tsx`
+  - `src/components/navigation/GameOverlayHUD.tsx`
+  - `src/components/game/YearSelector.tsx`
+  - `src/components/layouts/FullscreenZoomableImage.tsx`
+- HUD (overlay on image):
+  - Home button is optional and shown only if both `onNavigateHome` and `onConfirmNavigation` props are provided to `GameOverlayHUD`. Desktop HUD should not show Home.
+  - Hints control is not in the HUD; it lives in the bottom navbar.
+  - Fullscreen button remains in HUD (bottom-right).
+- Bottom navbar:
+  - Desktop: buttons are Home, Hints, Submit Guess (left→right). Submit has a Send icon and uses rounded-xl, Montserrat font.
+  - Mobile: only Hints (25% width) and Submit Guess (75% width). No Home button on mobile bottom bar.
+- When card (Year):
+  - Inline editable year input aligned with the “When?” title; no extra 'year' label.
+  - `YearSelector` slider shows endpoints 1850 and 2025 without ticks.
+  - Duplicate year displays removed; only the inline input + slider remain.
 - `src/hooks/useHintV2.ts` — Source of truth for hint loading, costs/penalties, and purchase persistence.
 - `src/constants/hints.ts` — Centralized constants for `HINT_COSTS`, `HINT_TYPE_NAMES`, and `HINT_DEPENDENCIES`.
 - `src/components/layouts/GameLayout1.tsx` and `src/components/layouts/GameLayout2.tsx` — Open/close and render the modal.
@@ -474,6 +493,16 @@ UI specifics applied in `HintModalV2New`:
   - Main submit button: `src/components/game/SubmitGuessButton.tsx` adds subtle glow + three sparkles when a location is selected (enabled state). Disabled state unchanged.
   - Both components define a small inline `<style>` block for the `sparkle` keyframes to avoid global CSS changes.
 
+## Game Page: Exit Fullscreen Attention Animation
+
+- File: `src/components/layouts/GameLayout1.tsx`
+- Behavior: when exiting the fullscreen image (`FullscreenZoomableImage` calls `onExit`), `handleExitImageFullscreen()` briefly pulses the label texts "When?" and "Where?" for 1 second to draw attention back to inputs.
+- Implementation:
+  - State: `const [highlightInputs, setHighlightInputs] = useState(false)`.
+  - On exit: `setHighlightInputs(true); setTimeout(() => setHighlightInputs(false), 1000)`.
+  - Visuals: conditional class applied only to the header labels via `cn(highlightInputs && "animate-pulse")`. The cards themselves are not ring-highlighted.
+  - No persistent state; the pulse self-clears after 1s.
+
 ## UI Polish: Slider and Map Avatar Halo
 
 - __Shared Slider Styling__
@@ -502,6 +531,24 @@ UI specifics applied in `HintModalV2New`:
   - Note: `src/index.css` already enforced Montserrat via CSS; keeping Tailwind config aligned avoids class-level font drift.
 
 ## Results & Final Score UX Tweaks
+
+- Round Results page updates
+  - Files: `src/components/layouts/ResultsLayout2.tsx`, `src/pages/RoundResultsPage.tsx`
+  - Dark card background standardized to `#333333` for all primary cards on Round Results.
+  - Added slim progress bars under the badges:
+    - Time accuracy bar in the When card (width = `result.timeAccuracy%`).
+    - Location accuracy bar in the Where card (width = `result.locationAccuracy%`).
+  - Repositioned controls in the image card header row:
+    - Confidence value and Source button on the left.
+    - Compact Rate button on the right via new `rateButton` prop in `ResultsLayout2`.
+    - Removed the legacy circular Rate button from the bottom action row (`extraButtons` now null on RoundResultsPage).
+  - Text styling: "Your guess" year uses the same size emphasis as the "Correct" year (`text-lg`, orange text) for consistency.
+
+- Final Results footer and navbar tweaks
+  - File: `src/pages/FinalResultsPage.tsx`
+  - Bottom navbar background set to solid black (`bg-black`).
+  - Home button height matches Play Again: both use `size="lg"` with `py-6 text-base`.
+  - Top navbar simplified: logo removed; global Accuracy and XP badges on the left; `NavProfile` on the right.
 
 - Round Results bottom "Next Round" button width increased.
   - File: `src/pages/RoundResultsPage.tsx`

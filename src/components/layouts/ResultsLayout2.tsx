@@ -80,6 +80,7 @@ export interface ResultsLayoutProps {
   round?: number;
   totalRounds?: number;
   nextRoundButton?: React.ReactNode;
+  rateButton?: React.ReactNode;
 }
 
 const ResultsLayout2: React.FC<ResultsLayoutProps> = ({ 
@@ -91,7 +92,8 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   homeButton,
   round,
   totalRounds,
-  nextRoundButton
+  nextRoundButton,
+  rateButton
 }) => {
   const { user } = useAuth();
   const [earnedBadge, setEarnedBadge] = useState<BadgeType | null>(null);
@@ -181,7 +183,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left Column */}
           <div className="space-y-6">
-            <div className="bg-white dark:bg-[#202020] rounded-2xl shadow-lg p-6 text-center">
+            <div className="bg-white dark:bg-[#333333] rounded-2xl shadow-lg p-6 text-center">
               <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">Your Score</h2>
               {(xpDebt > 0 || accDebt > 0) && (
                 <div className="text-xs text-red-500 dark:text-red-500 mb-5">(Hint cost deducted)</div>
@@ -215,7 +217,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               </div>
             </div>
 
-            <div className="bg-white dark:bg-[#202020] rounded-2xl shadow-lg overflow-hidden">
+            <div className="bg-white dark:bg-[#333333] rounded-2xl shadow-lg overflow-hidden">
               <div className="relative w-full aspect-video overflow-hidden rounded-t-lg">
                 <img src={result.imageUrl} alt={result.imageTitle} className="w-full h-full object-cover" />
               </div>
@@ -225,18 +227,21 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
                 {/* Confidence and Source Link */}
                 <div className="flex justify-between items-center mb-4 text-sm border-t border-b border-gray-200 dark:border-gray-700 py-2">
-                  <div className="flex items-center">
+                  <div className="flex items-center gap-2">
                     <span className="font-semibold text-foreground">Confidence:</span>
-                    <span className="text-muted-foreground ml-2">{result.confidence !== undefined ? `${(result.confidence <= 1 ? result.confidence * 100 : result.confidence).toFixed(0)}%` : 'N/A'}</span>
+                    <span className="text-muted-foreground">{result.confidence !== undefined ? `${(result.confidence <= 1 ? result.confidence * 100 : result.confidence).toFixed(0)}%` : 'N/A'}</span>
+                    {result.source_citation && (
+                      <Button 
+                        className="px-2 py-1 h-auto text-xs bg-white text-gray-900 hover:bg-gray-100 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+                        onClick={() => setSourceModalOpen(true)}
+                      >
+                        Source
+                      </Button>
+                    )}
                   </div>
-                  {result.source_citation && (
-                    <Button 
-                      className="px-2 py-1 h-auto text-xs bg-white text-gray-900 hover:bg-gray-100 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
-                      onClick={() => setSourceModalOpen(true)} // This opens the modal
-                    >
-                      Source
-                    </Button>
-                  )}
+                  <div>
+                    {rateButton}
+                  </div>
                 </div>
               </div>
             </div>
@@ -244,7 +249,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
           {/* Right Column */}
           <div className="space-y-6">
-            <div className="bg-white dark:bg-[#202020] rounded-2xl shadow-lg p-4">
+            <div className="bg-white dark:bg-[#333333] rounded-2xl shadow-lg p-4">
               <div className="border-b border-border pb-3 mb-3 flex justify-between items-center">
                 <h2 className="font-bold text-lg text-gray-900 dark:text-gray-100 flex items-center">
                   <Calendar className="mr-2 h-4 w-4" />
@@ -260,7 +265,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   <span className="ml-2 text-orange-400 font-semibold text-lg">{result.eventYear}</span>
                 </div>
                 <div className="mt-1 text-muted-foreground">
-                  Your guess: <span className="font-semibold text-orange-400">{result.guessYear}</span>
+                  Your guess: <span className="font-semibold text-orange-400 text-lg">{result.guessYear}</span>
                 </div>
               </div>
               <div className="flex justify-between items-center">
@@ -275,9 +280,15 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
                 </Badge>
               </div>
+              <div className="mt-3">
+                <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
+                  <div className="h-1.5 rounded-full bg-orange-500" style={{ width: `${result.timeAccuracy}%` }} />
+                </div>
+                <span className="sr-only">Time accuracy progress</span>
+              </div>
             </div>
 
-            <div className="bg-white dark:bg-[#202020] rounded-2xl shadow-lg p-4">
+            <div className="bg-white dark:bg-[#333333] rounded-2xl shadow-lg p-4">
               <div className="border-b border-border pb-3 mb-3 flex justify-between items-center">
                 <h2 className="font-bold text-lg text-gray-900 dark:text-gray-100 flex items-center">
                   <MapPin className="mr-2 h-4 w-4" />
@@ -353,6 +364,12 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   +{formatInteger(result.xpWhere)} XP
 
                 </Badge>
+              </div>
+              <div className="mt-3">
+                <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
+                  <div className="h-1.5 rounded-full bg-orange-500" style={{ width: `${result.locationAccuracy}%` }} />
+                </div>
+                <span className="sr-only">Location accuracy progress</span>
               </div>
             </div>
 

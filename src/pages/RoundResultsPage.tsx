@@ -426,21 +426,21 @@ const RoundResultsPage = () => {
             <Home size={20} />
           </Button>
         }
-        extraButtons={
-          <div className="flex items-center space-x-2">
-            {user && currentImage && roomId && (
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setShowRatingModal(true)}
-                className="h-12 w-12 rounded-full bg-white hover:bg-gray-100 shadow-md text-gray-900"
-                aria-label="Rate Image"
-                title="Rate this image"
-              >
-                <ThumbsUp size={20} />
-              </Button>
-            )}
-          </div>
+        extraButtons={null}
+        rateButton={
+          user && currentImage && roomId ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowRatingModal(true)}
+              className="px-2 py-1 h-auto text-xs rounded-md bg-white hover:bg-gray-100 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+              aria-label="Rate Image"
+              title="Rate this image"
+            >
+              <ThumbsUp size={14} className="mr-1" />
+              Rate
+            </Button>
+          ) : null
         }
       />
       <ConfirmNavigationDialog

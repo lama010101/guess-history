@@ -1,13 +1,11 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Share2, Loader, Home, Target, Zap, RefreshCw } from "lucide-react";
 import RoundResultCard from '@/components/RoundResultCard';
 import { useGame } from "@/contexts/GameContext";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useRef } from 'react';
-import LazyImage from '@/components/ui/LazyImage';
-import Logo from "@/components/Logo";
 import { NavProfile } from "@/components/NavProfile";
 import { formatInteger } from '@/utils/format';
 import { updateUserMetrics } from '@/utils/profile/profileService';
@@ -267,22 +265,16 @@ const FinalResultsPage = () => {
       <nav className={`sticky top-0 z-50 text-white transition-all duration-300 ${isScrolled ? 'bg-white/90 dark:bg-gray-900/90 backdrop-blur shadow-lg' : 'bg-transparent'}`}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center select-none">
-              <Link to="/" aria-label="Home" className="text-xl font-bold">
-                <span className="text-white">G-</span>
-                <span className="text-orange-500">H</span>
-              </Link>
-            </div>
             <div className="flex items-center gap-4">
-  <Badge variant="accuracy" className="flex items-center gap-1 text-lg" aria-label={`Global Accuracy: ${Math.round(globalAccuracy || 0)}%`}>
-    <Target className="h-4 w-4" />
-    <span>{Math.round(globalAccuracy || 0)}%</span>
-  </Badge>
-  <Badge variant="xp" className="flex items-center gap-1 text-lg" aria-label={`Global XP: ${Math.round(globalXP || 0)}`}>
-    <Zap className="h-4 w-4" />
-    <span>{Math.round(globalXP || 0)}</span>
-  </Badge>
-</div>
+              <Badge variant="accuracy" className="flex items-center gap-1 text-lg" aria-label={`Global Accuracy: ${Math.round(globalAccuracy || 0)}%`}>
+                <Target className="h-4 w-4" />
+                <span>{Math.round(globalAccuracy || 0)}%</span>
+              </Badge>
+              <Badge variant="xp" className="flex items-center gap-1 text-lg" aria-label={`Global XP: ${Math.round(globalXP || 0)}`}>
+                <Zap className="h-4 w-4" />
+                <span>{Math.round(globalXP || 0)}</span>
+              </Badge>
+            </div>
             <NavProfile />
           </div>
         </div>
@@ -301,6 +293,30 @@ const FinalResultsPage = () => {
                 <Zap className="h-4 w-4" />
                 <span>{totalScore}</span>
               </Badge>
+            </div>
+
+            {/* Accuracy progress bars */}
+            <div className="mt-4 space-y-3" role="group" aria-label="Accuracy breakdown">
+              <div>
+                <div className="text-sm text-gray-300 mb-1">Time Accuracy</div>
+                <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-orange-500"
+                    style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhenAccuracy)))}%` }}
+                    aria-label={`Time accuracy ${formatInteger(totalWhenAccuracy)}%`}
+                  />
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-300 mb-1">Location Accuracy</div>
+                <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-orange-500"
+                    style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhereAccuracy)))}%` }}
+                    aria-label={`Location accuracy ${formatInteger(totalWhereAccuracy)}%`}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Detailed metrics */}
@@ -360,9 +376,9 @@ const FinalResultsPage = () => {
         </div>
       </main>
 
-      <footer className="fixed bottom-0 left-0 w-full z-50 bg-white/90 dark:bg-gray-900/95 backdrop-blur shadow-[0_-2px_12px_rgba(0,0,0,0.05)] px-4 py-3 flex justify-center items-center border-t border-gray-200 dark:border-gray-700">
+      <footer className="fixed bottom-0 left-0 w-full z-50 bg-black shadow-[0_-2px_12px_rgba(0,0,0,0.5)] px-4 py-3 flex justify-center items-center border-t border-gray-800">
         <div className="w-full max-w-md flex items-center justify-between gap-4">
-          <Button onClick={handleHome} variant="outline" className="gap-2 bg-white text-black hover:bg-gray-100 dark:bg-white dark:hover:bg-gray-100 dark:text-black shadow-md">
+          <Button onClick={handleHome} variant="outline" size="lg" className="gap-2 bg-white text-black hover:bg-gray-100 dark:bg-white dark:hover:bg-gray-100 dark:text-black shadow-md py-6 text-base">
             <Home className="h-5 w-5" />
             Home
           </Button>

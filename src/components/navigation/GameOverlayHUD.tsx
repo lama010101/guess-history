@@ -15,8 +15,8 @@ interface GameOverlayHUDProps {
   selectedHintType?: string | null;
   currentAccuracy?: number;
   currentScore?: number;
-  onNavigateHome: () => void;
-  onConfirmNavigation: (navigateTo: () => void) => void;
+  onNavigateHome?: () => void;
+  onConfirmNavigation?: (navigateTo: () => void) => void;
   onOpenSettingsModal?: () => void;
   onFullscreen?: () => void;
   imageUrl?: string;
@@ -108,18 +108,20 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
 
         </div>
         
-        {/* Right side - Home button (moved to top-right) */}
-        <div className="flex pointer-events-auto">
-          <Button 
-            size="icon"
-            onClick={() => onConfirmNavigation(() => onNavigateHome())}
-            className="h-9 w-9 bg-white/80 hover:bg-white/90 text-black rounded-full border-none"
-            aria-label="Home"
-            type="button"
-          >
-            <Home className="h-4 w-4" />
-          </Button>
-        </div>
+        {/* Right side - Home button (top-right) - shown only if handlers are provided */}
+        {onNavigateHome && onConfirmNavigation && (
+          <div className="flex pointer-events-auto">
+            <Button 
+              size="icon"
+              onClick={() => onConfirmNavigation(() => onNavigateHome())}
+              className="h-9 w-9 bg-white/80 hover:bg-white/90 text-black rounded-full border-none"
+              aria-label="Home"
+              type="button"
+            >
+              <Home className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Bottom bar with Hint button and Home button */}

@@ -225,7 +225,7 @@ const HomePage = () => {
     <Logo />
   </div>
   {isLoaded ? (
-    <div className="flex flex-row items-start gap-[3rem] md:flex-row md:gap-[4rem] md:items-start overflow-x-auto md:overflow-visible snap-x snap-mandatory md:snap-none carousel-center-padding no-scrollbar px-2">
+    <div className="flex flex-row items-start gap-[3rem] md:flex-row md:gap-[4rem] md:items-start overflow-x-auto md:overflow-visible snap-x snap-mandatory md:snap-none carousel-center-padding no-scrollbar px-2 touch-pan-x overscroll-x-contain">
       {/* Solo Card */}
       <div className="flex flex-col items-center justify-center gap-0 py-4 shrink-0 snap-center">
         <div

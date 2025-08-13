@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Clock, X } from 'lucide-react';
+import { Clock, X, Home } from 'lucide-react';
 import { partyUrl, LobbyServerMessage, LobbyClientMessage } from '@/lib/partyClient';
 import { useGame } from '@/contexts/GameContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { NavMenu } from '@/components/NavMenu';
 
 interface ChatItem {
   id: string;
@@ -257,6 +258,18 @@ const Room: React.FC = () => {
             <div className="text-xs text-neutral-400">Status: {status}</div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Home button */}
+            <Button
+              size="icon"
+              onClick={() => navigate('/test')}
+              className="h-9 w-9 rounded-full bg-neutral-800 hover:bg-neutral-700"
+              aria-label="Go to Home"
+              type="button"
+            >
+              <Home className="h-4 w-4" />
+            </Button>
+            {/* Avatar/Menu dropdown */}
+            <NavMenu />
             {isHost && (
               <Button onClick={copyInvite} variant="secondary" className="bg-neutral-800 hover:bg-neutral-700">
                 {copied ? 'Link copied!' : 'Share invite link'}

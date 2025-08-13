@@ -593,8 +593,44 @@ UI specifics applied in `HintModalV2New`:
   - File: `src/components/map/AvatarMarker.tsx`
   - Avatar marker now renders with a semi-transparent orange halo behind it (rgba(251,146,60,0.5)).
   - Halo diameter is 2× the avatar visual size (avatar ≈ `sizePx/4`, halo ≈ `sizePx/2`).
-  - Implemented with an inline-styled wrapper to avoid reliance on dynamic Tailwind class names in `L.divIcon` HTML.
-  - Error/placeholder states remain intact; only visuals were enhanced.
+  - Carousel is implemented with horizontal scroll-snap on mobile and stacked layout on desktop.
+
+### Updates — Logo position, size, color; Carousel spacing and scrollbar (2025-08-14)
+
+- Logo
+  - File: `src/components/Logo.tsx`
+  - Text size increased (approximately 2x): `text-2xl md:text-4xl`.
+  - Color updated: `HISTORY` now uses `text-red-500` (was `text-orange-500`).
+  - File: `src/pages/HomePage.tsx` — Positioned the logo at 20% from top using `style={{ top: '20vh' }}` on the absolute container.
+
+- Carousel spacing and scrollbar
+  - File: `src/pages/HomePage.tsx`
+    - Increased inter-card spacing: mobile `gap-[3rem]`, desktop `md:gap-[4rem]`.
+    - Container classes updated to: `overflow-x-auto snap-x snap-mandatory carousel-center-padding no-scrollbar` (desktop keeps `md:overflow-visible md:snap-none`).
+  - File: `src/index.css`
+    - New utilities under `@layer utilities`:
+      - `.no-scrollbar` hides scrollbars cross-browser.
+      - `.carousel-center-padding` adds left/right padding of `calc(50vw - 6.75rem)` so the first/last 13.5rem-wide cards center on screen; padding removed on `@media (min-width: 768px)`.
+    - Rationale: Centers the first card on small screens and hides the horizontal scrollbar while preserving scroll and snap behavior.
+
+Notes: UI changes are limited to the Home page and the shared `Logo` component per current design direction.
+
+### Updates — Lobby header (Home + Avatar), Logo HISTORY +25%, Carousel touch swipe (2025-08-14)
+
+- Lobby header buttons
+  - File: `src/pages/Room.tsx`
+  - Added a Home icon button that navigates to `/test`.
+  - Added the avatar/menu dropdown by rendering `<NavMenu />` in the header actions.
+  - Imports: `Home` from `lucide-react`, `NavMenu` from `src/components/NavMenu`.
+
+- Logo emphasis (HISTORY +25%)
+  - File: `src/components/Logo.tsx`
+  - Increased only the `HISTORY` word by 25% using a relative size utility: `text-[1.25em]` on the `HISTORY` span, retaining base `text-2xl md:text-4xl` on the heading.
+
+- Carousel touch swipe enablement
+  - File: `src/pages/HomePage.tsx`
+  - Ensured horizontal swiping works smoothly on touch devices by adding `touch-pan-x` and `overscroll-x-contain` to the scroll container, alongside existing `overflow-x-auto` and snap classes.
+  - Container keeps: `snap-x snap-mandatory`, `carousel-center-padding`, and `no-scrollbar` for centered first card and hidden scrollbar.
 
 ## UI Styling Consistency: Orange Buttons & Font
 

@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import LazyImage from '@/components/ui/LazyImage';
 import { Button } from "@/components/ui/button";
-import { Menu, Award } from "lucide-react";
+import { Menu, Award, Target } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '@/contexts/GameContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchUserProfile, UserProfile } from '@/utils/profile/profileService';
-import Logo from '@/components/Logo';
 import { Badge } from "@/components/ui/badge";
 import { formatInteger } from '@/utils/format';
 
@@ -15,10 +14,7 @@ interface MainNavbarProps {
 }
 
 const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
-  const navigate = useNavigate();
-  const { globalXP, fetchGlobalMetrics } = useGame();
-  const { user } = useAuth();
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const { globalXP, globalAccuracy, fetchGlobalMetrics } = useGame();
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -29,7 +25,6 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
   const navigate = useNavigate();
-  const { globalXP, fetchGlobalMetrics } = useGame();
   const { user } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   
@@ -93,23 +88,29 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo on the left */}
-          <div className="flex-shrink-0 cursor-pointer" onClick={() => navigate('/test')}>
-            <Logo className="h-8 w-auto" />
-          </div>
-          
-          {/* Global Score in center/right */}
-          <div className="flex items-center">
+          {/* Global Accuracy and XP on the left */}
+          <div className="flex items-center gap-2">
             <Badge 
-              variant="secondary" 
-              className="px-3 py-1 bg-history-primary text-white hover:bg-history-primary/90 cursor-pointer"
-              onClick={() => navigate('/test/leaderboard')}
+              variant="accuracy" 
+              className="flex items-center gap-1 text-sm"
+              aria-label={`Global Accuracy: ${Math.round(globalAccuracy || 0)}%`}
             >
-              <Award className="h-4 w-4 mr-1" />
-              {formatInteger(globalXP || 0)} XP
+              <Target className="h-4 w-4" />
+              <span>{Math.round(globalAccuracy || 0)}%</span>
             </Badge>
-            
-            {/* Avatar/Menu button on the right */}
+            <Badge 
+              variant="xp" 
+              className="flex items-center gap-1 text-sm cursor-pointer"
+              onClick={() => navigate('/test/leaderboard')}
+              aria-label={`Global XP: ${formatInteger(globalXP || 0)}`}
+            >
+              <Award className="h-4 w-4" />
+              <span>{formatInteger(globalXP || 0)}</span>
+            </Badge>
+          </div>
+
+          {/* Avatar/Menu button on the right */}
+          <div className="flex items-center">
             <Button 
               variant="ghost" 
               size="icon"
@@ -122,7 +123,7 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
                   alt="User avatar"
                   className="h-9 w-9 rounded-full object-cover border-2 border-history-primary/30"
                   skeletonClassName="h-9 w-9 rounded-full"
-                  onError={() => setAvatarUrl(null)} // Fallback to menu icon on error
+                  onError={() => setAvatarUrl(null)}
                 />
               ) : (
                 <div className="h-9 w-9 rounded-full bg-gray-200 flex items-center justify-center border-2 border-history-primary/30">

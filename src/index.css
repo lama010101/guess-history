@@ -172,7 +172,7 @@ html, body {
     /* Dark mode - pure black/dark gray */
     --background: 0 0% 3%; /* Pure black background */
     --foreground: 0 0% 95%; /* Near white text */
-    --card: 0 0% 8%; /* Very dark gray for cards */
+    --card: 0 0% 20%; /* #333333 for cards */
     --card-foreground: 0 0% 95%;
     --popover: 0 0% 8%;
     --popover-foreground: 0 0% 95%;

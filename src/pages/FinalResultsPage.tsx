@@ -242,6 +242,25 @@ const FinalResultsPage = () => {
   const totalPercentage = formatInteger(finalPercent);
   const totalWhenAccuracy = totalWhenXP > 0 ? (totalWhenXP / (roundResults.length * 100)) * 100 : 0;
   const totalWhereAccuracy = totalWhereXP > 0 ? (totalWhereXP / (roundResults.length * 100)) * 100 : 0;
+  const totalHintsUsed = roundResults.reduce((sum, r) => sum + (r.hintsUsed || 0), 0);
+  const { avgYearsOff, avgKmAway } = (() => {
+    let yearDiffSum = 0;
+    let kmSum = 0;
+    let count = 0;
+    roundResults.forEach((r, idx) => {
+      const img = images[idx];
+      if (!r || !img) return;
+      if (typeof r.guessYear === 'number' && typeof img.year === 'number') {
+        yearDiffSum += Math.abs(r.guessYear - img.year);
+      }
+      kmSum += Math.max(0, r.distanceKm || 0);
+      count += 1;
+    });
+    return {
+      avgYearsOff: count ? Math.round(yearDiffSum / count) : 0,
+      avgKmAway: count ? Math.round((kmSum / count) * 10) / 10 : 0,
+    };
+  })();
 
   return (
     <div className="min-h-screen bg-history-light dark:bg-history-dark flex flex-col">
@@ -271,7 +290,7 @@ const FinalResultsPage = () => {
 
       <main className="flex-grow p-4 sm:p-6 md:p-8 pb-36">
         <div className="max-w-4xl mx-auto w-full">
-          <div className="max-w-md mx-auto bg-[#202020] border border-orange-500 rounded-lg p-6 text-white mb-8 sm:mb-12">
+          <div className="max-w-md mx-auto bg-[#333333] rounded-lg p-6 text-white mb-8 sm:mb-12">
             <h1 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4 text-center">FINAL SCORE</h1>
             <div className="flex justify-center items-center gap-4 mt-2">
               <Badge variant="accuracy" className="text-lg flex items-center gap-1" aria-label={`Accuracy: ${totalPercentage}%`}>
@@ -283,59 +302,47 @@ const FinalResultsPage = () => {
                 <span>{totalScore}</span>
               </Badge>
             </div>
-          </div>
 
-          <section className="bg-[#202020] rounded-lg shadow-md p-4 mb-8 text-white">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold">GAME SUMMARY</h2>
-              <button 
-                onClick={() => setIsRoundSummaryOpen(!isRoundSummaryOpen)}
-                className="text-sm text-gray-300 flex items-center"
-                aria-expanded={isRoundSummaryOpen}
-                aria-controls="round-summary-content"
-              >
-                <svg 
-                  className={`ml-1 h-4 w-4 transition-transform ${isRoundSummaryOpen ? 'rotate-180' : ''}`} 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-            </div>
-            {isRoundSummaryOpen && (
-              <div id="round-summary-content" className="mt-4">
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm">Time Accuracy</span>
-                      <span className="text-sm">{formatInteger(totalWhenAccuracy)}%</span>
-                    </div>
-                    <div className="w-full h-1.5 rounded-full bg-gray-300">
-                      <div
-                        className="h-1.5 rounded-full bg-orange-500"
-                        style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhenAccuracy)))}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm">Location Accuracy</span>
-                      <span className="text-sm">{formatInteger(totalWhereAccuracy)}%</span>
-                    </div>
-                    <div className="w-full h-1.5 rounded-full bg-gray-300">
-                      <div
-                        className="h-1.5 rounded-full bg-orange-500"
-                        style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhereAccuracy)))}%` }}
-                      />
-                    </div>
-                  </div>
+            {/* Detailed metrics */}
+            <div className="mt-6 grid grid-cols-2 gap-3 text-sm">
+              <div className="bg-[#2b2b2b] rounded-md p-3">
+                <div className="text-gray-300">Time Accuracy</div>
+                <div className="font-semibold">{formatInteger(totalWhenAccuracy)}%</div>
+              </div>
+              <div className="bg-[#2b2b2b] rounded-md p-3">
+                <div className="text-gray-300">Location Accuracy</div>
+                <div className="font-semibold">{formatInteger(totalWhereAccuracy)}%</div>
+              </div>
+              <div className="bg-[#2b2b2b] rounded-md p-3">
+                <div className="text-gray-300">Avg Years Off</div>
+                <div className="font-semibold">{formatInteger(avgYearsOff)}</div>
+              </div>
+              <div className="bg-[#2b2b2b] rounded-md p-3">
+                <div className="text-gray-300">Avg Km Away</div>
+                <div className="font-semibold">{avgKmAway}</div>
+              </div>
+              <div className="bg-[#2b2b2b] rounded-md p-3 col-span-2 grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-gray-300">Hints Used</div>
+                  <div className="font-semibold">{totalHintsUsed}</div>
+                </div>
+                <div>
+                  <div className="text-gray-300">Penalty Cost</div>
+                  <div className="font-semibold text-red-400">-{formatInteger(totalHintPenalty)} XP</div>
                 </div>
               </div>
-            )}
-          </section>
+            </div>
+
+            {/* Share Results button under score card */}
+            <div className="mt-6 flex justify-center">
+              <Button onClick={handleShare} className="gap-2 bg-white text-black hover:bg-gray-100">
+                <Share2 className="h-5 w-5" />
+                Share Results
+              </Button>
+            </div>
+          </div>
+
+          {/* GAME SUMMARY removed per new design; metrics are now in the final score card */}
 
           <h2 className="text-lg font-bold text-history-primary dark:text-history-light mb-4 pl-4">BREAKDOWN</h2>
 
@@ -344,7 +351,7 @@ const FinalResultsPage = () => {
               const result = roundResults?.[index];
               if (!result) return null;
               return (
-                <div key={image.id} className="bg-[#202020] rounded-lg p-2">
+                <div key={image.id} className="bg-[#333333] rounded-lg p-2">
                   <RoundResultCard image={image} result={result} index={index} />
                 </div>
               );
@@ -355,15 +362,13 @@ const FinalResultsPage = () => {
 
       <footer className="fixed bottom-0 left-0 w-full z-50 bg-white/90 dark:bg-gray-900/95 backdrop-blur shadow-[0_-2px_12px_rgba(0,0,0,0.05)] px-4 py-3 flex justify-center items-center border-t border-gray-200 dark:border-gray-700">
         <div className="w-full max-w-md flex items-center justify-between gap-4">
-          <Button onClick={handleShare} variant="outline" size="icon" className="h-12 w-12 rounded-full bg-white text-black hover:bg-gray-100 dark:bg-white dark:hover:bg-gray-100 dark:text-black shadow-md" aria-label="Share your score">
-            <Share2 className="h-5 w-5" />
+          <Button onClick={handleHome} variant="outline" className="gap-2 bg-white text-black hover:bg-gray-100 dark:bg-white dark:hover:bg-gray-100 dark:text-black shadow-md">
+            <Home className="h-5 w-5" />
+            Home
           </Button>
           <Button onClick={handlePlayAgain} className="flex-1 bg-orange-500 text-white hover:bg-orange-600 gap-2 py-6 text-base" size="lg">
             <RefreshCw className="h-5 w-5" />
             Play Again
-          </Button>
-          <Button onClick={handleHome} variant="outline" size="icon" className="h-12 w-12 rounded-full bg-white text-black hover:bg-gray-100 dark:bg-white dark:hover:bg-gray-100 dark:text-black shadow-md" aria-label="Home">
-            <Home className="h-5 w-5" />
           </Button>
         </div>
       </footer>

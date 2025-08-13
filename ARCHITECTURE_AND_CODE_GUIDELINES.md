@@ -557,6 +557,39 @@ UI specifics applied in `HintModalV2New`:
   - Inter-card gap reduced by 15% using arbitrary values:
     - `gap-12 md:gap-20` → `gap-[1.7rem] md:gap-[2.55rem]`.
 
+### Recent UI Enhancements (Final score, Navbar, Map search)
+
+- Final Results Page updates
+  - File: `src/pages/FinalResultsPage.tsx`
+  - Final score card uses `#333333` background; removed orange border.
+  - Added detailed metrics inside the card:
+    - Time Accuracy, Location Accuracy
+    - Avg Years Off, Avg Km Away
+    - Hints Used, Penalty Cost
+  - Added "Share Results" button below the score card.
+  - Removed the separate "GAME SUMMARY" accordion section; kept "BREAKDOWN" label.
+  - Per-round wrappers updated to `bg-[#333333]`.
+  - Bottom navbar simplified: labeled Home button on the left; "Play Again" remains primary; Share moved into the card.
+
+- Top Navbar updates
+  - File: `src/components/navigation/MainNavbar.tsx`
+  - Removed logo; Accuracy and XP badges moved to the left side.
+  - Cleaned duplicate hook variables.
+
+- Global card background color
+  - File: `src/index.css`
+  - Dark theme `--card` variable set to `hsl(0 0% 20%)` (`#333333`) to standardize card backgrounds.
+
+- Game Map search
+  - File: `src/components/HomeMap.tsx`
+  - Added Nominatim-powered search input above the map.
+  - Selecting a result recenters the map, places the marker, and updates `onCoordinatesSelect` and `onLocationSelect`.
+  - Introduced `MapRefSaver` helper (React Leaflet `useMap`) to capture the map instance safely.
+
+- Inline Year editing on Game page
+  - Files: `src/components/game/YearSelector.tsx` (component), used in `src/components/layouts/GameLayout1.tsx`.
+  - YearSelector supports inline editing and is already integrated in the game layout.
+
 ## Immersive Cylindrical Image Viewer
 
 - Component: `src/components/ImmersiveCylViewer.tsx`

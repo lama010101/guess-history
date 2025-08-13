@@ -556,3 +556,31 @@ UI specifics applied in `HintModalV2New`:
   - Top gradient tiles are square (1:1): `h-[13.5rem]`.
   - Inter-card gap reduced by 15% using arbitrary values:
     - `gap-12 md:gap-20` → `gap-[1.7rem] md:gap-[2.55rem]`.
+
+## Immersive Cylindrical Image Viewer
+
+- Component: `src/components/ImmersiveCylViewer.tsx`
+- Purpose: Fullscreen immersive viewer that wraps a standard photo inside a cylinder segment (120–180°) for a spheric feel. Drag to pan with inertia, optional gyroscope control on mobile. Zoom/FOV is locked by admin config.
+- Integration point: `src/components/layouts/GameLayout1.tsx`
+  - Adds an "Immersive" button over the image when enabled.
+  - Renders `<ImmersiveCylViewer />` modal with image URL and admin-configured props.
+- Dependencies: `three` (lazy-loaded at runtime via dynamic import to keep initial bundle small).
+- Props:
+  - `imageUrl: string`
+  - `lockFov?: number` (default 70)
+  - `curvatureDeg?: number` (default 150; total yaw span)
+  - `enableGyro?: boolean` (default true on mobile)
+  - `caption?: string`
+  - `onClose?: () => void`
+- Behavior and implementation notes:
+  - Creates a Three.js scene with `PerspectiveCamera(lockFov)`, a `CylinderGeometry` (backside), and texture-mapped material.
+  - Drag with inertia: pointer events update yaw/pitch and velocity with decay; clamped to ±curvature/2 and ±30° pitch.
+  - Gyroscope: optional; iOS permission flow via `DeviceMotionEvent.requestPermission()`; eased toward device orientation within ±15° tilt.
+  - Accessibility: fullscreen modal `role=dialog`, `aria-modal`, Esc to close, arrow keys to nudge, Shift+Arrows for coarse, `R` to recenter. Zoom gestures are prevented (wheel/gesture events) inside the modal.
+  - Cleanup: cancels RAF, disposes renderer/texture/geometry/material, removes all listeners on unmount.
+- Admin configuration (env-driven feature flag and tuning):
+  - `VITE_IMMERSIVE_ENABLED` (default `true`)
+  - `VITE_IMMERSIVE_LOCKFOV` (default `70`)
+  - `VITE_IMMERSIVE_CURVATURE_DEG` (default `150`)
+  - `VITE_IMMERSIVE_ENABLE_GYRO` (default `true`)
+  - Read in `GameLayout1.tsx` and passed to the component. If disabled, the button and modal are hidden.

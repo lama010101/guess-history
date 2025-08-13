@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import FullscreenZoomableImage from './FullscreenZoomableImage';
+import ImmersiveCylViewer from '@/components/ImmersiveCylViewer';
 import HomeMap from '../HomeMap';
 import GlobalSettingsModal from '@/components/settings/GlobalSettingsModal'; // Import the global settings modal
 import HintModalV2New from '@/components/HintModalV2New';
@@ -76,6 +77,13 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
 }) => {
   const [isImageFullScreen, setIsImageFullScreen] = useState(true);
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
+  const [isImmersiveOpen, setIsImmersiveOpen] = useState(false);
+
+  // Admin-configurable flags via env (fallbacks match spec defaults)
+  const immersiveEnabled = ((import.meta as any).env?.VITE_IMMERSIVE_ENABLED ?? 'true') === 'true';
+  const immersiveLockFov = Number((import.meta as any).env?.VITE_IMMERSIVE_LOCKFOV ?? 70);
+  const immersiveCurvature = Number((import.meta as any).env?.VITE_IMMERSIVE_CURVATURE_DEG ?? 150);
+  const immersiveEnableGyro = ((import.meta as any).env?.VITE_IMMERSIVE_ENABLE_GYRO ?? 'true') === 'true';
 
   const handleImageFullscreen = () => {
     setIsImageFullScreen(true);
@@ -171,6 +179,16 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           className="w-full h-full object-cover"
           skeletonClassName="w-full h-full"
         />
+        {immersiveEnabled && (
+          <button
+            type="button"
+            className="absolute top-3 right-16 z-20 rounded-full bg-white/90 text-black text-sm px-3 py-1 shadow hover:bg-white"
+            onClick={() => setIsImmersiveOpen(true)}
+            aria-label="Open Immersive Viewer"
+          >
+            Immersive
+          </button>
+        )}
         <div className={`hud-element`}>
           <GameOverlayHUD 
             remainingTime={formatTime(remainingTime)}
@@ -203,6 +221,17 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             placeholderUrl: image.firebase_url || image.url
           }}
           onExit={handleExitImageFullscreen}
+        />
+      )}
+
+      {isImmersiveOpen && image && immersiveEnabled && (
+        <ImmersiveCylViewer
+          imageUrl={image.firebase_url || image.url}
+          lockFov={immersiveLockFov}
+          curvatureDeg={immersiveCurvature}
+          enableGyro={immersiveEnableGyro}
+          caption={image.title}
+          onClose={() => setIsImmersiveOpen(false)}
         />
       )}
 

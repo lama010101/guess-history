@@ -590,12 +590,26 @@ UI specifics applied in `HintModalV2New`:
   - Files: `src/components/game/YearSelector.tsx` (component), used in `src/components/layouts/GameLayout1.tsx`.
   - YearSelector supports inline editing and is already integrated in the game layout.
 
+### UI Polishing — When/Where Answers and Headers
+
+- Remove duplicate Where header
+  - Files: `src/components/HomeMap.tsx`, `src/components/game/LocationSelector.tsx`
+  - Added `showHeader?: boolean` prop to `HomeMap` (default `true`). `LocationSelector` passes `showHeader={false}` so only the parent card (`GameLayout1`) renders the Where header.
+
+- Align and style selected location in Where header
+  - File: `src/components/layouts/GameLayout1.tsx`
+  - Tracks `selectedLocationName` from `LocationSelector.onLocationSelect` and displays it right-aligned next to the "Where?" label as orange text without a background.
+
+- Style answers as orange text (no background)
+  - File: `src/components/layouts/ResultsLayout2.tsx`
+  - Replaced badge backgrounds for the correct/guessed year and location with plain orange text (`text-orange-400`) per design.
+  - Also styled the game page When header year display as orange text without background in `GameLayout1.tsx`.
+
 ## Immersive Cylindrical Image Viewer
 
 - Component: `src/components/ImmersiveCylViewer.tsx`
 - Purpose: Fullscreen immersive viewer that wraps a standard photo inside a cylinder segment (120–180°) for a spheric feel. Drag to pan with inertia, optional gyroscope control on mobile. Zoom/FOV is locked by admin config.
 - Integration point: `src/components/layouts/GameLayout1.tsx`
-  - Adds an "Immersive" button over the image when enabled.
   - Renders `<ImmersiveCylViewer />` modal with image URL and admin-configured props.
 - Dependencies: `three` (lazy-loaded at runtime via dynamic import to keep initial bundle small).
 - Props:

@@ -14,8 +14,11 @@ const YearSelector: React.FC<YearSelectorProps> = ({
   yearMarkers,
 }) => {
   const currentYear = new Date().getFullYear();
-  const defaultMarkers = [1850, 1900, 1950, 2000, currentYear];
-  const markers = yearMarkers || defaultMarkers;
+  // Remove 1850 and current year ticks per spec
+  const defaultMarkers = [1900, 1950, 2000];
+  const markers = (yearMarkers || defaultMarkers).filter(
+    (y) => y !== 1850 && y !== currentYear
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [yearInput, setYearInput] = useState(selectedYear.toString());
 
@@ -49,7 +52,34 @@ const YearSelector: React.FC<YearSelectorProps> = ({
 
   return (
     <div className="w-full">
-      {/* Badge is now handled in the parent component */}
+      {/* Editable year display */}
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm text-gray-400">Year</span>
+        {isEditing ? (
+          <input
+            type="number"
+            value={yearInput}
+            onChange={handleInputChange}
+            onBlur={handleInputBlur}
+            onKeyDown={handleKeyDown}
+            className="w-24 bg-transparent border-b border-gray-500 focus:outline-none focus:border-orange-500 text-right text-white"
+            min={1850}
+            max={currentYear}
+            autoFocus
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={handleYearClick}
+            className="text-orange-400 font-semibold hover:underline"
+            aria-label="Edit year"
+            title="Click to edit year"
+          >
+            {selectedYear}
+          </button>
+        )}
+      </div>
+      {/* Slider */}
       <div className="relative mb-6">
         <Slider
           value={[selectedYear]}
@@ -59,12 +89,7 @@ const YearSelector: React.FC<YearSelectorProps> = ({
           onValueChange={(v) => onChange(v[0])}
           className="w-full my-2"
         />
-        <datalist id="year-markers">
-          {markers.map(year => (
-            <option key={year} value={year} />
-          ))}
-        </datalist>
-        
+        {/* Custom tick marks with labels */}
         {/* Custom tick marks with labels */}
         <div className="flex w-full relative mt-0 px-2">
           {markers.map((year, index) => {

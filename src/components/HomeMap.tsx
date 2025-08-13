@@ -14,6 +14,7 @@ interface HomeMapProps {
   avatarUrl?: string;
   onLocationSelect?: (location: string) => void;
   onCoordinatesSelect?: (lat: number, lng: number) => void;
+  showHeader?: boolean;
 }
 
 // Component that handles map click events
@@ -57,7 +58,8 @@ const FullscreenHandler: React.FC = () => {
 const HomeMap: React.FC<HomeMapProps> = ({
   avatarUrl,
   onLocationSelect,
-  onCoordinatesSelect
+  onCoordinatesSelect,
+  showHeader = true
 }) => {
   const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(null);
   const [location, setLocation] = useState<string>('Select a location');
@@ -139,16 +141,18 @@ const HomeMap: React.FC<HomeMapProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex justify-between items-center mb-2">
-        <label className="font-semibold flex items-center text-history-primary dark:text-history-light"><MapPin className="w-4 h-4 mr-1" />WHERE</label>
-        {markerPosition ? (
-          <Badge variant="selectedValue" className="font-medium">
-            {location}
-          </Badge>
-        ) : (
-          <span className="text-muted-foreground text-sm">Select a location on the map</span>
-        )}
-      </div>
+      {showHeader && (
+        <div className="flex justify-between items-center mb-2">
+          <label className="font-semibold flex items-center text-history-primary dark:text-history-light"><MapPin className="w-4 h-4 mr-1" />WHERE</label>
+          {markerPosition ? (
+            <Badge variant="selectedValue" className="font-medium">
+              {location}
+            </Badge>
+          ) : (
+            <span className="text-muted-foreground text-sm">Select a location on the map</span>
+          )}
+        </div>
+      )}
       
       {/* Search input */}
       <div className="mb-2">

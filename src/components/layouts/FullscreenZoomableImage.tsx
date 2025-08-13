@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect, WheelEvent } from "react";
+import { X } from "lucide-react";
 
 interface FullscreenZoomableImageProps {
   image: { url: string; placeholderUrl: string; title: string };
@@ -11,7 +12,7 @@ const ZOOM_STEP = 0.2;
 const WHEEL_ZOOM_FACTOR = 0.1; // Smaller factor for smoother wheel zooming
 
 const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image, onExit }) => {
-  const [zoom, setZoom] = useState(2.5);
+  const [zoom, setZoom] = useState(1.5);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
@@ -309,16 +310,16 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
           }}
         />
       </div>
-      {/* Compact GUESS button (bottom-center, solid orange) */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000]">
+      {/* Close Fullscreen button (bottom-right, orange 60% opaque background) */}
+      <div className="fixed bottom-6 right-6 z-[10000]">
         <button
           onClick={onExit}
-          className="inline-flex items-center justify-center rounded-xl bg-orange-500 text-white font-semibold text-sm px-32 h-[50px] shadow-lg hover:bg-orange-500 active:bg-orange-500 will-change-transform"
+          className="inline-flex items-center justify-center rounded-full bg-orange-500/60 text-white w-12 h-12 shadow-lg hover:bg-orange-500/70 active:bg-orange-500/70"
           style={{ animation: 'attentionPulse 10s ease-in-out infinite' }}
-          aria-label="GUESS"
-          title="GUESS"
+          aria-label="Close fullscreen"
+          title="Close fullscreen"
         >
-          GUESS
+          <X className="w-6 h-6" />
         </button>
         <style>{`
           @keyframes attentionPulse {

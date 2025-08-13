@@ -254,12 +254,14 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   {result.yearDifference === 0 ? <span className="text-green-600 dark:text-green-400 font-medium">Perfect!</span> : `${formatInteger(Math.abs(result.yearDifference))} ${Math.abs(result.yearDifference) === 1 ? 'year' : 'years'} off`}
                 </Badge>
               </div>
-              <div className="flex justify-between text-sm mb-4">
-                <div>
+              <div className="text-sm mb-4">
+                <div className="flex items-center">
                   <span className="text-foreground">Correct: </span>
-                  <Badge variant="selectedValue" className="ml-1 text-xl">{result.eventYear}</Badge>
+                  <span className="ml-2 text-orange-400 font-semibold text-lg">{result.eventYear}</span>
                 </div>
-                <div>Your guess: <span className="font-medium">{result.guessYear}</span></div>
+                <div className="mt-1 text-muted-foreground">
+                  Your guess: <span className="font-semibold text-orange-400">{result.guessYear}</span>
+                </div>
               </div>
               <div className="flex justify-between items-center">
                 <Badge variant="accuracy" className="text-sm flex items-center gap-1">
@@ -287,7 +289,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               </div>
               <div className="flex items-center mb-2">
                 <span className="text-foreground mr-2">Correct:</span>
-                <Badge variant="selectedValue" className="text-base">{result.locationName}</Badge>
+                <span className="text-orange-400 font-semibold">{result.locationName}</span>
               </div>
               <div className="relative h-64 md:h-80 rounded-lg overflow-hidden mb-4 z-0">
                 <MapContainer 

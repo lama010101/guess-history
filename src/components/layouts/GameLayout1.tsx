@@ -12,7 +12,7 @@ import LocationSelector from '@/components/game/LocationSelector';
 import TimerDisplay from '@/components/game/TimerDisplay';
 import LazyImage from '@/components/ui/LazyImage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, MapPin } from 'lucide-react';
+import { Calendar, MapPin, Home } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
@@ -77,6 +77,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
 }) => {
   const [isImageFullScreen, setIsImageFullScreen] = useState(true);
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
+  const [selectedLocationName, setSelectedLocationName] = useState<string | null>(null);
   const [isImmersiveOpen, setIsImmersiveOpen] = useState(false);
 
   // Admin-configurable flags via env (fallbacks match spec defaults)
@@ -179,7 +180,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           className="w-full h-full object-cover"
           skeletonClassName="w-full h-full"
         />
-        {immersiveEnabled && (
+        {immersiveEnabled && false && (
           <button
             type="button"
             className="absolute top-3 right-16 z-20 rounded-full bg-white/90 text-black text-sm px-3 py-1 shadow hover:bg-white"
@@ -238,14 +239,14 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       {/* Input Sections - Full width on mobile, half on desktop */}
       <div className="flex-grow px-2 py-4 md:px-4 lg:px-6 flex flex-col">
         <div className="max-w-5xl mx-auto w-full space-y-4">
-          <Card className="overflow-hidden dark:bg-[#202020]">
+          <Card className="overflow-hidden dark:bg-[#333333]">
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center font-semibold text-history-primary dark:text-history-light">
-                  <Calendar className="w-5 h-5 mr-2" />
-                  <label>WHEN</label>
+                  <Calendar className="w-5 h-5 mr-2 text-gray-400" />
+                  <label>When?</label>
                 </div>
-                <div className="ml-auto px-3 py-1 bg-history-secondary/20 rounded-full text-history-secondary font-medium">{selectedYear}</div>
+                <span className="ml-auto text-orange-400 font-semibold">{selectedYear}</span>
               </div>
               <YearSelector 
                 selectedYear={selectedYear}
@@ -254,30 +255,52 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             </CardContent>
           </Card>
           
-          <Card className="overflow-hidden dark:bg-[#202020]">
+          <Card className="overflow-hidden dark:bg-[#333333]">
             <CardContent className="p-4 lg:min-h-[520px] flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center font-semibold text-history-primary dark:text-history-light">
+                  <MapPin className="w-5 h-5 mr-2 text-gray-400" />
+                  <label>Where?</label>
+                </div>
+                {selectedLocationName && (
+                  <span className="ml-auto text-orange-400 font-semibold truncate max-w-[60%] text-right">
+                    {selectedLocationName}
+                  </span>
+                )}
+              </div>
      
               <LocationSelector 
-                selectedLocation={null} 
-                onLocationSelect={() => {}} 
+                selectedLocation={selectedLocationName}
+                onLocationSelect={(loc) => setSelectedLocationName(loc)} 
                 onCoordinatesSelect={handleCoordinatesSelect}
                 onSubmit={handleSubmitGuess}
                 hasSelectedLocation={!!currentGuess}
                 avatarUrl={avatarUrl}
+                onHome={() => onConfirmNavigation(() => onNavigateHome())}
               />
             </CardContent>
           </Card>
 
           {/* Desktop-only submit button placed outside and below the card */}
-          <div className="hidden lg:block">
+          <div className="hidden lg:flex items-center justify-center gap-3">
+            <Button
+              onClick={() => onConfirmNavigation(() => onNavigateHome())}
+              variant="outline"
+              className="bg-white text-black hover:bg-gray-100 dark:bg-white dark:text-black dark:hover:bg-gray-100 rounded-xl px-6 py-6"
+            >
+              <Home className="h-5 w-5 mr-2" /> Home
+            </Button>
             <Button
               onClick={handleSubmitGuess}
               disabled={!currentGuess}
-              className={`${currentGuess ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-700'} w-full max-w-md mx-auto flex items-center justify-center text-lg font-semibold px-8 py-6 !text-white shadow-lg rounded-xl`}
+              className={`${currentGuess ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-700'} w-full max-w-md flex items-center justify-center text-lg font-semibold px-8 py-6 !text-white shadow-lg rounded-xl`}
             >
               Submit Guess
             </Button>
           </div>
+          {!currentGuess && (
+            <div className="hidden lg:block text-center text-sm text-gray-500 dark:text-gray-400 mt-2">Select a location first</div>
+          )}
         </div>
 
         

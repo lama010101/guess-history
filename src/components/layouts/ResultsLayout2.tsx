@@ -184,7 +184,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
           {/* Left Column */}
           <div className="space-y-6">
             <div className="bg-white dark:bg-[#333333] rounded-2xl shadow-lg p-6 text-center">
-              <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-gray-100">Your Score</h2>
+              <h2 className="text-2xl font-bold mb-1 text-gray-900 dark:text-gray-100">Your Score</h2>
               {(xpDebt > 0 || accDebt > 0) && (
                 <div className="text-xs text-red-500 dark:text-red-500 mb-3">(Hint penalties deducted)</div>
               )}
@@ -251,7 +251,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
           <div className="space-y-6">
             <div className="bg-white dark:bg-[#333333] rounded-2xl shadow-lg p-4">
               <div className="border-b border-border pb-3 mb-3 flex justify-between items-center">
-                <h2 className="font-bold text-lg text-gray-900 dark:text-gray-100 flex items-center">
+                <h2 className="font-normal text-lg text-gray-900 dark:text-gray-100 flex items-center">
                   <Calendar className="mr-2 h-4 w-4" />
                   When
                 </h2>
@@ -259,17 +259,13 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   {result.yearDifference === 0 ? <span className="text-green-600 dark:text-green-400 font-medium">Perfect!</span> : `${formatInteger(Math.abs(result.yearDifference))} ${Math.abs(result.yearDifference) === 1 ? 'year' : 'years'} off`}
                 </Badge>
               </div>
-              <div className="text-sm mb-4">
-                <div className="flex items-center">
-                  <span className="text-foreground">Correct: </span>
-                  <span className="ml-2 text-orange-400 font-semibold text-lg">{result.eventYear}</span>
+              <div className="mt-3">
+                <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
+                  <div className="h-1.5 rounded-full bg-orange-500" style={{ width: `${result.timeAccuracy}%` }} />
                 </div>
-                <div className="flex items-center mt-1">
-                  <span className="text-foreground">Your guess:</span>
-                  <span className="ml-2 font-semibold text-lg text-gray-900 dark:text-white">{result.guessYear}</span>
-                </div>
+                <span className="sr-only">Time accuracy progress</span>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="mt-3 flex justify-between items-center">
                 <Badge variant="accuracy" className="text-sm flex items-center gap-1">
                   <Target className="h-3 w-3" />
                   {result.timeAccuracy.toFixed(0)}%
@@ -281,22 +277,44 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
                 </Badge>
               </div>
-              <div className="mt-3">
-                <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
-                  <div className="h-1.5 rounded-full bg-orange-500" style={{ width: `${result.timeAccuracy}%` }} />
+              <div className="text-sm mb-4 mt-4">
+                <div className="flex items-center">
+                  <span className="text-foreground">Correct: </span>
+                  <span className="ml-2 text-orange-400 font-semibold text-lg">{result.eventYear}</span>
                 </div>
-                <span className="sr-only">Time accuracy progress</span>
+                <div className="flex items-center mt-1">
+                  <span className="text-foreground">Your guess:</span>
+                  <span className="ml-2 text-lg text-gray-900 dark:text-white">{result.guessYear}</span>
+                </div>
               </div>
             </div>
 
             <div className="bg-white dark:bg-[#333333] rounded-2xl shadow-lg p-4">
               <div className="border-b border-border pb-3 mb-3 flex justify-between items-center">
-                <h2 className="font-bold text-lg text-gray-900 dark:text-gray-100 flex items-center">
+                <h2 className="font-normal text-lg text-gray-900 dark:text-gray-100 flex items-center">
                   <MapPin className="mr-2 h-4 w-4" />
                   Where
                 </h2>
                 <Badge variant="hint" className="text-sm">
                   {formatInteger(result.distanceKm)} km off
+                </Badge>
+              </div>
+              <div className="mt-3">
+                <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
+                  <div className="h-1.5 rounded-full bg-orange-500" style={{ width: `${result.locationAccuracy}%` }} />
+                </div>
+                <span className="sr-only">Location accuracy progress</span>
+              </div>
+              <div className="mt-3 flex justify-between items-center">
+                <Badge variant="accuracy" className="text-sm flex items-center gap-1">
+                  <Target className="h-3 w-3" />
+                  {result.locationAccuracy.toFixed(0)}%
+
+                </Badge>
+                <Badge variant="xp" className="text-sm flex items-center gap-1">
+                  <Zap className="h-3 w-3" />
+                  +{formatInteger(result.xpWhere)} XP
+
                 </Badge>
               </div>
               <div className="flex items-center mb-2">
@@ -353,24 +371,6 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   )}
                   <MapBoundsUpdater bounds={bounds} />
                 </MapContainer>
-              </div>
-              <div className="flex justify-between items-center">
-                <Badge variant="accuracy" className="text-sm flex items-center gap-1">
-                  <Target className="h-3 w-3" />
-                  {result.locationAccuracy.toFixed(0)}%
-
-                </Badge>
-                <Badge variant="xp" className="text-sm flex items-center gap-1">
-                  <Zap className="h-3 w-3" />
-                  +{formatInteger(result.xpWhere)} XP
-
-                </Badge>
-              </div>
-              <div className="mt-3">
-                <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
-                  <div className="h-1.5 rounded-full bg-orange-500" style={{ width: `${result.locationAccuracy}%` }} />
-                </div>
-                <span className="sr-only">Location accuracy progress</span>
               </div>
             </div>
 

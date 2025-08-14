@@ -431,12 +431,17 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
 
 - Game page
   - `src/components/navigation/GameOverlayHUD.tsx`: Centered score badges in top overlay; hide Home button on mobile.
-  - `src/components/layouts/GameLayout1.tsx`: Moved mobile Home button under When card; pushed `YearSelector` to card bottom; set When/Where icons to light grey; restored 1s highlight animation on exit fullscreen.
+  - `src/components/layouts/GameLayout1.tsx`: Mobile Home button moved to the bottom navbar (removed from the When card); pushed `YearSelector` to card bottom; set When/Where icons to light grey; restored 1s highlight animation on exit fullscreen.
   - `src/components/layouts/GameLayout2.tsx`: Set When/Where icons to light grey.
+  - 2025-08-14 refinements:
+    - `src/components/layouts/GameLayout1.tsx`: Tightened When card height (`min-h` reduced), inline year input is always visible with an underline even before selection; widened to `~6ch` with padding to avoid digit clipping; Submit Guess is disabled until both year and location are selected; desktop and mobile Home buttons use black text on `#999999` background.
+    - `src/components/game/YearSelector.tsx`: `selectedYear` is optional; when `null/undefined`, the knob is centered (midpoint) without setting a default year; `onChange` only fires on user interaction.
+    - `src/components/game/LocationSelector.tsx`: Map container made flexible (`flex-1 min-h-[300px]`) so the map is visible on mobile and grows on desktop.
+    - Disabled Submit guidance: When the Submit button is disabled, clicking on it shows a contextual message above the button — “Select a location first” (no map guess) or “Select a year first” (invalid/missing year). The message clears automatically when inputs become valid. Applies to both desktop (bottom action row) and mobile bottom navbar.
 
 - Round Results page
   - `src/components/results/ResultsHeader.tsx`: Round text weight set to normal.
-  - `src/components/layouts/ResultsLayout2.tsx`: Reduced spacing under "Your Score"; labels (Accuracy/Experience) moved above values; matched "Your guess" styling to "Correct:"; removed in-layout bottom Next Round buttons.
+  - `src/components/layouts/ResultsLayout2.tsx`: Progress bars are directly under the When/Where titles; % and XP badges sit below the bars; reduced spacing under "Your Score"; labels (Accuracy/Experience) moved above values; matched "Your guess" styling to "Correct:"; removed in-layout bottom Next Round buttons.
   - `src/components/results/HintDebtsCard.tsx`: Removed border; maintain dark background.
   - `src/pages/RoundResultsPage.tsx`: Made top Next Round button more compact (kept rounded-xl per standard).
 
@@ -448,6 +453,17 @@ Notes: All changes maintain dark mode styling and Montserrat typography. See com
   - File: `src/layouts/TestLayout.tsx`
   - Moved centered `Logo` out of the navbar for Home only. Left side shows global scores (Accuracy, XP). Right side shows profile (`NavProfile`).
   - Other routes keep their existing navbar layout.
+
+### UI Adjustments — Corrections (2025-08-14)
+
+- Game page
+  - File: `src/components/layouts/GameLayout1.tsx`
+  - Removed animation on When/Where cards after exiting fullscreen (dropped `animate-pulse`). A brief non-animated ring highlight may still apply for 1s.
+  - Updated labels to normal text and punctuation: “When?” and “Where?”.
+
+- Round score
+  - Files: `src/components/layouts/ResultsLayout2.tsx`, `src/components/results/TimeAccuracyCard.tsx`
+  - Set the “Your guess” year text to regular weight (removed bold/semibold classes).
 
 - Logo text
   - File: `src/components/Logo.tsx`

@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { Slider } from "@/components/ui/slider";
 
 interface YearSelectorProps {
-  selectedYear: number;
+  selectedYear?: number | null;
   onChange: (year: number) => void;
   onFirstInteract?: () => void;
 }
@@ -11,13 +11,14 @@ const YearSelector: React.FC<YearSelectorProps> = ({ selectedYear, onChange, onF
   const minYear = 1850;
   const maxYear = 2025;
   const hasInteractedRef = useRef(false);
+  const mid = Math.round((minYear + maxYear) / 2);
 
   return (
     <div className="w-full">
       {/* Slider only */}
-      <div className="relative mb-6">
+      <div className="relative mb-0">
         <Slider
-          value={[selectedYear]}
+          value={[selectedYear ?? mid]}
           min={minYear}
           max={maxYear}
           step={1}
@@ -28,10 +29,10 @@ const YearSelector: React.FC<YearSelectorProps> = ({ selectedYear, onChange, onF
             }
             onChange(v[0]);
           }}
-          className="w-full my-2"
+          className="w-full my-0"
         />
         {/* Endpoint labels without ticks */}
-        <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400 px-1 mt-1 select-none">
+        <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400 px-1 mt-2 select-none">
           <span>{minYear}</span>
           <span>{maxYear}</span>
         </div>

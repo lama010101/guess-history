@@ -84,11 +84,14 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const [yearInput, setYearInput] = useState<string>(String(selectedYear));
   // Track if the slider has been interacted with; controls showing the year
   const [yearInteracted, setYearInteracted] = useState(false);
-  // Track whether to show the 'Select a location first' prompt after a failed submit
-  const [showSelectLocationPrompt, setShowSelectLocationPrompt] = useState(false);
+  // Submit guidance message shown only when clicking a disabled Submit button
+  const [submitPrompt, setSubmitPrompt] = useState<string | null>(null);
   useEffect(() => {
-    setYearInput(String(selectedYear));
-  }, [selectedYear]);
+    // Only sync input from selectedYear after interaction; keep empty initially
+    if (yearInteracted) {
+      setYearInput(String(selectedYear));
+    }
+  }, [selectedYear, yearInteracted]);
 
   // Admin-configurable flags via env (fallbacks match spec defaults)
   const immersiveEnabled = ((import.meta as any).env?.VITE_IMMERSIVE_ENABLED ?? 'true') === 'true';
@@ -111,6 +114,15 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const game = useGame();
   const { totalGameAccuracy, totalGameXP, roundTimerSec, timerEnabled } = game;
+  const parsedYear = parseInt(yearInput, 10);
+  const isYearValid = !isNaN(parsedYear) && parsedYear >= 1850 && parsedYear <= 2025;
+  const isYearSelected = isYearValid; // only valid numeric year counts as selected
+  const isSubmitEnabled = !!currentGuess && isYearSelected;
+
+  // Clear the submit guidance when inputs become valid
+  useEffect(() => {
+    if (isSubmitEnabled) setSubmitPrompt(null);
+  }, [isSubmitEnabled]);
 
   // V2 hint system
   
@@ -161,15 +173,22 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   };
 
   const handleSubmitGuess = () => {
-    if (!currentGuess) {
-      console.error('No location selected');
-      setShowSelectLocationPrompt(true);
-      return;
-    }
-    
+    // With disabled overlay, this should only run when enabled
     // Call the parent's onComplete if it exists
     if (onComplete) {
       onComplete();
+    }
+  };
+
+  // When clicking on disabled Submit area, show a contextual prompt above the button
+  const handleDisabledSubmitClick = () => {
+    if (isSubmitEnabled) return;
+    if (!currentGuess) {
+      setSubmitPrompt('Select a location first');
+      return;
+    }
+    if (!isYearSelected) {
+      setSubmitPrompt('Select a year first');
     }
   };
 
@@ -250,67 +269,62 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
 
       {/* Input Sections - Full width on mobile, half on desktop */}
       <div className="flex-grow px-2 py-4 md:px-4 lg:px-6 flex flex-col">
-        <div className="max-w-5xl mx-auto w-full space-y-4">
-          <Card className={cn("overflow-hidden dark:bg-[#333333]", highlightInputs && "ring-2 ring-orange-500 animate-pulse")}> 
-            <CardContent className="p-4 flex flex-col">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="font-bold text-lg text-gray-900 dark:text-gray-100 flex items-center">
+        <div className="max-w-5xl mx-auto w-full space-y-4 flex flex-col h-full">
+          <Card className={cn("overflow-hidden dark:bg-[#333333]", highlightInputs && "ring-2 ring-orange-500")}> 
+            <CardContent className="px-4 pt-3 pb-1 flex flex-col min-h-[7.5rem] md:min-h-[9rem]">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="font-normal text-base text-gray-900 dark:text-gray-100 flex items-center">
                   <Calendar className="mr-2 h-4 w-4 text-gray-400" />
-                  When
+                  When?
                 </h2>
-                {/* Editable year aligned with title, no 'year' text label */}
-                {yearInteracted && (
-                  <input
-                    type="number"
-                    value={yearInput}
-                    onChange={(e) => setYearInput(e.target.value)}
-                    onBlur={() => {
-                      const parsed = parseInt(yearInput, 10);
-                      const clamped = isNaN(parsed) ? selectedYear : Math.max(1850, Math.min(2025, parsed));
+                {/* Inline year input: always visible with underline; empty until selected */}
+                <input
+                  type="number"
+                  value={yearInteracted ? yearInput : ''}
+                  onChange={(e) => setYearInput(e.target.value)}
+                  onBlur={() => {
+                    const parsed = parseInt(yearInput, 10);
+                    if (!isNaN(parsed)) {
+                      const clamped = Math.max(1850, Math.min(2025, parsed));
                       if (clamped !== selectedYear) onYearChange(clamped);
                       setYearInput(String(clamped));
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        (e.currentTarget as HTMLInputElement).blur();
-                      } else if (e.key === 'Escape') {
-                        setYearInput(String(selectedYear));
-                        (e.currentTarget as HTMLInputElement).blur();
-                      }
-                    }}
-                    className="ml-auto w-24 bg-transparent border-b border-gray-500 focus:outline-none focus:border-orange-500 text-right text-orange-400 font-semibold"
-                    min={1850}
-                    max={2025}
-                    aria-label="Edit year"
-                  />
-                )}
+                    } else {
+                      // keep empty, not selected
+                      setYearInput('');
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      (e.currentTarget as HTMLInputElement).blur();
+                    } else if (e.key === 'Escape') {
+                      setYearInput('');
+                      (e.currentTarget as HTMLInputElement).blur();
+                    }
+                  }}
+                  placeholder=""
+                  className="ml-auto w-[6ch] px-1 bg-transparent border-b border-gray-500 focus:outline-none focus:border-orange-500 text-center text-orange-400 font-semibold"
+                  min={1850}
+                  max={2025}
+                  aria-label="Edit year"
+                />
               </div>
-              <div className="flex-1 flex items-end">
+              <div className="flex-1 flex items-center justify-center">
                 <YearSelector 
-                  selectedYear={selectedYear}
-                  onChange={(y) => onYearChange(y)}
+                  selectedYear={yearInteracted ? selectedYear : null}
+                  onChange={(y) => { onYearChange(y); setYearInteracted(true); setYearInput(String(y)); }}
                   onFirstInteract={() => setYearInteracted(true)}
                 />
               </div>
-              {/* Mobile-only Home button under When card */}
-              <div className="lg:hidden mt-3">
-                <Button
-                  onClick={() => onConfirmNavigation(() => onNavigateHome())}
-                  variant="outline"
-                  className="w-full bg-white text-black hover:bg-gray-100 dark:bg-white dark:text-black dark:hover:bg-gray-100 rounded-xl px-6 py-6"
-                >
-                  <Home className="w-5 h-5 mr-2" /> Home
-                </Button>
-              </div>
+              
             </CardContent>
           </Card>
 
-          <Card className={cn("overflow-hidden dark:bg-[#333333]", highlightInputs && "ring-2 ring-orange-500 animate-pulse")}>
-            <CardContent className="p-4 flex flex-col justify-between">
+          <Card className={cn("overflow-hidden dark:bg-[#333333] flex-1", highlightInputs && "ring-2 ring-orange-500")}> 
+            <CardContent className="p-4 flex flex-col h-full">
               <div className="flex items-center justify-between mb-2">
-                <h2 className="font-bold text-lg text-gray-900 dark:text-gray-100 flex items-center">
+                <h2 className="font-normal text-base text-gray-900 dark:text-gray-100 flex items-center">
                   <MapPin className="mr-2 h-4 w-4 text-gray-400" />
-                  Where
+                  Where?
                 </h2>
                 {selectedLocationName && (
                   <span className="ml-auto text-orange-400 font-semibold truncate max-w-[60%] text-right">
@@ -319,27 +333,26 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                 )}
               </div>
      
-              <LocationSelector 
-                selectedLocation={selectedLocationName}
-                onLocationSelect={(loc) => setSelectedLocationName(loc)} 
-                onCoordinatesSelect={handleCoordinatesSelect}
-                onSubmit={handleSubmitGuess}
-                hasSelectedLocation={!!currentGuess}
-                avatarUrl={avatarUrl}
-                onHome={() => onConfirmNavigation(() => onNavigateHome())}
-              />
-              {showSelectLocationPrompt && !currentGuess && (
-                <div className="mt-2 text-center text-sm text-gray-500 dark:text-gray-400">Select a location first</div>
-              )}
+              <div className="flex-1 min-h-[300px] flex flex-col">
+                <LocationSelector 
+                  selectedLocation={selectedLocationName}
+                  onLocationSelect={(loc) => setSelectedLocationName(loc)} 
+                  onCoordinatesSelect={handleCoordinatesSelect}
+                  onSubmit={handleSubmitGuess}
+                  hasSelectedLocation={!!currentGuess}
+                  avatarUrl={avatarUrl}
+                  onHome={() => onConfirmNavigation(() => onNavigateHome())}
+                />
+              </div>
             </CardContent>
           </Card>
 
           {/* Desktop-only bottom actions: Home, Hints, Submit */}
-          <div className="hidden lg:flex items-center justify-center gap-3">
+          <div className="hidden lg:flex items-center justify-center gap-3 mt-auto">
             <Button
               onClick={() => onConfirmNavigation(() => onNavigateHome())}
               variant="outline"
-              className="bg-white text-black hover:bg-gray-100 dark:bg-white dark:text-black dark:hover:bg-gray-100 rounded-xl px-6 py-6"
+              className="bg-[#999999] text-black hover:bg-[#8a8a8a] dark:bg-[#999999] dark:text-black dark:hover:bg-[#8a8a8a] rounded-xl px-6 py-6 text-lg font-semibold"
             >
               <Home className="h-5 w-5 mr-2" /> Home
             </Button>
@@ -351,35 +364,65 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
               <span>Hints</span>
               <span className="ml-2 inline-flex items-center rounded-full bg-black text-white text-xs px-2 py-0.5">{purchasedHintIds.length}/14</span>
             </Button>
-            <Button
-              onClick={handleSubmitGuess}
-              className={`${currentGuess ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-700'} w-full max-w-md flex items-center justify-center text-lg font-semibold px-8 py-6 !text-white shadow-lg rounded-xl`}
-            >
-              <Send className="h-5 w-5 mr-2" /> Submit Guess
-            </Button>
+            <div className="relative">
+              {submitPrompt && !isSubmitEnabled && (
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-sm text-gray-600 dark:text-gray-300">
+                  {submitPrompt}
+                </div>
+              )}
+              <Button
+                onClick={handleSubmitGuess}
+                disabled={!isSubmitEnabled}
+                className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-400 cursor-not-allowed opacity-70'} w-full max-w-md flex items-center justify-center text-lg font-semibold px-8 py-6 !text-white shadow-lg rounded-xl`}
+              >
+                <Send className="h-5 w-5 mr-2" /> Submit Guess
+              </Button>
+              {!isSubmitEnabled && (
+                <div className="absolute inset-0" onClick={handleDisabledSubmitClick} aria-hidden="true" />
+              )}
+            </div>
           </div>
         </div>
 
         
       </div>
 
-      {/* Mobile bottom navbar: Hints (25%) + Submit (75%), no Home */}
+      {/* Mobile bottom navbar: Home + Hints + Submit */}
       <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-[#1f1f1f]/95 backdrop-blur border-t border-gray-200 dark:border-gray-700 p-2 flex items-center gap-2">
         <Button
+          onClick={() => onConfirmNavigation(() => onNavigateHome())}
+          variant="outline"
+          className="h-12 w-12 rounded-full bg-[#999999] text-black hover:bg-[#8a8a8a] dark:bg-[#999999] dark:text-black dark:hover:bg-[#8a8a8a]"
+          aria-label="Go Home"
+          title="Return to Home"
+        >
+          <Home className="h-5 w-5" />
+        </Button>
+        <Button
           onClick={handleHintClick}
-          className="basis-1/4 shrink-0 grow-0 h-12 rounded-xl bg-white text-black hover:bg-gray-100 dark:bg-white dark:text-black dark:hover:bg-gray-100 text-base font-semibold"
+          className="flex-1 h-12 rounded-xl bg-white text-black hover:bg-gray-100 dark:bg-white dark:text-black dark:hover:bg-gray-100 text-lg font-semibold"
         >
           <span>Hints</span>
           <span className="ml-2 inline-flex items-center rounded-full bg-black text-white text-xs px-2 py-0.5">{purchasedHintIds.length}/14</span>
         </Button>
-        <Button
-          onClick={handleSubmitGuess}
-          className={`${currentGuess ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-700'} basis-3/4 h-12 rounded-xl text-white text-base font-semibold flex items-center justify-center`}
-        >
-          <Send className="h-5 w-5 mr-2" /> Submit Guess
-        </Button>
+        <div className="relative flex-[2]">
+          {submitPrompt && !isSubmitEnabled && (
+            <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-sm text-gray-600 dark:text-gray-300">
+              {submitPrompt}
+            </div>
+          )}
+          <Button
+            onClick={handleSubmitGuess}
+            disabled={!isSubmitEnabled}
+            className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-400 cursor-not-allowed opacity-70'} h-12 w-full rounded-xl text-white text-lg font-semibold flex items-center justify-center`}
+          >
+            <Send className="h-5 w-5 mr-2" /> Submit Guess
+          </Button>
+          {!isSubmitEnabled && (
+            <div className="absolute inset-0" onClick={handleDisabledSubmitClick} aria-hidden="true" />
+          )}
+        </div>
       </div>
-
       {/* V2 Hint Modal */}
       <HintModalV2New
         isOpen={isHintModalV2Open}

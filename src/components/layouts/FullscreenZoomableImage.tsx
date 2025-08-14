@@ -348,8 +348,8 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   
   // Reset pan/zoom on open/close and handle image preloading
   useEffect(() => {
-    // Default zoom at 150%
-    setZoom(1.5);
+    // Default zoom at 100%
+    setZoom(1);
     setOffset({ x: 0, y: 0 });
     setIsLoading(true);
     setImageError(false);
@@ -473,6 +473,18 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000]">
         <button
           onClick={onExit}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+          }}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+          }}
+          onTouchStart={(e) => {
+            e.stopPropagation();
+          }}
+          onTouchEnd={(e) => {
+            e.stopPropagation();
+          }}
           className="inline-flex items-center justify-center rounded-full bg-orange-500/60 text-white w-12 h-12 shadow-lg hover:bg-orange-500/70 active:bg-orange-500/70"
           style={{ animation: 'attentionPulse 10s ease-in-out infinite' }}
           aria-label="Exit fullscreen"

@@ -17,10 +17,6 @@ jest.mock('@/components/StatsDisplay', () => ({
   StatsDisplay: () => <div data-testid="stats-display">StatsDisplay</div>
 }));
 
-jest.mock('@/components/Logo', () => ({
-  __esModule: true,
-  default: () => <div data-testid="logo">Logo</div>
-}));
 
 describe('TestLayout', () => {
   const mockGameContextValue = {
@@ -43,7 +39,7 @@ describe('TestLayout', () => {
     fetchGlobalMetrics: jest.fn()
   };
 
-  it('shows logo and StatsDisplay on non-game pages', () => {
+  it('shows StatsDisplay on non-game pages', () => {
     render(
       <GameContext.Provider value={mockGameContextValue}>
         <MemoryRouter initialEntries={['/test']}>
@@ -56,7 +52,7 @@ describe('TestLayout', () => {
       </GameContext.Provider>
     );
 
-    expect(screen.getByTestId('logo')).toBeInTheDocument();
+    // Logo removed; ensure layout renders without logo
     expect(screen.getByTestId('stats-display')).toBeInTheDocument();
     expect(screen.queryByText(/Score for this game/i)).not.toBeInTheDocument();
   });
@@ -74,7 +70,7 @@ describe('TestLayout', () => {
       </GameContext.Provider>
     );
 
-    expect(screen.queryByTestId('logo')).not.toBeInTheDocument();
+    // Logo removed; ensure no logo in game pages
     expect(screen.queryByTestId('stats-display')).not.toBeInTheDocument();
     expect(screen.getByText(/Score for this game/i)).toBeInTheDocument();
     expect(screen.getByText('75%')).toBeInTheDocument();
@@ -101,7 +97,7 @@ describe('TestLayout', () => {
     expect(screen.getByText('1500')).toBeInTheDocument();
   });
 
-  it('shows logo and StatsDisplay on final-results page', () => {
+  it('shows StatsDisplay on final-results page', () => {
     render(
       <GameContext.Provider value={mockGameContextValue}>
         <MemoryRouter initialEntries={['/test/final-results']}>

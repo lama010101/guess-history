@@ -26,13 +26,13 @@ export interface RoundResult {
   locationName: string;
   
   // User guess data
-  guessYear: number;
-  guessLat: number;
-  guessLng: number;
+  guessYear: number | null;
+  guessLat: number | null;
+  guessLng: number | null;
   
   // Calculated results
-  distanceKm: number;
-  yearDifference: number;
+  distanceKm: number | null;
+  yearDifference: number | null;
   locationAccuracy: number;
   timeAccuracy: number;
   xpWhere: number;

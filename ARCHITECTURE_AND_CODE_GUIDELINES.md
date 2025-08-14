@@ -277,6 +277,35 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
     - Rate button in `RoundResultsPage.tsx`.
   - Round header text size reduced by one step (Tailwind `text-lg`) in `src/components/results/ResultsHeader.tsx`.
   - Home button remains light grey and consistently styled across pages.
+  
+  - When card and Where card affordances:
+    - When the year is not selected, the inline year input on the `When?` card shows placeholder text "Year".
+    - When the location is not selected, the trailing label on the `Where?` card shows italic placeholder text "Location".
+    - Add a small spacer below the `Where?` card for breathing room on the page (`<div class="h-6" aria-hidden>`), placed after the card.
+
+## Game Round Validation and Alerts
+
+- **No default year selected**
+  - `selectedYear` is `number | null` in `src/pages/GameRoundPage.tsx` and `src/components/layouts/GameLayout1.tsx` (`GameLayout1Props`).
+  - `YearSelector` in `src/components/game/YearSelector.tsx` accepts `number | null`. Before first interaction, `GameLayout1` passes `null` so the inline year input shows empty while the slider renders without committing a value.
+  - `GameLayout1` tracks `yearInteracted` to avoid syncing a year into the inline input until the user interacts.
+
+- **Disabled Submit alerts (GameLayout1.handleDisabledSubmitClick)**
+  - Neither year nor location: "You must guess a year and location"
+  - Location only: "You must guess the location"
+  - Year only: "You must guess the year"
+  - Delivery: shown as a toast notification (destructive variant) when the disabled Submit area is clicked.
+
+- **Manual submit guards (GameRoundPage.handleSubmitGuess)**
+  - Rejects submit if `selectedYear === null`.
+  - Rejects submit if no location guess is present.
+  - Uses toast errors; Submit button is only enabled when both inputs are valid.
+
+- **Timer timeout behavior (GameRoundPage.handleTimeComplete)**
+  - No location selected: records round with `score: 0`, `guessYear: null` and navigates to results.
+  - Location selected but no year: records round with `score: 0`, `guessYear: null` and navigates to results.
+  - Both selected: calculates score normally and records result.
+  - `GameLayout1` wires `onTimeout` to `handleTimeComplete` so HUD-driven timeouts enforce these rules.
 
 ## Migration Guide
   

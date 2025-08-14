@@ -256,7 +256,11 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   When
                 </h2>
                 <Badge variant="hint" className="text-sm">
-                  {result.yearDifference === 0 ? <span className="text-green-600 dark:text-green-400 font-medium">Perfect!</span> : `${formatInteger(Math.abs(result.yearDifference))} ${Math.abs(result.yearDifference) === 1 ? 'year' : 'years'} off`}
+                  {result?.guessYear == null
+                    ? 'No guess'
+                    : (result.yearDifference === 0
+                        ? <span className="text-green-600 dark:text-green-400 font-medium">Perfect!</span>
+                        : `${formatInteger(Math.abs(result.yearDifference))} ${Math.abs(result.yearDifference) === 1 ? 'year' : 'years'} off`)}
                 </Badge>
               </div>
               {/* badges moved below progress bar */}
@@ -267,7 +271,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                 </div>
                 <div className="flex items-center mt-1">
                   <span className="text-foreground">Your guess:</span>
-                  <span className="ml-2 text-gray-900 dark:text-white">{result.guessYear}</span>
+                  <span className="ml-2 text-gray-900 dark:text-white">{result?.guessYear == null ? 'No guess' : result.guessYear}</span>
                 </div>
               </div>
               <div className="mt-4">
@@ -297,7 +301,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   Where
                 </h2>
                 <Badge variant="hint" className="text-sm">
-                  {formatInteger(result.distanceKm)} km off
+                  {result?.distanceKm == null ? 'No guess' : `${formatInteger(result.distanceKm)} km away`}
                 </Badge>
               </div>
               {/* badges moved below progress bar */}

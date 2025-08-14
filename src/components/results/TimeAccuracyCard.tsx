@@ -3,8 +3,8 @@ import React from 'react';
 import { Calendar } from "lucide-react";
 
 interface TimeAccuracyCardProps {
-  yearDifference: number;
-  guessYear: number;
+  yearDifference: number | null;
+  guessYear: number | null;
   eventYear: number;
   timeAccuracy: number;
   timeDifferenceDesc: string;
@@ -27,19 +27,24 @@ const TimeAccuracyCard: React.FC<TimeAccuracyCardProps> = ({
           Time Accuracy
         </h2>
         <div className="px-3 py-1 rounded-full bg-history-primary/10 text-history-primary dark:bg-history-primary/20 dark:text-history-light text-sm">
-          {Math.round(yearDifference)} years off
+          {yearDifference == null ? 'No guess' : `${Math.round(yearDifference)} years off`}
         </div>
       </div>
       
       <div className="flex justify-between text-sm mb-4">
-        <div>Your guess: <span className="text-gray-900 dark:text-white">{Math.round(guessYear)}</span></div>
+        <div>
+          Your guess: {guessYear == null 
+            ? <span className="italic text-muted-foreground">No guess</span>
+            : <span className="text-gray-900 dark:text-white">{Math.round(guessYear)}</span>
+          }
+        </div>
         <div>Actual: <span className="font-medium">{Math.round(eventYear)}</span></div>
       </div>
       
       <div className="relative h-4 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
         <div 
           className="absolute top-0 left-0 h-full bg-history-primary" 
-          style={{ width: `${Math.round(timeAccuracy)}%` }}
+          style={{ width: `${Math.round(guessYear == null ? 0 : timeAccuracy)}%` }}
         />
       </div>
       

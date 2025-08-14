@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, MapPin, Home, Send } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
 
 // Helper function to format time as MM:SS
 const formatTime = (seconds: number): string => {
@@ -33,7 +34,7 @@ export interface GameLayout1Props {
   image: GameImage | null;
   onMapGuess: (lat: number, lng: number) => void;
   initialGuess?: GuessCoordinates | null;
-  selectedYear: number;
+  selectedYear: number | null;
   onYearChange: (year: number) => void;
   remainingTime: number;
   setRemainingTime: React.Dispatch<React.SetStateAction<number>>;
@@ -81,7 +82,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const [isImmersiveOpen, setIsImmersiveOpen] = useState(false);
   const [highlightInputs, setHighlightInputs] = useState(false);
   // Inline editable year input state for header
-  const [yearInput, setYearInput] = useState<string>(String(selectedYear));
+  const [yearInput, setYearInput] = useState<string>('');
   // Track if the slider has been interacted with; controls showing the year
   const [yearInteracted, setYearInteracted] = useState(false);
   // Submit guidance message shown only when clicking a disabled Submit button
@@ -89,7 +90,11 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   useEffect(() => {
     // Only sync input from selectedYear after interaction; keep empty initially
     if (yearInteracted) {
-      setYearInput(String(selectedYear));
+      if (typeof selectedYear === 'number') {
+        setYearInput(String(selectedYear));
+      } else {
+        setYearInput('');
+      }
     }
   }, [selectedYear, yearInteracted]);
 
@@ -113,6 +118,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const [isHintModalV2Open, setIsHintModalV2Open] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const game = useGame();
+  const { toast } = useToast();
   const { totalGameAccuracy, totalGameXP, roundTimerSec, timerEnabled } = game;
   const parsedYear = parseInt(yearInput, 10);
   const isYearValid = !isNaN(parsedYear) && parsedYear >= 1850 && parsedYear <= 2025;
@@ -180,15 +186,21 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
     }
   };
 
-  // When clicking on disabled Submit area, show a contextual prompt above the button
+  // When clicking on disabled Submit area, show a toast with guidance
   const handleDisabledSubmitClick = () => {
     if (isSubmitEnabled) return;
-    if (!currentGuess) {
-      setSubmitPrompt('Select a location first');
-      return;
+    const missingLocation = !currentGuess;
+    const missingYear = !isYearSelected;
+    let msg = '';
+    if (missingLocation && missingYear) {
+      msg = 'You must guess a year and location';
+    } else if (missingLocation) {
+      msg = 'You must guess the location';
+    } else if (missingYear) {
+      msg = 'You must guess the year';
     }
-    if (!isYearSelected) {
-      setSubmitPrompt('Select a year first');
+    if (msg) {
+      toast({ title: msg, variant: 'destructive' });
     }
   };
 
@@ -277,7 +289,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                   <Calendar className="mr-2 h-4 w-4 text-gray-400" />
                   When?
                 </h2>
-                {/* Inline year input: always visible with underline; empty until selected */}
+                {/* Inline year input: empty until selected; shows placeholder "Year" */}
                 <input
                   type="number"
                   value={yearInteracted ? yearInput : ''}
@@ -301,8 +313,15 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                       (e.currentTarget as HTMLInputElement).blur();
                     }
                   }}
-                  placeholder=""
-                  className="ml-auto w-[6ch] px-1 bg-transparent border-b border-gray-500 focus:outline-none focus:border-orange-500 text-center text-orange-400 font-semibold"
+                  placeholder="Year"
+                  className={
+                    cn(
+                      "ml-auto w-[6ch] px-1 bg-transparent border-b border-gray-500 focus:outline-none focus:border-orange-500 text-center",
+                      yearInteracted && yearInput !== ''
+                        ? "text-orange-400 font-semibold"
+                        : "text-gray-400 italic font-normal"
+                    )
+                  }
                   min={1850}
                   max={2025}
                   aria-label="Edit year"
@@ -315,9 +334,11 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                   onFirstInteract={() => setYearInteracted(true)}
                 />
               </div>
-              
             </CardContent>
           </Card>
+
+          {/* Spacer below Where card to add empty space */}
+          <div className="h-6" aria-hidden="true" />
 
           <Card className={cn("overflow-hidden dark:bg-[#333333] flex-1", highlightInputs && "ring-2 ring-orange-500")}> 
             <CardContent className="p-4 flex flex-col h-full">
@@ -326,9 +347,13 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                   <MapPin className="mr-2 h-4 w-4 text-gray-400" />
                   Where?
                 </h2>
-                {selectedLocationName && (
+                {selectedLocationName ? (
                   <span className="ml-auto text-orange-400 font-semibold truncate max-w-[60%] text-right">
                     {selectedLocationName}
+                  </span>
+                ) : (
+                  <span className="ml-auto text-gray-400 italic truncate max-w-[60%] text-right">
+                    Location
                   </span>
                 )}
               </div>
@@ -365,11 +390,6 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
               <span className="ml-2 inline-flex items-center rounded-full bg-black text-white text-xs px-2 py-0.5">{purchasedHintIds.length}/14</span>
             </Button>
             <div className="relative">
-              {submitPrompt && !isSubmitEnabled && (
-                <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-sm text-gray-600 dark:text-gray-300">
-                  {submitPrompt}
-                </div>
-              )}
               <Button
                 onClick={handleSubmitGuess}
                 disabled={!isSubmitEnabled}
@@ -406,11 +426,6 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           <span className="ml-2 inline-flex items-center rounded-full bg-black text-white text-xs px-2 py-0.5">{purchasedHintIds.length}/14</span>
         </Button>
         <div className="relative flex-[2]">
-          {submitPrompt && !isSubmitEnabled && (
-            <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-sm text-gray-600 dark:text-gray-300">
-              {submitPrompt}
-            </div>
-          )}
           <Button
             onClick={handleSubmitGuess}
             disabled={!isSubmitEnabled}

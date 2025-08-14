@@ -22,8 +22,6 @@ import { RoundResult as LayoutRoundResultType } from '@/utils/resultsFetching';
 import { supabase } from '@/integrations/supabase/client';
 // Import standardized scoring system
 import { 
-  MAX_DIST_KM,
-  MAX_TIME_DIFF,
   calculateTimeAccuracy,
   calculateLocationAccuracy,
   getTimeDifferenceDescription
@@ -243,26 +241,31 @@ const RoundResultsPage = () => {
   ): LayoutRoundResultType | null => {
       if (!ctxResult || !img) return null;
 
-      // --- Calculations using standardized scoring system ---
-      const distanceKm = ctxResult.distanceKm ?? MAX_DIST_KM;
+      // --- Calculations using standardized scoring system (preserve null guesses) ---
+      const distanceKm = ctxResult.distanceKm ?? null; // keep null when no location guess
       
-      // Get the actual values from the context if available, otherwise calculate them
+      // Actual event year
       const actualYear = img.year || 1900;
-      const guessYear = ctxResult.guessYear ?? actualYear;
-      const yearDifference = Math.abs(actualYear - guessYear);
+      // Keep null guess year if no guess was made
+      const guessYear = ctxResult.guessYear ?? null;
+      const yearDifference = guessYear == null ? null : Math.abs(actualYear - guessYear);
       
-      // Use the standardized calculations for accuracy percentages
-      const locationAccuracy = ctxResult.xpWhere !== undefined 
-          ? Math.round((ctxResult.xpWhere / 100) * 100) // Convert XP to percentage
-          : Math.round(calculateLocationAccuracy(distanceKm));
+      // Accuracy percentages: 0 when no guess
+      const locationAccuracy = distanceKm == null
+          ? 0
+          : (ctxResult.xpWhere !== undefined 
+              ? Math.round((ctxResult.xpWhere / 100) * 100)
+              : Math.round(calculateLocationAccuracy(distanceKm)));
       
-      const timeAccuracy = ctxResult.xpWhen !== undefined
-          ? Math.round((ctxResult.xpWhen / 100) * 100) // Convert XP to percentage
-          : Math.round(calculateTimeAccuracy(guessYear, actualYear));
+      const timeAccuracy = guessYear == null
+          ? 0
+          : (ctxResult.xpWhen !== undefined
+              ? Math.round((ctxResult.xpWhen / 100) * 100)
+              : Math.round(calculateTimeAccuracy(guessYear, actualYear)));
       
-      // Use the values from context if available, otherwise calculate
-      const xpWhere = ctxResult.xpWhere ?? Math.round(calculateLocationAccuracy(distanceKm));
-      const xpWhen = ctxResult.xpWhen ?? Math.round(calculateTimeAccuracy(guessYear, actualYear));
+      // XP values: 0 when no guess
+      const xpWhere = ctxResult.xpWhere ?? (distanceKm == null ? 0 : Math.round(calculateLocationAccuracy(distanceKm)));
+      const xpWhen = ctxResult.xpWhen ?? (guessYear == null ? 0 : Math.round(calculateTimeAccuracy(guessYear, actualYear)));
       
       // Get hint-related information
       const hintsUsed = ctxResult.hintsUsed ?? 0;
@@ -273,8 +276,10 @@ const RoundResultsPage = () => {
       const xpBeforePenalty = xpWhere + xpWhen;
       const xpTotal = ctxResult.score ?? Math.max(0, xpBeforePenalty - totalXpDebt);
       
-      // Get standardized time difference description
-      const timeDifferenceDesc = getTimeDifferenceDescription(guessYear, actualYear);
+      // Time difference description: 'No guess' when missing
+      const timeDifferenceDesc = guessYear == null 
+        ? 'No guess' 
+        : getTimeDifferenceDescription(guessYear, actualYear);
 
       // Construct the object matching LayoutRoundResultType from utils/resultsFetching
       const isCorrect = locationAccuracy >= 95; // Consider 95%+ as correct
@@ -288,9 +293,9 @@ const RoundResultsPage = () => {
           timeDifferenceDesc: timeDifferenceDesc, // Add the description string
           guessLat: ctxResult.guessCoordinates?.lat ?? null, // Use optional chaining and null default
           guessLng: ctxResult.guessCoordinates?.lng ?? null, // Use optional chaining and null default
-          distanceKm: Math.round(ctxResult.distanceKm ?? 0),
+          distanceKm: distanceKm == null ? null : Math.round(distanceKm),
           locationAccuracy: locationAccuracy,
-          guessYear: guessYear, 
+          guessYear: guessYear == null ? null : guessYear, 
           eventYear: actualYear, // Actual year
           yearDifference: yearDifference,
           timeAccuracy: timeAccuracy,

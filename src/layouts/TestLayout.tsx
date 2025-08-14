@@ -1,7 +1,6 @@
 import React from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { NavProfile } from "@/components/NavProfile";
-import Logo from "@/components/Logo";
 import { useGame } from "@/contexts/GameContext";
 import { Badge } from "@/components/ui/badge";
 import { Target, Zap } from "lucide-react";
@@ -43,12 +42,8 @@ const TestLayout = () => {
                 </div>
               </div>
             ) : (
-              // Default layout for other non-game pages
+              // Default layout for other non-game pages (logo removed)
               <div className="flex items-center justify-between h-16">
-                <div className="flex items-center">
-                  <Logo />
-                </div>
-                
                 {/* Show global stats outside of games */}
                 <div className="flex items-center gap-2">
                   <Badge variant="accuracy" className="flex items-center gap-1 text-sm" aria-label={`Global Accuracy: ${Math.round(globalAccuracy)}%`}>

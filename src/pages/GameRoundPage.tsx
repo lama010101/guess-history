@@ -84,7 +84,8 @@ const GameRoundPage = () => {
 
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedYear, setSelectedYear] = useState(1932);
+  // Year is not selected by default; becomes a number only after user interaction
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
   // Initialize timer with roundTimerSec if timer is enabled, otherwise use 0 (will be hidden)
   const [remainingTime, setRemainingTime] = useState<number>(timerEnabled ? roundTimerSec : 0);
   const [isTimerActive, setIsTimerActive] = useState<boolean>(timerEnabled);
@@ -173,6 +174,12 @@ const GameRoundPage = () => {
         description: 'Cannot submit guess, image data is missing.',
         variant: 'destructive',
       });
+      return;
+    }
+
+    // Defensive: Submit should only be possible when both year and location are selected
+    if (selectedYear === null) {
+      toast({ title: 'Missing Year', description: 'Please select a year before submitting.', variant: 'destructive' });
       return;
     }
 
@@ -285,7 +292,7 @@ const GameRoundPage = () => {
             guessCoordinates: null,
             distanceKm: null,
             score: 0,
-            guessYear: selectedYear,
+            guessYear: null,
             xpWhere: 0,
             xpWhen: 0,
             accuracy: 0,
@@ -297,6 +304,30 @@ const GameRoundPage = () => {
         toast({
           title: "Time's Up!",
           description: "No location was selected. Your score for this round is 0.",
+          variant: "info",
+          className: "bg-white/70 text-black border border-gray-200",
+        });
+        navigate(`/test/game/room/${roomId}/round/${roundNumber}/results`);
+        setIsSubmitting(false);
+        return;
+      } else if (selectedYear === null) {
+        // Location guessed but no year selected: assign no year and zero points
+        recordRoundResult(
+          {
+            guessCoordinates: currentGuess,
+            distanceKm: null,
+            score: 0,
+            guessYear: null,
+            xpWhere: 0,
+            xpWhen: 0,
+            accuracy: 0,
+            hintsUsed: purchasedHints.length
+          },
+          currentRoundIndex
+        );
+        toast({
+          title: "Time's Up!",
+          description: "No year was selected. Your score for this round is 0.",
           variant: "info",
           className: "bg-white/70 text-black border border-gray-200",
         });
@@ -432,7 +463,7 @@ const GameRoundPage = () => {
         onNavigateHome={handleNavigateHome}
         onConfirmNavigation={confirmNavigation}
         avatarUrl={profile?.avatar_image_url}
-        onTimeout={handleTimeout}
+        onTimeout={handleTimeComplete}
         availableHints={availableHints}
         purchasedHints={purchasedHints}
         purchasedHintIds={purchasedHintIds}

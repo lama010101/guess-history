@@ -298,7 +298,10 @@ const FinalResultsPage = () => {
             {/* Accuracy progress bars */}
             <div className="mt-4 space-y-3" role="group" aria-label="Accuracy breakdown">
               <div>
-                <div className="text-sm text-gray-300 mb-1">Time Accuracy</div>
+                <div className="text-sm text-gray-300 mb-1 flex items-center justify-between">
+                  <span>Time Accuracy</span>
+                  <span>{formatInteger(totalWhenAccuracy)}%</span>
+                </div>
                 <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-orange-500"
@@ -308,7 +311,10 @@ const FinalResultsPage = () => {
                 </div>
               </div>
               <div>
-                <div className="text-sm text-gray-300 mb-1">Location Accuracy</div>
+                <div className="text-sm text-gray-300 mb-1 flex items-center justify-between">
+                  <span>Location Accuracy</span>
+                  <span>{formatInteger(totalWhereAccuracy)}%</span>
+                </div>
                 <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-orange-500"
@@ -321,14 +327,6 @@ const FinalResultsPage = () => {
 
             {/* Detailed metrics */}
             <div className="mt-6 grid grid-cols-2 gap-3 text-sm">
-              <div className="bg-[#2b2b2b] rounded-md p-3">
-                <div className="text-gray-300">Time Accuracy</div>
-                <div className="font-semibold">{formatInteger(totalWhenAccuracy)}%</div>
-              </div>
-              <div className="bg-[#2b2b2b] rounded-md p-3">
-                <div className="text-gray-300">Location Accuracy</div>
-                <div className="font-semibold">{formatInteger(totalWhereAccuracy)}%</div>
-              </div>
               <div className="bg-[#2b2b2b] rounded-md p-3">
                 <div className="text-gray-300">Avg Years Off</div>
                 <div className="font-semibold">{formatInteger(avgYearsOff)}</div>
@@ -378,7 +376,7 @@ const FinalResultsPage = () => {
 
       <footer className="fixed bottom-0 left-0 w-full z-50 bg-black shadow-[0_-2px_12px_rgba(0,0,0,0.5)] px-4 py-3 flex justify-center items-center border-t border-gray-800">
         <div className="w-full max-w-md flex items-center justify-between gap-4">
-          <Button onClick={handleHome} variant="outline" size="lg" className="gap-2 bg-white text-black hover:bg-gray-100 dark:bg-white dark:hover:bg-gray-100 dark:text-black shadow-md py-6 text-base">
+          <Button onClick={handleHome} variant="outline" size="lg" className="gap-2 bg-[#999999] text-black hover:bg-[#8a8a8a] dark:bg-[#999999] dark:hover:bg-[#8a8a8a] dark:text-black shadow-md py-6 text-base">
             <Home className="h-5 w-5" />
             Home
           </Button>

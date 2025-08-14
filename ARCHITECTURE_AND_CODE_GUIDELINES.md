@@ -441,9 +441,21 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
 
 - Round Results page
   - `src/components/results/ResultsHeader.tsx`: Round text weight set to normal.
-  - `src/components/layouts/ResultsLayout2.tsx`: Progress bars are directly under the When/Where titles; % and XP badges sit below the bars; reduced spacing under "Your Score"; labels (Accuracy/Experience) moved above values; matched "Your guess" styling to "Correct:"; removed in-layout bottom Next Round buttons.
+  - `src/components/layouts/ResultsLayout2.tsx`: Progress bars are placed at the bottom of the When/Where cards; % and XP badges appear directly below the progress bars; reduced spacing under "Your Score"; labels (Accuracy/Experience) moved above values; matched "Your guess" styling to "Correct:"; removed in-layout bottom Next Round buttons.
   - `src/components/results/HintDebtsCard.tsx`: Removed border; maintain dark background.
   - `src/pages/RoundResultsPage.tsx`: Made top Next Round button more compact (kept rounded-xl per standard).
+  - 2025-08-14 spacing/style harmonization:
+    - `src/components/layouts/ResultsLayout2.tsx`: Reduced space between "Your Score" and penalties (mb-1). Set When/Where titles to regular weight. Added spacing between titles and content. Added extra space above the "Correct" rows in When (`mt-4`). Moved progress bars to the bottom of each card with `mt-4`, and placed %/XP badges directly below those bars. Ensured event year and guessed year use the same font-size.
+    - `src/pages/RoundResultsPage.tsx`: Home button uses black text on `#999999` background (hover `#8a8a8a`).
+
+- Final Results page
+  - `src/pages/FinalResultsPage.tsx`: Removed the two mini cards for Time Accuracy and Location Accuracy under the detailed metrics grid. Kept Avg Years Off, Avg Km Away, Hints Used, and Penalty Cost.
+  - `src/components/RoundResultCard.tsx`: Replaced the orange selected-value badge under the image title with plain orange text (no background) to simplify the look on breakdown cards.
+  - `src/pages/FinalResultsPage.tsx`: Footer Home button uses background `#999999` (hover `#8a8a8a`) with black text in both light and dark modes.
+  - `src/pages/FinalResultsPage.tsx`: Time and Location accuracy progress bars show their numeric percentages in the label row on the right.
+
+- Game page
+  - `src/components/game/LocationSelector.tsx`: On mobile, the map container uses fixed heights (`h-[320px]`/`sm:h-[360px]`); on `md+` it returns to `flex-1 min-h-[300px]` to ensure the map is always visible.
 
 Notes: All changes maintain dark mode styling and Montserrat typography. See commit history around this date for detailed diffs.
 

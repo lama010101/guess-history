@@ -51,7 +51,7 @@ const RoundResultCard: React.FC<RoundResultCardProps> = ({ image, result, index 
               </div>
             </div>
             <div className="mt-2">
-              <Badge variant="selectedValue" className="text-xs">{image.location_name} ({image.year})</Badge>
+              <span className="text-orange-400 font-semibold text-xs">{image.location_name} ({image.year})</span>
             </div>
           </div>
           {isOpen && (

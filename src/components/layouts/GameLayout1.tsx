@@ -12,7 +12,7 @@ import LocationSelector from '@/components/game/LocationSelector';
 import TimerDisplay from '@/components/game/TimerDisplay';
 import LazyImage from '@/components/ui/LazyImage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, MapPin, Home, Send } from 'lucide-react';
+import { Calendar, MapPin, Home, Send, HelpCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -282,7 +282,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       {/* Input Sections - Full width on mobile, half on desktop */}
       <div className="flex-grow px-2 py-4 md:px-4 lg:px-6 flex flex-col">
         <div className="max-w-5xl mx-auto w-full space-y-4 flex flex-col h-full">
-          <Card className={cn("overflow-hidden dark:bg-[#333333]", highlightInputs && "ring-2 ring-orange-500")}> 
+          <Card className={cn("overflow-hidden dark:bg-[#333333] transition-all", highlightInputs && "ring-2 ring-orange-500 animate-pulse")}> 
             <CardContent className="px-4 pt-3 pb-1 flex flex-col min-h-[7.5rem] md:min-h-[9rem]">
               <div className="flex items-center justify-between mb-1">
                 <h2 className="font-normal text-base text-gray-900 dark:text-gray-100 flex items-center">
@@ -340,7 +340,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           {/* Spacer below Where card to add empty space */}
           <div className="h-6" aria-hidden="true" />
 
-          <Card className={cn("overflow-hidden dark:bg-[#333333] flex-1", highlightInputs && "ring-2 ring-orange-500")}> 
+          <Card className={cn("overflow-hidden dark:bg-[#333333] flex-1 transition-all", highlightInputs && "ring-2 ring-orange-500 animate-pulse")}> 
             <CardContent className="p-4 flex flex-col h-full">
               <div className="flex items-center justify-between mb-2">
                 <h2 className="font-normal text-base text-gray-900 dark:text-gray-100 flex items-center">
@@ -383,11 +383,12 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             </Button>
             <Button
               onClick={handleHintClick}
-              className="bg-white text-black hover:bg-gray-100 dark:bg-white dark:text-black dark:hover:bg-gray-100 rounded-xl px-6 py-6 text-lg font-semibold"
+              className="bg-white text-black hover:bg-gray-100 dark:bg-white dark:text-black dark:hover:bg-gray-100 rounded-xl px-4 py-4 text-base font-semibold"
               variant="outline"
             >
+              <HelpCircle className="h-5 w-5 mr-2" />
               <span>Hints</span>
-              <span className="ml-2 inline-flex items-center rounded-full bg-black text-white text-xs px-2 py-0.5">{purchasedHintIds.length}/14</span>
+              <span className="ml-2 inline-flex items-center rounded-full bg-black text-white text-[11px] px-2 py-0.5">{purchasedHintIds.length}/14</span>
             </Button>
             <div className="relative">
               <Button

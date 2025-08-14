@@ -14,7 +14,8 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from "@/components/ui/button";
 import soloIcon from '@/assets/icons/solo.webp';
-import friendsIcon from '@/assets/icons/friends.webp';
+import collaborateIcon from '@/assets/icons/collaborate.webp';
+import competeIcon from '@/assets/icons/compete.webp';
 import lockIcon from '@/assets/icons/lock.webp';
 
 const homePageStyle: React.CSSProperties = {
@@ -70,6 +71,7 @@ const HomePage = () => {
   // FriendsModal state removed - now using direct lobby navigation
   const [showLoadingPopup, setShowLoadingPopup] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [showComingSoon, setShowComingSoon] = useState(false);
   console.log('[HomePage] Render', { isLoaded, user, isGuest });
   // Timer states
   const [isSoloTimerEnabled, setIsSoloTimerEnabled] = useState(false);
@@ -274,16 +276,37 @@ const HomePage = () => {
           )}
         </div>
       </div>
-      {/* Friends Card */}
+      {/* Collaborate Card (formerly Friends card visuals, now shows Coming Soon) */}
+      <div
+        className={`relative flex flex-col items-center justify-center gap-0 py-4 shrink-0 snap-center cursor-pointer`}
+        onClick={() => {
+          console.log('[HomePage] Collaborate card clicked. isGuest:', isGuest);
+          if (user && !isGuest) {
+            setShowComingSoon(true);
+          } else {
+            // Guests will be prompted to sign in via AuthModal; do not set pendingMode
+            setPendingMode(null);
+            setShowAuthModal(true);
+          }
+        }}
+      >
+        <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-cyan-300 via-sky-400 to-sky-600">
+          <img src={collaborateIcon} alt="Collaborate" className="w-40 h-40 object-contain" />
+        </div>
+        <div className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1">
+          COLLABORATE
+        </div>
+      </div>
+      {/* Compete Card (purple) — starts Friends mode; guest overlay with sign-in */}
       <div
         className={`relative flex flex-col items-center justify-center gap-0 py-4 shrink-0 snap-center ${isGuest ? 'opacity-60' : 'cursor-pointer'}`}
         onClick={() => {
-          console.log('[HomePage] Friends card clicked. isGuest:', isGuest);
+          console.log('[HomePage] Compete card clicked. isGuest:', isGuest);
           if (!isGuest) handleStartGame('friends');
         }}
       >
         {isGuest && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black/60 rounded-xl z-10">
+          <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black rounded-xl z-[100]">
             <div className="text-center p-4">
               <img src={lockIcon} alt="Locked" className="h-20 w-20 mx-auto mb-3" />
               <p className="text-black dark:text-white text-sm">Sign in to challenge your friends and track your wins.</p>
@@ -296,20 +319,11 @@ const HomePage = () => {
             </div>
           </div>
         )}
-        <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-cyan-300 via-sky-400 to-sky-600">
-          <img src={friendsIcon} alt="Friends" className="w-40 h-40 object-contain" />
+        <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-purple-300 via-violet-500 to-purple-700">
+          <img src={competeIcon} alt="Compete" className="w-40 h-40 object-contain" />
         </div>
         <div className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1">
           COMPETE
-        </div>
-      </div>
-      {/* Collaborate Card */}
-      <div className="flex flex-col items-center justify-center gap-0 py-4 shrink-0 snap-center">
-        <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-purple-300 via-violet-500 to-purple-700">
-          {/* Icon to be provided later */}
-        </div>
-        <div className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1">
-          COLLABORATE
         </div>
       </div>
     </div>
@@ -348,6 +362,22 @@ const HomePage = () => {
         onAuthSuccess={handleAuthSuccess}
         onGuestContinue={handleGuestContinue}
       />
+      {/* Simple Coming Soon modal */}
+      {showComingSoon && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70">
+          <div className="bg-white dark:bg-[#222] text-black dark:text-white rounded-xl p-6 w-[90%] max-w-sm shadow-xl border border-gray-200 dark:border-gray-700">
+            <h3 className="text-xl font-bold mb-2 text-center">COMING SOON</h3>
+            <p className="text-sm text-center text-gray-700 dark:text-gray-300 mb-4">
+              Collaborate mode is under construction. Stay tuned!
+            </p>
+            <div className="flex justify-center">
+              <Button className="bg-black text-white hover:bg-black/90" onClick={() => setShowComingSoon(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

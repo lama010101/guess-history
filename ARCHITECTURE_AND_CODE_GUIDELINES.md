@@ -281,7 +281,25 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - When card and Where card affordances:
     - When the year is not selected, the inline year input on the `When?` card shows placeholder text "Year".
     - When the location is not selected, the trailing label on the `Where?` card shows italic placeholder text "Location".
-    - Add a small spacer below the `Where?` card for breathing room on the page (`<div class="h-6" aria-hidden>`), placed after the card.
+  - Add a small spacer below the `Where?` card for breathing room on the page (`<div class="h-6" aria-hidden>`), placed after the card.
+
+- Home page game mode cards:
+  - `COMPETE` card: purple gradient with friends icon. Starts friends mode for signed-in users on click. Guests see a sign-in lock overlay (`z-[100]`, `dark:bg-black`) and can sign in.
+  - `COLLABORATE` card: cyan gradient, no icon. For signed-in users, opens a simple "COMING SOON" modal. Guests trigger `AuthModal`. Does not start a game.
+  - Icons: `COLLABORATE` uses `src/assets/icons/collaborate.webp`; `COMPETE` uses `src/assets/icons/compete.webp`.
+
+- Round Results spacing:
+  - `ResultsLayout2.tsx` uses `gap-8` between columns.
+  - Left column containers use `space-y-8`; right column uses `space-y-7` for balanced spacing.
+
+- Fullscreen zoom behavior:
+  - Zoom is disabled in fullscreen (no wheel, double-click, pinch, or double-tap).
+  - Panning is enabled at base zoom; offsets are clamped within bounds.
+  - Hint text shows "Drag to pan"; the zoom percentage badge is hidden.
+
+- Game page controls:
+  - When exiting fullscreen on the image, the `When?` and `Where?` cards briefly highlight for 1s with an orange ring and subtle pulse to draw attention (`ring-2 ring-orange-500 animate-pulse`). Implemented in `src/components/layouts/GameLayout1.tsx` via `highlightInputs` state.
+  - The Hints button in the bottom action bar is compact with a `HelpCircle` icon and a small count chip (e.g., `3/14`).
 
 ## Game Round Validation and Alerts
 
@@ -327,8 +345,9 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - `max-width: none`
   - `display: block`
 - Interaction:
-  - Initial zoom set to 1 (100%); wheel/pinch supported.
+  - Zoom is disabled in fullscreen (no wheel, double-click, pinch, or double-tap).
   - Panning is enabled at base zoom; offsets are clamped within bounds.
+  - Hint text shows "Drag to pan"; the zoom percentage badge is hidden.
 
 4. **Update state management** to use multiplayer state
 5. **Add invite flow** for room creation/joining

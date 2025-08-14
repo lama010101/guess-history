@@ -11,6 +11,8 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
 const ZOOM_STEP = 0.2;
 const WHEEL_ZOOM_FACTOR = 0.1; // Smaller factor for smoother wheel zooming
+// Disable all zoom interactions in fullscreen mode
+const ZOOM_ENABLED = false;
 
 const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image, onExit, currentRound = 1 }) => {
   const [zoom, setZoom] = useState(1);
@@ -224,6 +226,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   // Double-click to zoom in (desktop)
   const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
+    if (!ZOOM_ENABLED) return;
     const newZoom = +(Math.min(MAX_ZOOM, zoom + 1)).toFixed(2);
     zoomAtPoint(newZoom, e.clientX, e.clientY);
   };
@@ -231,42 +234,27 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   // Mouse wheel zoom
   const handleWheel = (e: WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
-    
+    if (!ZOOM_ENABLED) return;
     // Calculate zoom direction based on wheel delta
     const delta = -Math.sign(e.deltaY) * WHEEL_ZOOM_FACTOR;
     const newZoom = +(zoom + delta).toFixed(2);
-    
     // Apply zoom centered at mouse position
     zoomAtPoint(newZoom, e.clientX, e.clientY);
-    // Hide hint on first interaction
     if (showHint) setShowHint(false);
   };
 
   // Touch: only handle double-tap and pinch zoom. Single-finger pan is handled by Pointer Events above.
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
-      const touch = e.touches[0];
-      const now = Date.now();
-      const dt = now - lastTapTimeRef.current;
-      const dx = touch.clientX - lastTapPosRef.current.x;
-      const dy = touch.clientY - lastTapPosRef.current.y;
-      const dist = Math.hypot(dx, dy);
-
-      // Detect double-tap to zoom in
-      if (dt > 0 && dt < DOUBLE_TAP_MS && dist < DOUBLE_TAP_SLOP_PX) {
-        e.preventDefault();
-        const newZoom = +(Math.min(MAX_ZOOM, zoom + 1)).toFixed(2);
-        zoomAtPoint(newZoom, touch.clientX, touch.clientY);
-        lastTapTimeRef.current = 0; // reset
-        return;
-      }
-      // Remember last tap for double-tap detection
-      lastTapTimeRef.current = now;
-      lastTapPosRef.current = { x: touch.clientX, y: touch.clientY };
       // Single-finger pan handled via Pointer Events
       if (showHint) setShowHint(false);
     } else if (e.touches.length === 2) {
-      // Enter pinch mode
+      // Disable pinch-to-zoom when zoom is disabled
+      if (!ZOOM_ENABLED) {
+        isPinchingRef.current = false;
+        lastTouchDist.current = null;
+        return;
+      }
       cancelInertia();
       isPinchingRef.current = true;
       setDragging(false);
@@ -276,31 +264,21 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   
   const handleTouchMove = (e: React.TouchEvent) => {
     e.preventDefault(); // Prevent browser gestures
-    
+    if (!ZOOM_ENABLED) return; // Disable pinch zoom
     if (e.touches.length === 2) {
-      // Two touches - pinch zoom
       const dist = getTouchDist(e);
-      
       if (lastTouchDist.current !== null) {
         const delta = dist - lastTouchDist.current;
-        
-        // Only zoom if the change is significant
         if (Math.abs(delta) > 2) {
-          // Calculate center point between the two touches
           const touch1 = e.touches[0];
           const touch2 = e.touches[1];
           const centerX = (touch1.clientX + touch2.clientX) / 2;
           const centerY = (touch1.clientY + touch2.clientY) / 2;
-          
-          // Calculate zoom factor based on pinch distance change
-          const zoomFactor = delta * 0.005; // Smaller factor for smoother zooming
+          const zoomFactor = delta * 0.005;
           const newZoom = +(zoom + zoomFactor).toFixed(2);
-          
-          // Apply zoom centered at pinch center point
           zoomAtPoint(newZoom, centerX, centerY);
         }
       }
-      
       lastTouchDist.current = dist;
     }
   };
@@ -417,17 +395,17 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
           <div className="w-16 h-16 border-4 border-gray-300 border-t-history-primary rounded-full animate-spin"></div>
         </div>
       )}
-      {/* Zoom percentage badge - bottom left */}
-      <div className="absolute bottom-6 left-6 z-[10001] flex flex-col rounded-lg border border-gray-300 shadow-md overflow-hidden select-none">
+      {/* Zoom percentage badge hidden (zoom disabled) */}
+      {/* <div className="absolute bottom-6 left-6 z-[10001] flex flex-col rounded-lg border border-gray-300 shadow-md overflow-hidden select-none">
         <div className="min-w-[2.5rem] h-8 px-2 flex items-center justify-center text-xs font-semibold bg-white/80 text-black">
           {Math.round(zoom * 100)}%
         </div>
-      </div>
+      </div> */}
       
       {/* Instructions tooltip */}
       {(!isLoading && showHint) && (
         <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm pointer-events-none transition-opacity duration-300">
-          Use mouse wheel to zoom, drag to pan
+          Drag to pan
         </div>
       )}
       {/* Image */}

@@ -281,12 +281,13 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - When card and Where card affordances:
     - When the year is not selected, the inline year input on the `When?` card shows placeholder text "Year".
     - When the location is not selected, the trailing label on the `Where?` card shows italic placeholder text "Location".
-  - Add a small spacer below the `Where?` card for breathing room on the page (`<div class="h-6" aria-hidden>`), placed after the card.
+  - Add a small spacer below the `Where?` card for breathing room on the page (`<div class="h-6" aria-hidden>`), placed after the card. Implemented in `src/components/layouts/GameLayout1.tsx` immediately after the `Where?` card.
 
 - Home page game mode cards:
   - `COMPETE` card: purple gradient with friends icon. Starts friends mode for signed-in users on click. Guests see a sign-in lock overlay (`z-[100]`, `dark:bg-black`) and can sign in.
   - `COLLABORATE` card: cyan gradient, no icon. For signed-in users, opens a simple "COMING SOON" modal. Guests trigger `AuthModal`. Does not start a game.
   - Icons: `COLLABORATE` uses `src/assets/icons/collaborate.webp`; `COMPETE` uses `src/assets/icons/compete.webp`.
+  - Icon sizing: All three Home mode icons are uniform: `<img class="w-36 h-36 object-contain">` within containers sized `w-[13.5rem] h-[13.5rem]`. Adjust in `src/pages/HomePage.tsx` in the Solo, Collaborate, and Compete card blocks.
 
 - Round Results spacing:
   - `ResultsLayout2.tsx` uses `gap-8` between columns.
@@ -886,6 +887,26 @@ Notes: UI changes are limited to the Home page and the shared `Logo` component p
 - Notes:
   - Light mode keeps `bg-white/75` for the intended translucent effect.
   - If additional global layers are added later (e.g., modals), ensure their `z-index` strategy does not undercut the overlay when it should be dominant.
+
+## Home Page Guest Overlays — Lock + Sign-In
+
+- Files: `src/pages/HomePage.tsx`
+- Change:
+  - Added semi-opaque overlays with lock icon and warning text to both `COLLABORATE` and `COMPETE` cards when the user is signed out or a guest (`!user || isGuest`).
+  - Overlay uses `bg-white/80 dark:bg-black/80` and `z-[100]` to sit above card content.
+  - Sign-in button style updated to white background with black text: `bg-white hover:bg-gray-100 text-black`.
+- Behavior:
+  - `COMPETE`: clicking "Sign In" triggers existing `handleStartGame('friends')`, which opens auth for guests.
+  - `COLLABORATE`: clicking "Sign In" opens `AuthModal` directly.
+- Rationale: Clear affordance that multiplayer modes require authentication; consistent button styling.
+
+## Game Page When/Where Alignment — Remove Year Underline
+
+- File: `src/components/layouts/GameLayout1.tsx`
+- Change:
+  - Year input in the `When?` header: removed underline (dropped `border-b` classes) and right-aligned the text (`text-right`).
+  - Preserved dynamic states: placeholder shows gray/italic until interaction; selected year shows orange/semibold.
+- Result: Visual alignment with the `Where?` header value, cleaner header without an underline.
 
 ## Immersive Cylindrical Image Viewer
 

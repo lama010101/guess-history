@@ -229,7 +229,7 @@ const HomePage = () => {
           className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-yellow-300 via-orange-400 to-orange-600 cursor-pointer"
           onClick={() => handleStartGame('classic')}
         >
-          <img src={soloIcon} alt="Solo" className="w-40 h-40 object-contain" />
+          <img src={soloIcon} alt="Solo" className="w-36 h-36 object-contain" />
         </div>
         <div
           className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1 cursor-pointer"
@@ -278,7 +278,7 @@ const HomePage = () => {
       </div>
       {/* Collaborate Card (formerly Friends card visuals, now shows Coming Soon) */}
       <div
-        className={`relative flex flex-col items-center justify-center gap-0 py-4 shrink-0 snap-center cursor-pointer`}
+        className={`relative flex flex-col items-center justify-center gap-0 py-4 shrink-0 snap-center ${(!user || isGuest) ? '' : 'cursor-pointer'}`}
         onClick={() => {
           console.log('[HomePage] Collaborate card clicked. isGuest:', isGuest);
           if (user && !isGuest) {
@@ -290,8 +290,22 @@ const HomePage = () => {
           }
         }}
       >
+        {(!user || isGuest) && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black/80 rounded-xl z-[100]">
+            <div className="text-center p-4">
+              <img src={lockIcon} alt="Locked" className="h-20 w-20 mx-auto mb-3" />
+              <p className="text-black dark:text-white text-sm">Sign in to challenge your friends and track your wins.</p>
+              <Button
+                className="mt-3 bg-white hover:bg-gray-100 text-black text-sm"
+                onClick={() => { setPendingMode(null); setShowAuthModal(true); }}
+              >
+                Sign In
+              </Button>
+            </div>
+          </div>
+        )}
         <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-cyan-300 via-sky-400 to-sky-600">
-          <img src={collaborateIcon} alt="Collaborate" className="w-40 h-40 object-contain" />
+          <img src={collaborateIcon} alt="Collaborate" className="w-36 h-36 object-contain" />
         </div>
         <div className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1">
           COLLABORATE
@@ -299,19 +313,19 @@ const HomePage = () => {
       </div>
       {/* Compete Card (purple) — starts Friends mode; guest overlay with sign-in */}
       <div
-        className={`relative flex flex-col items-center justify-center gap-0 py-4 shrink-0 snap-center ${isGuest ? 'opacity-60' : 'cursor-pointer'}`}
+        className={`relative flex flex-col items-center justify-center gap-0 py-4 shrink-0 snap-center ${(!user || isGuest) ? 'opacity-60' : 'cursor-pointer'}`}
         onClick={() => {
           console.log('[HomePage] Compete card clicked. isGuest:', isGuest);
           if (!isGuest) handleStartGame('friends');
         }}
       >
-        {isGuest && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black rounded-xl z-[100]">
+        {(!user || isGuest) && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black/80 rounded-xl z-[100]">
             <div className="text-center p-4">
               <img src={lockIcon} alt="Locked" className="h-20 w-20 mx-auto mb-3" />
               <p className="text-black dark:text-white text-sm">Sign in to challenge your friends and track your wins.</p>
               <Button
-                className="mt-3 bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                className="mt-3 bg-white hover:bg-gray-100 text-black text-sm"
                 onClick={() => handleStartGame('friends')}
               >
                 Sign In
@@ -320,7 +334,7 @@ const HomePage = () => {
           </div>
         )}
         <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-purple-300 via-violet-500 to-purple-700">
-          <img src={competeIcon} alt="Compete" className="w-40 h-40 object-contain" />
+          <img src={competeIcon} alt="Compete" className="w-36 h-36 object-contain" />
         </div>
         <div className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1">
           COMPETE

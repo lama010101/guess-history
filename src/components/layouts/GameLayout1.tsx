@@ -316,7 +316,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                   placeholder="Year"
                   className={
                     cn(
-                      "ml-auto w-[6ch] px-1 bg-transparent border-b border-gray-500 focus:outline-none focus:border-orange-500 text-center",
+                      "ml-auto w-[6ch] px-1 bg-transparent focus:outline-none text-right",
                       yearInteracted && yearInput !== ''
                         ? "text-orange-400 font-semibold"
                         : "text-gray-400 italic font-normal"
@@ -336,10 +336,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
               </div>
             </CardContent>
           </Card>
-
-          {/* Spacer below Where card to add empty space */}
-          <div className="h-6" aria-hidden="true" />
-
+          
           <Card className={cn("overflow-hidden dark:bg-[#333333] flex-1 transition-all", highlightInputs && "ring-2 ring-orange-500 animate-pulse")}> 
             <CardContent className="p-4 flex flex-col h-full">
               <div className="flex items-center justify-between mb-2">
@@ -348,11 +345,11 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                   Where?
                 </h2>
                 {selectedLocationName ? (
-                  <span className="ml-auto text-orange-400 font-semibold truncate max-w-[60%] text-right">
+                  <span className="ml-auto text-orange-400 font-semibold truncate max-w-[60%] text-right pr-1">
                     {selectedLocationName}
                   </span>
                 ) : (
-                  <span className="ml-auto text-gray-400 italic truncate max-w-[60%] text-right">
+                  <span className="ml-auto text-gray-400 italic truncate max-w-[60%] text-right pr-1">
                     Location
                   </span>
                 )}
@@ -371,6 +368,9 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
               </div>
             </CardContent>
           </Card>
+
+          {/* Spacer below Where card to add empty space */}
+          <div className="h-6" aria-hidden="true" />
 
           {/* Desktop-only bottom actions: Home, Hints, Submit */}
           <div className="hidden lg:flex items-center justify-center gap-3 mt-auto">

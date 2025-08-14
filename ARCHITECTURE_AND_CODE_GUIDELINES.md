@@ -906,7 +906,23 @@ Notes: UI changes are limited to the Home page and the shared `Logo` component p
 - Change:
   - Year input in the `When?` header: removed underline (dropped `border-b` classes) and right-aligned the text (`text-right`).
   - Preserved dynamic states: placeholder shows gray/italic until interaction; selected year shows orange/semibold.
-- Result: Visual alignment with the `Where?` header value, cleaner header without an underline.
+  - Result: Visual alignment with the `Where?` header value, cleaner header without an underline.
+
+## Hints Modal — V2 Design
+
+- File: `src/components/HintModalV2New.tsx`
+- Layout:
+  - Header title "HINTS" with subtle italic subtitle "Using a hint will reduce your score."
+  - Summary strip shows total penalties with pill badges: Accuracy in green, XP in blue.
+  - Segmented control to switch between `When` and `Where`.
+  - Single-column list for the active tab. Each row:
+    - Left: hint label (capitalized).
+    - Right: two rounded badges — green percent and blue XP — both display a leading minus sign.
+    - Purchased hints turn the row solid green and show the revealed text below the label.
+    - Locked hints show a centered lock overlay with the message “You must first use the hint above”.
+- Behavior:
+  - Negative signs are always rendered for both accuracy and XP: e.g. `-15%`, `-50 XP`.
+  - Clicking a row purchases the hint unless it is purchased/locked.
 
 ## Immersive Cylindrical Image Viewer
 

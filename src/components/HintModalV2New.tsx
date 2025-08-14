@@ -46,62 +46,58 @@ const HintButtonUI: React.FC<{
   isLoading: boolean;
   onPurchase: (hint: Hint) => void;
   onLockedClick?: () => void;
-}> = ({ hint, purchasedHintIds, isLoading, onPurchase, onLockedClick }) => {
+}> = ({ hint, purchasedHintIds, isLoading, onPurchase }) => {
   const { xp: costXp, acc: penaltyAcc } = getHintCostAndPenalty(hint);
-  const label1 = HINT_TYPE_NAMES[hint.type] ?? 
+  const label1 = HINT_TYPE_NAMES[hint.type] ??
     hint.type.replace(/^\d+_/, '').replace(/_/g, ' ').replace(/(when|where)/g, '').trim();
-  const label2 = `-${penaltyAcc}% -${costXp}XP`;
-  
+
   const isPurchased = purchasedHintIds.includes(hint.id);
   const isLocked = !!(hint.prerequisite && !purchasedHintIds.includes(hint.prerequisite));
 
   return (
-    <Button
-      size="lg"
-      variant={'outline'}
-      disabled={isLoading || isPurchased}
-      className={`w-full py-3 text-base font-semibold flex items-center justify-center rounded-[0.75rem] h-auto whitespace-normal break-words leading-tight
-        ${isPurchased 
-            ? 'bg-[#3e9b0a] text-white border-transparent' // exact green for purchased
-            : 'bg-white text-black border-gray-300 hover:bg-gray-100'
-        }
-        ${isLocked ? 'cursor-not-allowed !bg-gray-200 !text-gray-500 border-transparent opacity-70' : ''}`}
-      style={isPurchased ? { backgroundColor: '#3e9b0a', color: '#fff' } : {}}
-      aria-disabled={isLocked}
-      onClick={e => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (isLocked) { onLockedClick?.(); return; }
-        if (!isPurchased) onPurchase(hint);
-      }}
-      title={isLocked ? 'Unlock prerequisite first' : label1}
-    >
-      {isPurchased ? (
-        <span className="break-words whitespace-normal">
-          {hint.type.includes('event_years') ? `${hint.text} years off` :
-           hint.type.includes('landmark_km') ? `${hint.text} km away` :
-           hint.text}
-        </span>
-      ) : isLocked ? (
-        <span className="flex items-center justify-center gap-2">
+    <div className="relative">
+      <button
+        disabled={isLoading || isPurchased || isLocked}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!isPurchased && !isLocked) onPurchase(hint);
+        }}
+        title={label1}
+        className={`w-full rounded-xl border border-[#2f2f2f] px-4 py-3 text-left flex items-center justify-between transition-colors
+          ${isPurchased ? 'bg-[#3e9b0a] text-white' : 'bg-[#262626] text-white hover:bg-[#2c2c2c]'}
+          ${isLocked ? 'opacity-60 pointer-events-none' : ''}`}
+      >
+        <div className="min-w-0">
+          <div className={`font-semibold capitalize ${isPurchased ? '' : ''}`}>{label1}</div>
+          {isPurchased && (
+            <div className="text-sm opacity-90 truncate">
+              {hint.type.includes('event_years') ? `${hint.text} years off` :
+               hint.type.includes('landmark_km') ? `${hint.text} km away` :
+               hint.text}
+            </div>
+          )}
+        </div>
+        {!isPurchased && (
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="rounded-full bg-green-600 text-white text-xs font-semibold px-2 py-1">-{penaltyAcc}%</span>
+            <span className="rounded-full bg-blue-600 text-white text-xs font-semibold px-2 py-1">-{costXp} XP</span>
+          </div>
+        )}
+      </button>
+
+      {isLocked && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
           <img
             src="/icons/lock.webp"
             alt="Locked"
-            className="h-4 w-4 shrink-0 bg-transparent object-contain"
+            className="h-5 w-5 bg-transparent object-contain"
             style={{ backgroundColor: 'transparent', filter: 'none', mixBlendMode: 'normal' }}
           />
-          <span className="flex flex-col items-center">
-            <span className="capitalize">{label1}</span>
-            <span className="text-xs text-red-500 font-normal">{label2}</span>
-          </span>
-        </span>
-      ) : (
-        <span className="flex flex-col items-center">
-          <span className="capitalize">{label1}</span>
-          <span className="text-xs text-red-500 font-normal">{label2}</span>
-        </span>
+          <p className="mt-1 text-xs text-gray-200">You must first use the hint above</p>
+        </div>
       )}
-    </Button>
+    </div>
   );
 };
 
@@ -117,6 +113,7 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
 }) => {
   const [purchasingHintId, setPurchasingHintId] = useState<string | null>(null);
   const [lockedInfoOpen, setLockedInfoOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'when' | 'where'>('when');
 
   const isHintPurchased = (hintId: string): boolean => purchasedHintIds.includes(hintId);
 
@@ -178,55 +175,53 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
               <span className="sr-only">Close</span>
             </Button>
           </div>
-          <p className="text-red-500 text-center mt-1">Using a hint will reduce your score.</p>
+          <p className="text-gray-400 italic text-center mt-1">Using a hint will reduce your score.</p>
         </DialogHeader>
 
         <div className="p-4 pt-0">
+          {/* Summary pills */}
           <div className="mt-0.5 rounded-lg border border-gray-800 bg-[#202020] p-3">
             <div className="flex justify-around text-sm">
               <div className="text-center">
                 <p className="text-white">Accuracy Penalty</p>
-                <Badge className="mt-1 text-base bg-blue-900 text-red-500 border border-blue-700">-{accDebt}%</Badge>
+                <Badge className="mt-1 text-base bg-green-600 text-white border border-green-700">-{accDebt}%</Badge>
               </div>
               <div className="text-center">
                 <p className="text-white">Experience Penalty</p>
-                <Badge className="mt-1 text-base bg-green-900 text-red-500 border border-green-700">-{xpDebt}XP</Badge>
+                <Badge className="mt-1 text-base bg-blue-600 text-white border border-blue-700">-{xpDebt} XP</Badge>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mt-6">
-            <div className="rounded-lg border border-gray-800 bg-[#202020] p-3">
-              <h3 className="flex items-center justify-center text-center text-lg font-semibold mb-3 text-white"><Clock className="w-5 h-5 mr-2" />WHEN</h3>
-              <div className="space-y-3">
-                {hintsByColumn.when.map((hint) => (
-                  <HintButtonUI 
-                    key={`when-${hint.id}`}
-                    hint={hint}
-                    purchasedHintIds={purchasedHintIds}
-                    isLoading={isLoading || purchasingHintId === hint.id}
-                    onPurchase={handlePurchase}
-                    onLockedClick={() => setLockedInfoOpen(true)}
-                  />
-                ))}
-              </div>
+          {/* Segmented control */}
+          <div className="mt-4 flex items-center justify-center">
+            <div className="inline-flex rounded-lg overflow-hidden border border-gray-800 bg-[#202020]">
+              <button
+                className={`px-4 py-2 text-sm font-semibold flex items-center gap-2 ${activeTab === 'when' ? 'bg-black text-white' : 'text-gray-300'}`}
+                onClick={() => setActiveTab('when')}
+              >
+                <Clock className="w-4 h-4" /> When
+              </button>
+              <button
+                className={`px-4 py-2 text-sm font-semibold flex items-center gap-2 ${activeTab === 'where' ? 'bg-black text-white' : 'text-gray-300'}`}
+                onClick={() => setActiveTab('where')}
+              >
+                <MapPin className="w-4 h-4" /> Where
+              </button>
             </div>
+          </div>
 
-            <div className="rounded-lg border border-gray-800 bg-[#202020] p-3">
-              <h3 className="flex items-center justify-center text-center text-lg font-semibold mb-3 text-white"><MapPin className="w-5 h-5 mr-2" />WHERE</h3>
-              <div className="space-y-3">
-                {hintsByColumn.where.map((hint) => (
-                  <HintButtonUI 
-                    key={`where-${hint.id}`}
-                    hint={hint}
-                    purchasedHintIds={purchasedHintIds}
-                    isLoading={isLoading || purchasingHintId === hint.id}
-                    onPurchase={handlePurchase}
-                    onLockedClick={() => setLockedInfoOpen(true)}
-                  />
-                ))}
-              </div>
-            </div>
+          {/* Hint list for active tab */}
+          <div className="mt-4 space-y-3">
+            {(activeTab === 'when' ? hintsByColumn.when : hintsByColumn.where).map((hint) => (
+              <HintButtonUI
+                key={`${activeTab}-${hint.id}`}
+                hint={hint}
+                purchasedHintIds={purchasedHintIds}
+                isLoading={isLoading || purchasingHintId === hint.id}
+                onPurchase={handlePurchase}
+              />
+            ))}
           </div>
 
         </div>
@@ -240,8 +235,8 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
   </Button>
 </div>
       </DialogContent>
-      {/* Locked info popup */}
-      <Dialog open={lockedInfoOpen} onOpenChange={setLockedInfoOpen}>
+      {/* Locked info popup retained for future use but not shown automatically */}
+      <Dialog open={false} onOpenChange={setLockedInfoOpen}>
         <DialogContent className="max-w-sm bg-[#202020] text-white">
           <DialogHeader>
             <DialogTitle>Hint Locked</DialogTitle>

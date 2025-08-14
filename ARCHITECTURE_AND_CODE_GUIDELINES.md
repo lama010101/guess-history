@@ -219,6 +219,22 @@ supabase functions deploy
 - Room lifecycle events
 - Error states and edge cases
 
+### Web Analytics (Vercel)
+
+- Library: `@vercel/analytics`
+- Injection point: `src/main.tsx` imports `inject` and calls it when `import.meta.env.PROD` is true, before rendering the app. This tracks page views in production without changing UI.
+
+Install:
+
+```bash
+npm i @vercel/analytics
+```
+
+Notes:
+
+- No environment variables required.
+- Data appears in Vercel Analytics after deploy. For local dev, analytics remains disabled.
+
 ## Round Session ID and Hint Persistence
 
 - Central helper: `src/utils/roomState.ts: makeRoundId(roomId: string, roundNumber: number)` builds the canonical round session ID (`<roomId>-r<roundNumber>`). Use this everywhere round-scoped persistence is required (e.g., `round_hints`, results aggregation), instead of parsing URLs or hand-rolling strings.

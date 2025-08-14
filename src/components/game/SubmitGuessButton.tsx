@@ -112,7 +112,7 @@ const SubmitGuessButton: React.FC<SubmitGuessButtonProps> = ({
       <Button 
         onClick={handleSubmit}
         disabled={isDisabled}
-        className={`relative overflow-visible w-full py-6 text-lg font-semibold rounded-xl shadow-lg transition-colors !text-white ${hasLocation ? '!bg-orange-500 hover:!bg-orange-600' : '!bg-gray-400 cursor-not-allowed'}`}
+        className={`relative overflow-visible w-full py-6 text-lg font-semibold rounded-xl shadow-lg transition-colors !text-white ${hasLocation ? '!bg-orange-500 hover:!bg-orange-600' : '!bg-gray-400 cursor-not-allowed'} disabled:opacity-100 disabled:!text-white`}
       >
         {/* Sparkle FX when enabled */}
         {hasLocation && (

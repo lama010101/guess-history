@@ -456,6 +456,9 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
 
 - Game page
   - `src/components/game/LocationSelector.tsx`: On mobile, the map container uses fixed heights (`h-[320px]`/`sm:h-[360px]`); on `md+` it returns to `flex-1 min-h-[300px]` to ensure the map is always visible.
+  - Submit button: Text color is forced to white across implementations.
+    - `src/components/layouts/GameLayout1.tsx`: Desktop and mobile Submit Guess buttons use `!text-white`.
+    - `src/components/game/SubmitGuessButton.tsx`: Button uses `!text-white`.
 
 Notes: All changes maintain dark mode styling and Montserrat typography. See commit history around this date for detailed diffs.
 

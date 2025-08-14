@@ -373,7 +373,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
               <Button
                 onClick={handleSubmitGuess}
                 disabled={!isSubmitEnabled}
-                className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-400 cursor-not-allowed opacity-70'} w-full max-w-md flex items-center justify-center text-lg font-semibold px-8 py-6 !text-white shadow-lg rounded-xl`}
+                className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-400 cursor-not-allowed'} w-full max-w-md flex items-center justify-center text-lg font-semibold px-8 py-6 !text-white shadow-lg rounded-xl disabled:opacity-100 disabled:!text-white`}
               >
                 <Send className="h-5 w-5 mr-2" /> Submit Guess
               </Button>
@@ -414,7 +414,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           <Button
             onClick={handleSubmitGuess}
             disabled={!isSubmitEnabled}
-            className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-400 cursor-not-allowed opacity-70'} h-12 w-full rounded-xl text-white text-lg font-semibold flex items-center justify-center`}
+            className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-400 cursor-not-allowed'} h-12 w-full rounded-xl !text-white text-lg font-semibold flex items-center justify-center disabled:opacity-100 disabled:!text-white`}
           >
             <Send className="h-5 w-5 mr-2" /> Submit Guess
           </Button>

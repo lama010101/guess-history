@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface ImageRatingModalProps {
   isOpen: boolean;

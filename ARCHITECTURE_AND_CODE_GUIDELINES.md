@@ -812,6 +812,33 @@ Notes: UI changes are limited to the Home page and the shared `Logo` component p
   - Replaced badge backgrounds for the correct/guessed year and location with plain orange text (`text-orange-400`) per design.
   - Also styled the game page When header year display as orange text without background in `GameLayout1.tsx`.
 
+## Notifications and Toasts — Disabled
+
+- Purpose: Completely disable all toast/alert UI globally.
+- Implementation:
+  - Removed shadcn `<Toaster />` and Sonner `<Toaster />` mounts from `src/App.tsx`.
+  - `src/components/ui/sonner.tsx` exports a no-op `Toaster` (returns `null`) and a no-op `toast` API (`success | error | info | warning | message | dismiss | promise`).
+  - Components must import `toast` from `@/components/ui/sonner` (not from `sonner`). This preserves call sites but renders nothing.
+  - The custom shadcn `use-toast` and related components remain, but without a mounted `<Toaster />` nothing is rendered.
+- Audit/Enforcement:
+  - Direct imports from `'sonner'` are disallowed. Use `@/components/ui/sonner` instead.
+  - Known updates: `src/components/rating/ImageRatingModal.tsx`, `src/components/AccountSettings.tsx` now import from the local wrapper.
+- Re-enable (if needed later):
+  - Restore `<Toaster />` and/or Sonner provider in `src/App.tsx` and revert `src/components/ui/sonner.tsx` to its original wrapper implementation.
+
+## Home Page Overlay — Dark Mode Opacity Fix
+
+- Goal: Ensure the Home page overlay fully obscures background text and sits above any UI elements in dark mode.
+- File: `src/pages/HomePage.tsx`
+- Change:
+  - Overlay container class updated from `z-10 ... dark:bg-black/75` to `z-[100] ... dark:bg-black` (fully opaque in dark mode and higher stacking context).
+- Rationale:
+  - Prevents any text or UI from being visible through the overlay in dark theme.
+  - Increases `z-index` to ensure the overlay always layers above other positioned elements.
+- Notes:
+  - Light mode keeps `bg-white/75` for the intended translucent effect.
+  - If additional global layers are added later (e.g., modals), ensure their `z-index` strategy does not undercut the overlay when it should be dominant.
+
 ## Immersive Cylindrical Image Viewer
 
 - Component: `src/components/ImmersiveCylViewer.tsx`

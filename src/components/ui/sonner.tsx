@@ -1,29 +1,27 @@
-import { useTheme } from "next-themes"
-import { Toaster as Sonner, toast } from "sonner"
+// Notifications are globally disabled.
+// This wrapper intentionally exports a no-op Toaster and toast API
+// to avoid runtime toasts anywhere in the app while preserving imports.
+import React from "react"
 
-type ToasterProps = React.ComponentProps<typeof Sonner>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ToasterProps = any
 
-const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
+export const Toaster: React.FC<ToasterProps> = () => null
 
-  return (
-    <Sonner
-      theme={theme as ToasterProps["theme"]}
-      className="toaster group"
-      toastOptions={{
-        classNames: {
-          toast:
-            "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
-          description: "group-[.toast]:text-muted-foreground",
-          actionButton:
-            "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
-          cancelButton:
-            "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
-        },
-      }}
-      {...props}
-    />
-  )
-}
+const noop = (..._args: unknown[]) => {}
 
-export { Toaster, toast }
+// Provide common sonner API methods as no-ops
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const toast: any = Object.assign(noop, {
+  success: noop,
+  error: noop,
+  info: noop,
+  warning: noop,
+  message: noop,
+  dismiss: noop,
+  // keep signature compatible; returns a resolved promise
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  promise: (..._args: any[]) => Promise.resolve(undefined),
+})
+
+export default Toaster

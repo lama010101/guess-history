@@ -219,7 +219,7 @@ const HomePage = () => {
   return (
     <div style={homePageStyle}>
       {showGuestBadge && <GuestBadge username={profile?.display_name || 'Guest'} />}
-      <div className="absolute inset-0 z-10 w-full h-full overflow-y-auto p-8 box-border backdrop-blur-sm bg-white/75 dark:bg-black/75 flex items-center justify-center min-h-screen">
+      <div className="absolute inset-0 z-[100] w-full h-full overflow-y-auto p-8 box-border backdrop-blur-sm bg-white/75 dark:bg-black flex items-center justify-center min-h-screen">
   {/* Logo at 20% of the viewport height */}
   <div className="absolute left-1/2 -translate-x-1/2 z-20" style={{ top: '20vh' }}>
     <Logo />

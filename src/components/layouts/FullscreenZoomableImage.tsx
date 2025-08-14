@@ -21,13 +21,55 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   const [imageError, setImageError] = useState(false);
   const [imgSrc, setImgSrc] = useState(image.placeholderUrl);
   const [showHint, setShowHint] = useState(currentRound === 1);
+  const [isInertia, setIsInertia] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const offsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const lastTouchDist = useRef<number | null>(null);
   const lastTapTimeRef = useRef<number>(0);
   const lastTapPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const DOUBLE_TAP_MS = 300;
   const DOUBLE_TAP_SLOP_PX = 30;
+
+  // Pointer + inertia tracking
+  const activePointerIdRef = useRef<number | null>(null);
+  const isPinchingRef = useRef<boolean>(false);
+  const velocityRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 }); // px/ms
+  const lastMoveRef = useRef<{ x: number; y: number; t: number }>({ x: 0, y: 0, t: 0 });
+  const rafRef = useRef<number | null>(null);
+
+  const cancelInertia = () => {
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    velocityRef.current = { x: 0, y: 0 };
+    setIsInertia(false);
+  };
+
+  const getMaxOffsets = () => {
+    if (!imgRef.current || !containerRef.current) return { maxX: 0, maxY: 0 };
+    const img = imgRef.current.getBoundingClientRect();
+    const container = containerRef.current.getBoundingClientRect();
+    const zoomedImgWidth = img.width;
+    const zoomedImgHeight = img.height;
+    const maxX = Math.max(0, (zoomedImgWidth - container.width) / 2);
+    const maxY = Math.max(0, (zoomedImgHeight - container.height) / 2);
+    return { maxX, maxY };
+  };
+
+  const clampOffset = (x: number, y: number) => {
+    const { maxX, maxY } = getMaxOffsets();
+    return {
+      x: Math.min(maxX, Math.max(-maxX, x)),
+      y: Math.min(maxY, Math.max(-maxY, y)),
+    };
+  };
+
+  // Keep a ref of the latest offset to avoid stale closures (used by inertia loop)
+  useEffect(() => {
+    offsetRef.current = offset;
+  }, [offset]);
 
 
   // Zoom controls
@@ -61,30 +103,122 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
     setOffset({ x: newOffsetX, y: newOffsetY });
   };
 
-  // Mouse drag
-  const handleMouseDown = (e: React.MouseEvent) => {
-    // Allow panning even at base zoom so users can view cropped sides
+  // Pointer-based drag with velocity tracking
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Ignore if a pinch gesture is in progress
+    if (isPinchingRef.current) return;
+    // Only start a new drag if no active pointer
+    if (activePointerIdRef.current !== null) return;
+    activePointerIdRef.current = (e as any).pointerId ?? null;
+    cancelInertia();
     setDragging(true);
     setLastPos({ x: e.clientX - offset.x, y: e.clientY - offset.y });
-    // Change cursor to grabbing
-    if (imgRef.current) {
-      imgRef.current.style.cursor = 'grabbing';
+    lastMoveRef.current = { x: e.clientX, y: e.clientY, t: performance.now() };
+    velocityRef.current = { x: 0, y: 0 };
+    if (containerRef.current && (e as any).pointerId != null) {
+      try { containerRef.current.setPointerCapture((e as any).pointerId); } catch {}
     }
-    // Hide hint on first interaction
+    if (imgRef.current) imgRef.current.style.cursor = 'grabbing';
     if (showHint) setShowHint(false);
   };
-  
-  const handleMouseMove = (e: React.MouseEvent) => {
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragging) return;
-    setOffset({ x: e.clientX - lastPos.x, y: e.clientY - lastPos.y });
+    if (isPinchingRef.current) return;
+    if (activePointerIdRef.current !== null && (e as any).pointerId !== activePointerIdRef.current) return;
+
+    const now = performance.now();
+    const prev = lastMoveRef.current;
+    const dt = Math.max(1, now - prev.t); // ms, avoid divide by zero
+    const newX = e.clientX - lastPos.x;
+    const newY = e.clientY - lastPos.y;
+    const dx = e.clientX - prev.x;
+    const dy = e.clientY - prev.y;
+
+    // Update velocity (exponential moving average)
+    const instVx = dx / dt;
+    const instVy = dy / dt;
+    velocityRef.current = {
+      x: velocityRef.current.x * 0.8 + instVx * 0.2,
+      y: velocityRef.current.y * 0.8 + instVy * 0.2,
+    };
+
+    lastMoveRef.current = { x: e.clientX, y: e.clientY, t: now };
+
+    const clamped = clampOffset(newX, newY);
+    setOffset(clamped);
   };
-  
-  const handleMouseUp = () => {
+
+  const startInertia = () => {
+    const eps = 0.002; // px/ms threshold
+    const friction = 0.0045; // higher -> faster decay
+    setIsInertia(true);
+    let last = performance.now();
+
+    const step = (now: number) => {
+      const dt = Math.min(32, Math.max(1, now - last)); // clamp dt for stability
+      last = now;
+
+      // Apply exponential decay to velocity
+      const decay = Math.exp(-friction * dt);
+      velocityRef.current.x *= decay;
+      velocityRef.current.y *= decay;
+
+      let nextX = offsetRef.current.x + velocityRef.current.x * dt;
+      let nextY = offsetRef.current.y + velocityRef.current.y * dt;
+
+      const { maxX, maxY } = getMaxOffsets();
+
+      // Stop at bounds per axis
+      if (nextX > maxX) { nextX = maxX; velocityRef.current.x = 0; }
+      if (nextX < -maxX) { nextX = -maxX; velocityRef.current.x = 0; }
+      if (nextY > maxY) { nextY = maxY; velocityRef.current.y = 0; }
+      if (nextY < -maxY) { nextY = -maxY; velocityRef.current.y = 0; }
+
+      setOffset({ x: nextX, y: nextY });
+      offsetRef.current = { x: nextX, y: nextY };
+
+      const speed = Math.hypot(velocityRef.current.x, velocityRef.current.y);
+      const moving = speed > eps;
+      const hasRoom = (Math.abs(nextX) < maxX - 0.5) || (Math.abs(velocityRef.current.x) < eps);
+      const hasRoomY = (Math.abs(nextY) < maxY - 0.5) || (Math.abs(velocityRef.current.y) < eps);
+
+      if (moving && (hasRoom || hasRoomY)) {
+        rafRef.current = requestAnimationFrame(step);
+      } else {
+        setIsInertia(false);
+        rafRef.current = null;
+      }
+    };
+
+    rafRef.current = requestAnimationFrame(step);
+  };
+
+  const endPointerInteraction = () => {
     setDragging(false);
-    // Change cursor back to grab
-    if (imgRef.current) {
-      imgRef.current.style.cursor = 'grab';
-    }
+    if (imgRef.current) imgRef.current.style.cursor = 'grab';
+    // Start inertia if velocity is meaningful
+    const speed = Math.hypot(velocityRef.current.x, velocityRef.current.y);
+    if (speed > 0.01) startInertia();
+    activePointerIdRef.current = null;
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (activePointerIdRef.current !== null && (e as any).pointerId !== activePointerIdRef.current) return;
+    try {
+      if (containerRef.current && (e as any).pointerId != null) {
+        containerRef.current.releasePointerCapture((e as any).pointerId);
+      }
+    } catch {}
+    if (isPinchingRef.current) return; // pinch handled by touch handlers
+    endPointerInteraction();
+  };
+
+  const handlePointerCancel = () => {
+    cancelInertia();
+    setDragging(false);
+    activePointerIdRef.current = null;
+    if (imgRef.current) imgRef.current.style.cursor = 'grab';
   };
   
   // Double-click to zoom in (desktop)
@@ -108,7 +242,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
     if (showHint) setShowHint(false);
   };
 
-  // Touch drag & pinch
+  // Touch: only handle double-tap and pinch zoom. Single-finger pan is handled by Pointer Events above.
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
       const touch = e.touches[0];
@@ -129,13 +263,12 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
       // Remember last tap for double-tap detection
       lastTapTimeRef.current = now;
       lastTapPosRef.current = { x: touch.clientX, y: touch.clientY };
-
-      // Allow panning even at base zoom to reveal cropped sides
-      setDragging(true);
-      setLastPos({ x: touch.clientX - offset.x, y: touch.clientY - offset.y });
-      // Hide hint on first interaction
+      // Single-finger pan handled via Pointer Events
       if (showHint) setShowHint(false);
     } else if (e.touches.length === 2) {
+      // Enter pinch mode
+      cancelInertia();
+      isPinchingRef.current = true;
       setDragging(false);
       lastTouchDist.current = getTouchDist(e);
     }
@@ -144,10 +277,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   const handleTouchMove = (e: React.TouchEvent) => {
     e.preventDefault(); // Prevent browser gestures
     
-    if (e.touches.length === 1 && dragging) {
-      // Single touch - pan
-      setOffset({ x: e.touches[0].clientX - lastPos.x, y: e.touches[0].clientY - lastPos.y });
-    } else if (e.touches.length === 2) {
+    if (e.touches.length === 2) {
       // Two touches - pinch zoom
       const dist = getTouchDist(e);
       
@@ -176,7 +306,8 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   };
   
   const handleTouchEnd = () => {
-    setDragging(false);
+    // End pinch mode if no longer two touches
+    isPinchingRef.current = false;
     lastTouchDist.current = null;
   };
   
@@ -259,14 +390,21 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
     return () => clearTimeout(t);
   }, [showHint, image.url]);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => cancelInertia();
+  }, []);
+
   return (
     <div
       ref={containerRef}
       className="fixed inset-0 z-[9999] bg-black flex items-center justify-center select-none overflow-hidden touch-none w-screen"
       style={{ height: '100dvh', minHeight: '100vh' }}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onPointerLeave={handlePointerCancel}
       onWheel={handleWheel}
       onDoubleClick={handleDoubleClick}
       onTouchMove={handleTouchMove}
@@ -316,14 +454,13 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
             objectFit: 'cover',
             objectPosition: 'center',
             transform: `scale(${zoom}) translate(${offset.x / zoom}px,${offset.y / zoom}px)`,
-            transition: dragging ? "none" : "transform 0.2s cubic-bezier(.23,1.01,.32,1)",
+            transition: (dragging || isInertia) ? "none" : "transform 0.2s cubic-bezier(.23,1.01,.32,1)",
             touchAction: "none",
             userSelect: "none",
             pointerEvents: "auto",
             display: 'block',
             flex: 'none'
           }}
-          onMouseDown={handleMouseDown}
           draggable={false}
           onTouchStart={handleTouchStart}
           onError={() => {

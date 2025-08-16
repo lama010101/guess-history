@@ -40,6 +40,8 @@ export function AuthModal({
   const [rememberMe, setRememberMe] = useState<boolean>(true);
   const [forgotState, setForgotState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [forgotError, setForgotError] = useState<string>("");
+  const [formError, setFormError] = useState<string>("");
+  const [formHint, setFormHint] = useState<string>("");
 
   const handleGuestLogin = async () => {
     try {
@@ -79,12 +81,15 @@ export function AuthModal({
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError("");
+    setFormHint("");
     if (!email || !password) {
       toast({
         variant: "destructive",
         title: "Missing fields",
         description: "Please enter both email and password",
       });
+      setFormError("Please enter both email and password.");
       return;
     }
 
@@ -134,6 +139,20 @@ export function AuthModal({
         title: activeTab === "signIn" ? "Sign In Failed" : "Sign Up Failed",
         description: error.message || "Authentication failed. Please try again.",
       });
+      const raw = String(error?.message || error);
+      // Friendlier inline messaging and hint for OAuth/Google-created accounts
+      if (activeTab === "signIn") {
+        if (/invalid login credentials/i.test(raw) || /invalid_grant/i.test(raw) || /400/.test(raw)) {
+          setFormError("Wrong email or password.");
+          setFormHint("If you originally signed up with Google, use \"Continue with Google\" below or reset your password to set one.");
+        } else if (/email not confirmed/i.test(raw)) {
+          setFormError("Email not confirmed.");
+          setFormHint("Check your inbox for the confirmation link, then try signing in again.");
+        } else {
+          setFormError(raw || "Authentication failed. Please try again.");
+          setFormHint("");
+        }
+      }
     } finally {
       setIsLoading(false);
     }
@@ -334,6 +353,17 @@ export function AuthModal({
                   <Mail className="w-4 h-4" />
                   Sign In
                 </Button>
+                {formError && (
+                  <div className="mt-2 text-sm text-red-500 flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 mt-0.5" />
+                    <div>
+                      <p>{formError}</p>
+                      {formHint && (
+                        <p className="text-xs text-muted-foreground mt-1">{formHint}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </form>
             </TabsContent>
             

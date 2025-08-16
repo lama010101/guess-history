@@ -28,6 +28,31 @@ export const HINT_COSTS = {
   // Level 5 Hints (Full Clues)
   whereClues: { xp: 40, acc: 4 },
   whenClues: { xp: 40, acc: 4 },
+
+  // V2 numeric-prefixed hint types
+  // Level 1
+  '1_where_continent': { xp: 10, acc: 1 },
+  '1_when_century': { xp: 10, acc: 1 },
+
+  // Level 2
+  '2_where_landmark': { xp: 20, acc: 2 },
+  '2_where_landmark_km': { xp: 10, acc: 1 },
+  '2_when_event': { xp: 20, acc: 2 },
+  '2_when_event_years': { xp: 10, acc: 1 },
+
+  // Level 3
+  '3_where_region': { xp: 50, acc: 5 },
+  '3_when_decade': { xp: 50, acc: 5 },
+
+  // Level 4
+  '4_where_landmark': { xp: 30, acc: 3 },
+  '4_where_landmark_km': { xp: 10, acc: 1 },
+  '4_when_event': { xp: 30, acc: 3 },
+  '4_when_event_years': { xp: 10, acc: 1 },
+
+  // Level 5
+  '5_where_clues': { xp: 40, acc: 4 },
+  '5_when_clues': { xp: 40, acc: 4 },
 };
 
 // Hint level descriptions
@@ -67,6 +92,7 @@ export const HINT_TYPE_NAMES: Record<string, string> = {
   
   // New hint types with numeric prefixes
   // Level 1
+  '1_where_continent': "Continent",
   '1_when_century': "Century",
   
   // Level 2

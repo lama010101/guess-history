@@ -72,6 +72,7 @@ export interface UserSettings {
   notification_enabled: boolean;
   distance_unit: 'km' | 'mi';
   language: string;
+  inertia_enabled: boolean;
 }
 
 // Fetch user profile (registered or anonymous). Always query Supabase.
@@ -669,14 +670,23 @@ export async function fetchUserSettings(userId: string): Promise<UserSettings | 
         sound_enabled: true,
         notification_enabled: true,
         distance_unit: 'km',
-        language: 'en'
+        language: 'en',
+        inertia_enabled: true,
       };
       return defaultSettings;
     }
 
-    // Add type assertion and handle potential JSON parsing
-    const settings = data.value as unknown;
-    return settings as UserSettings;
+    // Merge stored settings with defaults to ensure new fields (like inertia_enabled) are present
+    const raw = (data.value as any) || {};
+    const merged: UserSettings = {
+      theme: raw.theme ?? 'system',
+      sound_enabled: raw.sound_enabled ?? true,
+      notification_enabled: raw.notification_enabled ?? true,
+      distance_unit: raw.distance_unit ?? 'km',
+      language: raw.language ?? 'en',
+      inertia_enabled: raw.inertia_enabled ?? true,
+    };
+    return merged;
   } catch (error) {
     console.error('Error in fetchUserSettings:', error);
     return null;

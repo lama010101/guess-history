@@ -1,3 +1,4 @@
+import { HINT_COSTS } from '@/constants/hints';
 // Hint interface defined in useHintV2.ts
 interface Hint {
   id: string;
@@ -38,6 +39,7 @@ export const groupHintsByLevel = (hints: Hint[]): Record<number, Hint[]> => {
  */
 const getHintLevel = (hintType: string): number => {
   const levelMap: Record<string, number> = {
+    // V2 numeric-prefixed types
     '1_where_continent': 1,
     '1_when_century': 1,
     '2_where_landmark': 2,
@@ -52,21 +54,36 @@ const getHintLevel = (hintType: string): number => {
     '4_when_event_years': 4,
     '5_where_clues': 5,
     '5_when_clues': 5,
+
+    // Legacy types (backward compatibility)
+    continent: 1,
+    century: 1,
+    distantLandmark: 2,
+    distantDistance: 2,
+    distantEvent: 2,
+    distantTimeDiff: 2,
+    region: 3,
+    narrowDecade: 3,
+    nearbyLandmark: 4,
+    nearbyDistance: 4,
+    contemporaryEvent: 4,
+    closeTimeDiff: 4,
+    whereClues: 5,
+    whenClues: 5,
   };
-  
-  return levelMap[hintType] || 1;
+
+  return levelMap[hintType] ?? 1;
 };
 
 /**
  * Gets the cost and penalty for a hint type
  */
 export const getHintCostAndPenalty = (hintType: string): { xp: number; acc: number } => {
-  // Cost increases with level
+  const fromMap = (HINT_COSTS as Record<string, { xp: number; acc: number } | undefined>)[hintType];
+  if (fromMap) return { xp: fromMap.xp, acc: fromMap.acc };
+  // Fallback to level-based heuristic if not explicitly mapped
   const level = getHintLevel(hintType);
-  const xpCost = level * 10; // 10 XP per level
-  const accPenalty = level * 5; // 5% accuracy penalty per level
-  
-  return { xp: xpCost, acc: accPenalty };
+  return { xp: level * 10, acc: level * 5 };
 };
 
 /**

@@ -1,7 +1,7 @@
 {
   "task": "Implement Hint System V2 (Final)",
   "status": "doing",
-  "notes": "Initial migration file created for schema changes: images extended, hints, round_hints, and user_metrics columns added.",
+  "notes": "Aligned V2 hint costs in src/constants/hints.ts and centralized cost resolution in src/utils/hintUtils.ts with legacy fallback. Modal uses provided xp_cost/accuracy_penalty; dependencies mapping confirmed.",
   "commitSha": "",
-  "timestamp": "2025-07-23T16:59:45+07:00"
+  "timestamp": "2025-08-16T17:17:45+07:00"
 }

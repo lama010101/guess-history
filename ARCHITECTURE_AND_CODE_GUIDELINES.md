@@ -89,6 +89,14 @@ VITE_AUTH_EMAIL_REDIRECT_TO=https://your-domain.com/auth/callback
   - `src/components/AuthModal.tsx` → UI that calls the auth methods
   - `src/integrations/supabase/client.ts` → Supabase client with a fetch interceptor
 
+- **Inline error feedback in Auth Modal (2025-08-16)**:
+  - `src/components/AuthModal.tsx` surfaces inline errors on the Sign In tab without relying on toasts. This avoids “silent” failures when toasts are not mounted.
+  - Error mapping:
+    - “Invalid login credentials” / 400 responses → shows “Wrong email or password.”
+    - If the account was created with Google/OAuth (no password set), the modal also shows a hint: “If you originally signed up with Google, use ‘Continue with Google’ below or reset your password to set one.”
+    - “Email not confirmed” → prompts the user to check their inbox for a confirmation link.
+  - State keys: `formError`, `formHint`.
+
 - **Redirect handling**:
   - If `VITE_AUTH_EMAIL_REDIRECT_TO` is defined, it is passed to Supabase as `emailRedirectTo`.
   - A global fetch interceptor strips `redirect_to` from `/auth/v1/signup` calls to prevent 500s when local/invalid URLs sneak in.

@@ -381,7 +381,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                     placeholder={showYearAlert ? 'You must guess the year' : 'Choose a year'}
                     className={
                       cn(
-                        "appearance-none pl-2 pr-1 py-0 h-6 leading-6 md:h-auto md:leading-normal bg-transparent focus:outline-none focus:ring-1 focus:ring-orange-400 rounded text-right md:shrink-0 text-base",
+                        "appearance-none pl-2 pr-1 py-0 h-6 leading-6 md:h-auto md:leading-normal bg-transparent focus:outline-none focus:ring-1 focus:ring-orange-400 rounded text-right md:shrink-0 text-base relative top-[2px] md:top-0",
                         showYearAlert
                           ? "w-full md:w-[26ch]"
                           : (yearInteracted ? "w-[10ch] sm:w-[12ch] md:w-[14ch]" : "w-full md:w-[14ch]"),

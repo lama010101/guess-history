@@ -350,6 +350,16 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - Panning is enabled at base zoom; offsets are clamped within bounds.
   - Hint text shows "Drag to pan"; the zoom percentage badge is hidden.
 
+### First-open Auto-pan (Guided Motion)
+
+- Component: `src/components/layouts/FullscreenZoomableImage.tsx`
+- Behavior: On the first time an image opens in fullscreen for a given round, the image automatically pans horizontally from the left edge to the right edge over ~2.5s, then pans back to center and stops (~1.25s). This provides a quick preview of the cropped portions.
+- One-time logic: A session-scoped registry keyed by `${currentRound}::${image.url}` ensures the auto-pan runs only once per round/image and not on subsequent manual fullscreen toggles.
+- Cancellation: Any user interaction (pointer down/drag, touch, or wheel) cancels the motion immediately.
+- Implementation notes:
+  - Uses `requestAnimationFrame` with an ease-in-out curve; while auto-panning, CSS transform transitions are disabled for smooth motion.
+  - Auto-pan only runs when there is horizontal overflow (computed via `getMaxOffsets().maxX > 1`).
+
 4. **Update state management** to use multiplayer state
 5. **Add invite flow** for room creation/joining
 

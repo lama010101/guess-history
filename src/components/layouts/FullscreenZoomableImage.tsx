@@ -14,6 +14,9 @@ const WHEEL_ZOOM_FACTOR = 0.1; // Smaller factor for smoother wheel zooming
 // Disable all zoom interactions in fullscreen mode
 const ZOOM_ENABLED = false;
 
+// Track whether we've already auto-panned for a given image/round key during this page session
+const __autoPanRegistry = new Set<string>();
+
 const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image, onExit, currentRound = 1 }) => {
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -40,6 +43,11 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   const lastMoveRef = useRef<{ x: number; y: number; t: number }>({ x: 0, y: 0, t: 0 });
   const rafRef = useRef<number | null>(null);
 
+  // Auto-pan control
+  const autoPanRafRef = useRef<number | null>(null);
+  const autoPanCancelledRef = useRef<boolean>(false);
+  const [isAutoPanning, setIsAutoPanning] = useState(false);
+
   const cancelInertia = () => {
     if (rafRef.current != null) {
       cancelAnimationFrame(rafRef.current);
@@ -47,6 +55,15 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
     }
     velocityRef.current = { x: 0, y: 0 };
     setIsInertia(false);
+  };
+
+  const cancelAutoPan = () => {
+    autoPanCancelledRef.current = true;
+    if (autoPanRafRef.current != null) {
+      cancelAnimationFrame(autoPanRafRef.current);
+      autoPanRafRef.current = null;
+    }
+    setIsAutoPanning(false);
   };
 
   const getMaxOffsets = () => {
@@ -112,6 +129,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
     // Only start a new drag if no active pointer
     if (activePointerIdRef.current !== null) return;
     activePointerIdRef.current = (e as any).pointerId ?? null;
+    cancelAutoPan();
     cancelInertia();
     setDragging(true);
     setLastPos({ x: e.clientX - offset.x, y: e.clientY - offset.y });
@@ -234,6 +252,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   // Mouse wheel zoom
   const handleWheel = (e: WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
+    cancelAutoPan();
     if (!ZOOM_ENABLED) return;
     // Calculate zoom direction based on wheel delta
     const delta = -Math.sign(e.deltaY) * WHEEL_ZOOM_FACTOR;
@@ -247,6 +266,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
       // Single-finger pan handled via Pointer Events
+      cancelAutoPan();
       if (showHint) setShowHint(false);
     } else if (e.touches.length === 2) {
       // Disable pinch-to-zoom when zoom is disabled
@@ -361,6 +381,81 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
     };
   }, [image.url, currentRound]);
 
+  // Auto-pan once per image/round on first fullscreen open after image loads
+  useEffect(() => {
+    if (isLoading) return;
+    if (!imgRef.current || !containerRef.current) return;
+
+    const key = `${currentRound ?? 0}::${image.url}`;
+    if (__autoPanRegistry.has(key)) return;
+
+    // Mark as done so subsequent opens during the same round won't auto-pan
+    __autoPanRegistry.add(key);
+    autoPanCancelledRef.current = false;
+
+    // Compute bounds
+    const { maxX } = getMaxOffsets();
+    if (maxX <= 1) return; // nothing to pan horizontally
+
+    // Initialize at left edge
+    const startLeft = -maxX;
+    setOffset(prev => ({ x: startLeft, y: prev.y }));
+    offsetRef.current = { x: startLeft, y: offsetRef.current.y };
+
+    setIsAutoPanning(true);
+
+    const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t);
+
+    const sweepDuration = 2500; // ms: left -> right ~2.5s
+    const backDuration = 1250;  // ms: right -> center ~1.25s
+
+    let phase: 'sweep' | 'back' = 'sweep';
+    let t0 = performance.now();
+
+    const step = (now: number) => {
+      if (autoPanCancelledRef.current) { setIsAutoPanning(false); return; }
+      const dt = now - t0;
+
+      if (phase === 'sweep') {
+        const t = Math.min(1, dt / sweepDuration);
+        const x = startLeft + (2 * maxX) * easeInOut(t);
+        const clamped = clampOffset(x, offsetRef.current.y);
+        setOffset(clamped);
+        offsetRef.current = clamped;
+
+        if (t < 1) {
+          autoPanRafRef.current = requestAnimationFrame(step);
+        } else {
+          // Begin back-to-center
+          phase = 'back';
+          t0 = performance.now();
+          autoPanRafRef.current = requestAnimationFrame(step);
+        }
+      } else {
+        const t = Math.min(1, dt / backDuration);
+        const x = maxX + (0 - maxX) * easeInOut(t);
+        const clamped = clampOffset(x, offsetRef.current.y);
+        setOffset(clamped);
+        offsetRef.current = clamped;
+
+        if (t < 1) {
+          autoPanRafRef.current = requestAnimationFrame(step);
+        } else {
+          // Done
+          setIsAutoPanning(false);
+          autoPanRafRef.current = null;
+        }
+      }
+    };
+
+    // Start after next frame to ensure layout is stable
+    autoPanRafRef.current = requestAnimationFrame(step);
+
+    return () => {
+      cancelAutoPan();
+    };
+  }, [isLoading, image.url, currentRound]);
+
   // Auto-hide instructions after 3 seconds
   useEffect(() => {
     if (!showHint) return;
@@ -432,7 +527,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
             objectFit: 'cover',
             objectPosition: 'center',
             transform: `scale(${zoom}) translate(${offset.x / zoom}px,${offset.y / zoom}px)`,
-            transition: (dragging || isInertia) ? "none" : "transform 0.2s cubic-bezier(.23,1.01,.32,1)",
+            transition: (dragging || isInertia || isAutoPanning) ? "none" : "transform 0.2s cubic-bezier(.23,1.01,.32,1)",
             touchAction: "none",
             userSelect: "none",
             pointerEvents: "auto",

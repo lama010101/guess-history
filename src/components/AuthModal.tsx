@@ -12,6 +12,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AlertCircle, Check, Loader2, Mail, UserX } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -34,6 +37,9 @@ export function AuthModal({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [activeTab, setActiveTab] = useState<"signIn" | "signUp">(initialTab || "signIn");
+  const [rememberMe, setRememberMe] = useState<boolean>(true);
+  const [forgotState, setForgotState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [forgotError, setForgotError] = useState<string>("");
 
   const handleGuestLogin = async () => {
     try {
@@ -85,6 +91,16 @@ export function AuthModal({
     try {
       setIsLoading(true);
       if (activeTab === "signIn") {
+        // Persist preference for storage layer to read during auth writes
+        try {
+          if (rememberMe) {
+            localStorage.setItem('auth.remember', 'true');
+            sessionStorage.removeItem('auth.remember');
+          } else {
+            sessionStorage.setItem('auth.remember', 'false');
+            localStorage.removeItem('auth.remember');
+          }
+        } catch {}
         await signInWithEmail(email, password);
       } else {
         if (isGuest) {
@@ -123,6 +139,51 @@ export function AuthModal({
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email) {
+      console.warn('[AuthModal] Forgot password clicked without email');
+      setForgotState('error');
+      setForgotError("Enter your email above to reset your password");
+      toast({
+        variant: "destructive",
+        title: "Email required",
+        description: "Enter your email above to reset your password.",
+      });
+      return;
+    }
+    try {
+      setForgotState('loading');
+      console.log('[AuthModal] Sending password reset email...', { email });
+      const redirectTo = (import.meta as any)?.env?.VITE_AUTH_EMAIL_REDIRECT_TO as string | undefined;
+      if (redirectTo) {
+        await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      } else {
+        await supabase.auth.resetPasswordForEmail(email);
+      }
+      console.log('[AuthModal] Reset email sent. Check your inbox.');
+      setForgotState('success');
+      toast({ title: "Reset email sent", description: "Please check your inbox for a reset link." });
+    } catch (error: any) {
+      const msg = error?.message || String(error);
+      const status = (error?.status ?? error?.code) as any;
+      if (status === 429 || /Too Many Requests/i.test(msg)) {
+        console.warn('[AuthModal] Password reset rate limited (429). Try again later.');
+        setForgotError("Too many requests. Try again later.");
+      } else {
+        console.error('[AuthModal] Password reset failed:', error);
+        setForgotError(msg || "Unable to send reset email");
+      }
+      setForgotState('error');
+      toast({ variant: "destructive", title: "Reset failed", description: msg || "Unable to send reset email." });
+    } finally {
+      // Reset state after 5 seconds
+      setTimeout(() => {
+        setForgotState('idle');
+        setForgotError("");
+      }, 5000);
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
@@ -141,42 +202,46 @@ export function AuthModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[85vh] p-6 flex flex-col" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>Welcome to Guess History</DialogTitle>
-          <DialogDescription>
-            Sign in to track your progress and compete with others
-          </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col space-y-4">
+        <div className="flex flex-col gap-6 flex-1 justify-between">
+          <div className="flex flex-col gap-3">
           {!isGuest && (
-            <Button 
-              variant="outline" 
+            <Button
               onClick={handleGuestLogin}
               disabled={isLoading}
+              className="w-full rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 flex items-center justify-center gap-2"
             >
-              Continue as Guest
+              <UserX className="w-5 h-5" />
+              Continue as guest
             </Button>
           )}
           
           {!isGuest && (
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
+            <div className="space-y-2">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground tracking-wide">
+                    OR SIGN IN
+                  </span>
+                </div>
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Or continue with
-                </span>
-              </div>
+              <p className="text-center text-xs text-muted-foreground">
+                to track your progress and compete with others.
+              </p>
             </div>
           )}
           
           <Button
-            variant="outline"
             onClick={handleGoogleSignIn}
             disabled={isLoading}
-            className="flex items-center justify-center gap-2"
+            className="w-full bg-white text-black border hover:bg-white hover:text-black flex items-center justify-center gap-2"
+            variant="secondary"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
               <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
@@ -188,6 +253,7 @@ export function AuthModal({
             </svg>
             Continue with Google
           </Button>
+          </div>
 
           <Tabs 
             defaultValue="signIn" 
@@ -224,11 +290,48 @@ export function AuthModal({
                     disabled={isLoading}
                   />
                 </div>
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Checkbox id="remember" checked={rememberMe} onCheckedChange={(v) => setRememberMe(!!v)} />
+                    <span>Remember me</span>
+                  </label>
+                  <div className="flex flex-col items-end">
+                    <button
+                      type="button"
+                      className={`text-sm ${forgotState === 'idle' ? 'text-muted-foreground underline-offset-2 hover:underline' : ''} ${forgotState === 'loading' ? 'text-muted-foreground' : ''} ${forgotState === 'success' ? 'text-green-500' : ''} ${forgotState === 'error' ? 'text-red-500' : ''}`}
+                      onClick={handleForgotPassword}
+                    >
+                      {forgotState === 'loading' && (
+                        <span className="flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Sending...
+                        </span>
+                      )}
+                      {forgotState === 'success' && (
+                        <span className="flex items-center gap-1">
+                          <Check className="h-3 w-3" />
+                          Email sent!
+                        </span>
+                      )}
+                      {forgotState === 'error' && (
+                        <span className="flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          Reset failed
+                        </span>
+                      )}
+                      {forgotState === 'idle' && "Forgot password?"}
+                    </button>
+                    {forgotState === 'error' && forgotError && (
+                      <p className="text-xs text-red-500 mt-1">{forgotError}</p>
+                    )}
+                  </div>
+                </div>
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="w-full bg-white text-black border hover:bg-white hover:text-black flex items-center justify-center gap-2"
                   disabled={isLoading}
                 >
+                  <Mail className="w-4 h-4" />
                   Sign In
                 </Button>
               </form>
@@ -260,9 +363,10 @@ export function AuthModal({
                 </div>
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="w-full bg-white text-black border hover:bg-white hover:text-black flex items-center justify-center gap-2"
                   disabled={isLoading}
                 >
+                  <Mail className="w-4 h-4" />
                   Create Account
                 </Button>
               </form>

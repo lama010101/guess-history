@@ -65,18 +65,46 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storageKey: 'supabase.auth.token',
     storage: {
       getItem: (key) => {
-        const item = localStorage.getItem(key);
-        return item;
+        try {
+          const remember = (() => {
+            if (sessionStorage.getItem('auth.remember') === 'false') return false;
+            const v = localStorage.getItem('auth.remember');
+            return v === null ? true : v === 'true';
+          })();
+          const store = remember ? localStorage : sessionStorage;
+          return store.getItem(key);
+        } catch {
+          return localStorage.getItem(key);
+        }
       },
       setItem: (key, value) => {
-        localStorage.setItem(key, value);
-        // Set cookie with domain for cross-subdomain auth
-        document.cookie = `${key}=${value};domain=.guess-history.com;path=/;max-age=${60 * 60 * 24 * 7};secure;samesite=lax`;
+        try {
+          const remember = (() => {
+            if (sessionStorage.getItem('auth.remember') === 'false') return false;
+            const v = localStorage.getItem('auth.remember');
+            return v === null ? true : v === 'true';
+          })();
+          const store = remember ? localStorage : sessionStorage;
+          store.setItem(key, value);
+          // Cross-subdomain cookie: persistent if remembered, session-only otherwise
+          const base = `${key}=${value};domain=.guess-history.com;path=/;secure;samesite=lax`;
+          document.cookie = remember ? `${base};max-age=${60 * 60 * 24 * 7}` : base;
+        } catch {
+          localStorage.setItem(key, value);
+          document.cookie = `${key}=${value};domain=.guess-history.com;path=/;max-age=${60 * 60 * 24 * 7};secure;samesite=lax`;
+        }
       },
       removeItem: (key) => {
-        localStorage.removeItem(key);
-        // Remove cookie by setting expiry in the past
-        document.cookie = `${key}=;domain=.guess-history.com;path=/;max-age=0;secure;samesite=lax`;
+        try {
+          // Remove from both to be safe
+          localStorage.removeItem(key);
+          sessionStorage.removeItem(key);
+          // Remove cookie by setting expiry in the past
+          document.cookie = `${key}=;domain=.guess-history.com;path=/;max-age=0;secure;samesite=lax`;
+        } catch {
+          localStorage.removeItem(key);
+          document.cookie = `${key}=;domain=.guess-history.com;path=/;max-age=0;secure;samesite=lax`;
+        }
       }
     }
   },

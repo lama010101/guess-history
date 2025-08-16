@@ -961,3 +961,28 @@ Notes: UI changes are limited to the Home page and the shared `Logo` component p
   - Stopped destructuring/using `globalXP`, `globalAccuracy`, and `fetchGlobalMetrics` from `useGame()` on this page.
   - Left header grid layout intact by rendering an empty left column (`<div class="col-start-1" />`).
 - Rationale: Simplify the landing experience by removing scores from this page without affecting other pages.
+
+## Auth Modal — Unified Layout and Styling
+
+- File: `src/components/AuthModal.tsx`
+- Purpose: Standardize the sign in/up modal layout and button styles.
+- Header:
+  - Title: "Welcome to Guess History" (no subtitle)
+- Primary CTA (guest):
+  - "Continue as guest" — orange button (`bg-orange-500 hover:bg-orange-600`, `rounded-xl`, white text) with `UserX` icon from `lucide-react`.
+- Separator:
+  - Centered divider text: `OR SIGN IN`
+  - Subtitle below: "to track your progress and compete with others."
+- Social:
+  - "Continue with Google" — white button with black text (`bg-white text-black border`) and Google logo.
+- Email forms:
+  - Tabs: Sign In / Sign Up
+  - Inputs: `email`, `password`
+  - Sign In extras: `Remember me` checkbox (`@/components/ui/checkbox`) and "Forgot password?" text link.
+  - Submit buttons: white with black text (`bg-white text-black border`) and `Mail` icon.
+- Behavior:
+  - Remember me controls session persistence: when checked, auth tokens are stored in `localStorage` with a persistent cookie; when unchecked, tokens use `sessionStorage` with a session cookie. Implementation uses the `auth.remember` flag read by `src/integrations/supabase/client.ts` custom storage adapter.
+  - Forgot password sends a Supabase password reset email via `supabase.auth.resetPasswordForEmail(email)` using optional `VITE_AUTH_EMAIL_REDIRECT_TO` for the redirect target.
+- Notes:
+  - Business logic unchanged (uses `useAuth()` methods).
+  - Icons from `lucide-react`; no new dependencies added.

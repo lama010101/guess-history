@@ -73,6 +73,8 @@ export interface UserSettings {
   distance_unit: 'km' | 'mi';
   language: string;
   inertia_enabled: boolean;
+  inertia_mode: 'none' | 'swipes' | 'swipes_recenter';
+  inertia_level?: number; // 1..5, controls strength/duration of inertia
 }
 
 // Fetch user profile (registered or anonymous). Always query Supabase.
@@ -672,6 +674,8 @@ export async function fetchUserSettings(userId: string): Promise<UserSettings | 
         distance_unit: 'km',
         language: 'en',
         inertia_enabled: true,
+        inertia_mode: 'swipes',
+        inertia_level: 3,
       };
       return defaultSettings;
     }
@@ -685,6 +689,8 @@ export async function fetchUserSettings(userId: string): Promise<UserSettings | 
       distance_unit: raw.distance_unit ?? 'km',
       language: raw.language ?? 'en',
       inertia_enabled: raw.inertia_enabled ?? true,
+      inertia_mode: raw.inertia_mode ?? 'swipes',
+      inertia_level: typeof raw.inertia_level === 'number' ? raw.inertia_level : 3,
     };
     return merged;
   } catch (error) {

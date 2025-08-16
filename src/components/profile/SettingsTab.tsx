@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserSettings } from '@/utils/profile/profileService';
+import { UserSettings, updateUserSettings } from '@/utils/profile/profileService';
 import { useSettingsStore } from '@/lib/useSettingsStore';
 import { useTheme } from 'next-themes';
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from '@/components/ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { Settings as SettingsIcon, Moon, Sun, Monitor } from "lucide-react";
+import { Settings as SettingsIcon, Moon, Sun, Monitor, Navigation } from "lucide-react";
 
 interface SettingsTabProps {
   userId: string;
@@ -29,23 +28,16 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
   const { soundEnabled, toggleSound } = useSettingsStore();
   const [saving, setSaving] = useState(false);
   const { setTimerSeconds } = useSettingsStore();
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const handleSaveSettings = async () => {
     if (saving) return;
     
     try {
       setSaving(true);
-      
-      const { error } = await supabase
-        .from('settings')
-        .upsert({ 
-          id: `user_settings_${userId}`,
-          value: updatedSettings as any, // Type assertion to handle the JSON type
-          updated_at: new Date().toISOString()
-        });
-      
-      if (error) {
-        console.error('Error saving settings:', error);
+      const ok = await updateUserSettings(userId, updatedSettings);
+      if (!ok) {
+        console.error('Error saving settings via updateUserSettings');
         toast({
           title: "Save failed",
           description: "There was a problem saving your settings. Please try again.",
@@ -58,6 +50,8 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
         title: "Settings saved",
         description: "Your settings have been updated successfully.",
       });
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
       
       onSettingsUpdated();
     } catch (error) {
@@ -85,6 +79,11 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
 
       
       <div className="space-y-6">
+        {saveSuccess && (
+          <div className="border border-green-200 bg-green-50 text-green-800 rounded-md p-3 text-sm">
+            Settings saved successfully.
+          </div>
+        )}
         {/* Theme Setting */}
         <div>
           <Label className="mb-3 block text-history-primary dark:text-history-light">Theme</Label>
@@ -177,6 +176,72 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
           </div>
         </div>
         
+        {/* Inertia Enable + Level */}
+        <div>
+          <Label className="mb-3 block text-history-primary dark:text-history-light">Panning Inertia</Label>
+          <div className="flex items-center gap-3 mb-3">
+            <Switch
+              id="inertia-enabled"
+              checked={updatedSettings.inertia_enabled !== false}
+              onCheckedChange={(checked) => setUpdatedSettings({ ...updatedSettings, inertia_enabled: checked })}
+            />
+            <Label htmlFor="inertia-enabled">{updatedSettings.inertia_enabled === false ? 'Off' : 'On'}</Label>
+          </div>
+          {updatedSettings.inertia_enabled !== false && (
+            <div className="mt-2">
+              <Label htmlFor="inertia-level" className="block mb-2">Level: {updatedSettings.inertia_level ?? 3}</Label>
+              <input
+                id="inertia-level"
+                type="range"
+                min={1}
+                max={5}
+                step={1}
+                value={updatedSettings.inertia_level ?? 3}
+                onChange={(e) => setUpdatedSettings({ ...updatedSettings, inertia_level: Number(e.target.value) })}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                <span>Short</span>
+                <span>Long</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Inertia Panning Mode */}
+        <div className={updatedSettings.inertia_enabled === false ? 'opacity-50 pointer-events-none' : ''}>
+          <Label className="mb-3 block text-history-primary dark:text-history-light">Automatic Panning When Round Starts</Label>
+          <RadioGroup 
+            value={updatedSettings.inertia_mode} 
+            onValueChange={(value) => {
+              setUpdatedSettings({...updatedSettings, inertia_mode: value as 'none' | 'swipes' | 'swipes_recenter'});
+            }}
+            className="flex flex-col gap-4"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="none" id="inertia-none" className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" />
+              <Label htmlFor="inertia-none" className="flex items-center">
+                <Navigation className="h-4 w-4 mr-2 opacity-50" />
+                None - No automatic panning
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="swipes" id="inertia-swipes" className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" />
+              <Label htmlFor="inertia-swipes" className="flex items-center">
+                <Navigation className="h-4 w-4 mr-2" />
+                Swipe - Continued motion after drag
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="swipes_recenter" id="inertia-recenter" className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" />
+              <Label htmlFor="inertia-recenter" className="flex items-center">
+                <Navigation className="h-4 w-4 mr-2" />
+                Swipe + recenter - Motion, then auto-center
+              </Label>
+            </div>
+          </RadioGroup>
+        </div>
+
         {/* Language Setting - Coming Soon */}
         <div className="relative">
           <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-lg z-10 flex items-center justify-center">

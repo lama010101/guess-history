@@ -1,5 +1,7 @@
 import React, { useRef, useState, useEffect, WheelEvent } from "react";
 import { Maximize } from "lucide-react";
+import { useAuth } from '@/contexts/AuthContext';
+import { fetchUserSettings, UserSettings } from '@/utils/profile/profileService';
 
 interface FullscreenZoomableImageProps {
   image: { url: string; placeholderUrl: string; title: string };
@@ -18,6 +20,7 @@ const ZOOM_ENABLED = false;
 const __autoPanRegistry = new Set<string>();
 
 const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image, onExit, currentRound = 1 }) => {
+  const { user } = useAuth();
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
@@ -27,6 +30,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   const [imgSrc, setImgSrc] = useState(image.placeholderUrl);
   const [showHint, setShowHint] = useState(currentRound === 1);
   const [isInertia, setIsInertia] = useState(false);
+  const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const offsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -155,12 +159,13 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
     const dx = e.clientX - prev.x;
     const dy = e.clientY - prev.y;
 
-    // Update velocity (exponential moving average)
+    // Update velocity with better smoothing for mobile
     const instVx = dx / dt;
     const instVy = dy / dt;
+    const smoothing = 0.7; // Increased smoothing for better mobile experience
     velocityRef.current = {
-      x: velocityRef.current.x * 0.8 + instVx * 0.2,
-      y: velocityRef.current.y * 0.8 + instVy * 0.2,
+      x: velocityRef.current.x * smoothing + instVx * (1 - smoothing),
+      y: velocityRef.current.y * smoothing + instVy * (1 - smoothing),
     };
 
     lastMoveRef.current = { x: e.clientX, y: e.clientY, t: now };
@@ -170,10 +175,19 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   };
 
   const startInertia = () => {
-    const eps = 0.002; // px/ms threshold
-    const friction = 0.0045; // higher -> faster decay
+    // Check user settings for inertia mode
+    if (!userSettings || userSettings.inertia_mode === 'none' || userSettings.inertia_enabled === false) {
+      return; // No inertia if disabled
+    }
+
+    const eps = 0.001; // Lower threshold for more responsive inertia
+    // Scale friction by user-configured inertia_level (1..5). Higher level => lower friction (longer glide)
+    const level = Math.max(1, Math.min(5, (userSettings.inertia_level ?? 3)));
+    const frictionBase = 0.003;
+    const friction = frictionBase * ((6 - level) / 3); // L1≈0.005, L3≈0.003, L5≈0.001
     setIsInertia(true);
     let last = performance.now();
+    let hasRecentered = false;
 
     const step = (now: number) => {
       const dt = Math.min(32, Math.max(1, now - last)); // clamp dt for stability
@@ -206,20 +220,58 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
       if (moving && (hasRoom || hasRoomY)) {
         rafRef.current = requestAnimationFrame(step);
       } else {
-        setIsInertia(false);
-        rafRef.current = null;
+        // Inertia finished, check if we should recenter
+        if (userSettings.inertia_mode === 'swipes_recenter' && !hasRecentered) {
+          hasRecentered = true;
+          startRecenterAnimation();
+        } else {
+          setIsInertia(false);
+          rafRef.current = null;
+        }
       }
     };
 
     rafRef.current = requestAnimationFrame(step);
   };
 
+  const startRecenterAnimation = () => {
+    const startX = offsetRef.current.x;
+    const startY = offsetRef.current.y;
+    const targetX = 0;
+    const targetY = 0;
+    const duration = 800; // ms
+    const startTime = performance.now();
+
+    const recenterStep = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+
+      const currentX = startX + (targetX - startX) * eased;
+      const currentY = startY + (targetY - startY) * eased;
+
+      setOffset({ x: currentX, y: currentY });
+      offsetRef.current = { x: currentX, y: currentY };
+
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(recenterStep);
+      } else {
+        setIsInertia(false);
+        rafRef.current = null;
+      }
+    };
+
+    rafRef.current = requestAnimationFrame(recenterStep);
+  };
+
   const endPointerInteraction = () => {
     setDragging(false);
     if (imgRef.current) imgRef.current.style.cursor = 'grab';
-    // Start inertia if velocity is meaningful
+    // Start inertia if velocity is meaningful and inertia is enabled
     const speed = Math.hypot(velocityRef.current.x, velocityRef.current.y);
-    if (speed > 0.01) startInertia();
+    if (speed > 0.005 && userSettings && userSettings.inertia_mode !== 'none' && userSettings.inertia_enabled !== false) { // Lower threshold for more responsive inertia
+      startInertia();
+    }
     activePointerIdRef.current = null;
   };
 
@@ -344,6 +396,28 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
     }
   }, [zoom, offset]);
   
+  // Load user settings
+  useEffect(() => {
+    const loadSettings = async () => {
+      if (user?.id) {
+        const settings = await fetchUserSettings(user.id);
+        setUserSettings(settings);
+      } else {
+        // Default settings for non-authenticated users
+        setUserSettings({
+          theme: 'system',
+          sound_enabled: true,
+          notification_enabled: true,
+          distance_unit: 'km',
+          language: 'en',
+          inertia_enabled: true,
+          inertia_mode: 'swipes'
+        });
+      }
+    };
+    loadSettings();
+  }, [user]);
+
   // Reset pan/zoom on open/close and handle image preloading
   useEffect(() => {
     // Default zoom at 100%
@@ -385,9 +459,13 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   useEffect(() => {
     if (isLoading) return;
     if (!imgRef.current || !containerRef.current) return;
+    if (!userSettings) return; // Wait for settings to load
 
     const key = `${currentRound ?? 0}::${image.url}`;
     if (__autoPanRegistry.has(key)) return;
+
+    // Only auto-pan if inertia mode allows it (not 'none')
+    if (userSettings.inertia_mode === 'none') return;
 
     // Mark as done so subsequent opens during the same round won't auto-pan
     __autoPanRegistry.add(key);
@@ -426,10 +504,16 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
         if (t < 1) {
           autoPanRafRef.current = requestAnimationFrame(step);
         } else {
-          // Begin back-to-center
-          phase = 'back';
-          t0 = performance.now();
-          autoPanRafRef.current = requestAnimationFrame(step);
+          // Sweep completed. If mode is 'swipes', stop at edge; if 'swipes_recenter', go back to center.
+          if (userSettings.inertia_mode === 'swipes') {
+            setIsAutoPanning(false);
+            autoPanRafRef.current = null;
+          } else {
+            // Begin back-to-center
+            phase = 'back';
+            t0 = performance.now();
+            autoPanRafRef.current = requestAnimationFrame(step);
+          }
         }
       } else {
         const t = Math.min(1, dt / backDuration);
@@ -454,7 +538,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
     return () => {
       cancelAutoPan();
     };
-  }, [isLoading, image.url, currentRound]);
+  }, [isLoading, image.url, currentRound, userSettings]);
 
   // Auto-hide instructions after 3 seconds
   useEffect(() => {
@@ -500,7 +584,9 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
       {/* Instructions tooltip */}
       {(!isLoading && showHint) && (
         <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm pointer-events-none transition-opacity duration-300">
-          Drag to pan
+          {userSettings?.inertia_mode === 'none' ? 'Drag to pan' : 
+           userSettings?.inertia_mode === 'swipes_recenter' ? 'Drag to pan • Swipe for momentum • Auto-centers' :
+           'Drag to pan • Swipe for momentum'}
         </div>
       )}
       {/* Image */}

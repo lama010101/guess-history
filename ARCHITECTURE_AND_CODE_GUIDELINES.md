@@ -3,6 +3,39 @@
 ## Overview
 This document provides comprehensive architecture guidelines for the Guess History multiplayer system, built on PartyKit with Supabase for state persistence and Cloudflare Workers for async processing.
 
+## Fullscreen Image Inertia Panning System
+
+### User Settings Integration
+- **Location**: `src/utils/profile/profileService.ts` - `UserSettings` interface
+- **Fields**:
+  - `inertia_enabled: boolean` — Master toggle for panning inertia (and auto-pan behaviors). If `false`, drag momentum and auto-pan are disabled.
+  - `inertia_mode: 'none' | 'swipes' | 'swipes_recenter'` — Controls automatic panning behavior.
+  - `inertia_level: number (1..5)` — Controls inertia strength/duration. Higher = longer glide (lower friction).
+- **Defaults**: `{ inertia_enabled: true, inertia_mode: 'swipes', inertia_level: 3 }`
+- **Storage contract**: Persist settings in `public.settings` with `id = <userId>`. Always use `fetchUserSettings(userId)` and `updateUserSettings(userId, settings)` from `profileService`. Do not prefix IDs (avoid formats like `user_settings_${userId}`) to ensure the fullscreen viewer and settings UI load the same row.
+
+### Inertia Modes
+1. **None** — No automatic panning or inertia effects.
+2. **Swipes** — Continues motion after drag with mobile-optimized inertia. On the round’s first fullscreen open, the preview auto-pan sweeps left→right once and stops at the edge (no recenter).
+3. **Swipes then recenter** — Continues motion, then automatically centers the image. On the round’s first fullscreen open, the preview sweeps left→right and then back to center.
+
+### Mobile Optimizations
+- **Enhanced Velocity Smoothing**: Increased smoothing factor (0.7) for better mobile touch response
+- **Level-Scaled Friction**: Base friction `0.003` scaled by `((6 - inertia_level)/3)` so Level 1≈0.005 (short), Level 3≈0.003 (medium), Level 5≈0.001 (long).
+- **Responsive Threshold**: Lower velocity threshold (0.005) for more responsive inertia activation
+- **Pointer Events**: Full pointer event support for consistent mobile/desktop behavior
+
+### Settings UI
+- **Location**: `src/components/profile/SettingsTab.tsx`
+- **Control**: Radio group with Navigation icons and descriptive labels
+- **Integration**: Real-time settings loading and saving via Supabase
+
+### Implementation Details
+- **Settings Loading**: Async loading on component mount with fallback defaults
+- **Recenter Animation**: Smooth 800ms ease-out cubic animation to center position
+- **Auto-pan Integration**: Respects `inertia_enabled` and `inertia_mode` (disabled when `inertia_enabled` is false or mode is `none`).
+- **Dynamic Hints**: Context-aware instruction tooltips based on selected inertia mode
+
 ## System Architecture
 
 ### Core Components
@@ -372,7 +405,10 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
 ### First-open Auto-pan (Guided Motion)
 
 - Component: `src/components/layouts/FullscreenZoomableImage.tsx`
-- Behavior: On the first time an image opens in fullscreen for a given round, the image automatically pans horizontally from the left edge to the right edge over ~2.5s, then pans back to center and stops (~1.25s). This provides a quick preview of the cropped portions.
+- Behavior: On the first time an image opens in fullscreen for a given round, a preview auto-pan occurs. Behavior matches the selected `inertia_mode`:
+  - `swipes` — sweep left→right once and stop at the edge.
+  - `swipes_recenter` — sweep left→right, then return to center.
+  - `none` — no auto-pan.
 - One-time logic: A session-scoped registry keyed by `${currentRound}::${image.url}` ensures the auto-pan runs only once per round/image and not on subsequent manual fullscreen toggles.
 - Cancellation: Any user interaction (pointer down/drag, touch, or wheel) cancels the motion immediately.
 - Implementation notes:

@@ -55,15 +55,14 @@ const HintButtonUI: React.FC<{
   purchasedHintIds: string[];
   isLoading: boolean;
   onPurchase: (hint: Hint) => void;
-  onLockedClick?: () => void;
-}> = ({ hint, purchasedHintIds, isLoading, onPurchase }) => {
+  isLocked: boolean;
+}> = ({ hint, purchasedHintIds, isLoading, onPurchase, isLocked }) => {
   const [lockedClicked, setLockedClicked] = useState(false);
   const { xp: costXp, acc: penaltyAcc } = getHintCostAndPenalty(hint);
   const label1 = HINT_TYPE_NAMES[hint.type] ??
     hint.type.replace(/^\d+_/, '').replace(/_/g, ' ').replace(/(when|where)/g, '').trim();
 
   const isPurchased = purchasedHintIds.includes(hint.id);
-  const isLocked = !!(hint.prerequisite && !purchasedHintIds.includes(hint.prerequisite));
 
   return (
     <div className="relative">
@@ -180,6 +179,16 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
     return { when, where };
   }, [availableHints]);
 
+  // Determine if a hint is locked based on central dependency map
+  const isHintLocked = (hint: Hint): boolean => {
+    const dependencyType = HINT_DEPENDENCIES[hint.type];
+    if (dependencyType) {
+      const dependencyHint = availableHints.find(h => h.type === dependencyType);
+      if (dependencyHint && !isHintPurchased(dependencyHint.id)) return true;
+    }
+    return false;
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="h-screen w-screen bg-black text-white overflow-y-auto p-0 border-0">
@@ -241,6 +250,7 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
                 purchasedHintIds={purchasedHintIds}
                 isLoading={isLoading || purchasingHintId === hint.id}
                 onPurchase={handlePurchase}
+                isLocked={isHintLocked(hint)}
               />
             ))}
           </div>

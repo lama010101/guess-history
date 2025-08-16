@@ -37,10 +37,11 @@ const ImmersiveCylViewer: React.FC<ImmersiveCylViewerProps> = ({
   const draggingRef = useRef<boolean>(false);
   const lastXRef = useRef<number>(0);
   const lastYRef = useRef<number>(0);
+  const vHistRef = useRef<{ x: number; y: number; t: number }[]>([]);
 
   const yawMax = (curvatureDeg * Math.PI) / 180 / 2;
   const pitchMax = (30 * Math.PI) / 180;
-  const decay = 0.95; // inertia decay
+  const decay = 0.985; // inertia decay (slower for a stronger effect)
 
   const [gyroEligible, setGyroEligible] = useState<boolean>(false);
   const [gyroEnabled, setGyroEnabled] = useState<boolean>(false);
@@ -71,6 +72,9 @@ const ImmersiveCylViewer: React.FC<ImmersiveCylViewerProps> = ({
       container.innerHTML = '';
       container.appendChild(renderer.domElement);
       canvasRef.current = renderer.domElement;
+      // Prevent default touch gestures from interfering with drag on mobile
+      (renderer.domElement as HTMLCanvasElement).style.touchAction = 'none';
+      (container as HTMLElement).style.overscrollBehavior = 'none';
 
       const camera = new THREE.PerspectiveCamera(lockFov ?? 70, w / h, 0.1, 1000);
       cameraRef.current = camera;
@@ -138,25 +142,48 @@ const ImmersiveCylViewer: React.FC<ImmersiveCylViewerProps> = ({
       window.addEventListener('resize', onResize);
 
       // Pointer input
-      const sens = 0.0025;
+      const baseSens = 0.0025;
       const onPointerDown = (e: PointerEvent) => {
         draggingRef.current = true;
         lastXRef.current = e.clientX;
         lastYRef.current = e.clientY;
+        vHistRef.current = [{ x: e.clientX, y: e.clientY, t: performance.now() }];
+        // Capture the pointer to ensure we keep receiving move/up events
+        canvasRef.current?.setPointerCapture?.(e.pointerId);
       };
       const onPointerMove = (e: PointerEvent) => {
         if (!draggingRef.current) return;
         const dx = e.clientX - lastXRef.current;
         const dy = e.clientY - lastYRef.current;
+        const sens = e.pointerType === 'touch' ? baseSens * 1.6 : baseSens;
         yawRef.current -= dx * sens;
         pitchRef.current -= dy * sens;
         vxRef.current = -dx * sens;
         vyRef.current = -dy * sens;
         lastXRef.current = e.clientX;
         lastYRef.current = e.clientY;
+        // Track recent movement samples for better release velocity estimation
+        const now = performance.now();
+        vHistRef.current.push({ x: e.clientX, y: e.clientY, t: now });
+        if (vHistRef.current.length > 6) vHistRef.current.shift();
       };
-      const onPointerUp = () => {
+      const onPointerUp = (e: PointerEvent) => {
         draggingRef.current = false;
+        // Seed inertia using recent velocity over the last few samples
+        const hist = vHistRef.current;
+        if (hist.length >= 2) {
+          const last = hist[hist.length - 1];
+          const first = hist[Math.max(0, hist.length - 4)];
+          const dt = Math.max(1, last.t - first.t); // ms
+          const vxPxPerMs = (last.x - first.x) / dt;
+          const vyPxPerMs = (last.y - first.y) / dt;
+          const frameMs = 16; // approx 60fps
+          const boost = (e as any).pointerType === 'touch' ? 1.8 : 1.0;
+          vxRef.current = -vxPxPerMs * baseSens * frameMs * boost;
+          vyRef.current = -vyPxPerMs * baseSens * frameMs * boost;
+        }
+        vHistRef.current = [];
+        canvasRef.current?.releasePointerCapture?.(e.pointerId);
       };
 
       canvasRef.current?.addEventListener('pointerdown', onPointerDown);
@@ -181,7 +208,7 @@ const ImmersiveCylViewer: React.FC<ImmersiveCylViewerProps> = ({
       const onKeyDown = (e: KeyboardEvent) => {
         const base = 10; // px equiv units
         const coarse = e.shiftKey ? 4 : 1;
-        const step = (base * coarse) * 0.0025; // align with sens
+        const step = (base * coarse) * baseSens; // align with sens
         switch (e.key) {
           case 'Escape':
             e.preventDefault();

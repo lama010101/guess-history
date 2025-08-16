@@ -281,7 +281,8 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - When card and Where card affordances:
     - When the year is not selected, the inline year input on the `When?` card shows placeholder text "Year".
     - When the location is not selected, the trailing label on the `Where?` card shows italic placeholder text "Location".
-  - Add a small spacer below the `Where?` card for breathing room on the page (`<div class="h-6" aria-hidden>`), placed after the card. Implemented in `src/components/layouts/GameLayout1.tsx` immediately after the `Where?` card.
+    - Add a small spacer below the `Where?` card for breathing room on the page (`<div class="h-6" aria-hidden>`), placed after the card. Implemented in `src/components/layouts/GameLayout1.tsx` immediately after the `Where?` card.
+    - Where search input: a subtle clear (X) button appears when text is present; clicking it clears the input and closes the results dropdown while keeping focus for immediate re-typing. Implemented in `src/components/HomeMap.tsx`.
 
 - Home page game mode cards:
   - `COMPETE` card: purple gradient with friends icon. Starts friends mode for signed-in users on click. Guests see a sign-in lock overlay (`z-[100]`, `dark:bg-black`) and can sign in.

@@ -279,8 +279,9 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - Home button remains light grey and consistently styled across pages.
   
   - When card and Where card affordances:
-    - When the year is not selected, the inline year input on the `When?` card shows placeholder text "Year".
-    - When the location is not selected, the trailing label on the `Where?` card shows italic placeholder text "Location".
+    - When the year is not selected, the inline year input on the `When?` card shows placeholder text "Choose a year".
+    - When the location is not selected, the trailing label on the `Where?` card shows italic placeholder text "Choose a location".
+    - The Where placeholder no longer truncates; it is non-truncated and clickable. Clicking "Choose a location" focuses the inline year input so the user can begin typing a year immediately.
     - Add a small spacer below the `Where?` card for breathing room on the page (`<div class="h-6" aria-hidden>`), placed after the card. Implemented in `src/components/layouts/GameLayout1.tsx` immediately after the `Where?` card.
     - Where search input: a subtle clear (X) button appears when text is present; clicking it clears the input and closes the results dropdown while keeping focus for immediate re-typing. Implemented in `src/components/HomeMap.tsx`.
 
@@ -302,6 +303,15 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
 - Game page controls:
   - When exiting fullscreen on the image, the `When?` and `Where?` labels perform a 1s typewriter animation in orange, then revert to the normal label color (white in dark mode, dark gray in light). There is no card ring/pulse on initial reveal. Implemented in `src/components/layouts/GameLayout1.tsx` with local `titlesAnimating`, `whenAnimIndex`, and `whereAnimIndex` state.
   - The Hints button in the bottom action bar is compact with a `HelpCircle` icon and a small count chip (e.g., `3/14`).
+
+### Button Border Radius Standard (2025-08)
+
+- __Default__: All buttons use Tailwind `rounded-md` (0.375rem) for a consistent look across the app. The shared Button component (`src/components/ui/button.tsx`) already defaults to `rounded-md`.
+- __Do not override__: Avoid adding explicit `rounded-*` classes on buttons unless a true exception is required. Rely on the shared Button default.
+- __Exceptions__ (allowed):
+  - Circular avatar/menu triggers and avatar images may use `rounded-full` (e.g., `src/components/navigation/MainNavbar.tsx`, `src/components/NavProfile.tsx`).
+  - Non-button chips/pills may use `rounded-full` as part of their design; this standard targets buttons only.
+- __Recent updates__: Replaced explicit `rounded-lg` on buttons with `rounded-md` in `src/components/layouts/GameLayout1.tsx` and `src/components/HintModalV2New.tsx`.
 
 ## Game Round Validation and Alerts
 
@@ -503,6 +513,7 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
   - `src/components/results/ResultsHeader.tsx`: Round text weight set to normal.
   - `src/components/layouts/ResultsLayout2.tsx`: Progress bars are placed at the bottom of the When/Where cards; % and XP badges appear directly below the progress bars; reduced spacing under "Your Score"; labels (Accuracy/Experience) moved above values; matched "Your guess" styling to "Correct:"; removed in-layout bottom Next Round buttons.
   - `src/components/results/HintDebtsCard.tsx`: Removed border; maintain dark background.
+  - `src/components/results/HintDebtsCard.tsx`: Accuracy penalty shows only `-{accDebt}%` on the right side. If the hint's `label` is numeric and the `hintId` denotes a numeric hint (`*_event_years`, `*_landmark_km`), append the numeric value with units directly after the hint label — `NN years off` for time hints and `NN km away` for location hints. Values are sourced from the hint debts (numeric `label`), not round-level `yearDifference`/`distanceKm`.
   - `src/pages/RoundResultsPage.tsx`: Made top Next Round button more compact (kept rounded-xl per standard).
   - 2025-08-14 spacing/style harmonization:
     - `src/components/layouts/ResultsLayout2.tsx`: Reduced space between "Your Score" and penalties (mb-1). Set When/Where titles to regular weight. Added spacing between titles and content. Added extra space above the "Correct" rows in When (`mt-4`). Moved progress bars to the bottom of each card with `mt-4`, and placed %/XP badges directly below those bars. Ensured event year and guessed year use the same font-size.
@@ -591,6 +602,24 @@ To avoid confusion from legacy duplicates, the following are the only files you 
 
 - `src/components/HintModalV2New.tsx` — The active Hint Modal rendered by `GameLayout1` and `GameLayout2`.
 
+#### Hints Modal — Spacing + Numeric Text (2025-08-16)
+
+- Vertical spacing harmonized in `src/components/HintModalV2New.tsx`:
+  - Header uses `pt-4 pb-3 px-4`; subtitle uses `mt-1`.
+  - Summary pills, segmented control, and hint list each use `mt-3` with consistent internal padding.
+- Purchased hint details render numeric penalties inline only when the hint text is digits-only and the type maps to a numeric unit:
+  - Years: `*_event_years` → “years off”.
+  - Distance: `*_landmark_km` → “km away”.
+  - Value source: the hint’s own `text` field when purchased; numbers are formatted via `formatInteger()`.
+  - Non-numeric texts remain unchanged (no unit appended).
+  
+  - Wrapping & sub-hint descriptions (2025-08-16)
+    - Answer/description text now wraps within the modal to avoid overflow beyond modal width: `whitespace-normal break-words` replaces `truncate`.
+    - For unpurchased numeric sub-hints, the description differs from the button label above:
+      - Years offset sub-hints show: “Years from the chosen event”.
+      - Distance sub-hints show: “Distance from the chosen landmark”.
+    - Implemented in `src/components/HintModalV2New.tsx` by inspecting `hint.type` to detect numeric units and rendering contextual copy.
+
 ### Game Page Controls — HUD and Bottom Navbar
 
 - Files:
@@ -610,10 +639,21 @@ To avoid confusion from legacy duplicates, the following are the only files you 
   - `YearSelector` slider shows endpoints 1850 and 2025 without ticks.
   - Duplicate year displays removed; only the inline input + slider remain.
 
+  - Mobile year input wrapping (2025-08-16)
+    - File: `src/components/layouts/GameLayout1.tsx`
+    - Header row now allows wrapping: container uses `flex flex-wrap` with `gap-x-2 gap-y-1` to avoid truncation.
+    - Title can shrink: `h2` gets `min-w-0` so text can truncate gracefully without forcing overflow.
+    - Year input takes full row on mobile: `basis-full w-full` with `mt-1`; on `md+`, it reverts to inline via `md:basis-auto md:w-[14ch]` (or `md:w-[26ch]` when alerting).
+    - Alignment: `text-left` on mobile, `md:text-right` on larger screens. Margins: `ml-0 md:ml-auto`.
+    - Prevent shrink on larger screens: `md:shrink-0` keeps the fixed `ch` width from collapsing.
+     - Result: placeholder "Choose a year" remains fully visible on small screens and never clips.
+     - Right-edge alignment: On desktop, the inline year input’s right edge aligns with the `Where?` placeholder/text by matching right padding with the `Where` label (`pr-1`). The input classes changed from symmetric `px-2` to `pl-2 pr-1`, keeping `md:ml-auto md:text-right` for alignment. File: `src/components/layouts/GameLayout1.tsx`.
+
 #### Recent refinements (When/Where, Hints, Mobile Home)
 
 - Year visibility and styling
   - File: `src/components/layouts/GameLayout1.tsx`
+{{ ... }}
   - Behavior: the inline year is hidden until the user first moves the slider.
   - State: `yearInteracted` toggled by `YearSelector.onFirstInteract()`.
   - Styling: when shown, year input uses orange text (`text-orange-400`) for emphasis.
@@ -650,9 +690,14 @@ Legacy/duplicate files slated for removal (do not edit):
 
 UI specifics applied in `HintModalV2New`:
 
-- Lock icon imported from `src/assets/icons/lock.webp`.
+- Segmented control (When/Where) spans full card width; both tabs use equal widths (`flex-1`).
+- In dark theme, the active tab uses black text on white background (`bg-white text-black`).
+- For unpurchased hints, a short description appears under the title using `HINT_LEVEL_DESCRIPTIONS[hint.level]`.
+ - All buttons in the modal use a consistent 0.5rem radius (`rounded-lg`), including the tab buttons, hint buttons, close (X), and the bottom "Continue Guessing" and dialog "OK" buttons.
+ - The header helper text "Using a hint will reduce your score." is reduced by one size step (`text-sm`) and spacing to the summary card beneath is tightened (top margin removed) for better distribution.
+- Lock image removed. For locked hints, a red message “You must first use the hint above” is only shown after the user clicks the locked row; the button remains non-purchasable and shows `cursor-not-allowed` styling.
 - Red warning under title: “Using a hint will reduce your score.”
-- Penalty values (badges and buttons) shown in red.
+- Penalty values (badges and buttons) shown in red/blue chips (accuracy green, XP blue).
 - Continue button: white text on orange background.
 
 ## Game Page Layout Tweaks (Mobile)

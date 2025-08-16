@@ -32,11 +32,11 @@ export const HINT_COSTS = {
 
 // Hint level descriptions
 export const HINT_LEVEL_DESCRIPTIONS: Record<number, string> = {
-  1: "Basic Hints - General Location & Time Period",
-  2: "Intermediate Hints - Distant References",
-  3: "Advanced Hints - Narrower Location & Time",
-  4: "Precise Hints - Specific Context",
-  5: "Full Clues - Direct Location & Date"
+  1: "eg: 20th",
+  2: "Event over 10 years before current one.",
+  3: "eg: 1930s",
+  4: "Event within 10 years of the current one",
+  5: "Visual clues "
 };
 
 // Hint type names for display
@@ -46,15 +46,15 @@ export const HINT_TYPE_NAMES: Record<string, string> = {
   'century': 'Century',
   
   // Level 2
-  'distant_landmark': 'Far Landmark',
-  'distant_distance': 'Far Reference',
+  'distant_landmark': 'Remote Landmark',
+  'distant_distance': 'KM Far Reference',
   'distant_event': 'Historical Context',
   'distant_time_diff': 'Time Period Range',
   
   // Level 3
   'region': 'Region',
   'narrow_decade': 'Decade',
-  'nearby_landmark': 'Near Landmark',
+  'nearby_landmark': 'Nearby Landmark',
   
   // Level 4
   'contemporary_event': 'Near Event',
@@ -62,32 +62,32 @@ export const HINT_TYPE_NAMES: Record<string, string> = {
   'close_time_diff': 'Time Difference (Close)',
   
   // Level 5
-  'where_clues': 'Location Clues',
-  'when_clues': 'Time Clues',
+  'where_clues': 'Geographical Clues',
+  'when_clues': 'Temporal Clues',
   
   // New hint types with numeric prefixes
   // Level 1
   '1_when_century': "Century",
   
   // Level 2
-  '2_where_landmark': "Far Landmark",
-  '2_where_landmark_km': "Distance",
-  '2_when_event': "Far Event",
-  '2_when_event_years': "Years",
+  '2_where_landmark': "Remote Landmark",
+  '2_where_landmark_km': "Distance to Remote Landmark",
+  '2_when_event': "Remote Event",
+  '2_when_event_years': "Years From Remote Event",
   
   // Level 3
   '3_where_region': "Region",
   '3_when_decade': "Decade",
   
   // Level 4
-  '4_where_landmark': "Near Landmark",
-  '4_where_landmark_km': "Distance",
-  '4_when_event': "Near Event",
-  '4_when_event_years': "Years",
+  '4_where_landmark': "Nearby Landmark",
+  '4_where_landmark_km': "Distance to Nearby Landmark",
+  '4_when_event': "Nearby Event",
+  '4_when_event_years': "Years From Nearby Event",
   
   // Level 5
-  '5_where_clues': "Location Clues",
-  '5_when_clues': "Time Clues"
+  '5_where_clues': "Geographical Clues",
+  '5_when_clues': "Temporal Clues"
 };
 
 // Hint dependency map aligned with database schema

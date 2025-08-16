@@ -8,8 +8,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Clock, MapPin, X } from 'lucide-react';
- 
-import { HINT_TYPE_NAMES, HINT_DEPENDENCIES } from '@/constants/hints';
+
+import { HINT_TYPE_NAMES, HINT_DEPENDENCIES, HINT_LEVEL_DESCRIPTIONS } from '@/constants/hints';
+import { formatInteger } from '@/utils/format';
 
 interface Hint {
   id: string;
@@ -40,6 +41,15 @@ const getHintCostAndPenalty = (hint: Hint): { xp: number, acc: number } => {
   };
 };
 
+// Helper: returns unit for numeric hints based on type
+const getNumericUnitFromType = (type?: string): 'years off' | 'km away' | null => {
+  if (!type) return null;
+  const t = type.toLowerCase();
+  if (t.includes('event_years') || t.endsWith('_years') || t.includes('when_event_years')) return 'years off';
+  if (t.includes('landmark_km') || t.endsWith('_km') || t.includes('where_landmark_km')) return 'km away';
+  return null;
+};
+
 const HintButtonUI: React.FC<{ 
   hint: Hint; 
   purchasedHintIds: string[];
@@ -47,6 +57,7 @@ const HintButtonUI: React.FC<{
   onPurchase: (hint: Hint) => void;
   onLockedClick?: () => void;
 }> = ({ hint, purchasedHintIds, isLoading, onPurchase }) => {
+  const [lockedClicked, setLockedClicked] = useState(false);
   const { xp: costXp, acc: penaltyAcc } = getHintCostAndPenalty(hint);
   const label1 = HINT_TYPE_NAMES[hint.type] ??
     hint.type.replace(/^\d+_/, '').replace(/_/g, ' ').replace(/(when|where)/g, '').trim();
@@ -57,24 +68,43 @@ const HintButtonUI: React.FC<{
   return (
     <div className="relative">
       <button
-        disabled={isLoading || isPurchased || isLocked}
+        disabled={isLoading || isPurchased}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          if (!isPurchased && !isLocked) onPurchase(hint);
+          if (isLocked) {
+            setLockedClicked(true);
+            return;
+          }
+          if (!isPurchased) onPurchase(hint);
         }}
         title={label1}
-        className={`w-full rounded-xl border border-[#2f2f2f] px-4 py-3 text-left flex items-center justify-between transition-colors
-          ${isPurchased ? 'bg-[#3e9b0a] text-white' : 'bg-[#262626] text-white hover:bg-[#2c2c2c]'}
-          ${isLocked ? 'opacity-60 pointer-events-none' : ''}`}
+        className={`w-full rounded-md border border-[#2f2f2f] px-4 py-3 text-left flex items-center justify-between transition-colors
+          ${isPurchased ? 'bg-[#3e9b0a] text-white' : 'bg-[#333333] text-white hover:bg-[#3a3a3a]'}
+          ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
       >
         <div className="min-w-0">
           <div className={`font-semibold capitalize ${isPurchased ? '' : ''}`}>{label1}</div>
-          {isPurchased && (
-            <div className="text-sm opacity-90 truncate">
-              {hint.type.includes('event_years') ? `${hint.text} years off` :
-               hint.type.includes('landmark_km') ? `${hint.text} km away` :
-               hint.text}
+          {isPurchased ? (
+            <div className="text-sm opacity-90 whitespace-normal break-words">
+              {(() => {
+                const raw = (hint.text || '').trim();
+                const isNum = /^\d+$/.test(raw);
+                const unit = isNum ? getNumericUnitFromType(hint.type) : null;
+                if (isNum && unit) {
+                  return `${formatInteger(parseInt(raw, 10))} ${unit}`;
+                }
+                return hint.text;
+              })()}
+            </div>
+          ) : (
+            <div className="text-xs text-gray-300 opacity-90 whitespace-normal break-words">
+              {(() => {
+                const unit = getNumericUnitFromType(hint.type);
+                if (unit === 'years off') return 'Years from the chosen event';
+                if (unit === 'km away') return 'Distance from the chosen landmark';
+                return HINT_LEVEL_DESCRIPTIONS[hint.level] ?? '';
+              })()}
             </div>
           )}
         </div>
@@ -85,17 +115,8 @@ const HintButtonUI: React.FC<{
           </div>
         )}
       </button>
-
-      {isLocked && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <img
-            src="/icons/lock.webp"
-            alt="Locked"
-            className="h-5 w-5 bg-transparent object-contain"
-            style={{ backgroundColor: 'transparent', filter: 'none', mixBlendMode: 'normal' }}
-          />
-          <p className="mt-1 text-xs text-gray-200">You must first use the hint above</p>
-        </div>
+      {isLocked && lockedClicked && (
+        <p className="mt-1 text-xs text-red-500">You must first use the hint above</p>
       )}
     </div>
   );
@@ -162,25 +183,25 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="h-screen w-screen bg-black text-white overflow-y-auto p-0 border-0">
-        <DialogHeader className="sticky top-0 z-10 pt-4 px-4 border-b border-gray-800 bg-black">
+        <DialogHeader className="sticky top-0 z-10 pt-4 pb-0 px-4 border-b border-gray-800 bg-black">
           <div className="relative flex items-center justify-center w-full">
             <DialogTitle className="text-2xl font-bold text-white">HINTS</DialogTitle>
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={() => onOpenChange(false)}
-              className="absolute right-0 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full h-8 w-8"
+              className="absolute right-0 text-gray-400 hover:text-white hover:bg-gray-800 rounded-md h-8 w-8"
             >
               <X className="h-5 w-5" />
               <span className="sr-only">Close</span>
             </Button>
           </div>
-          <p className="text-gray-400 italic text-center mt-1">Using a hint will reduce your score.</p>
+          <p className="text-gray-400 italic text-center text-sm mt-0">Using a hint will reduce your score.</p>
         </DialogHeader>
 
         <div className="p-4 pt-0">
           {/* Summary pills */}
-          <div className="mt-0.5 rounded-lg border border-gray-800 bg-[#202020] p-3">
+          <div className="mt-0 rounded-lg border border-gray-800 bg-[#202020] p-3">
             <div className="flex justify-around text-sm">
               <div className="text-center">
                 <p className="text-white">Accuracy Penalty</p>
@@ -194,16 +215,16 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
           </div>
 
           {/* Segmented control */}
-          <div className="mt-4 flex items-center justify-center">
-            <div className="inline-flex rounded-lg overflow-hidden border border-gray-800 bg-[#202020]">
+          <div className="mt-3">
+            <div className="flex w-full overflow-hidden border border-gray-800 bg-[#202020]">
               <button
-                className={`px-4 py-2 text-sm font-semibold flex items-center gap-2 ${activeTab === 'when' ? 'bg-black text-white' : 'text-gray-300'}`}
+                className={`flex-1 px-4 py-2 text-sm font-semibold flex items-center justify-center gap-2 rounded-md ${activeTab === 'when' ? 'bg-white text-black' : 'text-gray-300'}`}
                 onClick={() => setActiveTab('when')}
               >
                 <Clock className="w-4 h-4" /> When
               </button>
               <button
-                className={`px-4 py-2 text-sm font-semibold flex items-center gap-2 ${activeTab === 'where' ? 'bg-black text-white' : 'text-gray-300'}`}
+                className={`flex-1 px-4 py-2 text-sm font-semibold flex items-center justify-center gap-2 rounded-md ${activeTab === 'where' ? 'bg-white text-black' : 'text-gray-300'}`}
                 onClick={() => setActiveTab('where')}
               >
                 <MapPin className="w-4 h-4" /> Where
@@ -212,7 +233,7 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
           </div>
 
           {/* Hint list for active tab */}
-          <div className="mt-4 space-y-3">
+          <div className="mt-3 space-y-3">
             {(activeTab === 'when' ? hintsByColumn.when : hintsByColumn.where).map((hint) => (
               <HintButtonUI
                 key={`${activeTab}-${hint.id}`}
@@ -228,7 +249,7 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
   <div className="sticky bottom-0 z-10 p-4 border-t border-gray-800 bg-black">
   <Button 
     size="lg" 
-    className="w-full bg-orange-600 text-white hover:bg-orange-700 font-semibold" 
+    className="w-full bg-orange-600 text-white hover:bg-orange-700 font-semibold rounded-md" 
     onClick={() => onOpenChange(false)}
   >
     Continue Guessing
@@ -243,7 +264,7 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
           </DialogHeader>
           <p className="text-sm">You must first use the related hint above.</p>
           <div className="mt-4">
-            <Button className="w-full bg-orange-600 text-white hover:bg-orange-700" onClick={() => setLockedInfoOpen(false)}>OK</Button>
+            <Button className="w-full bg-orange-600 text-white hover:bg-orange-700 rounded-md" onClick={() => setLockedInfoOpen(false)}>OK</Button>
           </div>
         </DialogContent>
       </Dialog>

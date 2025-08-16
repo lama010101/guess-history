@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import FullscreenZoomableImage from './FullscreenZoomableImage';
 import ImmersiveCylViewer from '@/components/ImmersiveCylViewer';
@@ -99,6 +99,8 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const [whereAnimIndex, setWhereAnimIndex] = useState(0);
   const [titlesAnimating, setTitlesAnimating] = useState(false);
   const [hasAnimatedTitles, setHasAnimatedTitles] = useState(false);
+  // Ref to focus the year input programmatically
+  const yearInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     // Only sync input from selectedYear after interaction; keep empty initially
     if (yearInteracted) {
@@ -281,7 +283,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
         {immersiveEnabled && false && (
           <button
             type="button"
-            className="absolute top-3 right-16 z-20 rounded-full bg-white/90 text-black text-sm px-3 py-1 shadow hover:bg-white"
+            className="absolute top-3 right-16 z-20 rounded-md bg-white/90 text-black text-sm px-3 py-1 shadow hover:bg-white"
             onClick={() => setIsImmersiveOpen(true)}
             aria-label="Open Immersive Viewer"
           >
@@ -337,50 +339,63 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
         <div className="max-w-5xl mx-auto w-full space-y-4 flex flex-col h-full">
           <Card className={cn("overflow-hidden dark:bg-[#333333] transition-all", (highlightInputs || highlightWhen) && "ring-2 ring-orange-500 animate-pulse")}> 
             <CardContent className="px-4 pt-3 pb-1 flex flex-col min-h-[7.5rem] md:min-h-[9rem]">
-              <div className="flex items-center justify-between mb-1">
-                <h2 className={cn("font-normal text-base flex items-center", titlesAnimating ? "text-orange-400" : "text-gray-900 dark:text-white") }>
-                  <Calendar className="mr-2 h-4 w-4 text-gray-400" />
+              <div className="flex flex-wrap items-center justify-between mb-1 gap-x-2 gap-y-1">
+                <h2 className={cn("font-normal text-base flex items-center min-w-0 h-6 leading-6 md:h-auto md:leading-normal", titlesAnimating ? "text-orange-400" : "text-gray-900 dark:text-white") }>
+                  <Calendar className="mr-2 h-4 w-4 text-gray-400 flex-shrink-0" />
                   <span>{titlesAnimating ? whenFull.slice(0, whenAnimIndex) : whenFull}</span>
                 </h2>
-                {/* Inline year input: empty until selected; shows placeholder "Year" */}
-                <input
-                  type="number"
-                  value={yearInteracted ? yearInput : ''}
-                  onChange={(e) => setYearInput(e.target.value)}
-                  onBlur={() => {
-                    const parsed = parseInt(yearInput, 10);
-                    if (!isNaN(parsed)) {
-                      const clamped = Math.max(1850, Math.min(2025, parsed));
-                      if (clamped !== selectedYear) onYearChange(clamped);
-                      setYearInput(String(clamped));
-                    } else {
-                      // keep empty, not selected
-                      setYearInput('');
+                {/* Inline year input wrapper ensures right-edge alignment across breakpoints */}
+                <div
+                  className={cn(
+                    "flex items-center justify-end ml-auto w-auto pr-1 basis-auto"
+                  )}
+                >
+                  <input
+                    type="text"
+                    value={yearInteracted ? yearInput : ''}
+                    onChange={(e) => setYearInput(e.target.value)}
+                    ref={yearInputRef}
+                    onFocus={() => {
+                      // Ensure yearInteracted is set when input is focused
+                      setYearInteracted(true);
+                    }}
+                    onBlur={() => {
+                      const parsed = parseInt(yearInput, 10);
+                      if (!isNaN(parsed)) {
+                        const clamped = Math.max(1850, Math.min(2025, parsed));
+                        if (clamped !== selectedYear) onYearChange(clamped);
+                        setYearInput(String(clamped));
+                      } else {
+                        // keep empty, not selected
+                        setYearInput('');
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        (e.currentTarget as HTMLInputElement).blur();
+                      } else if (e.key === 'Escape') {
+                        setYearInput('');
+                        (e.currentTarget as HTMLInputElement).blur();
+                      }
+                    }}
+                    placeholder={showYearAlert ? 'You must guess the year' : 'Choose a year'}
+                    className={
+                      cn(
+                        "appearance-none pl-2 pr-1 py-0 h-6 leading-6 md:h-auto md:leading-normal bg-transparent focus:outline-none focus:ring-1 focus:ring-orange-400 rounded text-right md:shrink-0 text-base",
+                        showYearAlert
+                          ? "w-full md:w-[26ch]"
+                          : (yearInteracted ? "w-[10ch] sm:w-[12ch] md:w-[14ch]" : "w-full md:w-[14ch]"),
+                        yearInteracted && yearInput !== ''
+                          ? "text-orange-400 font-semibold"
+                          : "text-gray-400 italic font-normal",
+                        showYearAlert && "placeholder-red-500 placeholder:italic"
+                      )
                     }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      (e.currentTarget as HTMLInputElement).blur();
-                    } else if (e.key === 'Escape') {
-                      setYearInput('');
-                      (e.currentTarget as HTMLInputElement).blur();
-                    }
-                  }}
-                  placeholder={showYearAlert ? 'You must guess the year' : 'Year'}
-                  className={
-                    cn(
-                      "ml-auto px-1 bg-transparent focus:outline-none text-right",
-                      showYearAlert ? "w-[24ch] md:w-[26ch]" : "w-[6ch]",
-                      yearInteracted && yearInput !== ''
-                        ? "text-orange-400 font-semibold"
-                        : "text-gray-400 italic font-normal",
-                      showYearAlert && "placeholder-red-500 placeholder:italic"
-                    )
-                  }
-                  min={1850}
-                  max={2025}
-                  aria-label="Edit year"
-                />
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    aria-label="Edit year"
+                  />
+                </div>
               </div>
               <div className="flex-1 flex items-center justify-center">
                 <YearSelector 
@@ -409,8 +424,50 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                       You must guess the location
                     </span>
                   ) : (
-                    <span className="ml-auto text-gray-400 italic truncate max-w-[60%] text-right pr-1">
-                      Location
+                    <span
+                      className="ml-auto text-gray-400 italic text-right pr-1 max-w-[60%] break-normal cursor-pointer"
+                      role="button"
+                      tabIndex={0}
+                      title="Click to type a year"
+                      onClick={() => {
+                        setYearInteracted(true);
+                        // Force focus with multiple attempts to ensure it works
+                        const focusYear = () => {
+                          if (yearInputRef.current) {
+                            yearInputRef.current.focus();
+                            // Double-check focus after a short delay
+                            setTimeout(() => {
+                              if (document.activeElement !== yearInputRef.current) {
+                                yearInputRef.current?.focus();
+                              }
+                            }, 50);
+                          }
+                        };
+                        focusYear();
+                        // Backup attempt after a delay
+                        setTimeout(focusYear, 100);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setYearInteracted(true);
+                          // Use the same robust focus method
+                          const focusYear = () => {
+                            if (yearInputRef.current) {
+                              yearInputRef.current.focus();
+                              setTimeout(() => {
+                                if (document.activeElement !== yearInputRef.current) {
+                                  yearInputRef.current?.focus();
+                                }
+                              }, 50);
+                            }
+                          };
+                          focusYear();
+                          setTimeout(focusYear, 100);
+                        }
+                      }}
+                    >
+                      Choose a location
                     </span>
                   )
                 )}
@@ -438,13 +495,13 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             <Button
               onClick={() => onConfirmNavigation(() => onNavigateHome())}
               variant="outline"
-              className="bg-[#999999] text-black hover:bg-[#8a8a8a] dark:bg-[#999999] dark:text-black dark:hover:bg-[#8a8a8a] rounded-xl px-6 py-6 text-lg font-semibold"
+              className="bg-[#999999] text-black hover:bg-[#8a8a8a] dark:bg-[#999999] dark:text-black dark:hover:bg-[#8a8a8a] rounded-md px-6 py-6 text-lg font-semibold"
             >
               <Home className="h-5 w-5 mr-2" /> Home
             </Button>
             <Button
               onClick={handleHintClick}
-              className="bg-white text-black hover:bg-gray-100 dark:bg-white dark:text-black dark:hover:bg-gray-100 rounded-xl px-4 py-4 text-base font-semibold"
+              className="bg-white text-black hover:bg-gray-100 dark:bg-white dark:text-black dark:hover:bg-gray-100 rounded-md px-4 py-4 text-base font-semibold"
               variant="outline"
             >
               <HelpCircle className="h-5 w-5 mr-2" />
@@ -455,7 +512,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
               <Button
                 onClick={handleSubmitGuess}
                 disabled={!isSubmitEnabled}
-                className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-400 cursor-not-allowed'} w-full max-w-md flex items-center justify-center text-lg font-semibold px-8 py-6 !text-white shadow-lg rounded-xl disabled:opacity-100 disabled:!text-white`}
+                className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-400 cursor-not-allowed'} w-full max-w-md flex items-center justify-center text-lg font-semibold px-8 py-6 !text-white shadow-lg rounded-md disabled:opacity-100 disabled:!text-white`}
               >
                 <Send className="h-5 w-5 mr-2" /> Submit Guess
               </Button>
@@ -474,7 +531,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
         <Button
           onClick={() => onConfirmNavigation(() => onNavigateHome())}
           variant="outline"
-          className="h-12 w-12 rounded-full bg-[#999999] text-black hover:bg-[#8a8a8a] dark:bg-[#999999] dark:text-black dark:hover:bg-[#8a8a8a]"
+          className="h-12 w-12 rounded-md bg-[#999999] text-black hover:bg-[#8a8a8a] dark:bg-[#999999] dark:text-black dark:hover:bg-[#8a8a8a]"
           aria-label="Go Home"
           title="Return to Home"
         >
@@ -482,7 +539,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
         </Button>
         <Button
           onClick={handleHintClick}
-          className="flex-1 h-12 rounded-xl bg-white text-black hover:bg-gray-100 dark:bg-white dark:text-black dark:hover:bg-gray-100 text-lg font-semibold"
+          className="flex-1 h-12 rounded-md bg-white text-black hover:bg-gray-100 dark:bg-white dark:text-black dark:hover:bg-gray-100 text-lg font-semibold"
         >
           <span>Hints</span>
           <span className="ml-2 inline-flex items-center rounded-full bg-black text-white text-xs px-2 py-0.5">{purchasedHintIds.length}/14</span>
@@ -491,7 +548,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           <Button
             onClick={handleSubmitGuess}
             disabled={!isSubmitEnabled}
-            className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-400 cursor-not-allowed'} h-12 w-full rounded-xl !text-white text-lg font-semibold flex items-center justify-center disabled:opacity-100 disabled:!text-white`}
+            className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-400 cursor-not-allowed'} h-12 w-full rounded-md !text-white text-lg font-semibold flex items-center justify-center disabled:opacity-100 disabled:!text-white`}
           >
             <Send className="h-5 w-5 mr-2" /> Submit Guess
           </Button>

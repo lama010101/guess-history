@@ -390,7 +390,11 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
             </div>
 
             {result.hintDebts && result.hintDebts.length > 0 && (
-              <HintDebtsCard hintDebts={result.hintDebts} />
+              <HintDebtsCard 
+                hintDebts={result.hintDebts}
+                yearDifference={result.yearDifference ?? null}
+                distanceKm={result.distanceKm ?? null}
+              />
             )}
           </div>
         </div>

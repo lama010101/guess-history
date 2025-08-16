@@ -183,35 +183,38 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Left Column */}
           <div className="space-y-8">
-            <div className="bg-white dark:bg-[#333333] rounded-2xl shadow-lg p-6 text-center">
-              <h2 className="text-2xl font-bold mb-1 text-gray-900 dark:text-gray-100">Your Score</h2>
-              {(xpDebt > 0 || accDebt > 0) && (
-                <div className="text-xs text-red-500 dark:text-red-500 mb-3">(Hint penalties deducted)</div>
-              )}
-              
-              <div className="flex justify-center items-center gap-6 mb-4">
+            <div className="bg-white dark:bg-[#333333] rounded-2xl shadow-lg p-6">
+              <div className="flex flex-col items-center text-center gap-3">
                 <div className="flex flex-col items-center">
-                  <div className="text-sm text-muted-foreground mb-1">Accuracy</div>
-                  <div className="flex flex-col items-center justify-center">
-                    <Badge variant="accuracy" className="text-base flex items-center gap-1.5">
-                      <Target className="h-3.5 w-3.5" />
-                      {netAccuracy.toFixed(0)}%
-                    </Badge>
-                    {accDebt > 0 && <Badge variant="hint" className={cn("text-xs font-semibold mt-1", {
-                      "text-red-500 dark:text-red-500": accDebt > 0
-                    })}>(-{accDebt.toFixed(0)}%)</Badge>}
-                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Your Score</h2>
+                  {(xpDebt > 0 || accDebt > 0) && (
+                    <div className="text-xs text-red-500 dark:text-red-500 mt-1">(Hint penalties deducted)</div>
+                  )}
                 </div>
-                <div className="flex flex-col items-center">
-                  <div className="text-sm text-muted-foreground mb-1">Experience</div>
-                  <div className="flex flex-col items-center justify-center">
-                    <Badge variant="xp" className="text-base flex items-center gap-1.5">
-                      <Zap className="h-3.5 w-3.5" />
-                      +{formatInteger(netXP)} XP
-                    </Badge>
-                    {xpDebt > 0 && <Badge variant="hint" className={cn("text-xs font-semibold mt-1", {
-                      "text-red-500 dark:text-red-500": xpDebt > 0
-                    })}>(-{formatInteger(xpDebt)} XP)</Badge>}
+                <div className="flex justify-center items-center gap-6">
+                  <div className="flex flex-col items-center">
+                    <div className="text-sm text-muted-foreground mb-1">Accuracy</div>
+                    <div className="flex flex-col items-center justify-center">
+                      <Badge variant="accuracy" className="text-base flex items-center gap-1.5">
+                        <Target className="h-3.5 w-3.5" />
+                        {netAccuracy.toFixed(0)}%
+                      </Badge>
+                      {accDebt > 0 && <Badge variant="hint" className={cn("text-xs font-semibold mt-1", {
+                        "text-red-500 dark:text-red-500": accDebt > 0
+                      })}>(-{accDebt.toFixed(0)}%)</Badge>}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <div className="text-sm text-muted-foreground mb-1">Experience</div>
+                    <div className="flex flex-col items-center justify-center">
+                      <Badge variant="xp" className="text-base flex items-center gap-1.5">
+                        <Zap className="h-3.5 w-3.5" />
+                        +{formatInteger(netXP)} XP
+                      </Badge>
+                      {xpDebt > 0 && <Badge variant="hint" className={cn("text-xs font-semibold mt-1", {
+                        "text-red-500 dark:text-red-500": xpDebt > 0
+                      })}>(-{formatInteger(xpDebt)} XP)</Badge>}
+                    </div>
                   </div>
                 </div>
               </div>

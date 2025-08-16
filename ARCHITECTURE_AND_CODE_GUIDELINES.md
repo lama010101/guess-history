@@ -660,6 +660,10 @@ UI specifics applied in `HintModalV2New`:
   - The image element keeps `className="h-full w-auto object-contain"` so the photo respects aspect ratio while filling height.
   - Default zoom level on open is **250%** (`zoom = 2.5`).
   - The fullscreen **GUESS** button is compact and centered at the bottom (`fixed bottom-6 left-1/2 -translate-x-1/2`), with a solid orange background (`bg-orange-500 text-white`, no hover color change) and rounded-full shape. Width is increased via horizontal padding (`px-16`) while keeping height the same (`py-2`).
+  - Exit fullscreen button size increased by ~25% for accessibility in `src/components/layouts/FullscreenZoomableImage.tsx`:
+    - Button: from `w-12 h-12` (48×48) to `w-[60px] h-[60px]` (60×60)
+    - Icon: from `w-6 h-6` (24×24) to `w-[30px] h-[30px]` (30×30)
+    - Placement: fixed bottom-center with semi-transparent orange background and subtle `attentionPulse` animation.
 
 - __Sparkling GUESS/Submit animations__:
   - Overlay GUESS button (fullscreen): same component as above; replaced bounce with lightweight sparkle bursts positioned around the button. Uses local `@keyframes sparkle` and Tailwind arbitrary `animate-[sparkle_... ]` utilities.

@@ -451,30 +451,20 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000]">
         <button
           onClick={onExit}
-          onPointerDown={(e) => {
-            e.stopPropagation();
-          }}
-          onMouseDown={(e) => {
-            e.stopPropagation();
-          }}
-          onTouchStart={(e) => {
-            e.stopPropagation();
-          }}
-          onTouchEnd={(e) => {
-            e.stopPropagation();
-          }}
-          className="inline-flex items-center justify-center rounded-full bg-orange-500/60 text-white w-12 h-12 shadow-lg hover:bg-orange-500/70 active:bg-orange-500/70"
+          onPointerDown={(e) => { e.stopPropagation(); }}
+          onMouseDown={(e) => { e.stopPropagation(); }}
+          onTouchStart={(e) => { e.stopPropagation(); }}
+          onTouchEnd={(e) => { e.stopPropagation(); }}
+          className="inline-flex items-center justify-center rounded-full bg-orange-500/60 text-white w-[60px] h-[60px] shadow-lg hover:bg-orange-500/70 active:bg-orange-500/70"
           style={{ animation: 'attentionPulse 10s ease-in-out infinite' }}
           aria-label="Exit fullscreen"
           title="Exit fullscreen"
         >
-          <Maximize className="w-6 h-6" />
+          <Maximize className="w-[30px] h-[30px]" />
         </button>
         <style>{`
           @keyframes attentionPulse {
-            /* idle most of the time */
             0%, 80%, 100% { transform: scale(1); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.30), 0 4px 6px -4px rgba(0,0,0,0.30); }
-            /* stronger double pulse window */
             84% { transform: scale(1.14); box-shadow: 0 25px 35px -5px rgba(0,0,0,0.45), 0 12px 16px -4px rgba(0,0,0,0.45), 0 0 0 6px rgba(249,115,22,0.35); }
             88% { transform: scale(1);   box-shadow: 0 10px 15px -3px rgba(0,0,0,0.30), 0 4px 6px -4px rgba(0,0,0,0.30); }
             92% { transform: scale(1.14); box-shadow: 0 25px 35px -5px rgba(0,0,0,0.45), 0 12px 16px -4px rgba(0,0,0,0.45), 0 0 0 6px rgba(249,115,22,0.35); }

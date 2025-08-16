@@ -299,7 +299,7 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - Hint text shows "Drag to pan"; the zoom percentage badge is hidden.
 
 - Game page controls:
-  - When exiting fullscreen on the image, the `When?` and `Where?` cards briefly highlight for 1s with an orange ring and subtle pulse to draw attention (`ring-2 ring-orange-500 animate-pulse`). Implemented in `src/components/layouts/GameLayout1.tsx` via `highlightInputs` state.
+  - When exiting fullscreen on the image, the `When?` and `Where?` labels perform a 1s typewriter animation in orange, then revert to the normal label color (white in dark mode, dark gray in light). There is no card ring/pulse on initial reveal. Implemented in `src/components/layouts/GameLayout1.tsx` with local `titlesAnimating`, `whenAnimIndex`, and `whereAnimIndex` state.
   - The Hints button in the bottom action bar is compact with a `HelpCircle` icon and a small count chip (e.g., `3/14`).
 
 ## Game Round Validation and Alerts
@@ -532,7 +532,7 @@ Notes: All changes maintain dark mode styling and Montserrat typography. See com
 
 - Game page
   - File: `src/components/layouts/GameLayout1.tsx`
-  - Removed animation on When/Where cards after exiting fullscreen (dropped `animate-pulse`). A brief non-animated ring highlight may still apply for 1s.
+  - Removed exit-fullscreen card highlight. Instead, added a one-time 1s typewriter animation for the “When?” and “Where?” labels (orange while typing, then normal color).
   - Updated labels to normal text and punctuation: “When?” and “Where?”.
 
 - Round score

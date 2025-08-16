@@ -92,6 +92,13 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   // Show red alert messages inline on the relevant cards
   const [showYearAlert, setShowYearAlert] = useState(false);
   const [showLocationAlert, setShowLocationAlert] = useState(false);
+  // One-time typewriter animation for When?/Where? labels
+  const whenFull = 'When?';
+  const whereFull = 'Where?';
+  const [whenAnimIndex, setWhenAnimIndex] = useState(0);
+  const [whereAnimIndex, setWhereAnimIndex] = useState(0);
+  const [titlesAnimating, setTitlesAnimating] = useState(false);
+  const [hasAnimatedTitles, setHasAnimatedTitles] = useState(false);
   useEffect(() => {
     // Only sync input from selectedYear after interaction; keep empty initially
     if (yearInteracted) {
@@ -115,10 +122,43 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
 
   const handleExitImageFullscreen = () => {
     setIsImageFullScreen(false);
-    // Animate When/Where cards for 1 second to draw attention
-    setHighlightInputs(true);
-    window.setTimeout(() => setHighlightInputs(false), 1000);
+    // No card ring/pulse on initial reveal. Title typewriter animation handles attention.
   };
+
+  // Trigger the one-time title typewriter animation when inputs first become visible
+  useEffect(() => {
+    if (!isImageFullScreen && !hasAnimatedTitles) {
+      setTitlesAnimating(true);
+      setWhenAnimIndex(0);
+      setWhereAnimIndex(0);
+      const whenLen = whenFull.length;
+      const whereLen = whereFull.length;
+      const whenStep = Math.max(1, Math.floor(1000 / whenLen));
+      const whereStep = Math.max(1, Math.floor(1000 / whereLen));
+      let wi = 0;
+      let wri = 0;
+      const whenTimer = window.setInterval(() => {
+        wi += 1;
+        setWhenAnimIndex(wi);
+        if (wi >= whenLen) window.clearInterval(whenTimer);
+      }, whenStep);
+      const whereTimer = window.setInterval(() => {
+        wri += 1;
+        setWhereAnimIndex(wri);
+        if (wri >= whereLen) window.clearInterval(whereTimer);
+      }, whereStep);
+      const totalTimer = window.setTimeout(() => {
+        setTitlesAnimating(false);
+        setHasAnimatedTitles(true);
+      }, 1000);
+      return () => {
+        window.clearInterval(whenTimer);
+        window.clearInterval(whereTimer);
+        window.clearTimeout(totalTimer);
+      };
+    }
+    return;
+  }, [isImageFullScreen, hasAnimatedTitles]);
 
   const [isHintModalV2Open, setIsHintModalV2Open] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -298,9 +338,9 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           <Card className={cn("overflow-hidden dark:bg-[#333333] transition-all", (highlightInputs || highlightWhen) && "ring-2 ring-orange-500 animate-pulse")}> 
             <CardContent className="px-4 pt-3 pb-1 flex flex-col min-h-[7.5rem] md:min-h-[9rem]">
               <div className="flex items-center justify-between mb-1">
-                <h2 className="font-normal text-base text-gray-900 dark:text-gray-100 flex items-center">
+                <h2 className={cn("font-normal text-base flex items-center", titlesAnimating ? "text-orange-400" : "text-gray-900 dark:text-white") }>
                   <Calendar className="mr-2 h-4 w-4 text-gray-400" />
-                  When?
+                  <span>{titlesAnimating ? whenFull.slice(0, whenAnimIndex) : whenFull}</span>
                 </h2>
                 {/* Inline year input: empty until selected; shows placeholder "Year" */}
                 <input
@@ -355,9 +395,9 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           <Card className={cn("overflow-hidden dark:bg-[#333333] flex-1 transition-all", (highlightInputs || highlightWhere) && "ring-2 ring-orange-500 animate-pulse")}> 
             <CardContent className="p-4 flex flex-col h-full">
               <div className="flex items-center justify-between mb-2">
-                <h2 className="font-normal text-base text-gray-900 dark:text-gray-100 flex items-center">
+                <h2 className={cn("font-normal text-base flex items-center", titlesAnimating ? "text-orange-400" : "text-gray-900 dark:text-white") }>
                   <MapPin className="mr-2 h-4 w-4 text-gray-400" />
-                  Where?
+                  <span>{titlesAnimating ? whereFull.slice(0, whereAnimIndex) : whereFull}</span>
                 </h2>
                 {selectedLocationName ? (
                   <span className="ml-auto text-orange-400 font-semibold truncate max-w-[60%] text-right pr-1">

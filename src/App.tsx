@@ -129,10 +129,10 @@ const App = () => {
                     <GlobalXPLogger />
                     <Routes>
                       <Route path="/" element={<LandingPage />} />
-                      <Route path="/play" element={<PlayWithFriends />} />
-                      <Route path="/room/:roomCode" element={<Room />} />
-                      {/* Require an active session (registered or anonymous) for all /test routes */}
+                      {/* Require an active session (registered or anonymous) for all routes except landing */}
                       <Route element={<RequireAuthSession />}>
+                        <Route path="/play" element={<PlayWithFriends />} />
+                        <Route path="/room/:roomCode" element={<Room />} />
                         <Route path="/test" element={<TestLayout />}>
                           <Route index element={<HomePage />} />
                           <Route path="auth" element={<AuthPage />} />

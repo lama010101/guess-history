@@ -950,3 +950,14 @@ Notes: UI changes are limited to the Home page and the shared `Logo` component p
   - `VITE_IMMERSIVE_CURVATURE_DEG` (default `150`)
   - `VITE_IMMERSIVE_ENABLE_GYRO` (default `true`)
   - Read in `GameLayout1.tsx` and passed to the component. If disabled, the button and modal are hidden.
+
+
+## Landing Page — Global Scores Removed
+
+- File: `src/pages/LandingPage.tsx`
+- Change:
+  - Removed global Accuracy and XP badges from the top-left of the fixed header on the landing page.
+  - Deleted the badge block and related imports (`Badge`, `Award`, `Target`, `formatInteger`).
+  - Stopped destructuring/using `globalXP`, `globalAccuracy`, and `fetchGlobalMetrics` from `useGame()` on this page.
+  - Left header grid layout intact by rendering an empty left column (`<div class="col-start-1" />`).
+- Rationale: Simplify the landing experience by removing scores from this page without affecting other pages.

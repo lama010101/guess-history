@@ -15,7 +15,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, MapPin, Home, Send, HelpCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
 
 // Helper function to format time as MM:SS
 const formatTime = (seconds: number): string => {
@@ -81,12 +80,18 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const [selectedLocationName, setSelectedLocationName] = useState<string | null>(null);
   const [isImmersiveOpen, setIsImmersiveOpen] = useState(false);
   const [highlightInputs, setHighlightInputs] = useState(false);
+  // Targeted highlight states for When/Where
+  const [highlightWhen, setHighlightWhen] = useState(false);
+  const [highlightWhere, setHighlightWhere] = useState(false);
   // Inline editable year input state for header
   const [yearInput, setYearInput] = useState<string>('');
   // Track if the slider has been interacted with; controls showing the year
   const [yearInteracted, setYearInteracted] = useState(false);
   // Submit guidance message shown only when clicking a disabled Submit button
   const [submitPrompt, setSubmitPrompt] = useState<string | null>(null);
+  // Show red alert messages inline on the relevant cards
+  const [showYearAlert, setShowYearAlert] = useState(false);
+  const [showLocationAlert, setShowLocationAlert] = useState(false);
   useEffect(() => {
     // Only sync input from selectedYear after interaction; keep empty initially
     if (yearInteracted) {
@@ -118,7 +123,6 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const [isHintModalV2Open, setIsHintModalV2Open] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const game = useGame();
-  const { toast } = useToast();
   const { totalGameAccuracy, totalGameXP, roundTimerSec, timerEnabled } = game;
   const parsedYear = parseInt(yearInput, 10);
   const isYearValid = !isNaN(parsedYear) && parsedYear >= 1850 && parsedYear <= 2025;
@@ -129,6 +133,14 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   useEffect(() => {
     if (isSubmitEnabled) setSubmitPrompt(null);
   }, [isSubmitEnabled]);
+
+  // Clear specific alerts when corresponding inputs become valid
+  useEffect(() => {
+    if (isYearSelected) setShowYearAlert(false);
+  }, [isYearSelected]);
+  useEffect(() => {
+    if (currentGuess) setShowLocationAlert(false);
+  }, [currentGuess]);
 
   // V2 hint system
   
@@ -191,16 +203,17 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
     if (isSubmitEnabled) return;
     const missingLocation = !currentGuess;
     const missingYear = !isYearSelected;
-    let msg = '';
-    if (missingLocation && missingYear) {
-      msg = 'You must guess a year and location';
-    } else if (missingLocation) {
-      msg = 'You must guess the location';
-    } else if (missingYear) {
-      msg = 'You must guess the year';
+
+    // Trigger targeted highlights and inline red alerts
+    if (missingYear) {
+      setShowYearAlert(true);
+      setHighlightWhen(true);
+      window.setTimeout(() => setHighlightWhen(false), 1000);
     }
-    if (msg) {
-      toast({ title: msg, variant: 'destructive' });
+    if (missingLocation) {
+      setShowLocationAlert(true);
+      setHighlightWhere(true);
+      window.setTimeout(() => setHighlightWhere(false), 1000);
     }
   };
 
@@ -282,7 +295,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       {/* Input Sections - Full width on mobile, half on desktop */}
       <div className="flex-grow px-2 py-4 md:px-4 lg:px-6 flex flex-col">
         <div className="max-w-5xl mx-auto w-full space-y-4 flex flex-col h-full">
-          <Card className={cn("overflow-hidden dark:bg-[#333333] transition-all", highlightInputs && "ring-2 ring-orange-500 animate-pulse")}> 
+          <Card className={cn("overflow-hidden dark:bg-[#333333] transition-all", (highlightInputs || highlightWhen) && "ring-2 ring-orange-500 animate-pulse")}> 
             <CardContent className="px-4 pt-3 pb-1 flex flex-col min-h-[7.5rem] md:min-h-[9rem]">
               <div className="flex items-center justify-between mb-1">
                 <h2 className="font-normal text-base text-gray-900 dark:text-gray-100 flex items-center">
@@ -313,13 +326,15 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                       (e.currentTarget as HTMLInputElement).blur();
                     }
                   }}
-                  placeholder="Year"
+                  placeholder={showYearAlert ? 'You must guess the year' : 'Year'}
                   className={
                     cn(
-                      "ml-auto w-[6ch] px-1 bg-transparent focus:outline-none text-right",
+                      "ml-auto px-1 bg-transparent focus:outline-none text-right",
+                      showYearAlert ? "w-[24ch] md:w-[26ch]" : "w-[6ch]",
                       yearInteracted && yearInput !== ''
                         ? "text-orange-400 font-semibold"
-                        : "text-gray-400 italic font-normal"
+                        : "text-gray-400 italic font-normal",
+                      showYearAlert && "placeholder-red-500 placeholder:italic"
                     )
                   }
                   min={1850}
@@ -337,7 +352,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             </CardContent>
           </Card>
           
-          <Card className={cn("overflow-hidden dark:bg-[#333333] flex-1 transition-all", highlightInputs && "ring-2 ring-orange-500 animate-pulse")}> 
+          <Card className={cn("overflow-hidden dark:bg-[#333333] flex-1 transition-all", (highlightInputs || highlightWhere) && "ring-2 ring-orange-500 animate-pulse")}> 
             <CardContent className="p-4 flex flex-col h-full">
               <div className="flex items-center justify-between mb-2">
                 <h2 className="font-normal text-base text-gray-900 dark:text-gray-100 flex items-center">
@@ -349,9 +364,15 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                     {selectedLocationName}
                   </span>
                 ) : (
-                  <span className="ml-auto text-gray-400 italic truncate max-w-[60%] text-right pr-1">
-                    Location
-                  </span>
+                  showLocationAlert ? (
+                    <span className="ml-auto text-red-500 truncate max-w-[60%] text-right pr-1">
+                      You must guess the location
+                    </span>
+                  ) : (
+                    <span className="ml-auto text-gray-400 italic truncate max-w-[60%] text-right pr-1">
+                      Location
+                    </span>
+                  )
                 )}
               </div>
      

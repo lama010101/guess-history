@@ -309,11 +309,11 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - `YearSelector` in `src/components/game/YearSelector.tsx` accepts `number | null`. Before first interaction, `GameLayout1` passes `null` so the inline year input shows empty while the slider renders without committing a value.
   - `GameLayout1` tracks `yearInteracted` to avoid syncing a year into the inline input until the user interacts.
 
-- **Disabled Submit alerts (GameLayout1.handleDisabledSubmitClick)**
-  - Neither year nor location: "You must guess a year and location"
-  - Location only: "You must guess the location"
-  - Year only: "You must guess the year"
-  - Delivery: shown as a toast notification (destructive variant) when the disabled Submit area is clicked.
+- **Disabled Submit feedback (GameLayout1.handleDisabledSubmitClick)**
+  - Neither year nor location: triggers both card highlights and shows both inline alerts.
+  - Location only: highlights the `Where?` card and shows red inline "You must guess the location" in place of the placeholder.
+  - Year only: highlights the `When?` card and shows red inline "You must guess the year" in place of the placeholder.
+  - Delivery: card-specific 1s highlight ring + pulse (`ring-2 ring-orange-500 animate-pulse`) via `highlightWhen`/`highlightWhere`. Inline alerts use `showYearAlert`/`showLocationAlert` to replace the respective header placeholders. Alerts clear automatically when the corresponding input becomes valid.
 
 - **Manual submit guards (GameRoundPage.handleSubmitGuess)**
   - Rejects submit if `selectedYear === null`.
@@ -496,7 +496,7 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
     - `src/components/layouts/GameLayout1.tsx`: Tightened When card height (`min-h` reduced), inline year input is always visible with an underline even before selection; widened to `~6ch` with padding to avoid digit clipping; Submit Guess is disabled until both year and location are selected; desktop and mobile Home buttons use black text on `#999999` background.
     - `src/components/game/YearSelector.tsx`: `selectedYear` is optional; when `null/undefined`, the knob is centered (midpoint) without setting a default year; `onChange` only fires on user interaction.
     - `src/components/game/LocationSelector.tsx`: Map container made flexible (`flex-1 min-h-[300px]`) so the map is visible on mobile and grows on desktop.
-    - Disabled Submit guidance: When the Submit button is disabled, clicking on it shows a contextual message above the button — “Select a location first” (no map guess) or “Select a year first” (invalid/missing year). The message clears automatically when inputs become valid. Applies to both desktop (bottom action row) and mobile bottom navbar.
+    - Disabled Submit feedback: Clicking the disabled Submit animates the missing input's card with a 1s orange ring and pulse, and shows inline red alert text in place of the placeholder in that card’s header — “You must guess the year” or “You must guess the location”. Implemented in `src/components/layouts/GameLayout1.tsx` using `highlightWhen`/`highlightWhere` and `showYearAlert`/`showLocationAlert`. Alerts clear when inputs become valid. Applies to both desktop (bottom action row) and mobile bottom navbar.
 
 - Round Results page
   - `src/components/results/ResultsHeader.tsx`: Round text weight set to normal.

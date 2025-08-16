@@ -986,3 +986,18 @@ Notes: UI changes are limited to the Home page and the shared `Logo` component p
 - Notes:
   - Business logic unchanged (uses `useAuth()` methods).
   - Icons from `lucide-react`; no new dependencies added.
+
+## Auth Route Guard — RequireAuthSession
+
+- File: `src/components/RequireAuthSession.tsx`
+- Purpose: Prevent access to app routes when there is no Supabase session (fully signed-out). Allows both registered and anonymous (guest) sessions.
+- Behavior:
+  - Waits for `useAuth().isLoading` to finish, then:
+    - If `user === null` → redirects to landing `/`.
+    - Else renders nested routes via `<Outlet />`.
+- Routing integration (in `src/App.tsx`):
+  - Wrapped all `/test` routes and `/test/game/room/:roomId/final` under `<Route element={<RequireAuthSession />}>`.
+  - Result: Visiting Home (`/test`) or any nested page while signed-out will automatically redirect to `/` and the Home page will never be visible without a session.
+- Notes:
+  - `ProtectedRoute` remains for additional protection of `/test/account` (blocks guests specifically).
+  - No UI changes; this is routing-only.

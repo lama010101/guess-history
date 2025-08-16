@@ -1,0 +1,23 @@
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+
+/**
+ * RequireAuthSession
+ * - Blocks access when there is NO Supabase session (user === null)
+ * - Allows both registered and anonymous (guest) users through
+ * - Avoids flicker by waiting for `isLoading` to finish before deciding
+ */
+const RequireAuthSession = () => {
+  const { user, isLoading } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) return null; // or a minimal loader if desired
+
+  if (!user) {
+    return <Navigate to="/" replace state={{ from: location }} />;
+  }
+
+  return <Outlet />;
+};
+
+export default RequireAuthSession;

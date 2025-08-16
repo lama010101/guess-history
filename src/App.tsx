@@ -19,6 +19,7 @@ import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
 import UserProfilePage from './pages/UserProfile';
 import ProtectedRoute from './components/ProtectedRoute';
+import RequireAuthSession from './components/RequireAuthSession';
 import GameRoomPage from "./pages/GameRoomPage";
 import FriendsPage from '@/pages/FriendsPage';
 import LobbyPage from '@/pages/LobbyPage';
@@ -130,23 +131,26 @@ const App = () => {
                       <Route path="/" element={<LandingPage />} />
                       <Route path="/play" element={<PlayWithFriends />} />
                       <Route path="/room/:roomCode" element={<Room />} />
-                      <Route path="/test" element={<TestLayout />}>
-                        <Route index element={<HomePage />} />
-                        <Route path="auth" element={<AuthPage />} />
-                        <Route path="leaderboard" element={<LeaderboardPage />} />
-                        <Route path="profile" element={<ProfilePage />} />
-                        <Route path="settings" element={<SettingsPage />} />
-                        <Route element={<ProtectedRoute />}>
-                          <Route path="account" element={<UserProfilePage />} />
+                      {/* Require an active session (registered or anonymous) for all /test routes */}
+                      <Route element={<RequireAuthSession />}>
+                        <Route path="/test" element={<TestLayout />}>
+                          <Route index element={<HomePage />} />
+                          <Route path="auth" element={<AuthPage />} />
+                          <Route path="leaderboard" element={<LeaderboardPage />} />
+                          <Route path="profile" element={<ProfilePage />} />
+                          <Route path="settings" element={<SettingsPage />} />
+                          <Route element={<ProtectedRoute />}>
+                            <Route path="account" element={<UserProfilePage />} />
+                          </Route>
+                          <Route path="room" element={<GameRoomPage />} />
+                          <Route path="friends" element={<FriendsPage />} />
+                          <Route path="game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
+                          <Route path="game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />
+                          <Route path="lobby/:roomId" element={<LobbyPage />} />
                         </Route>
-                        <Route path="room" element={<GameRoomPage />} />
-                        <Route path="friends" element={<FriendsPage />} />
-                        <Route path="game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
-                        <Route path="game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />
-                      <Route path="lobby/:roomId" element={<LobbyPage />} />
+                        {/* Final Results page with its own MainNavbar */}
+                        <Route path="/test/game/room/:roomId/final" element={<FinalResultsPage />} />
                       </Route>
-                      {/* Final Results page with its own MainNavbar */}
-                      <Route path="/test/game/room/:roomId/final" element={<FinalResultsPage />} />
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                     </GameProvider>

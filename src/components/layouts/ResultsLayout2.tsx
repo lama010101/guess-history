@@ -235,7 +235,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                     <span className="text-muted-foreground">{result.confidence !== undefined ? `${(result.confidence <= 1 ? result.confidence * 100 : result.confidence).toFixed(0)}%` : 'N/A'}</span>
                     {result.source_citation && (
                       <Button 
-                        className="px-2 py-1 h-auto text-xs bg-black text-white hover:bg-black/90 border border-black dark:bg-black dark:text-white dark:hover:bg-black"
+                        className="px-2 py-1 h-auto text-xs bg-[#444444] text-white hover:bg-[#444444] border border-[#444444] dark:bg-[#444444] dark:text-white dark:hover:bg-[#444444]"
                         onClick={() => setSourceModalOpen(true)}
                       >
                         Source

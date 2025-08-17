@@ -262,7 +262,7 @@ const Room: React.FC = () => {
             <Button
               size="icon"
               onClick={() => navigate('/test')}
-              className="h-9 w-9 rounded-full bg-neutral-800 hover:bg-neutral-700"
+              className="h-9 w-9 rounded-full border-none text-black bg-[linear-gradient(90deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] hover:opacity-90"
               aria-label="Go to Home"
               type="button"
             >

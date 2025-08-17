@@ -424,7 +424,7 @@ const RoundResultsPage = () => {
           <Button
             variant="outline"
             onClick={() => confirmNavigation(handleNavigateHome)}
-            className="h-12 w-12 rounded-full bg-[#999999] text-black hover:bg-[#8a8a8a] dark:bg-[#999999] dark:text-black dark:hover:bg-[#8a8a8a] shadow-md"
+            className="h-12 w-12 rounded-full text-black shadow-md border-none bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] hover:opacity-90"
             aria-label="Go Home"
             title="Return to Home"
           >
@@ -438,7 +438,7 @@ const RoundResultsPage = () => {
               variant="outline"
               size="sm"
               onClick={() => setShowRatingModal(true)}
-              className="px-2 py-1 h-auto text-xs rounded-md bg-black text-white hover:bg-black/90 border border-black dark:bg-black dark:text-white dark:hover:bg-black"
+              className="px-2 py-1 h-auto text-xs rounded-md bg-[#444444] text-white hover:bg-[#444444] border border-[#444444] dark:bg-[#444444] dark:text-white dark:hover:bg-[#444444]"
               aria-label="Rate Image"
               title="Rate this image"
             >

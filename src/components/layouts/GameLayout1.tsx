@@ -498,7 +498,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             <Button
               onClick={() => onConfirmNavigation(() => onNavigateHome())}
               variant="outline"
-              className="bg-[#999999] text-black hover:bg-[#8a8a8a] dark:bg-[#999999] dark:text-black dark:hover:bg-[#8a8a8a] rounded-md px-6 py-6 text-lg font-semibold"
+              className="text-black rounded-full px-6 py-6 text-lg font-semibold border-none bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] hover:opacity-90"
             >
               <Home className="h-5 w-5 mr-2" /> Home
             </Button>
@@ -534,7 +534,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
         <Button
           onClick={() => onConfirmNavigation(() => onNavigateHome())}
           variant="outline"
-          className="h-12 w-12 rounded-md bg-[#999999] text-black hover:bg-[#8a8a8a] dark:bg-[#999999] dark:text-black dark:hover:bg-[#8a8a8a]"
+          className="h-12 w-12 rounded-full text-black border-none bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] hover:opacity-90"
           aria-label="Go Home"
           title="Return to Home"
         >

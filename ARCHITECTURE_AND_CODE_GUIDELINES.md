@@ -1,5 +1,25 @@
 # Guess History Multiplayer Architecture
 
+## Canonical Architecture Overview (2025-08-17)
+
+- **PartyKit lobby server**: `server/lobby.ts`
+  - Configured in `partykit.json` under `parties.lobby` with `vars.MAX_PLAYERS = "8"`.
+- **Client WS helper and message shapes**: `src/lib/partyClient.ts`
+  - `partyUrl(party, roomCode)` builds `ws(s)://<VITE_PARTYKIT_HOST>/parties/<party>/<roomCode>`.
+  - Message shapes (source of truth):
+    - Server→Client: `players`, `full`, `chat { from, message, timestamp }`, `roster { id, name, ready, host }[]`, `settings { timerSeconds?, timerEnabled? }`, `hello { you }`, `start { startedAt, durationSec, timerEnabled }`.
+    - Client→Server: `join { name, token? }`, `chat { message, timestamp }`, `ready { ready }`, `settings { timerSeconds?, timerEnabled? }`.
+- **Environment**: `.env.example` defines `VITE_PARTYKIT_HOST` (default `localhost:1999`).
+- **Routing (frontend)**: `App.tsx`
+  - `/` → `LandingPage`
+  - `/test` → `TestLayout` with nested routes: `index`, `auth`, `game`, `results`, `final`, `leaderboard`, `profile`, `settings`, `room`, `friends`.
+  - Admin: `/test/admin/images`, `/test/admin/badges`. Wildcards redirect to `/`.
+- **WebSocket endpoint**: `ws(s)://<VITE_PARTYKIT_HOST>/parties/lobby/:roomCode` (via `partyUrl('lobby', roomCode)`).
+
+Note: Sections below referencing modules under `src/multiplayer/*` (e.g., `Server.ts`, `MultiplayerAdapter.ts`) represent planned design. For the current implementation, treat `server/lobby.ts` and `src/lib/partyClient.ts` as canonical. The remainder of this document is preserved as an appendix for detailed design and UI notes.
+
+## Appendix — Detailed Design and UI Notes
+
 ## Overview
 This document provides comprehensive architecture guidelines for the Guess History multiplayer system, built on PartyKit with Supabase for state persistence and Cloudflare Workers for async processing.
 
@@ -313,9 +333,15 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
 - Fullscreen images default to 100% zoom (zoom=1). See `src/components/layouts/FullscreenZoomableImage.tsx`.
 - On round results:
   - In `When` card, the year after "Your guess:" is white in dark mode and dark gray in light mode (`text-gray-900 dark:text-white`). Implemented in `src/components/layouts/ResultsLayout2.tsx` and `src/components/results/TimeAccuracyCard.tsx`.
-  - Source and Rate buttons use a black background with white text across themes for consistency.
-    - Source button in `ResultsLayout2.tsx`.
-    - Rate button in `RoundResultsPage.tsx`.
+  - Source and Rate buttons use background `#444444` with white text across themes for consistency.
+    - Source button in `ResultsLayout2.tsx` uses `bg-[#444444]` and matching border/hover.
+    - Rate button in `RoundResultsPage.tsx` uses `bg-[#444444]` and matching border/hover.
+  - Home buttons are round with a subtle rainbow gradient background matching the design reference.
+    - Use: `rounded-full text-black border-none bg-gradient-to-r from-pink-300 via-orange-300 via-yellow-300 via-green-300 to-green-300 hover:opacity-90`.
+    - Implemented in:
+      - Top-right HUD Home in `src/components/navigation/GameOverlayHUD.tsx`.
+      - Desktop and mobile Home in `src/components/layouts/GameLayout1.tsx`.
+      - Lobby Home in `src/pages/Room.tsx`.
   - Round header text size reduced by one step (Tailwind `text-lg`) in `src/components/results/ResultsHeader.tsx`.
   - Home button remains light grey and consistently styled across pages.
   
@@ -552,16 +578,16 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
     - `src/components/layouts/GameLayout1.tsx`: Tightened When card height (`min-h` reduced), inline year input is always visible with an underline even before selection; widened to `~6ch` with padding to avoid digit clipping; Submit Guess is disabled until both year and location are selected; desktop and mobile Home buttons use black text on `#999999` background.
     - `src/components/game/YearSelector.tsx`: `selectedYear` is optional; when `null/undefined`, the knob is centered (midpoint) without setting a default year; `onChange` only fires on user interaction.
     - `src/components/game/LocationSelector.tsx`: Map container made flexible (`flex-1 min-h-[300px]`) so the map is visible on mobile and grows on desktop.
-    - Disabled Submit feedback: Clicking the disabled Submit animates the missing input's card with a 1s orange ring and pulse, and shows inline red alert text in place of the placeholder in that card’s header — “You must guess the year” or “You must guess the location”. Implemented in `src/components/layouts/GameLayout1.tsx` using `highlightWhen`/`highlightWhere` and `showYearAlert`/`showLocationAlert`. Alerts clear when inputs become valid. Applies to both desktop (bottom action row) and mobile bottom navbar.
+    - Disabled Submit feedback: Clicking the disabled Submit animates the missing input's card with a 1s orange ring and pulse, and shows inline red alert text in place of the placeholder in that card’s header — “You must guess the year” or “You must guess the location”. Implemented in `src/components/layouts/GameLayout1.tsx` using `highlightWhen`/`highlightWhere`. Alerts clear automatically when the corresponding input becomes valid.
 
 - Round Results page
   - `src/components/results/ResultsHeader.tsx`: Round text weight set to normal.
   - `src/components/layouts/ResultsLayout2.tsx`: Progress bars are placed at the bottom of the When/Where cards; % and XP badges appear directly below the progress bars; reduced spacing under "Your Score"; labels (Accuracy/Experience) moved above values; matched "Your guess" styling to "Correct:"; removed in-layout bottom Next Round buttons.
   - `src/components/results/HintDebtsCard.tsx`: Removed border; maintain dark background.
   - `src/components/results/HintDebtsCard.tsx`: Accuracy penalty shows only `-{accDebt}%` on the right side.
-    - For locked numeric hints (`*_event_years`, `*_landmark_km`), show a measurement next to the label: `NN years off` or `NN km away`.
-    - Preferred source is the debt's numeric `label`. If that label is missing or not numeric, we gracefully fall back to the round's `yearDifference` or `distanceKm` supplied by `ResultsLayout2`.
-    - If the debt `label` looks like an ID/UUID, we render a human label from `HINT_TYPE_NAMES` instead of the raw id.
+    - Hint penalties now show the hint answer as the left label (instead of the hint title). Examples: `10 years`, `120 km`.
+    - Preferred source is the debt's numeric `label`. If missing or non-numeric, we fall back to the round's `yearDifference` (years) or `distanceKm` (km) provided by `ResultsLayout2`. If neither is available, we display a readable label or mapped title.
+    - If the debt `label` looks like an ID/UUID, we render a human label from `HINT_TYPE_NAMES` as a last resort.
   - `src/pages/RoundResultsPage.tsx`: Made top Next Round button more compact (kept rounded-xl per standard).
   - 2025-08-14 spacing/style harmonization:
     - `src/components/layouts/ResultsLayout2.tsx`: Reduced space between "Your Score" and penalties (mb-1). Set When/Where titles to regular weight. Added spacing between titles and content. Added extra space above the "Correct" rows in When (`mt-4`). Moved progress bars to the bottom of each card with `mt-4`, and placed %/XP badges directly below those bars. Ensured event year and guessed year use the same font-size.
@@ -668,6 +694,28 @@ To avoid confusion from legacy duplicates, the following are the only files you 
       - Distance sub-hints show: “Distance from the chosen landmark”.
     - Implemented in `src/components/HintModalV2New.tsx` by inspecting `hint.type` to detect numeric units and rendering contextual copy.
 
+### Hint Modal V2 — Ordering, Descriptions, Mobile Layout (2025-08-17)
+
+- __Files__
+  - Ordering/UI: `src/components/HintModalV2New.tsx`
+  - Copy/types: `src/constants/hints.ts`
+
+- __Ordering__
+  - `whenOrder` and `whereOrder` arrays in `HintModalV2New.tsx` define the exact rendering order.
+  - Any unknown types are appended in a stable order by `level` then `type`.
+
+- __Per-type descriptions__
+  - `HINT_TYPE_DESCRIPTIONS` in `src/constants/hints.ts` provides unique copy per type (e.g., remote vs nearby, km vs years).
+  - Component prefers `HINT_TYPE_DESCRIPTIONS[type]` first, then falls back to numeric unit strings or `HINT_LEVEL_DESCRIPTIONS`.
+
+- __Mobile layout safety__
+  - Modal container uses `min-h-[100dvh]` to account for mobile dynamic toolbars.
+  - Header/footer are `position: sticky` with `z-10` and safe-area padding:
+    - Header: `style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}`
+    - Footer: `style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}`
+  - Scrollable content adds bottom padding (`pb-28`) to avoid being covered by the sticky footer CTA.
+  - Ensures the title ("HINTS") is always visible and the "Continue Guessing" button is fully tappable on iOS/Android.
+
 ### Game Page Controls — HUD and Bottom Navbar
 
 - Files:
@@ -713,7 +761,7 @@ To avoid confusion from legacy duplicates, the following are the only files you 
   - Style: white button with black text; inline black pill displays `{used}/14` hints.
   - Example: `<span class="... bg-black text-white ...">{purchasedHints.length}/14</span>`.
 - Submit prompt behavior
-  - File: `GameLayout1.tsx`
+  - File: `src/components/layouts/GameLayout1.tsx`
   - The "Select a location first" message only appears after the user clicks Submit with no guess (`showSelectLocationPrompt`).
   - Removed previous always-visible prompts on desktop and inside `LocationSelector`.
 - Mobile Home relocation and duplicate submit removal
@@ -900,10 +948,6 @@ Notes: UI changes are limited to the Home page and the shared `Logo` component p
   - Element: `h2.text-lg.font-bold` with existing color scheme.
   - Alignment: Added left padding (`pl-4`) to align with Game Summary content padding.
 
-- Removed "Details" text labels; chevron icon remains for toggling.
-  - Locations: Game Summary toggle and each breakdown card (`RoundResultCard`).
-  - Rationale: declutters UI while preserving affordance.
-
 - Breakdown image titles use regular font weight (was bold) for better visual hierarchy.
   - File: `src/components/RoundResultCard.tsx`
 
@@ -976,7 +1020,6 @@ Notes: UI changes are limited to the Home page and the shared `Logo` component p
   - Removed shadcn `<Toaster />` and Sonner `<Toaster />` mounts from `src/App.tsx`.
   - `src/components/ui/sonner.tsx` exports a no-op `Toaster` (returns `null`) and a no-op `toast` API (`success | error | info | warning | message | dismiss | promise`).
   - Components must import `toast` from `@/components/ui/sonner` (not from `sonner`). This preserves call sites but renders nothing.
-  - The custom shadcn `use-toast` and related components remain, but without a mounted `<Toaster />` nothing is rendered.
 - Audit/Enforcement:
   - Direct imports from `'sonner'` are disallowed. Use `@/components/ui/sonner` instead.
   - Known updates: `src/components/rating/ImageRatingModal.tsx`, `src/components/AccountSettings.tsx` now import from the local wrapper.

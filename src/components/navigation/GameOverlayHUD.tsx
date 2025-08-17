@@ -114,7 +114,7 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
             <Button 
               size="icon"
               onClick={() => onConfirmNavigation(() => onNavigateHome())}
-              className="h-9 w-9 bg-white/80 hover:bg-white/90 text-black rounded-full border-none"
+              className="h-9 w-9 rounded-full border-none text-black bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] hover:opacity-90"
               aria-label="Home"
               type="button"
             >

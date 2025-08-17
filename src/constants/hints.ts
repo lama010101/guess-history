@@ -70,21 +70,7 @@ export const HINT_TYPE_NAMES: Record<string, string> = {
   'continent': 'Continent',
   'century': 'Century',
   
-  // Level 2
-  'distant_landmark': 'Remote Landmark',
-  'distant_distance': 'KM Far Reference',
-  'distant_event': 'Historical Context',
-  'distant_time_diff': 'Time Period Range',
-  
-  // Level 3
-  'region': 'Region',
-  'narrow_decade': 'Decade',
-  'nearby_landmark': 'Nearby Landmark',
-  
-  // Level 4
-  'contemporary_event': 'Near Event',
-  'nearby_distance': 'Distance Nearby',
-  'close_time_diff': 'Time Difference (Close)',
+  // Legacy Level 2–4 snake_case names removed (replaced by numeric-prefixed types below)
   
   // Level 5
   'where_clues': 'Geographical Clues',
@@ -98,8 +84,8 @@ export const HINT_TYPE_NAMES: Record<string, string> = {
   // Level 2
   '2_where_landmark': "Remote Landmark",
   '2_where_landmark_km': "Distance to Remote Landmark",
-  '2_when_event': "Remote Event",
-  '2_when_event_years': "Years From Remote Event",
+  '2_when_event': "Distant Event",
+  '2_when_event_years': "Years From Distant Event",
   
   // Level 3
   '3_where_region': "Region",
@@ -107,13 +93,40 @@ export const HINT_TYPE_NAMES: Record<string, string> = {
   
   // Level 4
   '4_where_landmark': "Nearby Landmark",
-  '4_where_landmark_km': "Distance to Nearby Landmark",
-  '4_when_event': "Nearby Event",
-  '4_when_event_years': "Years From Nearby Event",
+  '4_where_landmark_km': "Distance to the nearby landmark",
+  '4_when_event': "Recent Event",
+  '4_when_event_years': "Years from the recent event",
   
   // Level 5
   '5_where_clues': "Geographical Clues",
   '5_when_clues': "Temporal Clues"
+};
+
+// Unique, per-type UI descriptions used by the Hint Modal
+export const HINT_TYPE_DESCRIPTIONS: Record<string, string> = {
+  // Level 1
+  '1_where_continent': 'eg: Europe',
+  '1_when_century': 'eg: 20th',
+  
+  // Level 2 (remote)
+  '2_where_landmark': 'A famous place more than 100km (60 miles) away',
+  '2_where_landmark_km': 'Distance in km or miles',
+  '2_when_event': 'An event more than 10 years from the current one',
+  '2_when_event_years': 'Number of years from the distant event',
+  
+  // Level 3
+  '3_where_region': 'eg: California',
+  '3_when_decade': 'eg: 1930s',
+  
+  // Level 4 (nearby)
+  '4_where_landmark': 'A famous place less than 100km (60 miles) away',
+  '4_where_landmark_km': 'Distance in km or miles',
+  '4_when_event': 'An event within 10 years of the current one',
+  '4_when_event_years': 'Number of years from the recent event',
+  
+  // Level 5
+  '5_where_clues': 'Scene elements – may be precise or general',
+  '5_when_clues': 'Scene elements – may be precise or general',
 };
 
 // Hint dependency map aligned with database schema

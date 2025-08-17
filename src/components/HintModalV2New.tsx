@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Clock, MapPin, X } from 'lucide-react';
 
-import { HINT_TYPE_NAMES, HINT_DEPENDENCIES, HINT_LEVEL_DESCRIPTIONS } from '@/constants/hints';
+import { HINT_TYPE_NAMES, HINT_DEPENDENCIES, HINT_LEVEL_DESCRIPTIONS, HINT_TYPE_DESCRIPTIONS } from '@/constants/hints';
 import { formatInteger } from '@/utils/format';
 
 interface Hint {
@@ -99,9 +99,12 @@ const HintButtonUI: React.FC<{
           ) : (
             <div className="text-xs text-gray-300 opacity-90 whitespace-normal break-words">
               {(() => {
+                // Prefer unique, per-type copy
+                const typeDesc = HINT_TYPE_DESCRIPTIONS[hint.type];
+                if (typeDesc) return typeDesc;
                 const unit = getNumericUnitFromType(hint.type);
                 if (unit === 'years off') return 'Years from the chosen event';
-                if (unit === 'km away') return 'Distance from the chosen landmark';
+                if (unit === 'km away') return 'Distance to the chosen landmark';
                 return HINT_LEVEL_DESCRIPTIONS[hint.level] ?? '';
               })()}
             </div>
@@ -162,20 +165,51 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
   };
 
   const hintsByColumn = useMemo(() => {
-    const when: Hint[] = [];
-    const where: Hint[] = [];
-    
-    // Sort all hints by level
-    const sortedHints = [...availableHints].sort((a, b) => a.level - b.level);
-    
-    sortedHints.forEach(hint => {
-      if (hint.type.includes('when') || hint.type.includes('century') || hint.type.includes('decade') || hint.type === '5_when_clues') {
-        when.push(hint);
-      } else {
-        where.push(hint);
+    // Explicit UI order
+    const whenOrder = [
+      '1_when_century',
+      '2_when_event',
+      '2_when_event_years',
+      '4_when_event',
+      '4_when_event_years',
+      '5_when_clues',
+      '3_when_decade',
+    ];
+    const whereOrder = [
+      '1_where_continent',
+      '2_where_landmark',
+      '2_where_landmark_km',
+      '4_where_landmark',
+      '4_where_landmark_km',
+      '5_where_clues',
+      '3_where_region',
+    ];
+
+    const byType = availableHints.reduce<Record<string, Hint[]>>((acc, h) => {
+      (acc[h.type] ||= []).push(h);
+      return acc;
+    }, {});
+
+    const pickInOrder = (order: string[], predicate: (t: string) => boolean): Hint[] => {
+      const picked: Hint[] = [];
+      const seen = new Set<string>();
+      for (const t of order) {
+        const arr = byType[t];
+        if (arr && arr.length) {
+          picked.push(...arr);
+          seen.add(t);
+        }
       }
-    });
-    
+      const rest = availableHints
+        .filter(h => predicate(h.type) && !seen.has(h.type))
+        .sort((a, b) => a.level - b.level || a.type.localeCompare(b.type));
+      return [...picked, ...rest];
+    };
+
+    const isWhenType = (t: string) => t.includes('when') || t.includes('century') || t.includes('decade') || t === '5_when_clues';
+    const when = pickInOrder(whenOrder, isWhenType);
+    const where = pickInOrder(whereOrder, (t) => !isWhenType(t));
+
     return { when, where };
   }, [availableHints]);
 
@@ -227,13 +261,13 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
           <div className="mt-3">
             <div className="flex w-full overflow-hidden border border-gray-800 bg-[#202020]">
               <button
-                className={`flex-1 px-4 py-2 text-sm font-semibold flex items-center justify-center gap-2 rounded-md ${activeTab === 'when' ? 'bg-white text-black' : 'text-gray-300'}`}
+                className={`flex-1 px-4 py-2 text-sm font-semibold flex items-center justify-center gap-2 rounded-[2px] ${activeTab === 'when' ? 'bg-white text-black' : 'text-gray-300'}`}
                 onClick={() => setActiveTab('when')}
               >
                 <Clock className="w-4 h-4" /> When
               </button>
               <button
-                className={`flex-1 px-4 py-2 text-sm font-semibold flex items-center justify-center gap-2 rounded-md ${activeTab === 'where' ? 'bg-white text-black' : 'text-gray-300'}`}
+                className={`flex-1 px-4 py-2 text-sm font-semibold flex items-center justify-center gap-2 rounded-[2px] ${activeTab === 'where' ? 'bg-white text-black' : 'text-gray-300'}`}
                 onClick={() => setActiveTab('where')}
               >
                 <MapPin className="w-4 h-4" /> Where

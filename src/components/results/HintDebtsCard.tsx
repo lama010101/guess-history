@@ -64,7 +64,7 @@ const HintDebtsCard: React.FC<HintDebtsCardProps> = ({ hintDebts, yearDifference
                 if (!unit && (debt.hint_type === 'when' || debt.hint_type === 'where')) {
                   unit = debt.hint_type === 'when' ? 'years off' : 'km away';
                 }
-                // Prefer human title from map when label is missing or looks like an ID
+                // Prefer human title from map when label is missing or looks like an ID (used only as last resort)
                 const title = looksLikeId(raw) || labelIsNumeric || raw === '' ? getHintLabel(debt.hint_type, debt.hintId, unit) : raw;
                 // Determine value: prefer numeric label; otherwise fallback from props by unit
                 let value: number | null = null;
@@ -75,9 +75,22 @@ const HintDebtsCard: React.FC<HintDebtsCardProps> = ({ hintDebts, yearDifference
                 } else if (unit === 'km away' && distanceKm != null) {
                   value = Math.abs(Math.round(distanceKm));
                 }
+                // Build answer string (shown instead of the title). If no numeric answer found, show raw label if readable; otherwise title.
+                let answer: string;
+                if (value != null) {
+                  if (unit === 'years off') {
+                    answer = `${formatInteger(value)} ${value === 1 ? 'year' : 'years'}`;
+                  } else if (unit === 'km away') {
+                    answer = `${formatInteger(value)} km`;
+                  } else {
+                    answer = `${formatInteger(value)}`;
+                  }
+                } else {
+                  answer = looksLikeId(raw) || raw === '' ? title : raw;
+                }
                 return (
                   <>
-                    <span>{title}</span>
+                    <span>{answer}</span>
                   </>
                 );
               })()}

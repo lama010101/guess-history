@@ -9,6 +9,7 @@ import { GameProvider, useGame } from "@/contexts/GameContext"; // Added useGame
 import { LogProvider, useConsoleLogging } from "@/contexts/LogContext";
 import { LogWindowModal } from "@/components/LogWindowModal";
 import { AuthRedirectWrapper } from "@/components/AuthRedirectWrapper";
+import PreparationOverlay from "@/components/game/PreparationOverlay";
 
 import TestLayout from "./layouts/TestLayout";
 import HomePage from "./pages/HomePage";
@@ -127,6 +128,8 @@ const App = () => {
                   <AuthRedirectWrapper>
                     <GameProvider>
                     <GlobalXPLogger />
+                    {/* Global fullscreen overlay for game preparation progress */}
+                    <PreparationOverlay />
                     <Routes>
                       <Route path="/" element={<LandingPage />} />
                       {/* Require an active session (registered or anonymous) for all routes except landing */}

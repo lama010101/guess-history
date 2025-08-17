@@ -7,6 +7,7 @@ import { getNewImages, getOrPersistRoomImages, recordPlayedImages } from '@/util
 import { ROUNDS_PER_GAME } from '@/utils/gameCalculations';
 import { Hint } from '@/hooks/useHintV2';
 import { RoundResult, GuessCoordinates } from '@/types';
+import { useGamePreparation, PrepStatus } from '@/hooks/useGamePreparation';
 
 // Define the structure of an image object based on actual schema
 export interface GameImage {
@@ -54,6 +55,11 @@ interface GameContextState {
   fetchGlobalMetrics: () => Promise<void>;
   setProvisionalGlobalMetrics: (gameXP: number, gameAccuracy: number) => void;
   hydrateRoomImages: (roomId: string) => Promise<void>;
+  // Preparation progress (for future UI)
+  prepStatus: PrepStatus;
+  prepProgress: { loaded: number; total: number };
+  prepError: string | null;
+  abortPreparation: () => void;
 }
 
 // Create the context
@@ -128,6 +134,13 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   useEffect(() => { globalAccuracyRef.current = globalAccuracy; }, [globalAccuracy]);
   useEffect(() => { gamesPlayedForAvgRef.current = gamesPlayedForAvg; }, [gamesPlayedForAvg]);
   const navigate = useNavigate();
+  const {
+    prepare,
+    abort: abortPreparation,
+    status: prepStatus,
+    error: prepError,
+    progress: prepProgress,
+  } = useGamePreparation();
 
   // Save game state to DB whenever it changes
   const saveGameState = useCallback(() => {
@@ -436,25 +449,54 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       setGameId(newGameId);
       console.log(`[GameContext] [GameID: ${newGameId}] Starting new game, roomId: ${newRoomId}, seed: ${settings?.seed ?? 'none'}`);
       setRoomId(newRoomId);
-
-      // Hybrid no-repeat fetch
+      // Try new atomic RPC + preload path first
       const { data: { user } } = await supabase.auth.getUser();
-      const imageBatch = settings?.roomId
-        ? await getOrPersistRoomImages(newRoomId, `${newRoomId}-${settings?.seed ?? ''}`, ROUNDS_PER_GAME)
-        : await getNewImages(user?.id ?? null, ROUNDS_PER_GAME);
-        
-      if (!imageBatch || imageBatch.length < ROUNDS_PER_GAME) {
-        console.warn("Could not fetch at least 5 images, fetched:", imageBatch?.length);
-        throw new Error(`Database only contains ${imageBatch?.length || 0} images. Need ${ROUNDS_PER_GAME} to start.`);
+      let preparedImages: GameImage[] | null = null;
+      try {
+        const prep = await prepare({
+          userId: user?.id ?? null,
+          roomId: settings?.roomId ? newRoomId : null,
+          count: ROUNDS_PER_GAME,
+          seed: settings?.seed ?? null,
+        });
+        preparedImages = prep.images.map((img) => ({
+          id: img.id,
+          title: img.title,
+          description: img.description,
+          source_citation: img.source_citation,
+          latitude: img.latitude,
+          longitude: img.longitude,
+          year: img.year,
+          image_url: img.image_url,
+          location_name: img.location_name,
+          url: img.url,
+          firebase_url: img.firebase_url,
+          confidence: img.confidence,
+        }));
+      } catch (prepErr) {
+        console.warn('[GameContext] prepare() failed, falling back to legacy selection', prepErr);
       }
 
-      // For solo play, shuffle locally; for multiplayer (roomId present), keep seeded order
-      const selectedImages = settings?.roomId ? (imageBatch as any) : shuffleArray(imageBatch as any);
+      if (!preparedImages) {
+        // Legacy hybrid no-repeat fetch
+        const imageBatch = settings?.roomId
+          ? await getOrPersistRoomImages(newRoomId, `${newRoomId}-${settings?.seed ?? ''}`, ROUNDS_PER_GAME)
+          : await getNewImages(user?.id ?? null, ROUNDS_PER_GAME);
+          
+        if (!imageBatch || imageBatch.length < ROUNDS_PER_GAME) {
+          console.warn("Could not fetch at least 5 images, fetched:", imageBatch?.length);
+          throw new Error(`Database only contains ${imageBatch?.length || 0} images. Need ${ROUNDS_PER_GAME} to start.`);
+        }
 
-      const processedImages = await processRawImages(selectedImages);
-
-      setImages(processedImages);
-      console.log("Selected 5 images stored in context:", processedImages);
+        // For solo play, shuffle locally; for multiplayer (roomId present), keep seeded order
+        const selectedImages = settings?.roomId ? (imageBatch as any) : shuffleArray(imageBatch as any);
+        const processedImages = await processRawImages(selectedImages);
+        setImages(processedImages);
+        console.log("Selected 5 images stored in context:", processedImages);
+      } else {
+        setImages(preparedImages);
+        console.log("Prepared and preloaded 5 images stored in context:", preparedImages);
+      }
 
       localStorage.setItem('gh_game_settings', JSON.stringify({
         hintsAllowed,
@@ -745,6 +787,11 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     refreshGlobalMetrics,
     setProvisionalGlobalMetrics,
     hydrateRoomImages,
+    // preparation state (no UI coupling)
+    prepStatus,
+    prepProgress,
+    prepError,
+    abortPreparation,
   };
 
   return <GameContext.Provider value={contextValue}>{children}</GameContext.Provider>;

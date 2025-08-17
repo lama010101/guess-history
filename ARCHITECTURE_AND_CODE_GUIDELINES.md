@@ -549,8 +549,41 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
 - `GameContext.startGame()` calls `getOrPersistRoomImages(roomId, seed, count)` which:
   - If `public.game_sessions` has a row for `room_id`, returns those `image_ids` in stored order.
   - Else, computes a seeded order from `images` (stable base order by `id`), upserts the record, and returns the first N.
-- Table: `public.game_sessions (room_id text pk, seed text, image_ids text[], started_at timestamptz)` with RLS for authenticated users.
+- Table: `public.game_sessions (room_id text pk, seed text, image_ids text[], current_round_number integer not null default 1, started_at timestamptz)` with RLS for authenticated users. The `seed` and `image_ids` are nullable to allow for updates that only modify the round number.
 - Solo games continue to use per-user no-repeat selection via `getNewImages()` and local shuffle.
+ 
+## Game Preparation (Atomic RPC + Preload Hook) — 2025-08-17
+
+- Backend RPC: `create_game_session_and_pick_images` defined in `supabase/migrations/20250817_create_game_prep_rpc.sql`.
+  - Picks ready images excluding recently played by the current user.
+  - When `room_id` is provided, persists deterministic image order to `public.game_sessions` and returns that same order.
+  - Accepts optional `p_seed`; if omitted, DB default seed is used.
+  - On `INSERT`, if a `room_id` already exists (conflict), it resets `current_round_number` to 1, ensuring a fresh game state.
+- Hook: `src/hooks/useGamePreparation.ts`
+  - Exports `useGamePreparation()` returning `{ prepare, abort, status, error, progress: { loaded, total } }`.
+  - `prepare({ userId, roomId?, count, seed? })` calls the RPC, fetches image metadata in one query, resolves public URLs, eagerly preloads and decodes images, and tracks progress.
+  - `PrepStatus` union: `'idle' | 'selecting' | 'fetching' | 'preloading' | 'done' | 'error'`.
+- Context exposure (no UI dependency): `src/contexts/GameContext.tsx`
+  - Adds fields for future UI:
+    - `prepStatus: PrepStatus`
+    - `prepProgress: { loaded: number; total: number }`
+    - `prepError: string | null`
+    - `abortPreparation(): void`
+  - These mirror the hook and are updated during `startGame()` preparation flow.
+- UI note: Do not implement UI here; progress is exposed for future fullscreen progress modal.
+
+### Preparation Overlay UI — 2025-08-17
+
+- Component: `src/components/game/PreparationOverlay.tsx`
+  - Fullscreen modal shown during preparation (`selecting`, `fetching`, `preloading`) and on `error`.
+  - Reads `prepStatus`, `prepProgress`, `prepError`, and `abortPreparation()` from `GameContext`.
+  - Shows a progress bar and status text; on error, shows Retry (calls `startGame(...)`) and Cancel (calls `abortPreparation()`, navigates to `/test`).
+- Global mount point: `src/App.tsx`
+  - Inside `<GameProvider>` and before `<Routes>` to overlay all routes during preparation.
+  - Import path: `import PreparationOverlay from "@/components/game/PreparationOverlay";`
+  - Rendered once globally: `<PreparationOverlay />`.
+- Dependencies: `src/components/ui/progress.tsx`, `src/components/ui/button.tsx`, `lucide-react` icons.
+- Accessibility: uses `role="dialog"` and `aria-live="polite"` for status updates.
 
 ## Future Enhancements
 

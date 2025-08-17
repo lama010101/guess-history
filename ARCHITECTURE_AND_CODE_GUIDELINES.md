@@ -644,6 +644,7 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
     - Preferred source is the debt's numeric `label`. If missing or non-numeric, we fall back to the round's `yearDifference` (years) or `distanceKm` (km) provided by `ResultsLayout2`. If neither is available, we display a readable label or mapped title.
     - If the debt `label` looks like an ID/UUID, we render a human label from `HINT_TYPE_NAMES` as a last resort.
   - `src/pages/RoundResultsPage.tsx`: Made top Next Round button more compact (kept rounded-xl per standard).
+  - `src/components/layouts/ResultsLayout2.tsx`: On desktop (`lg+`), the Home button (and any extra buttons) are rendered in a desktop-only container placed after/below the Hint Penalties/Debt card. On mobile/tablet, the Home button remains in the bottom action bar (unchanged).
   - 2025-08-14 spacing/style harmonization:
     - `src/components/layouts/ResultsLayout2.tsx`: Reduced space between "Your Score" and penalties (mb-1). Set When/Where titles to regular weight. Added spacing between titles and content. Added extra space above the "Correct" rows in When (`mt-4`). Moved progress bars to the bottom of each card with `mt-4`, and placed %/XP badges directly below those bars. Ensured event year and guessed year use the same font-size.
     - `src/pages/RoundResultsPage.tsx`: Home button uses black text on `#999999` background (hover `#8a8a8a`).
@@ -651,7 +652,7 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
 - Final Results page
   - `src/pages/FinalResultsPage.tsx`: Removed the two mini cards for Time Accuracy and Location Accuracy under the detailed metrics grid. Kept Avg Years Off, Avg Km Away, Hints Used, and Penalty Cost.
   - `src/components/RoundResultCard.tsx`: Replaced the orange selected-value badge under the image title with plain orange text (no background) to simplify the look on breakdown cards.
-  - `src/pages/FinalResultsPage.tsx`: Footer Home button uses background `#999999` (hover `#8a8a8a`) with black text in both light and dark modes.
+  - `src/pages/FinalResultsPage.tsx`: Footer Home button matches the Game page Home button styling — `rounded-full`, `text-black`, `border-none`, rainbow gradient background `bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)]`, and `hover:opacity-90`.
   - `src/pages/FinalResultsPage.tsx`: Time and Location accuracy progress bars show their numeric percentages in the label row on the right.
 
 - Game page

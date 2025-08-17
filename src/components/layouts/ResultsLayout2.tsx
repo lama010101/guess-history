@@ -383,12 +383,6 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               </div>
             </div>
 
-            {/* Desktop-only action buttons directly under the Where card (Next Round removed) */}
-            <div className="hidden lg:flex justify-center items-center space-x-4 mt-4">
-              {extraButtons}
-              {homeButton}
-            </div>
-
             {result.hintDebts && result.hintDebts.length > 0 && (
               <HintDebtsCard 
                 hintDebts={result.hintDebts}
@@ -396,6 +390,12 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                 distanceKm={result.distanceKm ?? null}
               />
             )}
+
+            {/* Desktop-only action buttons placed after the Hint Penalties/Debt card */}
+            <div className="hidden lg:flex justify-center items-center space-x-4 mt-4">
+              {extraButtons}
+              {homeButton}
+            </div>
           </div>
         </div>
 

@@ -376,9 +376,12 @@ const FinalResultsPage = () => {
 
       <footer className="fixed bottom-0 left-0 w-full z-50 bg-black shadow-[0_-2px_12px_rgba(0,0,0,0.5)] px-4 py-3 flex justify-center items-center border-t border-gray-800">
         <div className="w-full max-w-md flex items-center justify-between gap-4">
-          <Button onClick={handleHome} variant="outline" size="lg" className="gap-2 bg-[#999999] text-black hover:bg-[#8a8a8a] dark:bg-[#999999] dark:hover:bg-[#8a8a8a] dark:text-black shadow-md py-6 text-base">
-            <Home className="h-5 w-5" />
-            Home
+          <Button
+            onClick={handleHome}
+            variant="outline"
+            className="text-black rounded-full px-6 py-6 text-lg font-semibold border-none bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] hover:opacity-90"
+          >
+            <Home className="h-5 w-5 mr-2" /> Home
           </Button>
           <Button onClick={handlePlayAgain} className="flex-1 bg-orange-500 text-white hover:bg-orange-600 gap-2 py-6 text-base" size="lg">
             <RefreshCw className="h-5 w-5" />

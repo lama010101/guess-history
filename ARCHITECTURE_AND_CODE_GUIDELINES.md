@@ -585,6 +585,28 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
 - Dependencies: `src/components/ui/progress.tsx`, `src/components/ui/button.tsx`, `lucide-react` icons.
 - Accessibility: uses `role="dialog"` and `aria-live="polite"` for status updates.
 
+### Seamless Guest Login → Preparation Overlay (2025-08-17)
+
+- Goal: Show `PreparationOverlay` immediately after clicking "Continue as guest" on the landing page, without intermediate screens or full reloads.
+- Files:
+  - `src/components/AuthModal.tsx`
+    - `handleGuestLogin()` now:
+      - Calls `continueAsGuest()`.
+      - Closes the modal immediately via `onClose()` so the UI can re-render.
+      - Triggers `onGuestContinue()` asynchronously (without `await`) so `PreparationOverlay` can appear instantly.
+      - Fallback (no `onGuestContinue`): SPA navigation using `useNavigate()` to `'/test'` (replaces `window.location.replace`).
+  - `src/pages/LandingPage.tsx`
+    - Passes `onGuestContinue={() => startGame?.()}` to `AuthModal`; `startGame()` handles prep and navigation internally.
+    - Uses React Router SPA navigation (`useNavigate`) for redirects in `onAuthSuccess` and the authenticated guard effect.
+    - Authenticated redirect guard: only redirects to `/test` when `user` is set, the auth modal is closed, `images.length === 0`, and `isLoading` is false to avoid racing with `startGame()`.
+  - `src/App.tsx`
+    - `PreparationOverlay` is mounted once globally inside `GameProvider` and before `Routes`.
+
+- Behavior:
+  - Clicking "Continue as guest" authenticates anonymously, immediately closes the modal, and triggers `startGame()` asynchronously.
+  - `GameContext` updates `prepStatus` which makes `PreparationOverlay` visible right away; when prep completes, `startGame()` navigates to the game route.
+  - No full page reloads are used in this flow.
+
 ## Future Enhancements
 
 ### Planned Features

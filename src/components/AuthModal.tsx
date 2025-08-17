@@ -15,12 +15,13 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertCircle, Check, Loader2, Mail, UserX } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAuthSuccess?: () => void;
-  onGuestContinue?: () => void;
+  onGuestContinue?: () => Promise<void> | void;
   initialTab?: "signIn" | "signUp";
 }
 
@@ -42,6 +43,7 @@ export function AuthModal({
   const [forgotError, setForgotError] = useState<string>("");
   const [formError, setFormError] = useState<string>("");
   const [formHint, setFormHint] = useState<string>("");
+  const navigate = useNavigate();
 
   const handleGuestLogin = async () => {
     try {
@@ -51,8 +53,12 @@ export function AuthModal({
       // If there's a custom guest continue handler, use it
       if (onGuestContinue) {
         await continueAsGuest();
-        await onGuestContinue();
+        // Close the modal immediately so UI can update and overlay can show
         onClose();
+        // Trigger game start asynchronously; do not await to avoid blocking UI updates
+        setTimeout(() => {
+          try { onGuestContinue(); } catch (e) { console.error('onGuestContinue error', e); }
+        }, 0);
         return;
       }
       
@@ -65,7 +71,7 @@ export function AuthModal({
       
       // Then navigate to home after a small delay to ensure the modal is closed
       setTimeout(() => {
-        window.location.replace('/test');
+        navigate('/test', { replace: true });
       }, 100);
     } catch (error) {
       console.error("Guest login error:", error);

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { AuthModal } from "@/components/AuthModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGame } from "@/contexts/GameContext";
+import { useNavigate } from "react-router-dom";
 
 const SLIDE_DURATION_MS = 3000;
 
@@ -14,6 +15,7 @@ const LandingPage: React.FC = () => {
   const { user } = useAuth();
   const [navVisible, setNavVisible] = useState(false);
   const { startGame, images, isLoading } = useGame();
+  const navigate = useNavigate();
 
   // Scroll event for navbar visibility
   useEffect(() => {
@@ -53,9 +55,9 @@ const LandingPage: React.FC = () => {
   // Redirect authenticated user straight to the home page (avoid while auth modal is open or a game is starting)
   useEffect(() => {
     if (user && !authOpen && !isLoading && images.length === 0) {
-      window.location.replace("/test");
+      navigate("/test", { replace: true });
     }
-  }, [user, authOpen, isLoading, images.length]);
+  }, [user, authOpen, isLoading, images.length, navigate]);
 
   // Cycle through hero images every 3 seconds
   useEffect(() => {
@@ -208,7 +210,7 @@ const LandingPage: React.FC = () => {
         onClose={() => setAuthOpen(false)}
         onAuthSuccess={() => {
           setAuthOpen(false);
-          window.location.replace("/test");
+          navigate("/test", { replace: true });
         }}
         onGuestContinue={async () => {
           // AuthModal already performed continueAsGuest before invoking this callback.

@@ -30,6 +30,9 @@ export function useGamePreparation() {
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState<number>(0);
   const [total, setTotal] = useState<number>(0);
+  // New: expose prepared images and which indices finished loading for UI previews
+  const [prepared, setPrepared] = useState<PreparedImage[]>([]);
+  const [loadedIndices, setLoadedIndices] = useState<Set<number>>(new Set());
   const abortRef = useRef<boolean>(false);
 
   const resolveImageUrl = useCallback((img: any) => {
@@ -69,6 +72,8 @@ export function useGamePreparation() {
     setError(null);
     setLoaded(0);
     setTotal(0);
+    setPrepared([]);
+    setLoadedIndices(new Set());
     abortRef.current = false;
 
     const userId = opts.userId ?? null;
@@ -126,7 +131,7 @@ export function useGamePreparation() {
     const orderedImgs = ids.map((id) => byId.get(id)).filter(Boolean);
 
     // 3) Resolve final URLs and shape to PreparedImage[]
-    const prepared: PreparedImage[] = orderedImgs.map((img: any) => {
+    const preparedList: PreparedImage[] = orderedImgs.map((img: any) => {
       const url = resolveImageUrl(img);
       return {
         id: String(img.id),
@@ -146,13 +151,19 @@ export function useGamePreparation() {
 
     // 4) Preload + decode with progress
     setStatus('preloading');
-    setTotal(prepared.length);
+    setTotal(preparedList.length);
     setLoaded(0);
+    setPrepared(preparedList);
 
-    for (let i = 0; i < prepared.length; i++) {
+    for (let i = 0; i < preparedList.length; i++) {
       if (abortRef.current) break;
-      await preloadOne(prepared[i].url);
-      setLoaded((prev) => Math.min(prepared.length, prev + 1));
+      await preloadOne(preparedList[i].url);
+      setLoaded((prev) => Math.min(preparedList.length, prev + 1));
+      setLoadedIndices((prev) => {
+        const next = new Set(prev);
+        next.add(i);
+        return next;
+      });
     }
 
     if (abortRef.current) {
@@ -163,7 +174,7 @@ export function useGamePreparation() {
     }
 
     setStatus('done');
-    return { images: prepared, ids };
+    return { images: preparedList, ids };
   }, [resolveImageUrl]);
 
   const abort = useCallback(() => {
@@ -176,5 +187,7 @@ export function useGamePreparation() {
     status,
     error,
     progress: { loaded, total },
+    prepared,
+    loadedIndices,
   };
 }

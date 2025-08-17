@@ -294,7 +294,7 @@ const HomePage = () => {
           <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black/80 rounded-xl z-[100]">
             <div className="text-center p-4">
               <img src={lockIcon} alt="Locked" className="h-20 w-20 mx-auto mb-3" />
-              <p className="text-black dark:text-white text-sm">Sign in to challenge your friends and track your wins.</p>
+              <p className="text-black dark:text-white text-sm">COLLABORATE</p>
               <Button
                 className="mt-3 bg-white hover:bg-gray-100 text-black text-sm"
                 onClick={() => { setPendingMode(null); setShowAuthModal(true); }}
@@ -323,7 +323,7 @@ const HomePage = () => {
           <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black/80 rounded-xl z-[100]">
             <div className="text-center p-4">
               <img src={lockIcon} alt="Locked" className="h-20 w-20 mx-auto mb-3" />
-              <p className="text-black dark:text-white text-sm">Sign in to challenge your friends and track your wins.</p>
+              <p className="text-black dark:text-white text-sm">COMPETE</p>
               <Button
                 className="mt-3 bg-white hover:bg-gray-100 text-black text-sm"
                 onClick={() => handleStartGame('friends')}

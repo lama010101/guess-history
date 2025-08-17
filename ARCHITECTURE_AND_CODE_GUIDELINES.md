@@ -576,8 +576,30 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
 
 - Component: `src/components/game/PreparationOverlay.tsx`
   - Fullscreen modal shown during preparation (`selecting`, `fetching`, `preloading`) and on `error`.
-  - Reads `prepStatus`, `prepProgress`, `prepError`, and `abortPreparation()` from `GameContext`.
-  - Shows a progress bar and status text; on error, shows Retry (calls `startGame(...)`) and Cancel (calls `abortPreparation()`, navigates to `/test`).
+  - Reads from `GameContext`:
+    - `prepStatus`, `prepProgress { loaded, total }`, `prepError`, `abortPreparation()`
+    - `preparedImages: Array<{ url: string; title?: string; ... }>`
+    - `preparedLoadedIndices: Set<number> | number[]` — indices that have finished preloading/decoding
+  - Mobile-first fullscreen modal with fixed panel width `min(92vw, 520px)`.
+  - Title updated to “Preparing your game…”.
+  - Accessibility: adds an ARIA live region (polite) that announces preparation status and image counts.
+  - Error UI: shows the error message and offers Retry (invokes `startGame(...)` with current settings) and Cancel (calls `abortPreparation()` and navigates to `/test`).
+
+  - Progress UI redesign:
+    - Replaces linear bar with a fixed 5-segment progress indicator.
+    - Segments filled based on `prepProgress.loaded / prepProgress.total` clamped to 0..5.
+    - Always renders 5 segments to avoid layout jumps.
+
+  - Mini-cards row:
+    - Always renders 5 fixed-size cards (`aspect-[4/3]`, grid of 5) to prevent layout shifts on mobile.
+    - Each card starts as a skeleton shimmer (animated pulse gradient).
+    - When the corresponding index is present in `preparedLoadedIndices`, replaces the skeleton with the actual image from `preparedImages[i].url`.
+    - Uses `object-cover` so previews remain stable.
+
+  - Implementation notes:
+    - Type-safe helper in the component normalizes `preparedLoadedIndices` whether it is a `Set<number>` or `number[]`.
+    - The live announcement reads: “Preparing your game. X of Y images ready.” and falls back to phase-specific messages when counts are unknown.
+    - Layout uses stable dimensions and avoids content shifts while images load.
 - Global mount point: `src/App.tsx`
   - Inside `<GameProvider>` and before `<Routes>` to overlay all routes during preparation.
   - Import path: `import PreparationOverlay from "@/components/game/PreparationOverlay";`

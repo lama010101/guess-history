@@ -7,7 +7,7 @@ import { getNewImages, getOrPersistRoomImages, recordPlayedImages } from '@/util
 import { ROUNDS_PER_GAME } from '@/utils/gameCalculations';
 import { Hint } from '@/hooks/useHintV2';
 import { RoundResult, GuessCoordinates } from '@/types';
-import { useGamePreparation, PrepStatus } from '@/hooks/useGamePreparation';
+import { useGamePreparation, PrepStatus, PreparedImage } from '@/hooks/useGamePreparation';
 
 // Define the structure of an image object based on actual schema
 export interface GameImage {
@@ -60,6 +60,9 @@ interface GameContextState {
   prepProgress: { loaded: number; total: number };
   prepError: string | null;
   abortPreparation: () => void;
+  // New: expose prepared images and which indices are loaded for overlay previews
+  preparedImages: PreparedImage[];
+  preparedLoadedIndices: Set<number>;
 }
 
 // Create the context
@@ -140,6 +143,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     status: prepStatus,
     error: prepError,
     progress: prepProgress,
+    prepared: preparedImages,
+    loadedIndices: preparedLoadedIndices,
   } = useGamePreparation();
 
   // Save game state to DB whenever it changes
@@ -792,6 +797,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     prepProgress,
     prepError,
     abortPreparation,
+    preparedImages,
+    preparedLoadedIndices,
   };
 
   return <GameContext.Provider value={contextValue}>{children}</GameContext.Provider>;

@@ -311,7 +311,7 @@ const HomePage = () => {
                   overlay={isGuest ? <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-xl">
                     <div className="text-center p-4">
                       <Lock className="h-8 w-8 text-amber-400 mx-auto mb-2" />
-                      <p className="text-white text-sm">Sign in to challenge your friends and track your wins.</p>
+                      <p className="text-white text-sm">COLLABORATE with your friends.</p>
                     </div>
                   </div> : undefined}
                 >

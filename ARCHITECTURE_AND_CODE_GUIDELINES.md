@@ -344,6 +344,7 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
 - Game page controls:
   - When exiting fullscreen on the image, the `When?` and `Where?` labels perform a 1s typewriter animation in orange, then revert to the normal label color (white in dark mode, dark gray in light). There is no card ring/pulse on initial reveal. Implemented in `src/components/layouts/GameLayout1.tsx` with local `titlesAnimating`, `whenAnimIndex`, and `whereAnimIndex` state.
   - The Hints button in the bottom action bar is compact with a `HelpCircle` icon and a small count chip (e.g., `3/14`).
+  - After the user clicks Submit Guess and before navigation, a full-screen loading overlay appears with a spinner and the text "Preparing results...". Implemented in `src/components/layouts/GameLayout1.tsx` using local `isSubmitting` state set in `handleSubmitGuess()`.
 
 ### Button Border Radius Standard (2025-08)
 
@@ -557,7 +558,10 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
   - `src/components/results/ResultsHeader.tsx`: Round text weight set to normal.
   - `src/components/layouts/ResultsLayout2.tsx`: Progress bars are placed at the bottom of the When/Where cards; % and XP badges appear directly below the progress bars; reduced spacing under "Your Score"; labels (Accuracy/Experience) moved above values; matched "Your guess" styling to "Correct:"; removed in-layout bottom Next Round buttons.
   - `src/components/results/HintDebtsCard.tsx`: Removed border; maintain dark background.
-  - `src/components/results/HintDebtsCard.tsx`: Accuracy penalty shows only `-{accDebt}%` on the right side. If the hint's `label` is numeric and the `hintId` denotes a numeric hint (`*_event_years`, `*_landmark_km`), append the numeric value with units directly after the hint label — `NN years off` for time hints and `NN km away` for location hints. Values are sourced from the hint debts (numeric `label`), not round-level `yearDifference`/`distanceKm`.
+  - `src/components/results/HintDebtsCard.tsx`: Accuracy penalty shows only `-{accDebt}%` on the right side.
+    - For locked numeric hints (`*_event_years`, `*_landmark_km`), show a measurement next to the label: `NN years off` or `NN km away`.
+    - Preferred source is the debt's numeric `label`. If that label is missing or not numeric, we gracefully fall back to the round's `yearDifference` or `distanceKm` supplied by `ResultsLayout2`.
+    - If the debt `label` looks like an ID/UUID, we render a human label from `HINT_TYPE_NAMES` instead of the raw id.
   - `src/pages/RoundResultsPage.tsx`: Made top Next Round button more compact (kept rounded-xl per standard).
   - 2025-08-14 spacing/style harmonization:
     - `src/components/layouts/ResultsLayout2.tsx`: Reduced space between "Your Score" and penalties (mb-1). Set When/Where titles to regular weight. Added spacing between titles and content. Added extra space above the "Correct" rows in When (`mt-4`). Moved progress bars to the bottom of each card with `mt-4`, and placed %/XP badges directly below those bars. Ensured event year and guessed year use the same font-size.

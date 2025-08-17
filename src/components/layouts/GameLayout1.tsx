@@ -83,6 +83,8 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   // Targeted highlight states for When/Where
   const [highlightWhen, setHighlightWhen] = useState(false);
   const [highlightWhere, setHighlightWhere] = useState(false);
+  // Loading state after submitting guess
+  const [isSubmitting, setIsSubmitting] = useState(false);
   // Inline editable year input state for header
   const [yearInput, setYearInput] = useState<string>('');
   // Track if the slider has been interacted with; controls showing the year
@@ -236,6 +238,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
     // With disabled overlay, this should only run when enabled
     // Call the parent's onComplete if it exists
     if (onComplete) {
+      setIsSubmitting(true);
       onComplete();
     }
   };
@@ -557,6 +560,15 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           )}
         </div>
       </div>
+      {/* Submitting overlay */}
+      {isSubmitting && (
+        <div className="fixed inset-0 z-[10000] bg-black/60 flex items-center justify-center">
+          <div className="flex flex-col items-center">
+            <div className="h-10 w-10 rounded-full border-4 border-white/30 border-t-white animate-spin mb-3" />
+            <div className="text-white text-sm">Preparing results...</div>
+          </div>
+        </div>
+      )}
       {/* V2 Hint Modal */}
       <HintModalV2New
         isOpen={isHintModalV2Open}

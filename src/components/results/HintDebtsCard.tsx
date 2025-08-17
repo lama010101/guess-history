@@ -10,18 +10,35 @@ interface HintDebtsCardProps {
   distanceKm?: number | null;
 }
 
-// Helper to get hint label if not present in debt object
-const getHintLabel = (hintId: string): string => {
-  return HINT_TYPE_NAMES[hintId] || hintId;
+// Helper to derive a human-readable hint label, preferring hint_type over hintId,
+// with sensible defaults for generic categories and numeric sub-hints.
+const getHintLabel = (hintType?: string, hintId?: string, unit?: 'years off' | 'km away' | null): string => {
+  if (hintType && HINT_TYPE_NAMES[hintType]) return HINT_TYPE_NAMES[hintType];
+  if (hintId && HINT_TYPE_NAMES[hintId]) return HINT_TYPE_NAMES[hintId];
+  // Provide category-aware defaults for numeric sub-hints
+  if (unit === 'years off') return 'Years From Event';
+  if (unit === 'km away') return 'Distance to Landmark';
+  if (hintType === 'when') return 'Time Hint';
+  if (hintType === 'where') return 'Location Hint';
+  // Fall back to the most informative available key
+  return hintType || hintId || '';
 };
 
-// Determine if the hint is a numeric-valued hint and what unit to display
-const getNumericUnit = (hintId?: string): 'years off' | 'km away' | null => {
-  if (!hintId) return null;
-  const id = hintId.toLowerCase();
+// Determine if the hint is a numeric-valued hint and what unit to display (prefer hint_type)
+const getNumericUnit = (hintKey?: string): 'years off' | 'km away' | null => {
+  if (!hintKey) return null;
+  const id = hintKey.toLowerCase();
   if (id.includes('event_years') || id.endsWith('_years') || id.includes('when_event_years')) return 'years off';
   if (id.includes('landmark_km') || id.endsWith('_km') || id.includes('where_landmark_km')) return 'km away';
   return null;
+};
+
+// Heuristic to detect UUID-like labels or otherwise non-human-friendly IDs
+const looksLikeId = (s?: string): boolean => {
+  if (!s) return true;
+  const t = s.trim();
+  // UUID v4-ish or long hex with dashes
+  return /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(t) || (t.length > 24 && /[0-9a-f]/i.test(t) && t.includes('-'));
 };
 
 const HintDebtsCard: React.FC<HintDebtsCardProps> = ({ hintDebts, yearDifference = null, distanceKm = null }) => {
@@ -41,15 +58,26 @@ const HintDebtsCard: React.FC<HintDebtsCardProps> = ({ hintDebts, yearDifference
             <div className="flex items-center">
               {(() => {
                 const raw = (debt.label || '').trim();
-                const isNum = /^\d+$/.test(raw);
-                const title = isNum ? getHintLabel(debt.hintId) : (debt.label || getHintLabel(debt.hintId));
-                const unit = isNum ? getNumericUnit(debt.hintId) : null;
+                const labelIsNumeric = /^\d+$/.test(raw);
+                let unit = getNumericUnit(debt.hint_type || debt.hintId);
+                // If we couldn't infer unit from keys, but the category is known, derive it from category for numeric-style debts
+                if (!unit && (debt.hint_type === 'when' || debt.hint_type === 'where')) {
+                  unit = debt.hint_type === 'when' ? 'years off' : 'km away';
+                }
+                // Prefer human title from map when label is missing or looks like an ID
+                const title = looksLikeId(raw) || labelIsNumeric || raw === '' ? getHintLabel(debt.hint_type, debt.hintId, unit) : raw;
+                // Determine value: prefer numeric label; otherwise fallback from props by unit
+                let value: number | null = null;
+                if (labelIsNumeric) {
+                  value = parseInt(raw, 10);
+                } else if (unit === 'years off' && yearDifference != null) {
+                  value = Math.abs(yearDifference);
+                } else if (unit === 'km away' && distanceKm != null) {
+                  value = Math.abs(Math.round(distanceKm));
+                }
                 return (
                   <>
                     <span>{title}</span>
-                    {isNum && unit && (
-                      <span className="ml-1 text-muted-foreground">{formatInteger(parseInt(raw, 10))} {unit}</span>
-                    )}
                   </>
                 );
               })()}

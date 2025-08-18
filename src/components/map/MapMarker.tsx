@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { Marker, Popup } from 'react-leaflet';
-import { DefaultIcon } from '../../utils/mapUtils';
+import L from 'leaflet';
 
 interface MapMarkerProps {
   position: [number, number];
@@ -16,20 +15,29 @@ const MapMarker: React.FC<MapMarkerProps> = ({
   label,
   pulse = false
 }) => {
-  // We need to fix how we set the icon in react-leaflet v3+
+  // Use a centered DivIcon so polylines connect to the marker center.
+  const icon = React.useMemo(() => {
+    const size = 24; // px
+    const html = `
+      <div class="flex items-center justify-center">
+        <div class="rounded-full border-2 border-white shadow-md ${color} ${pulse ? 'animate-ping' : ''}"
+             style="width:${size}px;height:${size}px;"></div>
+      </div>`;
+    return L.divIcon({
+      className: '',
+      html,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2], // center anchor
+    });
+  }, [color, pulse]);
+
   return (
-    <Marker position={position}>
+    <Marker position={position} icon={icon}>
       {label && (
         <Popup>
           {label}
         </Popup>
       )}
-      <div className={`custom-marker ${pulse ? 'pulse' : ''}`}>
-        <div 
-          className={`w-6 h-6 rounded-full border-2 border-white shadow-md ${color}`}
-          style={{ transform: 'translate(-50%, -50%)' }}
-        ></div>
-      </div>
     </Marker>
   );
 };

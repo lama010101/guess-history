@@ -434,6 +434,21 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - The Hints button in the bottom action bar is compact with a `HelpCircle` icon and a small count chip (e.g., `3/14`).
   - After the user clicks Submit Guess and before navigation, a full-screen loading overlay appears with a spinner and the text "Preparing results...". Implemented in `src/components/layouts/GameLayout1.tsx` using local `isSubmitting` state set in `handleSubmitGuess()`.
 
+### Where Map — Guess vs Actual Visualization (2025-08)
+
+- Files:
+  - `src/components/map/ComparisonMap.tsx` — renders guess/actual markers and the connection line
+  - `src/components/map/MapMarker.tsx` — centered DivIcon markers used on comparison map
+- Line style:
+  - Uses Leaflet `Polyline` with `pathOptions: { color: '#000000', weight: 2, dashArray: '5 5' }`
+  - Non-interactive (pure visual) so user cannot click it
+- Marker anchors:
+  - Markers are Leaflet `DivIcon`s with `iconSize = [24,24]` and `iconAnchor = [12,12]` so the connection line attaches to the visual center
+  - Pulse affordance uses Tailwind animation class toggled by the `pulse` prop
+- Debugging:
+  - In dev builds only, `ComparisonMap` logs guess/actual lat/lng and Haversine distance via `calculateDistanceKm()` from `src/utils/gameCalculations.ts`
+  - This aids verification of distance scoring and visual line endpoints
+
 ### Button Border Radius Standard (2025-08)
 
 - __Default__: All buttons use Tailwind `rounded-md` (0.375rem) for a consistent look across the app. The shared Button component (`src/components/ui/button.tsx`) already defaults to `rounded-md`.

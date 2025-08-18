@@ -225,7 +225,7 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="h-screen w-screen bg-black text-white overflow-y-auto p-0 border-0">
+      <DialogContent className="left-0 top-0 translate-x-0 translate-y-0 max-w-none h-screen w-screen bg-black text-white overflow-y-auto p-0 border-0">
         <DialogHeader className="sticky top-0 z-10 pt-4 pb-0 px-4 border-b border-gray-800 bg-black">
           <div className="relative flex items-center justify-center w-full">
             <DialogTitle className="text-2xl font-bold text-white">HINTS</DialogTitle>

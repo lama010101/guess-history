@@ -385,7 +385,14 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
             {result.hintDebts && result.hintDebts.length > 0 && (
               <HintDebtsCard 
-                hintDebts={result.hintDebts}
+                hintDebts={result.hintDebts.map(debt => {
+                  const hintInfo = result.hintsUsed?.find(h => h.id === debt.hintId || h.hint_type === debt.hint_type);
+                  return {
+                    ...debt,
+                    hintId: hintInfo?.id || debt.hintId,
+                    hint_type: hintInfo?.hint_type || debt.hint_type,
+                  };
+                })}
                 yearDifference={result.yearDifference ?? null}
                 distanceKm={result.distanceKm ?? null}
               />

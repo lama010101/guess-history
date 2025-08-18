@@ -304,6 +304,64 @@ Notes:
   - `src/pages/GameRoundPage.tsx` now calls `useHintV2(imageForRound, { roomId, roundNumber })`.
   - `src/pages/RoundResultsPage.tsx` uses `makeRoundId(roomId, roundNumber)` when querying hint debts.
 
+### Final Scoring with Hint Debts V2 (2025-08)
+
+- Files:
+  - `src/pages/FinalResultsPage.tsx`
+  - `src/utils/gameCalculations.ts`: `computeRoundNetPercent()`, `averagePercent()`
+  - `src/utils/roomState.ts`: `makeRoundId()`
+
+- Behavior:
+  - Final XP and Accuracy use real debts aggregated from `public.round_hints` per round for the current user and session.
+  - Session keying is room-first: if `roomId` is present, construct `round_id` with `makeRoundId(roomId, roundIndex+1)`; otherwise fall back to `makeRoundId(gameId, roundIndex+1)`.
+  - XP: Sum raw round XP, then subtract the aggregated `xpDebt` across rounds → `netFinalXP`.
+  - Accuracy: For each round, compute average of time/location accuracy, subtract that round’s aggregated `accDebt`, clamp to 0..100, then average across rounds → `finalPercentNet`.
+  - UI displays net values; the “Penalty Cost” shows both total XP and accuracy hint debts, e.g., `-40 XP -2%`.
+
+- Implementation notes:
+  - Build round IDs with `makeRoundId(roomId, roundIndex+1)` when available; otherwise `makeRoundId(gameId, roundIndex+1)`.
+  - Query `round_hints` selecting `round_id, xpDebt, accDebt` filtered by `user_id` and the session’s round IDs. Sum `xpDebt` and group-sum `accDebt` per `round_id`.
+  - Provisional global metrics are set immediately using raw totals (pre-debt) to ensure the navbar updates without delay, then persistence updates metrics with net values and triggers `refreshGlobalMetrics()`.
+
+### Hint Label Resolution (Results)
+
+- Component: `src/components/results/HintDebtsCard.tsx`
+- Source constants: `src/constants/hints.ts` (`HINT_TYPE_NAMES`)
+- Resolution order:
+  1) Exact match on `hintId` in `HINT_TYPE_NAMES`
+  2) Exact match on `hintType` in `HINT_TYPE_NAMES`
+  3) Base-ID extraction for `hintId` with suffixes (strip trailing `-...`) and prefix match
+  4) Cost-based inference (uses the debt values when only generic categories are present):
+     - Where 50 XP / 5% → "Region"
+     - Where 20 XP / 2% → "Remote Landmark"
+     - Where 30 XP / 3% → "Nearby Landmark"
+     - Where 40 XP / 4% → "Geographical Clues"
+     - Where 10 XP / 1% → if numeric/`km` → "Distance to Landmark" (continent handled by heuristic below)
+     - When 50 XP / 5% → "Decade"
+     - When 20 XP / 2% → "Distant Event"
+     - When 30 XP / 3% → "Recent Event"
+     - When 40 XP / 4% → "Temporal Clues"
+     - When 10 XP / 1% → if numeric/`years` → "Years From Event" (century handled by heuristic below)
+  5) Heuristics:
+     - When: raw contains `N(st|nd|rd|th) century` or `N(st|nd|rd|th)` → label "Century"
+     - When: raw decade like `1930s`, `2020s` → label "Decade"
+     - Where: raw equals a known continent (Africa, Antarctica, Asia, Europe, North America, South America, Oceania, Australia) → label "Continent"
+  6) Numeric sub-hints defaults:
+     - When numeric → "Years From Event"; renders as "<n> year(s)"
+     - Where numeric → "Distance to Landmark"; renders as "<n> km"
+  7) Fallbacks: "Time Hint" for `when`, "Location Hint" for `where`.
+
+- Units detection:
+  - Keys: `_years` or `when_event_years` → years off
+  - Keys: `_km` or `where_landmark_km` → km away
+
+- Display behavior:
+  - Title uses resolved label; answer prefers human-friendly raw text when non-numeric.
+  - If raw is numeric-only, falls back to numeric with units; may use `yearDifference`/`distanceKm` props when provided.
+
+- Mobile hint modal:
+  - `src/components/HintModalV2New.tsx` removes transform-based centering on mobile so sticky "HINTS" header and "Continue Guessing" footer remain visible.
+
 ## Lobby Timer Settings
 
 The multiplayer lobby supports a host-configurable round timer that synchronizes to all participants and is applied when the game starts.

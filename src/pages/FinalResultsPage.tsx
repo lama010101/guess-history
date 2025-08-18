@@ -13,9 +13,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { 
   calculateFinalScore,
   calculateTimeAccuracy,
-  calculateLocationAccuracy
+  calculateLocationAccuracy,
+  computeRoundNetPercent,
+  averagePercent
 } from "@/utils/gameCalculations";
-import { HINT_PENALTY } from "@/constants/hints";
+import { makeRoundId } from "@/utils/roomState";
 
 const FinalResultsPage = () => {
   const navigate = useNavigate();
@@ -30,13 +32,16 @@ const FinalResultsPage = () => {
     globalXP = 0,
     globalAccuracy = 0,
     gameId,
-    setProvisionalGlobalMetrics
+    setProvisionalGlobalMetrics,
+    roomId
   } = useGame();
   const submittedGameIdRef = useRef<string | null>(null);
   const provisionalAppliedRef = useRef<boolean>(false);
   
   const [isScrolled, setIsScrolled] = React.useState(false);
   const [isRoundSummaryOpen, setIsRoundSummaryOpen] = React.useState(true);
+  const [totalXpDebtState, setTotalXpDebtState] = React.useState(0);
+  const [accDebtByRound, setAccDebtByRound] = React.useState<Record<string, number>>({});
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -66,15 +71,77 @@ const FinalResultsPage = () => {
       });
 
       const { finalXP, finalPercent } = calculateFinalScore(roundScores);
-      const totalHintPenalty = roundResults.reduce((sum, result) => sum + (result.hintsUsed || 0) * HINT_PENALTY.XP, 0);
-      const netFinalXP = Math.max(0, Math.round(finalXP - totalHintPenalty));
 
-      // Set provisional global metrics BEFORE any network/auth calls to update navbar instantly
-      // Guard so we only apply once per mount to avoid additive increases
+      // Set provisional global metrics ASAP (raw totals, pre-debt) to update navbar immediately
       if (!provisionalAppliedRef.current) {
-        setProvisionalGlobalMetrics(netFinalXP, finalPercent);
+        setProvisionalGlobalMetrics(finalXP, finalPercent);
         provisionalAppliedRef.current = true;
       }
+
+      // Ensure we have a user (anonymous or registered) BEFORE fetching debts
+      let { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        try {
+          const { data, error } = await supabase.auth.signInAnonymously();
+          if (error) throw error;
+          user = data?.user || null;
+        } catch (signInError) {
+          console.error('Exception during anonymous sign-in:', signInError);
+          return;
+        }
+      }
+      if (!user) {
+        console.error('Still no user ID available after anonymous sign-in attempt');
+        return;
+      }
+
+      // Fetch actual debts across all rounds for this game/user
+      let totalXpDebt = 0;
+      const perRoundAccDebt: Record<string, number> = {};
+      if ((roomId || gameId) && images.length > 0) {
+        const roomRoundIds = roomId ? images.map((_, idx) => makeRoundId(roomId, idx + 1)) : [];
+        const gameRoundIds = !roomId && gameId ? images.map((_, idx) => makeRoundId(gameId, idx + 1)) : [];
+        const roundIds = roomRoundIds.length > 0 ? roomRoundIds : gameRoundIds;
+        try {
+          const { data: hintRows, error } = await supabase
+            .from('round_hints')
+            .select('round_id, xpDebt, accDebt')
+            .eq('user_id', user.id)
+            .in('round_id', roundIds as any);
+          if (error) {
+            console.warn('[FinalResults] hint debts query error', error);
+          } else if (hintRows && hintRows.length) {
+            for (const r of hintRows as any[]) {
+              const rid = r.round_id as string;
+              const xd = Number(r.xpDebt) || 0;
+              const ad = Number(r.accDebt) || 0;
+              totalXpDebt += xd;
+              perRoundAccDebt[rid] = (perRoundAccDebt[rid] || 0) + ad;
+            }
+          }
+        } catch (e) {
+          console.warn('[FinalResults] hint debts fetch exception', e);
+        }
+      }
+
+      // Persist debts to state for render usage
+      setTotalXpDebtState(totalXpDebt);
+      setAccDebtByRound(perRoundAccDebt);
+
+      // Compute net final XP and net final accuracy using debts
+      const netFinalXP = Math.max(0, Math.round(finalXP - totalXpDebt));
+      const perRoundNetPercents: number[] = images.map((img, idx) => {
+        const result = roundResults[idx];
+        if (!img || !result) return 0;
+        const timeAcc = calculateTimeAccuracy(result.guessYear || 0, img.year || 0);
+        const locAcc = calculateLocationAccuracy(result.distanceKm || 0);
+        const rid = roomId ? makeRoundId(roomId, idx + 1) : (gameId ? makeRoundId(gameId, idx + 1) : '');
+        const accDebt = rid ? (perRoundAccDebt[rid] || 0) : 0;
+        return computeRoundNetPercent(timeAcc, locAcc, accDebt);
+      });
+      const finalPercentNet = averagePercent(perRoundNetPercents);
+
+      // Do not update provisional again here; refreshGlobalMetrics after persistence will sync UI
 
       // If no gameId (yet) or already submitted, skip persistence but keep provisional values
       if (!gameId || submittedGameIdRef.current === gameId) {
@@ -96,27 +163,10 @@ const FinalResultsPage = () => {
       const totalWhenAccuracy = totalWhenXP > 0 ? (totalWhenXP / (roundResults.length * 100)) * 100 : 0;
       const totalWhereAccuracy = totalWhereXP > 0 ? (totalWhereXP / (roundResults.length * 100)) * 100 : 0;
 
-      // Ensure we have a user (anonymous or registered)
-      let { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        try {
-          const { data, error } = await supabase.auth.signInAnonymously();
-          if (error) throw error;
-          user = data?.user || null;
-        } catch (signInError) {
-          console.error('Exception during anonymous sign-in:', signInError);
-          return;
-        }
-      }
-      if (!user) {
-        console.error('Still no user ID available after anonymous sign-in attempt');
-        return;
-      }
-
       const metricsUpdate = {
-        gameAccuracy: finalPercent,
+        gameAccuracy: finalPercentNet,
         gameXP: netFinalXP,
-        isPerfectGame: finalPercent === 100,
+        isPerfectGame: finalPercentNet === 100,
         locationAccuracy: totalWhereAccuracy,
         timeAccuracy: totalWhenAccuracy,
         yearBullseye: roundResults.some(result => result.guessYear === images.find(img => img.id === result.imageId)?.year),
@@ -134,7 +184,7 @@ const FinalResultsPage = () => {
     };
 
     updateMetricsAndFetchGlobal();
-  }, [roundResults, images, gameId, setProvisionalGlobalMetrics, refreshGlobalMetrics]);
+  }, [roundResults, images, gameId, roomId, setProvisionalGlobalMetrics, refreshGlobalMetrics]);
 
   const handlePlayAgain = async () => {
     resetGame();
@@ -234,10 +284,20 @@ const FinalResultsPage = () => {
     return sum + calculateLocationAccuracy(result.distanceKm || 0);
   }, 0);
 
-  const totalHintPenalty = roundResults.reduce((sum, result) => sum + (result.hintsUsed || 0) * HINT_PENALTY.XP, 0);
-  const netFinalXP = Math.max(0, Math.round(finalXP - totalHintPenalty));
+  // Compute net values using aggregated debts (from DB)
+  const perRoundNetPercents: number[] = images.map((img, idx) => {
+    const result = roundResults[idx];
+    if (!img || !result) return 0;
+    const timeAcc = calculateTimeAccuracy(result.guessYear || 0, img.year || 0);
+    const locAcc = calculateLocationAccuracy(result.distanceKm || 0);
+    const rid = roomId ? makeRoundId(roomId, idx + 1) : (gameId ? makeRoundId(gameId, idx + 1) : '');
+    const accDebt = rid ? (accDebtByRound[rid] || 0) : 0;
+    return computeRoundNetPercent(timeAcc, locAcc, accDebt);
+  });
+  const finalPercentNet = averagePercent(perRoundNetPercents);
+  const netFinalXP = Math.max(0, Math.round(finalXP - (totalXpDebtState || 0)));
   const totalScore = formatInteger(netFinalXP);
-  const totalPercentage = formatInteger(finalPercent);
+  const totalPercentage = formatInteger(finalPercentNet);
   const totalWhenAccuracy = totalWhenXP > 0 ? (totalWhenXP / (roundResults.length * 100)) * 100 : 0;
   const totalWhereAccuracy = totalWhereXP > 0 ? (totalWhereXP / (roundResults.length * 100)) * 100 : 0;
   const totalHintsUsed = roundResults.reduce((sum, r) => sum + (r.hintsUsed || 0), 0);
@@ -342,7 +402,12 @@ const FinalResultsPage = () => {
                 </div>
                 <div>
                   <div className="text-gray-300">Penalty Cost</div>
-                  <div className="font-semibold text-red-400">-{formatInteger(totalHintPenalty)} XP</div>
+                  <div className="font-semibold text-red-400">
+                    -{formatInteger(totalXpDebtState || 0)} XP
+                    {Object.values(accDebtByRound).reduce((sum, debt) => sum + debt, 0) > 0 && (
+                      <span className="ml-2">-{Object.values(accDebtByRound).reduce((sum, debt) => sum + debt, 0)}%</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

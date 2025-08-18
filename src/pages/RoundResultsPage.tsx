@@ -165,8 +165,11 @@ const RoundResultsPage = () => {
         hint_type: hint.hint_type
       }));
 
-      console.log('Processed hint debts:', JSON.stringify(processedDebts, null, 2));
-      setHintDebts(processedDebts);
+      // Only show and use hints that were actually used and incurred a penalty
+      const usedWithPenalty = processedDebts.filter(d => (d.xpDebt ?? 0) > 0 || (d.accDebt ?? 0) > 0);
+
+      console.log('Processed hint debts (filtered to used with penalties):', JSON.stringify(usedWithPenalty, null, 2));
+      setHintDebts(usedWithPenalty);
 
     } catch (e) {
       console.error('A critical error occurred in fetchDebts:', e);
@@ -269,8 +272,8 @@ const RoundResultsPage = () => {
       
       // Get hint-related information
       const hintsUsed = ctxResult.hintsUsed ?? 0;
-      const totalXpDebt = hintDebts.reduce((sum, d) => sum + (d.xpDebt || 0), 0);
-      const totalAccDebt = hintDebts.reduce((sum, d) => sum + (d.accDebt || 0), 0);
+      const totalXpDebt = debts.reduce((sum, d) => sum + (d.xpDebt || 0), 0);
+      const totalAccDebt = debts.reduce((sum, d) => sum + (d.accDebt || 0), 0);
       
       // Calculate total XP with hint penalties / debts
       const xpBeforePenalty = xpWhere + xpWhen;

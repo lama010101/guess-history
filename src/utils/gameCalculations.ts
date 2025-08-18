@@ -76,6 +76,41 @@ export const calculateLocationAccuracy = (distanceKm: number): number => {
 };
 
 /**
+ * Compute the per-round accuracy percentage as the average of time and location accuracy.
+ * Values are clamped to [0, 100] and rounded to nearest integer.
+ */
+export const computeRoundPercent = (
+  timeAccuracyPercent: number,
+  locationAccuracyPercent: number
+): number => {
+  const t = Math.max(0, Math.min(100, timeAccuracyPercent));
+  const l = Math.max(0, Math.min(100, locationAccuracyPercent));
+  return Math.round((t + l) / 2);
+};
+
+/**
+ * Compute the per-round net accuracy percentage after subtracting accuracy debt.
+ * Result is clamped to [0, 100] and rounded.
+ */
+export const computeRoundNetPercent = (
+  timeAccuracyPercent: number,
+  locationAccuracyPercent: number,
+  accDebt: number = 0
+): number => {
+  const base = computeRoundPercent(timeAccuracyPercent, locationAccuracyPercent);
+  return Math.max(0, Math.round(base - (accDebt || 0)));
+};
+
+/**
+ * Average a list of percentages, rounded to nearest integer.
+ */
+export const averagePercent = (percents: number[]): number => {
+  if (!Array.isArray(percents) || percents.length === 0) return 0;
+  const sum = percents.reduce((s, p) => s + (Number.isFinite(p) ? p : 0), 0);
+  return Math.round(sum / percents.length);
+};
+
+/**
  * Calculate XP awarded based on accuracy (for backward compatibility)
  * @deprecated Use calculateTimeXP and calculateLocationXP instead
  */
@@ -104,6 +139,11 @@ export const calculateXP = (
  * @param hintsUsed - Number of hints used in this round
  * @param hintPenalty - XP penalty per hint used (default: 30)
  * @returns Object containing XP and accuracy metrics for the round
+ */
+/**
+ * @deprecated Legacy fixed-penalty implementation. Not used with v2 hint debts.
+ * Prefer computing per-round base accuracy via calculateTimeAccuracy/calculateLocationAccuracy
+ * and subtracting actual per-hint debts from the database.
  */
 export const calculateRoundScore = (
   distanceKm: number, 

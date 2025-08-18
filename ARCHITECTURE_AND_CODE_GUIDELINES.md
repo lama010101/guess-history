@@ -601,19 +601,40 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
   - `npm run deploy:partykit` — deploy PartyKit
 
 - **Message shapes**:
-  - Client→Server: `join { name }`, `chat { message, timestamp }`, `ready { ready: boolean }`
-  - Server→Client: `players { players: string[] }`, `roster { players: { name, ready, host }[] }`, `chat { from, message, timestamp }`, `full`, `start { startedAt }`
+  - Client→Server: `join { name }`, `chat { message, timestamp }`, `ready { ready: boolean }`, `settings { timerSeconds?: number, timerEnabled?: boolean }`
+  - Server→Client: `players { players: string[] }`, `roster { players: { id, name, ready, host }[] }`, `chat { from, message, timestamp }`, `full`, `start { startedAt, durationSec, timerEnabled }`
 
 ### Deterministic Images in Multiplayer
 
 - All players see the same images in the same order for a given room.
-- The server emits `start { startedAt }`. The client passes `roomId` and `seed = startedAt` to `GameContext.startGame()`.
+- The server emits `start { startedAt, durationSec, timerEnabled }`. The client derives a deterministic UUID v5 seed from `roomId` and `startedAt` and passes it to `GameContext.startGame()`:
+  - Seed derivation (npm `uuid`): `uuidv5(`${roomId}:${startedAt}`, uuidv5.URL)`
+  - Supabase RPC expects a UUID: `create_game_session_and_pick_images(p_count int, p_user_id uuid, p_room_id text, p_seed uuid)` and persists `seed` as text in `public.game_sessions.seed`.
 - `GameContext.startGame()` calls `getOrPersistRoomImages(roomId, seed, count)` which:
   - If `public.game_sessions` has a row for `room_id`, returns those `image_ids` in stored order.
   - Else, computes a seeded order from `images` (stable base order by `id`), upserts the record, and returns the first N.
 - Table: `public.game_sessions (room_id text pk, seed text, image_ids text[], current_round_number integer not null default 1, started_at timestamptz)` with RLS for authenticated users. The `seed` and `image_ids` are nullable to allow for updates that only modify the round number.
 - Solo games continue to use per-user no-repeat selection via `getNewImages()` and local shuffle.
  
+## Badges and Profiles Schema — 2025-08
+
+- __Badges table__: `public.badges`
+  - Columns: `id uuid pk default uuid_generate_v4()`, `name text`, `description text`, `icon_name text`, `category text`, `difficulty text`, `requirement_code text`, `requirement_value integer`, `image_url text`, `created_at timestamptz default now()`.
+  - Migration: `supabase/migrations/20250615_add_missing_tables.sql`.
+  - RLS: enabled; anyone may SELECT; INSERT/UPDATE/DELETE allowed only to authenticated users with admin role via `auth.jwt() ->> 'role' = 'admin'`.
+
+- __Profiles earned badges__: `public.profiles.earned_badges uuid[] default '{}'`
+  - Added in `20250615_add_missing_tables.sql` and ensured in `20250811160000_core_schema_fixes.sql`.
+  - Reflected in TS types: `src/integrations/supabase/types.ts` → `profiles.Row.earned_badges: string[] | null`.
+
+- __Client badge service__:
+  - Path: `src/utils/badges/badgeService.ts`.
+  - Responsibilities: fetch badges (`from('badges').select('*')`), read/update `profiles.earned_badges`, evaluate and award badges.
+
+- __Notes__:
+  - Badge modifications must respect admin-only RLS policies.
+  - Ensure the above migrations are applied before using badge features.
+
 ## Game Preparation (Atomic RPC + Preload Hook) — 2025-08-17
 
 - Backend RPC: `create_game_session_and_pick_images` defined in `supabase/migrations/20250817_create_game_prep_rpc.sql`.

@@ -10,6 +10,7 @@ import { partyUrl, LobbyServerMessage, LobbyClientMessage } from '@/lib/partyCli
 import { useGame } from '@/contexts/GameContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { NavMenu } from '@/components/NavMenu';
+import { v5 as uuidv5 } from 'uuid';
 
 interface ChatItem {
   id: string;
@@ -144,7 +145,9 @@ const Room: React.FC = () => {
             case 'start':
               if (!startedRef.current) {
                 startedRef.current = true;
-                startGame({ roomId: roomCode, seed: data.startedAt, timerSeconds: data.durationSec, timerEnabled: data.timerEnabled }).catch(() => {
+                // Derive a deterministic UUID seed from roomCode and startedAt timestamp
+                const seed = uuidv5(`${roomCode}:${data.startedAt}`, uuidv5.URL);
+                startGame({ roomId: roomCode, seed, timerSeconds: data.durationSec, timerEnabled: data.timerEnabled }).catch(() => {
                   startedRef.current = false;
                 });
               }

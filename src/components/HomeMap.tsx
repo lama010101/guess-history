@@ -15,6 +15,9 @@ interface HomeMapProps {
   onLocationSelect?: (location: string) => void;
   onCoordinatesSelect?: (lat: number, lng: number) => void;
   showHeader?: boolean;
+  showSearch?: boolean;
+  externalPosition?: { lat: number; lng: number } | null;
+  onCenterChange?: (center: { lat: number; lon: number }) => void;
 }
 
 // Component that handles map click events
@@ -59,7 +62,10 @@ const HomeMap: React.FC<HomeMapProps> = ({
   avatarUrl,
   onLocationSelect,
   onCoordinatesSelect,
-  showHeader = true
+  showHeader = true,
+  showSearch = true,
+  externalPosition = null,
+  onCenterChange,
 }) => {
   const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(null);
   const [location, setLocation] = useState<string>('Select a location');
@@ -70,6 +76,32 @@ const HomeMap: React.FC<HomeMapProps> = ({
 
   
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  // Sync external position from parent
+  useEffect(() => {
+    if (externalPosition) {
+      const next: [number, number] = [externalPosition.lat, externalPosition.lng];
+      setMarkerPosition(next);
+      if (mapInstance) {
+        mapInstance.setView(next, Math.max(5, mapInstance.getZoom()));
+      }
+    }
+  }, [externalPosition, mapInstance]);
+
+  // Notify parent of center changes for ranking
+  useEffect(() => {
+    if (!mapInstance || !onCenterChange) return;
+    const handler = () => {
+      const c = mapInstance.getCenter();
+      onCenterChange({ lat: c.lat, lon: c.lng });
+    };
+    mapInstance.on('moveend', handler);
+    // emit once initially
+    handler();
+    return () => {
+      mapInstance.off('moveend', handler);
+    };
+  }, [mapInstance, onCenterChange]);
 
   // Handle map click to set marker position
   const handleMapClick = async (latlng: L.LatLng) => {
@@ -155,58 +187,60 @@ const HomeMap: React.FC<HomeMapProps> = ({
         </div>
       )}
       
-      {/* Search input */}
-      <div className="mb-2">
-        <div className="relative">
-          <input
-            ref={inputRef}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') executeSearch();
-            }}
-            placeholder="Search a place (city, country)..."
-            className="w-full rounded-md bg-white dark:bg-[#1f1f1f] text-black dark:text-white px-3 py-2 pr-16 border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500"
-          />
-          {searchQuery.length > 0 && (
+      {/* Search input (optional) */}
+      {showSearch && (
+        <div className="mb-2">
+          <div className="relative">
+            <input
+              ref={inputRef}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') executeSearch();
+              }}
+              placeholder="Search a place (city, country)..."
+              className="w-full rounded-md bg-white dark:bg-[#1f1f1f] text-black dark:text-white px-3 py-2 pr-16 border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+            {searchQuery.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSearchResults([]);
+                  // keep focus for immediate re-typing
+                  if (inputRef.current) inputRef.current.focus();
+                }}
+                className="absolute right-9 top-1/2 -translate-y-1/2 p-1 rounded text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white"
+                aria-label="Clear search"
+                title="Clear"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => {
-                setSearchQuery('');
-                setSearchResults([]);
-                // keep focus for immediate re-typing
-                if (inputRef.current) inputRef.current.focus();
-              }}
-              className="absolute right-9 top-1/2 -translate-y-1/2 p-1 rounded text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white"
-              aria-label="Clear search"
-              title="Clear"
+              onClick={executeSearch}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white"
+              aria-label="Search"
             >
-              <X className="h-4 w-4" />
+              <Search className="h-5 w-5" />
             </button>
-          )}
-          <button
-            type="button"
-            onClick={executeSearch}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white"
-            aria-label="Search"
-          >
-            <Search className="h-5 w-5" />
-          </button>
-          {searchResults.length > 0 && (
-            <ul className="absolute z-10 mt-1 w-full bg-white dark:bg-[#1f1f1f] border border-gray-200 dark:border-gray-700 rounded-md max-h-56 overflow-auto shadow-lg">
-              {searchResults.map((r, idx) => (
-                <li
-                  key={`${r.lat}-${r.lon}-${idx}`}
-                  className="px-3 py-2 text-sm text-black dark:text-white hover:bg-gray-100 dark:hover:bg-[#2a2a2a] cursor-pointer"
-                  onClick={() => handleSelectResult(r)}
-                >
-                  {r.display_name}
-                </li>
-              ))}
-            </ul>
-          )}
+            {searchResults.length > 0 && (
+              <ul className="absolute z-10 mt-1 w-full bg-white dark:bg-[#1f1f1f] border border-gray-200 dark:border-gray-700 rounded-md max-h-56 overflow-auto shadow-lg">
+                {searchResults.map((r, idx) => (
+                  <li
+                    key={`${r.lat}-${r.lon}-${idx}`}
+                    className="px-3 py-2 text-sm text-black dark:text-white hover:bg-gray-100 dark:hover:bg-[#2a2a2a] cursor-pointer"
+                    onClick={() => handleSelectResult(r)}
+                  >
+                    {r.display_name}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="relative flex-grow rounded-lg overflow-hidden">
         <MapContainer 

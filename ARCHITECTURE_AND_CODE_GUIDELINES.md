@@ -1231,3 +1231,54 @@ Notes: UI changes are limited to the Home page and the shared `Logo` component p
 - Notes:
   - `ProtectedRoute` remains for additional protection of `/test/account` (blocks guests specifically).
   - No UI changes; this is routing-only.
+
+## Geo Search — Nominatim + Fuzzy Fallback (2025-08-18)
+
+- Overview:
+  - The Where? input now uses a single Nominatim backend with a client-side fuzzy fallback powered by Fuse.js.
+  - Debounced autocomplete, LRU + IndexedDB caching (7-day TTL), distance-aware ranking, and manual pin placement are supported.
+  - The typed-year input behavior remains unchanged.
+
+- Core Files:
+  - Client components:
+    - `src/components/game/LocationSelector.tsx` — integrates the new geo search, hides legacy map search (`showSearch={false}`), syncs selection to the map via `externalPosition`, and captures map center via `onCenterChange`.
+    - `src/components/geo/GeoSearchInput.tsx` — debounced (350ms) suggest UI with spinner, keyboard nav, ARIA roles, and manual pin affordance.
+    - `src/components/HomeMap.tsx` — accepts:
+      - `showSearch?: boolean` (hide legacy search when false)
+      - `externalPosition?: { lat: number; lng: number } | null` (parent-controlled marker)
+      - `onCenterChange?: (center: { lat: number; lon: number }) => void` (feeds ranking distance)
+  - Geo lib:
+    - `src/lib/geo/types.ts` — `GeoHit`, `GazetteerEntry`, `LatLon` types
+    - `src/lib/geo/normalize.ts` — normalization for case/diacritics
+    - `src/lib/geo/haversine.ts` — km distance helper
+    - `src/lib/geo/rank.ts` — `rank(hits, query, center?)` and `dedupe(hits)`
+    - `src/lib/geo/nominatim.ts` — `fetchNominatim(query, signal?)`, `mapNominatim(rows)`, `withTimeout(p, ms)`; token-bucket limiter (capacity 3) with ~1 rps sustained
+    - `src/lib/geo/cache/lru.ts` — in-memory LRU (default 100)
+    - `src/lib/geo/cache/idb.ts` — `persistToIndexedDB(key, hits)`, `hydrateLRU(max)` with 7-day TTL trimming
+    - `src/lib/geo/fuzzy/FuseEngine.ts` — lazy Fuse.js load and search over a local gazetteer
+    - `src/lib/geo/suggest.ts` — orchestrates: hydrate cache → Nominatim (2.5s timeout) → fallback to fuzzy only on zero results → dedupe/rank → persist
+
+- Assets:
+  - `public/geo/gazetteer.json` — local gazetteer array used only for fuzzy fallback. Structure per entry:
+    - `{ name, admin?, country, lat, lon, population?, altNames?: string[] }`
+  - Empty array is acceptable (fallback effectively no-ops until populated); no mock data checked in.
+  - Update process:
+    - Source from a vetted dataset (e.g., Geonames, OSM extracts), prefilter to cities/towns POIs.
+    - Keep size ~200–500 KB. Include only required fields above. Save to `public/geo/gazetteer.json`.
+    - No build step required; file is fetched at runtime by `FuseEngine`.
+
+- Behavior:
+  - Primary search: Nominatim (1 rps sustained, 2.5s timeout). Errors/timeouts do not auto-fallback unless zero results.
+  - Fallback: Fuse.js fuzzy search over the gazetteer only when Nominatim yields no results.
+  - Ranking: combines exactness, population, and distance to current map center (if available via `onCenterChange`).
+  - Caching: LRU in-memory and IndexedDB (7-day TTL) hydrate on load.
+  - Manual pin: When no results, users can place a pin by clicking the map; reverse geocode flows as before.
+
+- Dependencies:
+  - `fuse.js` (runtime, dynamic import in `FuseEngine.ts`). Install with `npm i fuse.js`.
+  - `lucide-react` already present for icons.
+
+- Integration Notes:
+  - Do not invent data. Populate `public/geo/gazetteer.json` from a vetted source (e.g., preprocessed Geonames) with the required fields only.
+  - If a strict `User-Agent` is required for Nominatim policy compliance, introduce a minimal server proxy; browsers cannot set `User-Agent` headers.
+  - Keep debounce/cancellation responsive. `GeoSearchInput` uses `AbortController` and clears timers on unmount.

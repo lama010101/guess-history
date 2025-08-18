@@ -5,7 +5,11 @@
 - **PartyKit lobby server**: `server/lobby.ts`
   - Configured in `partykit.json` under `parties.lobby` with `vars.MAX_PLAYERS = "8"`.
 - **Client WS helper and message shapes**: `src/lib/partyClient.ts`
-  - `partyUrl(party, roomCode)` builds `ws(s)://<VITE_PARTYKIT_HOST>/parties/<party>/<roomCode>`.
+  - `partyUrl(party, roomCode)` builds `ws(s)://<host>/parties/<party>/<roomCode>`.
+    - Host resolution order:
+      1) `VITE_PARTYKIT_HOST` when defined (e.g., `custom.example.com:443`)
+      2) If the app is running on a private/local network host → `${hostname}:1999` (PartyKit dev)
+      3) Otherwise → `<name>.partykit.dev` from `partykit.json` (production cloud)
   - Message shapes (source of truth):
     - Server→Client: `players`, `full`, `chat { from, message, timestamp }`, `roster { id, name, ready, host }[]`, `settings { timerSeconds?, timerEnabled? }`, `hello { you }`, `start { startedAt, durationSec, timerEnabled }`.
     - Client→Server: `join { name, token? }`, `chat { message, timestamp }`, `ready { ready }`, `settings { timerSeconds?, timerEnabled? }`.
@@ -14,7 +18,7 @@
   - `/` → `LandingPage`
   - `/test` → `TestLayout` with nested routes: `index`, `auth`, `game`, `results`, `final`, `leaderboard`, `profile`, `settings`, `room`, `friends`.
   - Admin: `/test/admin/images`, `/test/admin/badges`. Wildcards redirect to `/`.
-- **WebSocket endpoint**: `ws(s)://<VITE_PARTYKIT_HOST>/parties/lobby/:roomCode` (via `partyUrl('lobby', roomCode)`).
+- **WebSocket endpoint**: `ws(s)://<resolved-host>/parties/lobby/:roomCode` (via `partyUrl('lobby', roomCode)`).
 
 Note: Sections below referencing modules under `src/multiplayer/*` (e.g., `Server.ts`, `MultiplayerAdapter.ts`) represent planned design. For the current implementation, treat `server/lobby.ts` and `src/lib/partyClient.ts` as canonical. The remainder of this document is preserved as an appendix for detailed design and UI notes.
 

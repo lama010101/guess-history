@@ -316,7 +316,7 @@ Notes:
   - Session keying is room-first: if `roomId` is present, construct `round_id` with `makeRoundId(roomId, roundIndex+1)`; otherwise fall back to `makeRoundId(gameId, roundIndex+1)`.
   - XP: Sum raw round XP, then subtract the aggregated `xpDebt` across rounds → `netFinalXP`.
   - Accuracy: For each round, compute average of time/location accuracy, subtract that round’s aggregated `accDebt`, clamp to 0..100, then average across rounds → `finalPercentNet`.
-  - UI displays net values; the “Penalty Cost” shows both total XP and accuracy hint debts, e.g., `-40 XP -2%`.
+  - UI displays net values. The Final Results card label is “Hint Penalties” and it shows both total accuracy (%) and XP hint debts with percent first, e.g., `-2% -40 XP`.
 
 - Implementation notes:
   - Build round IDs with `makeRoundId(roomId, roundIndex+1)` when available; otherwise `makeRoundId(gameId, roundIndex+1)`.

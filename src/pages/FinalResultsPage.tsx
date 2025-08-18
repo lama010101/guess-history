@@ -301,6 +301,7 @@ const FinalResultsPage = () => {
   const totalWhenAccuracy = totalWhenXP > 0 ? (totalWhenXP / (roundResults.length * 100)) * 100 : 0;
   const totalWhereAccuracy = totalWhereXP > 0 ? (totalWhereXP / (roundResults.length * 100)) * 100 : 0;
   const totalHintsUsed = roundResults.reduce((sum, r) => sum + (r.hintsUsed || 0), 0);
+  const totalAccDebtPercent = Object.values(accDebtByRound).reduce((sum, debt) => sum + debt, 0);
   const { avgYearsOff, avgKmAway } = (() => {
     let yearDiffSum = 0;
     let kmSum = 0;
@@ -401,12 +402,10 @@ const FinalResultsPage = () => {
                   <div className="font-semibold">{totalHintsUsed}</div>
                 </div>
                 <div>
-                  <div className="text-gray-300">Penalty Cost</div>
+                  <div className="text-gray-300">Hint Penalties</div>
                   <div className="font-semibold text-red-400">
-                    -{formatInteger(totalXpDebtState || 0)} XP
-                    {Object.values(accDebtByRound).reduce((sum, debt) => sum + debt, 0) > 0 && (
-                      <span className="ml-2">-{Object.values(accDebtByRound).reduce((sum, debt) => sum + debt, 0)}%</span>
-                    )}
+                    {totalAccDebtPercent > 0 && <span>-{totalAccDebtPercent}%</span>}
+                    <span className={totalAccDebtPercent > 0 ? "ml-2" : ""}>-{formatInteger(totalXpDebtState || 0)} XP</span>
                   </div>
                 </div>
               </div>

@@ -1,0 +1,16 @@
+{
+  "name": "Guess History",
+  "short_name": "GuessHistory",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#0ea5e9",
+  "description": "Play Guess History offline-first with full-screen app experience.",
+  "icons": [
+    { "src": "/images/logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/images/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/images/logo.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/images/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

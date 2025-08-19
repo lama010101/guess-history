@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from '@/components/ui/sonner';
+import { usePWAInstall } from '@/pwa/usePWAInstall';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +22,8 @@ export const AccountSettings = () => {
   const { user, updateUserEmail, updateUserPassword, deleteUserAccount, isGuest } = useAuth();
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [showIOSHelp, setShowIOSHelp] = useState(false);
+  const install = usePWAInstall();
 
   if (!user || isGuest) {
     return null;
@@ -97,6 +100,69 @@ export const AccountSettings = () => {
             </div>
             <Button type="submit">Update Password</Button>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Install App</CardTitle>
+          <CardDescription>
+            Add Guess History to your device for faster access and full-screen play.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground">
+              Status: {install.isStandalone || install.installedAt ? (
+                <span className="text-green-600 dark:text-green-400">Installed</span>
+              ) : install.canPrompt ? (
+                'Install available'
+              ) : install.platform === 'ios' ? (
+                'Install via Add to Home Screen'
+              ) : (
+                'Unavailable in this browser'
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                onClick={async () => {
+                  const result = await install.prompt();
+                  if (result === 'accepted') {
+                    toast.success('App installed.');
+                  } else if (result === 'dismissed') {
+                    toast.message('Install dismissed.');
+                  } else if (result === 'unavailable' && install.platform === 'ios') {
+                    setShowIOSHelp(true);
+                  } else {
+                    toast.message('Install not available in this browser.');
+                  }
+                }}
+                disabled={install.isStandalone || Boolean(install.installedAt)}
+              >
+                Install Guess History
+              </Button>
+              {install.platform === 'ios' && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setShowIOSHelp((v) => !v)}
+                >
+                  {showIOSHelp ? 'Hide' : 'How to install on iPhone/iPad'}
+                </Button>
+              )}
+            </div>
+            {showIOSHelp && install.platform === 'ios' && !install.isStandalone && (
+              <div className="mt-2 rounded-md border p-3 text-sm">
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Open this site in Safari.</li>
+                  <li>Tap the Share button.</li>
+                  <li>Select <strong>Add to Home Screen</strong>.</li>
+                  <li>Confirm the name and tap <strong>Add</strong>.</li>
+                </ol>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 

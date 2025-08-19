@@ -317,6 +317,43 @@ Notes:
 - No environment variables required.
 - Data appears in Vercel Analytics after deploy. For local dev, analytics remains disabled.
 
+## PWA Install Experience and Offline (2025-08)
+
+The app provides a clean, accessible PWA install flow with an offline-first shell.
+
+- **Manifest**: `public/manifest.webmanifest`
+  - Includes `name`, `short_name`, `start_url`, `scope`, `display: standalone`, `background_color`, `theme_color`, and icons (192/512, including maskable) sourced from `public/images/logo.png`.
+
+- **Service Worker**: `public/sw.js`
+  - Minimal app-shell cache: `/`, `/index.html`, `/manifest.webmanifest`.
+  - Navigate fallback to cached `index.html` when offline.
+  - Registered in production in `src/main.tsx`:
+    - `if (import.meta.env.PROD && 'serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js')` on window `load`.
+
+- **Install UI Hook**: `src/pwa/usePWAInstall.ts`
+  - Captures `beforeinstallprompt`, listens to `appinstalled`.
+  - Detects platform: `ios | android | desktop | unknown`.
+  - Detects standalone mode via `(display-mode: standalone)` and iOS `navigator.standalone`.
+  - Persists dismissals/installs in `localStorage` (`gh_pwa_install_state`).
+  - Cooldown after dismissal: 14 days.
+  - Exports helpers: `shouldAutoShowInstall(state)`, `markAutoShown()`.
+
+- **Auto Prompt Component**: `src/components/pwa/InstallPrompt.tsx`
+  - Non-blocking card (mobile: bottom; desktop: bottom-right).
+  - iOS: accessible instructions modal (Share → Add to Home Screen).
+  - Telemetry (CustomEvent `telemetry` on `window`): `prompt_captured`, `prompt_shown`, `accepted`, `dismissed`, `installed`, `instructions_needed`.
+  - Rendered globally in `src/App.tsx` as `<InstallPrompt auto />` so it can appear on any route when eligible.
+
+- **Manual Install Entry Point**: `src/components/AccountSettings.tsx`
+  - New "Install App" card using `usePWAInstall()`.
+  - Button calls `install.prompt()`; shows iOS help toggle when native prompt is unavailable.
+  - Disables when already installed/standalone.
+
+- **Testing**
+  - Dev: Use Application panel → Manifest to verify installability; throttle offline to verify navigate fallback.
+  - Prod build: `npm run build` → `dist/` contains copied `public/` including `manifest.webmanifest` and `sw.js`.
+  - iOS Safari: no native prompt; use instructions to Add to Home Screen.
+
 ## Round Session ID and Hint Persistence
 
 - Central helper: `src/utils/roomState.ts: makeRoundId(roomId: string, roundNumber: number)` builds the canonical round session ID (`<roomId>-r<roundNumber>`). Use this everywhere round-scoped persistence is required (e.g., `round_hints`, results aggregation), instead of parsing URLs or hand-rolling strings.

@@ -31,6 +31,7 @@ import LandingPage from "./pages/LandingPage";
 import RoundResultsPage from "./pages/RoundResultsPage";
 import PlayWithFriends from "./pages/PlayWithFriends";
 import Room from "./pages/Room";
+import InstallPrompt from "@/components/pwa/InstallPrompt";
 
 // Enhanced AuthRedirectHandler with better session handling
 const AuthRedirectHandler = () => {
@@ -130,6 +131,8 @@ const App = () => {
                     <GlobalXPLogger />
                     {/* Global fullscreen overlay for game preparation progress */}
                     <PreparationOverlay />
+                    {/* Auto PWA install prompt (non-blocking) */}
+                    <InstallPrompt auto />
                     <Routes>
                       <Route path="/" element={<LandingPage />} />
                       {/* Require an active session (registered or anonymous) for all routes except landing */}

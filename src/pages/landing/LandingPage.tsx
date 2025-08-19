@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { redirectToHome, isMainDomain } from "@/lib/auth/crossDomain";
 import RedesignedAuthModal from "@/components/redesigned/RedesignedAuthModal";
@@ -15,7 +15,7 @@ import StickyCTAButton from "@/components/redesigned/StickyCTAButton";
 
 const Main = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const { session, loading } = useAuth();
+  const { session, isLoading } = useAuth();
   const navigate = useNavigate();
 
   // Disabled auto-redirect for development
@@ -43,7 +43,7 @@ const Main = () => {
     setIsAuthModalOpen(true);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="text-white text-center animate-fade-in">

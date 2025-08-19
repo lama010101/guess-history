@@ -29,6 +29,7 @@ const GeoSearchInput: React.FC<GeoSearchInputProps> = ({
   const listRef = useRef<HTMLUListElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const debounceRef = useRef<number | null>(null);
+  const [focused, setFocused] = useState(false);
 
   const hasResults = results.length > 0;
 
@@ -50,6 +51,30 @@ const GeoSearchInput: React.FC<GeoSearchInputProps> = ({
       cancelInFlight();
     };
   }, []);
+
+  // When the keyboard opens on mobile, ensure the input stays visible.
+  useEffect(() => {
+    const vv = (window as any).visualViewport as VisualViewport | undefined;
+    if (!vv) return;
+    const handler = () => {
+      if (focused) {
+        // Defer slightly to let layout settle
+        setTimeout(() => {
+          const el = inputRef.current;
+          if (!el) return;
+          try {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } catch {
+            // Fallback for older browsers
+            const rect = el.getBoundingClientRect();
+            window.scrollTo({ top: rect.top + window.scrollY - 24, behavior: 'smooth' });
+          }
+        }, 50);
+      }
+    };
+    vv.addEventListener('resize', handler);
+    return () => vv.removeEventListener('resize', handler);
+  }, [focused]);
 
   useEffect(() => {
     const q = query.trim();
@@ -121,6 +146,22 @@ const GeoSearchInput: React.FC<GeoSearchInputProps> = ({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
+          onFocus={() => {
+            setFocused(true);
+            setOpen(true);
+            // Ensure input is visible when focusing
+            setTimeout(() => {
+              const el = inputRef.current;
+              if (!el) return;
+              try {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              } catch {
+                const rect = el.getBoundingClientRect();
+                window.scrollTo({ top: rect.top + window.scrollY - 24, behavior: 'smooth' });
+              }
+            }, 0);
+          }}
+          onBlur={() => setFocused(false)}
           placeholder={placeholder}
           className="w-full rounded-md bg-white dark:bg-[#1f1f1f] text-black dark:text-white px-3 py-2 pr-16 border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500"
           aria-autocomplete="list"

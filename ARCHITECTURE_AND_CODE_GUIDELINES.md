@@ -444,15 +444,66 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - Participants see the formatted time and a note that the host controls the timer.
   - Timer values are also validated on the server.
 
+## Lobby Progress Protocol
+
+- **Client → Server message**: `progress`
+  - Shape: `{ type: 'progress'; roundNumber: number; substep?: string }`
+  - Usage: Sent opportunistically to reflect a player’s in-round state transitions, e.g., `substep` in `['pre','thinking','guessing','hint','submitted']`.
+  - Security: Server ignores messages from non-joined connections.
+
+- **Server → Client message**: `progress`
+  - Shape: `{ type: 'progress'; from: string; roundNumber: number; substep?: string }`
+  - Broadcast to all clients in the room. Used for lightweight UI cues (e.g., MiniRoster status). Persistence is planned but not required for core flow.
+
+- **Key files**:
+  - Server: `server/lobby.ts` — Zod-validated `ProgressMessage` and broadcast logic.
+  - Shared types: `src/lib/partyClient.ts` — `LobbyClientMessage` and `LobbyServerMessage` include `progress`.
+
+## Multiplayer Scoreboards and RPCs
+
+- **Schema alignment** (`public.round_results`):
+  - New columns: `room_id text`, `guess_year int`, `guess_lat/lng double precision`, `actual_lat/lng double precision`, `distance_km numeric(8,3)`, `created_at`, `updated_at`.
+  - Indexes: `(room_id, round_index)`, `(room_id, user_id)` for scoreboard queries.
+  - RLS:
+    - Own-only write policies (insert/update/delete).
+    - Read policies allow:
+      - Own rows; and
+      - Any participant in the same room via `public.session_players`.
+
+- **Round scoreboard RPC**: `public.get_round_scoreboard(p_room_id text, p_round_number int)`
+  - Returns: `[{ user_id, display_name, score, accuracy, xp_total, xp_debt, acc_debt, distance_km, guess_year }]`
+  - Authorization: only room participants (checked against `session_players`).
+  - Sorting: by `score DESC`, tie-breaker `accuracy DESC`.
+
+- **Final scoreboard RPC**: `public.get_final_scoreboard(p_room_id text)`
+  - Returns aggregated per-player totals across all rounds in the room: `[{ user_id, display_name, total_score, total_xp, total_xp_debt, net_xp, rounds_played, avg_accuracy, net_avg_accuracy }]`.
+  - Authorization: only room participants.
+  - Sorting: by `net_xp DESC`, then `total_score DESC`, then `avg_accuracy DESC`.
+
+- **Migrations**:
+  - File: `supabase/migrations/20250819_update_round_results_and_scoreboard_rpcs.sql`
+  - Also defines helper trigger `set_updated_at()` if missing.
+
+## Multiplayer Session Provider (Plan)
+
+- Location (planned): `src/contexts/MultiplayerSessionProvider.tsx` (no UI components)
+- Responsibilities:
+  - Manage PartyKit lobby socket lifecycle and message handling (`hello`, `roster`, `settings`, `start`, `progress`).
+  - Expose state: `you`, `roster`, `progressByUser`, `timer`, `connection`.
+  - Actions: `setReady`, `sendChat`, `sendProgress`, `setTimer (host)`, `disconnect`.
+  - Persist lightweight session data to Supabase: `public.session_players`, `public.session_progress` (debounced, best-effort).
+  - Provide read helpers for `fetchRoundScoreboard` and `fetchFinalScoreboard` from `integrations/supabase/scoreboards.ts`.
+- Workflow with detailed steps: `.windsurf/workflows/implement-multiplayer-session-provider.md`.
+
 ## UI/UX Consistency Rules
 
 - Fullscreen images default to 100% zoom (zoom=1). See `src/components/layouts/FullscreenZoomableImage.tsx`.
 - On round results:
   - In `When` card, the year after "Your guess:" is white in dark mode and dark gray in light mode (`text-gray-900 dark:text-white`). Implemented in `src/components/layouts/ResultsLayout2.tsx` and `src/components/results/TimeAccuracyCard.tsx`.
-  - Source and Rate buttons use background `#444444` with white text across themes for consistency.
+- Source and Rate buttons use background `#444444` with white text across themes for consistency.
     - Source button in `ResultsLayout2.tsx` uses `bg-[#444444]` and matching border/hover.
     - Rate button in `RoundResultsPage.tsx` uses `bg-[#444444]` and matching border/hover.
-  - Primary round action buttons are round with a subtle rainbow gradient background matching the design reference.
+- Primary round action buttons are round with a subtle rainbow gradient background matching the design reference.
     - Use: `rounded-full text-black border-none bg-gradient-to-r from-pink-300 via-orange-300 via-yellow-300 via-green-300 to-green-300 hover:opacity-90`.
     - Implemented in:
       - Top-right HUD Settings gear in `src/components/navigation/GameOverlayHUD.tsx` (replaces previous Home icon). Clicking opens `GlobalSettingsModal`.

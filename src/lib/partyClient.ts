@@ -55,11 +55,13 @@ export type LobbyServerMessage =
   | { type: 'roster'; players: { id: string; name: string; ready: boolean; host: boolean }[] }
   | { type: 'settings'; timerSeconds?: number; timerEnabled?: boolean }
   | { type: 'hello'; you: { id: string; name: string; host: boolean } }
-  | { type: 'start'; startedAt: string; durationSec: number; timerEnabled: boolean };
+  | { type: 'start'; startedAt: string; durationSec: number; timerEnabled: boolean }
+  | { type: 'progress'; from: string; roundNumber: number; substep?: string };
 
 export type LobbyClientMessage =
   | { type: 'join'; name: string; token?: string }
   | { type: 'chat'; message: string; timestamp: string }
   | { type: 'ready'; ready: boolean }
   // Optional: host can send settings prior to start; server validates host
-  | { type: 'settings'; timerSeconds?: number; timerEnabled?: boolean };
+  | { type: 'settings'; timerSeconds?: number; timerEnabled?: boolean }
+  | { type: 'progress'; roundNumber: number; substep?: string };

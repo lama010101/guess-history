@@ -26,7 +26,13 @@ const SettingsMessage = z.object({
   timerEnabled: z.boolean().optional(),
 });
 
-const IncomingMessage = z.union([JoinMessage, ChatMessage, ReadyMessage, SettingsMessage]);
+const ProgressMessage = z.object({
+  type: z.literal("progress"),
+  roundNumber: z.number().int().min(1).max(100),
+  substep: z.string().trim().max(64).optional(),
+});
+
+const IncomingMessage = z.union([JoinMessage, ChatMessage, ReadyMessage, SettingsMessage, ProgressMessage]);
 
 type Incoming = z.infer<typeof IncomingMessage>;
 
@@ -44,11 +50,12 @@ type RosterMsg = { type: "roster"; players: RosterEntry[] };
 type StartMsg = { type: "start"; startedAt: string; durationSec: number; timerEnabled: boolean };
 type SettingsMsg = { type: "settings"; timerSeconds?: number; timerEnabled?: boolean };
 type HelloMsg = { type: "hello"; you: { id: string; name: string; host: boolean } };
+type ProgressMsg = { type: "progress"; from: string; roundNumber: number; substep?: string };
 
-type Outgoing = PlayersMsg | FullMsg | ChatMsg | RosterMsg | StartMsg | SettingsMsg | HelloMsg;
+type Outgoing = PlayersMsg | FullMsg | ChatMsg | RosterMsg | StartMsg | SettingsMsg | HelloMsg | ProgressMsg;
 
 // Env typing for vars
-type Env = { MAX_PLAYERS?: string };
+type Env = { MAX_PLAYERS?: string; SUPABASE_URL?: string; SUPABASE_SERVICE_ROLE_KEY?: string };
 
 export default class Lobby implements Party.Server {
   // Track connected players: connId -> name
@@ -87,6 +94,54 @@ export default class Lobby implements Party.Server {
 
   private broadcast(msg: Outgoing) {
     this.room.broadcast(JSON.stringify(msg));
+  }
+
+  private supabaseHeaders(env: Env) {
+    const key = env.SUPABASE_SERVICE_ROLE_KEY;
+    return key
+      ? {
+          "Content-Type": "application/json",
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          Prefer: "return=minimal",
+        }
+      : undefined;
+  }
+
+  private async persistChat(message: string) {
+    const env = (this.room.env as unknown as Env) || {};
+    if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return; // best-effort only
+    const url = `${env.SUPABASE_URL}/rest/v1/room_chat`;
+    const headers = this.supabaseHeaders(env)!;
+    try {
+      await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify([{ room_id: this.room.id, user_id: null, message }]),
+      });
+    } catch (e) {
+      // swallow errors; logging pipeline can handle later
+      console.warn("lobby: persistChat failed", e);
+    }
+  }
+
+  private async persistRoundStart(startedAt: string, durationSec: number) {
+    const env = (this.room.env as unknown as Env) || {};
+    if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return;
+    const url = `${env.SUPABASE_URL}/rest/v1/room_rounds`;
+    const headers = this.supabaseHeaders(env)!;
+    // First round assumed at game start
+    const payload = [{
+      room_id: this.room.id,
+      round_number: 1,
+      started_at: startedAt,
+      duration_sec: durationSec,
+    }];
+    try {
+      await fetch(url, { method: "POST", headers, body: JSON.stringify(payload) });
+    } catch (e) {
+      console.warn("lobby: persistRoundStart failed", e);
+    }
   }
 
   private broadcastRoster() {
@@ -185,6 +240,8 @@ export default class Lobby implements Party.Server {
           };
           this.broadcast(payload);
           await this.logEvent("chat", payload);
+          // Best-effort persist to Supabase (user_id unknown in server context)
+          await this.persistChat(msg.message);
           return;
         }
 
@@ -203,7 +260,22 @@ export default class Lobby implements Party.Server {
             const timerEnabled = !!this.timerEnabled;
             this.broadcast({ type: "start", startedAt, durationSec, timerEnabled });
             await this.logEvent("start", { startedAt, durationSec, timerEnabled });
+            // Persist authoritative round 1 start for async/refresh recovery
+            await this.persistRoundStart(startedAt, durationSec);
           }
+          return;
+        }
+
+        if (msg.type === "progress") {
+          if (!this.players.has(conn.id)) return;
+          const out: ProgressMsg = {
+            type: "progress",
+            from: conn.id,
+            roundNumber: msg.roundNumber,
+            substep: msg.substep,
+          };
+          this.broadcast(out);
+          await this.logEvent("progress", out);
           return;
         }
       } catch (err) {

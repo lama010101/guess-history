@@ -30,8 +30,9 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
   onTimeout,
   roundTimerSec
 }) => {
-  const { soundEnabled } = useSettingsStore();
+  const { soundEnabled, vibrateEnabled } = useSettingsStore();
   const countdownBeepRef = useRef<HTMLAudioElement | null>(null);
+  const lastVibrateSecondRef = useRef<number | null>(null);
   
   // Initialize audio element
   useEffect(() => {
@@ -66,7 +67,17 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
         beepSound.play().catch(e => console.error('Error playing countdown sound:', e));
       }
     }
-  }, [remainingTime, isActive, soundEnabled]);
+    // Vibrate once per second when under 10 seconds if enabled
+    if (
+      vibrateEnabled &&
+      typeof navigator !== 'undefined' && typeof (navigator as any).vibrate === 'function' &&
+      remainingTime <= 10 && remainingTime > 0 &&
+      lastVibrateSecondRef.current !== remainingTime
+    ) {
+      try { (navigator as any).vibrate(60); } catch {}
+      lastVibrateSecondRef.current = remainingTime;
+    }
+  }, [remainingTime, isActive, soundEnabled, vibrateEnabled]);
   
   // Update timer when round changes
   useEffect(() => {
@@ -133,6 +144,15 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
     // Clean up interval on unmount or when dependencies change
     return () => clearInterval(timerInterval);
   }, [isActive, remainingTime, onTimeout, setRemainingTime]);
+
+  // Final strong vibration pattern on timeout
+  useEffect(() => {
+    if (!vibrateEnabled) return;
+    if (remainingTime !== 0) return;
+    if (typeof navigator !== 'undefined' && typeof (navigator as any).vibrate === 'function') {
+      try { (navigator as any).vibrate([160, 80, 160]); } catch {}
+    }
+  }, [remainingTime, vibrateEnabled]);
 
   if (roundTimerSec <= 0) {
     return null;

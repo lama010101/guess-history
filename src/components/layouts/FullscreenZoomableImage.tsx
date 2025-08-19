@@ -46,6 +46,9 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   const velocityRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 }); // px/ms
   const lastMoveRef = useRef<{ x: number; y: number; t: number }>({ x: 0, y: 0, t: 0 });
   const rafRef = useRef<number | null>(null);
+  // Gyroscope tracking
+  const gyroRafRef = useRef<number | null>(null);
+  const gyroBaselineRef = useRef<{ beta: number; gamma: number } | null>(null);
 
   // Auto-pan control
   const autoPanRafRef = useRef<number | null>(null);
@@ -405,13 +408,16 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
       } else {
         // Default settings for non-authenticated users
         setUserSettings({
-          theme: 'system',
+          theme: 'dark',
           sound_enabled: true,
           notification_enabled: true,
           distance_unit: 'km',
           language: 'en',
           inertia_enabled: true,
-          inertia_mode: 'swipes'
+          inertia_mode: 'swipes',
+          inertia_level: 3,
+          vibrate_enabled: false,
+          gyroscope_enabled: false,
         });
       }
     };
@@ -539,6 +545,67 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
       cancelAutoPan();
     };
   }, [isLoading, image.url, currentRound, userSettings]);
+
+  // Gyroscope-based panning when enabled
+  useEffect(() => {
+    if (!userSettings?.gyroscope_enabled) {
+      // cleanup if previously attached
+      if (gyroRafRef.current != null) { cancelAnimationFrame(gyroRafRef.current); gyroRafRef.current = null; }
+      gyroBaselineRef.current = null;
+      return;
+    }
+    if (typeof window === 'undefined') return;
+
+    const sensitivityPxPerDegX = 3.0; // horizontal sensitivity
+    const sensitivityPxPerDegY = 3.0; // vertical sensitivity
+    const smoothing = 0.15; // lerp factor towards target position
+
+    const onOrient = (e: DeviceOrientationEvent) => {
+      // Ignore while user is actively interacting or inertia/autopan are active
+      if (dragging || isInertia || isAutoPanning) return;
+      const beta = e.beta;   // front-back tilt [-180,180]
+      const gamma = e.gamma; // left-right tilt [-90,90]
+      if (beta == null || gamma == null) return;
+      if (!imgRef.current || !containerRef.current) return;
+
+      // establish baseline to treat current device orientation as center
+      if (gyroBaselineRef.current == null) {
+        gyroBaselineRef.current = { beta, gamma };
+        return;
+      }
+
+      const base = gyroBaselineRef.current;
+      const dBeta = beta - base.beta;   // forward/backward => vertical pan
+      const dGamma = gamma - base.gamma; // left/right => horizontal pan
+
+      // Map degrees to pixels, invert axes for natural feel
+      const targetX = -(dGamma * sensitivityPxPerDegX);
+      const targetY = -(dBeta * sensitivityPxPerDegY);
+
+      // Clamp within bounds and smooth approach with rAF
+      const step = () => {
+        const current = offsetRef.current;
+        const desired = clampOffset(targetX, targetY);
+        const nextX = current.x + (desired.x - current.x) * smoothing;
+        const nextY = current.y + (desired.y - current.y) * smoothing;
+        const clamped = clampOffset(nextX, nextY);
+        setOffset(clamped);
+        offsetRef.current = clamped;
+        gyroRafRef.current = requestAnimationFrame(step);
+      };
+
+      if (gyroRafRef.current == null) {
+        gyroRafRef.current = requestAnimationFrame(step);
+      }
+    };
+
+    window.addEventListener('deviceorientation', onOrient);
+    return () => {
+      window.removeEventListener('deviceorientation', onOrient);
+      if (gyroRafRef.current != null) { cancelAnimationFrame(gyroRafRef.current); gyroRafRef.current = null; }
+      gyroBaselineRef.current = null;
+    };
+  }, [userSettings?.gyroscope_enabled, dragging, isInertia, isAutoPanning]);
 
   // Auto-hide instructions after 3 seconds
   useEffect(() => {

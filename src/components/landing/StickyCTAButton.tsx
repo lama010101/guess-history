@@ -44,7 +44,7 @@ const StickyCTAButton = ({ onClick }: StickyCTAButtonProps) => {
           onClick={onClick}
           className="w-full bg-orange-500 hover:bg-orange-600 text-white py-4 text-lg font-bold rounded-full shadow-2xl hover:shadow-orange-500/25 transition-all duration-200"
         >
-          🎮 Start Guessing
+          🎮 Start Playing
         </Button>
       </div>
     </>

@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import SettingsTab from '@/components/profile/SettingsTab';
+import { fetchUserSettings, UserSettings } from '@/utils/profile/profileService';
+import { useSettingsStore } from '@/lib/useSettingsStore';
 
 interface GlobalSettingsModalProps {
   isOpen: boolean;
@@ -13,35 +15,41 @@ interface GlobalSettingsModalProps {
 const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClose }) => {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
-  const [settings, setSettings] = useState<any>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [settings, setSettings] = useState<UserSettings | null>(null);
+  const setFromUserSettings = useSettingsStore(s => s.setFromUserSettings);
 
-  // Mock user settings for the modal
-  const mockSettings = {
-    theme: 'system',
-    soundEffects: true,
-    music: true,
-    notifications: true,
-    language: 'en',
-  };
-
-  // Simulate loading settings
+  // Load real user settings when modal opens
   useEffect(() => {
-    if (isOpen) {
+    let cancelled = false;
+    const load = async () => {
+      if (!isOpen || !user?.id) return;
       setIsLoading(true);
-      // Simulate API call
-      const timer = setTimeout(() => {
-        setSettings(mockSettings);
-        setIsLoading(false);
-      }, 300);
+      const s = await fetchUserSettings(user.id);
+      if (cancelled) return;
+      setSettings(s);
+      // Hydrate Zustand store for quick access in UI and in-game
+      setFromUserSettings({
+        sound_enabled: s?.sound_enabled,
+        vibrate_enabled: s?.vibrate_enabled,
+        gyroscope_enabled: s?.gyroscope_enabled,
+      });
+      setIsLoading(false);
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [isOpen, user?.id, setFromUserSettings]);
 
-      return () => clearTimeout(timer);
+  const handleSettingsUpdated = async () => {
+    if (!user?.id) return;
+    const s = await fetchUserSettings(user.id);
+    if (s) {
+      setSettings(s);
+      setFromUserSettings({
+        sound_enabled: s.sound_enabled,
+        vibrate_enabled: s.vibrate_enabled,
+        gyroscope_enabled: s.gyroscope_enabled,
+      });
     }
-  }, [isOpen]);
-
-  const handleSettingsUpdated = () => {
-    // Refresh settings if needed
-    console.log('Settings updated');
   };
 
   if (!user) return null;
@@ -59,18 +67,19 @@ const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClo
           </div>
         ) : (
           <div className="py-4">
-            <SettingsTab 
-              userId={user.id}
-              settings={settings || mockSettings}
-              isLoading={isLoading}
-              onSettingsUpdated={handleSettingsUpdated}
-            />
+            {settings && (
+              <SettingsTab 
+                userId={user.id}
+                settings={settings}
+                isLoading={isLoading}
+                onSettingsUpdated={handleSettingsUpdated}
+              />
+            )}
             
             <div className="mt-6 flex justify-end space-x-3">
               <Button 
                 variant="outline" 
                 onClick={onClose}
-                disabled={isSaving}
               >
                 Close
               </Button>

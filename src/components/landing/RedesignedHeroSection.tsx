@@ -110,7 +110,7 @@ const RedesignedHeroSection = ({ onAuthModalOpen }: RedesignedHeroSectionProps) 
               onClick={handleStartGuessing}
               style={{ animationDelay: '0.4s' }}
             >
-              🎮 Start Guessing
+              🎮 Start Playing
             </Button>
             
             <p className="text-sm text-slate-300 animate-fade-in" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)', animationDelay: '0.6s' }}>

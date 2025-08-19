@@ -75,6 +75,8 @@ export interface UserSettings {
   inertia_enabled: boolean;
   inertia_mode: 'none' | 'swipes' | 'swipes_recenter';
   inertia_level?: number; // 1..5, controls strength/duration of inertia
+  vibrate_enabled?: boolean;
+  gyroscope_enabled?: boolean;
 }
 
 // Fetch user profile (registered or anonymous). Always query Supabase.
@@ -668,7 +670,7 @@ export async function fetchUserSettings(userId: string): Promise<UserSettings | 
     if (!data) {
       // If settings don't exist, return default settings
       const defaultSettings: UserSettings = {
-        theme: 'system',
+        theme: 'dark',
         sound_enabled: true,
         notification_enabled: true,
         distance_unit: 'km',
@@ -676,6 +678,8 @@ export async function fetchUserSettings(userId: string): Promise<UserSettings | 
         inertia_enabled: true,
         inertia_mode: 'swipes',
         inertia_level: 3,
+        vibrate_enabled: false,
+        gyroscope_enabled: false,
       };
       return defaultSettings;
     }
@@ -683,7 +687,7 @@ export async function fetchUserSettings(userId: string): Promise<UserSettings | 
     // Merge stored settings with defaults to ensure new fields (like inertia_enabled) are present
     const raw = (data.value as any) || {};
     const merged: UserSettings = {
-      theme: raw.theme ?? 'system',
+      theme: raw.theme ?? 'dark',
       sound_enabled: raw.sound_enabled ?? true,
       notification_enabled: raw.notification_enabled ?? true,
       distance_unit: raw.distance_unit ?? 'km',
@@ -691,6 +695,8 @@ export async function fetchUserSettings(userId: string): Promise<UserSettings | 
       inertia_enabled: raw.inertia_enabled ?? true,
       inertia_mode: raw.inertia_mode ?? 'swipes',
       inertia_level: typeof raw.inertia_level === 'number' ? raw.inertia_level : 3,
+      vibrate_enabled: raw.vibrate_enabled ?? false,
+      gyroscope_enabled: raw.gyroscope_enabled ?? false,
     };
     return merged;
   } catch (error) {

@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from '@/components/ui/use-toast';
-import { Settings as SettingsIcon, Moon, Sun, Monitor, Navigation } from "lucide-react";
+import { Settings as SettingsIcon, Moon, Sun, Navigation } from "lucide-react";
 
 interface SettingsTabProps {
   userId: string;
@@ -25,7 +25,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
 }) => {
   const { theme, setTheme } = useTheme();
   const [updatedSettings, setUpdatedSettings] = useState<UserSettings>(settings);
-  const { soundEnabled, toggleSound } = useSettingsStore();
+  const { soundEnabled, toggleSound, vibrateEnabled, gyroscopeEnabled, toggleVibrate, toggleGyroscope } = useSettingsStore();
   const [saving, setSaving] = useState(false);
   const { setTimerSeconds } = useSettingsStore();
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -90,8 +90,8 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
           <RadioGroup 
             value={updatedSettings.theme} 
             onValueChange={(value) => {
-              setUpdatedSettings({...updatedSettings, theme: value as 'light' | 'dark' | 'system'});
-              setTheme(value as 'light' | 'dark' | 'system');
+              setUpdatedSettings({...updatedSettings, theme: value as 'light' | 'dark'});
+              setTheme(value as 'light' | 'dark');
             }}
             className="flex flex-col sm:flex-row gap-4"
           >
@@ -107,13 +107,6 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
               <Label htmlFor="dark" className="flex items-center">
                 <Moon className="h-4 w-4 mr-2" />
                 Dark
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="system" id="system" className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" />
-              <Label htmlFor="system" className="flex items-center">
-                <Monitor className="h-4 w-4 mr-2" />
-                System
               </Label>
             </div>
           </RadioGroup>
@@ -206,6 +199,38 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
               </div>
             </div>
           )}
+        </div>
+
+        {/* Vibrate Toggle */}
+        <div>
+          <Label className="mb-3 block text-history-primary dark:text-history-light">Vibrate</Label>
+          <div className="flex items-center space-x-3">
+            <Switch
+              id="vibrate-toggle"
+              checked={updatedSettings.vibrate_enabled ?? vibrateEnabled}
+              onCheckedChange={(checked) => {
+                setUpdatedSettings({ ...updatedSettings, vibrate_enabled: checked });
+                if ((vibrateEnabled ?? false) !== checked) toggleVibrate();
+              }}
+            />
+            <Label htmlFor="vibrate-toggle">{(updatedSettings.vibrate_enabled ?? vibrateEnabled) ? 'On' : 'Off'}</Label>
+          </div>
+        </div>
+
+        {/* Gyroscope Toggle */}
+        <div>
+          <Label className="mb-3 block text-history-primary dark:text-history-light">Gyroscope (Image Panning)</Label>
+          <div className="flex items-center space-x-3">
+            <Switch
+              id="gyroscope-toggle"
+              checked={updatedSettings.gyroscope_enabled ?? gyroscopeEnabled}
+              onCheckedChange={(checked) => {
+                setUpdatedSettings({ ...updatedSettings, gyroscope_enabled: checked });
+                if ((gyroscopeEnabled ?? false) !== checked) toggleGyroscope();
+              }}
+            />
+            <Label htmlFor="gyroscope-toggle">{(updatedSettings.gyroscope_enabled ?? gyroscopeEnabled) ? 'On' : 'Off'}</Label>
+          </div>
         </div>
 
         {/* Inertia Panning Mode */}

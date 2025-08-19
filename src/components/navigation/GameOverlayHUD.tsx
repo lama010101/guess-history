@@ -1,8 +1,7 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Home, Maximize, HelpCircle, Target, Zap, Sparkles } from 'lucide-react';
+import { Settings, Maximize, Target, Zap, Sparkles } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
-import { useNavigate } from 'react-router-dom';
 import { formatInteger } from '@/utils/format';
 import TimerDisplay from '@/components/game/TimerDisplay';
 
@@ -53,8 +52,6 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
 }) => {
   // Show hint counter as X/Y where Y is the total allowed hints
   const isHintDisabled = hintsUsed >= hintsAllowed;
-  
-  const navigate = useNavigate();
   
   const handleSettingsClick = () => {
     if (onOpenSettingsModal) {
@@ -108,17 +105,17 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
 
         </div>
         
-        {/* Right side - Home button (top-right) - hidden on mobile */}
-        {onNavigateHome && onConfirmNavigation && (
+        {/* Right side - Settings button (top-right) - hidden on mobile */}
+        {onOpenSettingsModal && (
           <div className="hidden lg:flex pointer-events-auto">
-            <Button 
+            <Button
               size="icon"
-              onClick={() => onConfirmNavigation(() => onNavigateHome())}
+              onClick={handleSettingsClick}
               className="h-9 w-9 rounded-full border-none text-black bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] hover:opacity-90"
-              aria-label="Home"
+              aria-label="Settings"
               type="button"
             >
-              <Home className="h-4 w-4" />
+              <Settings className="h-4 w-4" />
             </Button>
           </div>
         )}

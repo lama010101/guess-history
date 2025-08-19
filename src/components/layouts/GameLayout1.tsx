@@ -338,8 +338,8 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       )}
 
       {/* Input Sections - Full width on mobile, half on desktop */}
-      <div className="flex-grow px-2 py-4 md:px-4 lg:px-6 flex flex-col">
-        <div className="max-w-5xl mx-auto w-full space-y-4 flex flex-col h-full">
+      <div className="flex-grow px-2 py-2 md:px-4 lg:px-6 flex flex-col">
+        <div className="max-w-5xl mx-auto w-full space-y-2 flex flex-col h-full">
           <Card className={cn("overflow-hidden dark:bg-[#333333] transition-all", (highlightInputs || highlightWhen) && "ring-2 ring-orange-500 animate-pulse")}> 
             <CardContent className="px-4 pt-3 pb-1 flex flex-col min-h-[7.5rem] md:min-h-[9rem]">
               <div className="flex flex-wrap items-center justify-between mb-1 gap-x-2 gap-y-1">

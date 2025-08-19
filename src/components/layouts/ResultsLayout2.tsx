@@ -180,9 +180,9 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
       />
       
       <div className="container mx-auto p-4 md:p-6 lg:p-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Left Column */}
-          <div className="space-y-8">
+          <div className="space-y-4">
             <div className="bg-white dark:bg-[#333333] rounded-2xl shadow-lg p-6">
               <div className="flex flex-col items-center text-center gap-3">
                 <div className="flex flex-col items-center">
@@ -251,7 +251,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
           </div>
 
           {/* Right Column */}
-          <div className="space-y-7">
+          <div className="space-y-4">
             <div className="bg-white dark:bg-[#333333] rounded-2xl shadow-lg p-4">
               <div className="border-b border-border pb-3 mb-3 flex justify-between items-center">
                 <h2 className="font-normal text-lg text-gray-900 dark:text-gray-100 flex items-center">

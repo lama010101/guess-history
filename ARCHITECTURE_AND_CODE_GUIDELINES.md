@@ -54,6 +54,23 @@ This document provides comprehensive architecture guidelines for the Guess Histo
 - **Control**: Radio group with Navigation icons and descriptive labels
 - **Integration**: Real-time settings loading and saving via Supabase
 
+### Vibrate & Gyroscope Settings (2025-08)
+- **Overview**: Device feedback and motion controls are user-configurable and consistent between the Profile page and the in-game Settings modal.
+- **Files**:
+  - `src/components/profile/SettingsTab.tsx` — Theme options are now only `light` and `dark` (system removed). Adds toggles for `vibrate_enabled` and `gyroscope_enabled`; updates Zustand store and persists via Supabase.
+  - `src/components/settings/GlobalSettingsModal.tsx` — In-game settings popup rendering the same settings UI as the profile; hydrates `useSettingsStore` from Supabase on open.
+  - `src/components/navigation/GameOverlayHUD.tsx` — Top-right gear icon opens `GlobalSettingsModal` (replaces prior Home icon in-game).
+  - `src/components/game/TimerDisplay.tsx` — Under-10s countdown vibration (if enabled) and strong vibration pattern on timeout; countdown beeps gated by `sound_enabled`.
+  - `src/components/layouts/FullscreenZoomableImage.tsx` — Gyroscope-based panning when `gyroscope_enabled` is true; disabled during user drag, inertia, or auto-pan. Unauthenticated default settings include `theme: 'dark'`, `vibrate_enabled: false`, `gyroscope_enabled: false`.
+  - `src/lib/useSettingsStore.ts` — Zustand store for user settings including `vibrate_enabled` and `gyroscope_enabled` with action toggles.
+  - `src/utils/profile/profileService.ts` — `fetchUserSettings()`/`updateUserSettings()` source of truth. The `UserSettings` type includes optional `vibrate_enabled` and `gyroscope_enabled`. Default theme is `dark` and the UI no longer exposes `system`.
+- **Persistence**: Settings are stored in `public.settings` keyed by `id = <userId>`. Always use `fetchUserSettings(userId)` and `updateUserSettings(userId, settings)`.
+- **Device APIs**: Uses `navigator.vibrate` (feature-detected) and `window.deviceorientation` events for gyro. iOS may require explicit motion permission prompts at first use.
+- **UX Notes**:
+  - Vibrate: subtle tap per second during final 10s; stronger pattern at 0s.
+  - Gyroscope panning: smooth, clamped offsets; paused while dragging or when inertia/auto-pan is running.
+  - Theme: `system` option removed from UI; default/fallback is `dark`.
+
 ### Implementation Details
 - **Settings Loading**: Async loading on component mount with fallback defaults
 - **Recenter Animation**: Smooth 800ms ease-out cubic animation to center position
@@ -398,14 +415,14 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - Source and Rate buttons use background `#444444` with white text across themes for consistency.
     - Source button in `ResultsLayout2.tsx` uses `bg-[#444444]` and matching border/hover.
     - Rate button in `RoundResultsPage.tsx` uses `bg-[#444444]` and matching border/hover.
-  - Home buttons are round with a subtle rainbow gradient background matching the design reference.
+  - Primary round action buttons are round with a subtle rainbow gradient background matching the design reference.
     - Use: `rounded-full text-black border-none bg-gradient-to-r from-pink-300 via-orange-300 via-yellow-300 via-green-300 to-green-300 hover:opacity-90`.
     - Implemented in:
-      - Top-right HUD Home in `src/components/navigation/GameOverlayHUD.tsx`.
-      - Desktop and mobile Home in `src/components/layouts/GameLayout1.tsx`.
+      - Top-right HUD Settings gear in `src/components/navigation/GameOverlayHUD.tsx` (replaces previous Home icon). Clicking opens `GlobalSettingsModal`.
+      - Desktop and mobile Home buttons in `src/components/layouts/GameLayout1.tsx`.
       - Lobby Home in `src/pages/Room.tsx`.
   - Round header text size reduced by one step (Tailwind `text-lg`) in `src/components/results/ResultsHeader.tsx`.
-  - Home button remains light grey and consistently styled across pages.
+  - Home button (where present) remains light grey and consistently styled across pages; in-game HUD now uses a Settings gear instead of Home.
   
   - When card and Where card affordances:
     - When the year is not selected, the inline year input on the `When?` card shows placeholder text "Choose a year".

@@ -16,6 +16,7 @@ import LazyImage from '@/components/ui/LazyImage';
 import GameOverlayHUD from '@/components/navigation/GameOverlayHUD';
 import { useGame } from '@/contexts/GameContext';
 import { useNavigate, useParams } from 'react-router-dom';
+import GlobalSettingsModal from '@/components/settings/GlobalSettingsModal';
 
 // Helper function to format time as MM:SS
 const formatTime = (seconds: number): string => {
@@ -33,6 +34,7 @@ export interface GameLayout2Props {
 const GameLayout2: React.FC<GameLayout2Props> = ({ onComplete, gameMode = 'solo' }) => {
   const navigate = useNavigate();
   const [isHintModalV2Open, setIsHintModalV2Open] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const game = useGame();
   const { roomId, roundNumber: roundNumberStr } = useParams<{ roomId: string; roundNumber: string }>();
   const roundNumber = parseInt(roundNumberStr || '1', 10);
@@ -148,7 +150,7 @@ const GameLayout2: React.FC<GameLayout2Props> = ({ onComplete, gameMode = 'solo'
             currentScore={totalGameXP}
             onNavigateHome={() => {}}
             onConfirmNavigation={() => {}}
-            onOpenSettingsModal={() => {}}
+            onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
             imageUrl=""
             onFullscreen={() => {}}
             isTimerActive={true}
@@ -171,6 +173,11 @@ const GameLayout2: React.FC<GameLayout2Props> = ({ onComplete, gameMode = 'solo'
           isLoading={isLoading}
         />
       )}
+
+      <GlobalSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+      />
     </div>
   );
 };

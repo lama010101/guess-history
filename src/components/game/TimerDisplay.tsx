@@ -63,7 +63,7 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
     if (remainingTime <= 10 && remainingTime > 0 && soundEnabled) {
       if (countdownBeepRef.current) {
         const beepSound = countdownBeepRef.current.cloneNode() as HTMLAudioElement;
-        beepSound.volume = 0.0;
+        beepSound.volume = 1.0;
         beepSound.play().catch(e => console.error('Error playing countdown sound:', e));
       }
     }

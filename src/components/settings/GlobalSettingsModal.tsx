@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Home as HomeIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import SettingsTab from '@/components/profile/SettingsTab';
 import { fetchUserSettings, UserSettings } from '@/utils/profile/profileService';
@@ -10,9 +10,10 @@ import { useSettingsStore } from '@/lib/useSettingsStore';
 interface GlobalSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onNavigateHome?: () => void;
 }
 
-const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClose }) => {
+const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClose, onNavigateHome }) => {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -76,13 +77,28 @@ const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClo
               />
             )}
             
-            <div className="mt-6 flex justify-end space-x-3">
-              <Button 
-                variant="outline" 
-                onClick={onClose}
+            <div className="mt-6 flex items-center justify-between gap-3">
+              <Button
+                onClick={() => {
+                  if (onNavigateHome) {
+                    onNavigateHome();
+                  } else if (typeof window !== 'undefined') {
+                    window.location.assign('/');
+                  }
+                }}
+                className="bg-white text-black hover:bg-gray-100 border border-gray-300"
               >
-                Close
+                <HomeIcon className="h-4 w-4 mr-2" />
+                Home
               </Button>
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  onClick={onClose}
+                >
+                  Close
+                </Button>
+              </div>
             </div>
           </div>
         )}

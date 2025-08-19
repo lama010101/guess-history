@@ -5,7 +5,7 @@ import { useTheme } from 'next-themes';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// Removed Select imports (language option removed)
 import { Switch } from "@/components/ui/switch";
 import { toast } from '@/components/ui/use-toast';
 import { Settings as SettingsIcon, Moon, Sun, Navigation } from "lucide-react";
@@ -112,26 +112,21 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
           </RadioGroup>
         </div>
 
-        {/* Sound Setting - Coming Soon */}
-        <div className="relative">
-          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-lg z-10 flex items-center justify-center">
-            <span className="text-sm font-medium text-white">Coming soon...</span>
-          </div>
-          <div className="opacity-50 pointer-events-none">
-            <Label className="mb-3 block text-history-primary dark:text-history-light">Sound</Label>
-            <div className="flex items-center space-x-3">
-              <Switch
-                id="sound-toggle"
-                checked={updatedSettings.sound_enabled ?? soundEnabled}
-                onCheckedChange={(checked) => {
-                  setUpdatedSettings({ ...updatedSettings, sound_enabled: checked });
-                  toggleSound(); // Update the global sound state
-                }}
-              />
-              <Label htmlFor="sound-toggle">
-                {updatedSettings.sound_enabled ? 'On' : 'Off'}
-              </Label>
-            </div>
+        {/* Sound Setting */}
+        <div>
+          <Label className="mb-3 block text-history-primary dark:text-history-light">Sound</Label>
+          <div className="flex items-center space-x-3">
+            <Switch
+              id="sound-toggle"
+              checked={updatedSettings.sound_enabled ?? soundEnabled}
+              onCheckedChange={(checked) => {
+                setUpdatedSettings({ ...updatedSettings, sound_enabled: checked });
+                toggleSound(); // Update the global sound state
+              }}
+            />
+            <Label htmlFor="sound-toggle">
+              {(updatedSettings.sound_enabled ?? soundEnabled) ? 'On' : 'Off'}
+            </Label>
           </div>
         </div>
 
@@ -267,29 +262,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
           </RadioGroup>
         </div>
 
-        {/* Language Setting - Coming Soon */}
-        <div className="relative">
-          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-lg z-10 flex items-center justify-center">
-            <span className="text-sm font-medium text-white">Coming soon...</span>
-          </div>
-          <div className="opacity-50 pointer-events-none">
-            <Label htmlFor="language" className="mb-3 block text-history-primary dark:text-history-light">Language</Label>
-            <Select 
-              defaultValue={updatedSettings.language}
-              onValueChange={(value) => setUpdatedSettings({...updatedSettings, language: value})}
-            >
-              <SelectTrigger className="w-full sm:w-[240px]" id="language">
-                <SelectValue placeholder="Select Language" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="en">English</SelectItem>
-                <SelectItem value="fr">French</SelectItem>
-                <SelectItem value="es">Spanish</SelectItem>
-                <SelectItem value="de">German</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+
         
         <div className="pt-4">
           <Button 

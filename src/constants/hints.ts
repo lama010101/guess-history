@@ -109,24 +109,24 @@ export const HINT_TYPE_DESCRIPTIONS: Record<string, string> = {
   '1_when_century': 'eg: 20th',
   
   // Level 2 (remote)
-  '2_where_landmark': 'A famous place more than 100km (60 miles) away',
+  '2_where_landmark': 'More than 100km (60 miles) away',
   '2_where_landmark_km': 'Distance in km or miles',
-  '2_when_event': 'An event more than 10 years from the current one',
-  '2_when_event_years': 'Number of years from the distant event',
+  '2_when_event': 'More than 10 years off',
+  '2_when_event_years': 'Number of years off',
   
   // Level 3
   '3_where_region': 'eg: California',
   '3_when_decade': 'eg: 1930s',
   
   // Level 4 (nearby)
-  '4_where_landmark': 'A famous place less than 100km (60 miles) away',
+  '4_where_landmark': 'Less than 100km (60 miles) away',
   '4_where_landmark_km': 'Distance in km or miles',
-  '4_when_event': 'An event within 10 years of the current one',
-  '4_when_event_years': 'Number of years from the recent event',
+  '4_when_event': 'Less than 10 years off',
+  '4_when_event_years': 'Number of years',
   
   // Level 5
-  '5_where_clues': 'Scene elements – may be precise or general',
-  '5_when_clues': 'Scene elements – may be precise or general',
+  '5_where_clues': 'Scene elements (can be precise or general)',
+  '5_when_clues': 'Scene elements (can be precise or general)',
 };
 
 // Hint dependency map aligned with database schema

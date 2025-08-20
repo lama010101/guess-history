@@ -23,7 +23,7 @@ export function ConfirmNavigationDialog({
   onClose,
   onConfirm,
   title = "Leave Game?",
-  description = "Are you sure you want to leave the game? Your progress may be lost.",
+  description = "Are you sure you want to leave the game?Your progress may be lost.",
   confirmText = "Leave",
   cancelText = "Cancel",
 }: ConfirmNavigationDialogProps) {

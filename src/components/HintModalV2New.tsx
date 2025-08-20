@@ -230,16 +230,16 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
           <div className="relative flex items-center justify-center w-full">
             <DialogTitle className="text-2xl font-bold text-white">HINTS</DialogTitle>
             <Button 
-              variant="ghost" 
+              variant="default" 
               size="icon" 
               onClick={() => onOpenChange(false)}
-              className="absolute right-0 text-gray-400 hover:text-white hover:bg-gray-800 rounded-md h-8 w-8"
+              className="absolute right-0 rounded-full h-[2.67rem] w-[2.67rem] bg-orange-600 hover:bg-orange-700 text-white"
             >
-              <X className="h-5 w-5" />
+              <X className="h-[2.66rem] w-[2.66rem]" />
               <span className="sr-only">Close</span>
             </Button>
           </div>
-          <p className="text-gray-400 italic text-center text-sm mt-0">Using a hint will reduce your score.</p>
+          <p className="text-gray-400 italic text-center text-sm mt-0 mb-1">Using a hint will reduce your score.</p>
         </DialogHeader>
 
         <div className="p-4 pt-0">
@@ -290,15 +290,6 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
           </div>
 
         </div>
-  <div className="sticky bottom-0 z-10 p-4 border-t border-gray-800 bg-black">
-  <Button 
-    size="lg" 
-    className="w-full bg-orange-600 text-white hover:bg-orange-700 font-semibold rounded-md" 
-    onClick={() => onOpenChange(false)}
-  >
-    Continue Guessing
-  </Button>
-</div>
       </DialogContent>
       {/* Locked info popup retained for future use but not shown automatically */}
       <Dialog open={false} onOpenChange={setLockedInfoOpen}>

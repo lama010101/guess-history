@@ -427,7 +427,7 @@ const RoundResultsPage = () => {
           <Button
             variant="outline"
             onClick={() => confirmNavigation(handleNavigateHome)}
-            className="h-12 w-12 rounded-full text-black shadow-md border-none bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] hover:opacity-90"
+            className="h-12 w-12 rounded-full text-black shadow-md border-none bg-white hover:bg-gray-100"
             aria-label="Go Home"
             title="Return to Home"
           >

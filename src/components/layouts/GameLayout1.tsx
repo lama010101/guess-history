@@ -495,27 +495,58 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
 
           {/* Desktop-only bottom actions: Home, Hints, Submit */}
           <div className="hidden lg:flex items-center justify-center gap-3 mt-auto">
-            <Button
-              onClick={() => onConfirmNavigation(() => onNavigateHome())}
-              variant="outline"
-              className="text-black rounded-full px-6 py-6 text-lg font-semibold border-none bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] hover:opacity-90"
-            >
-              <Home className="h-5 w-5 mr-2" /> Home
-            </Button>
-            <Button
-              onClick={handleHintClick}
-              className="bg-white text-black hover:bg-gray-100 dark:bg-white dark:text-black dark:hover:bg-gray-100 rounded-md px-4 py-4 text-base font-semibold"
-              variant="outline"
-            >
-              <HelpCircle className="h-5 w-5 mr-2" />
-              <span>Hints</span>
-              <span className="ml-2 inline-flex items-center rounded-full bg-black text-white text-[11px] px-2 py-0.5">{purchasedHintIds.length}/14</span>
-            </Button>
+          <Button
+            onClick={() => onConfirmNavigation(() => onNavigateHome())}
+            variant="outline"
+            className="text-black rounded-full px-6 py-6 text-lg font-semibold border-none bg-white hover:bg-gray-100"
+          >
+            <Home className="h-5 w-5 mr-2" /> Home
+          </Button>
+          <Button
+            onClick={handleHintClick}
+            className="bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] text-black hover:opacity-90 rounded-md px-4 py-4 text-base font-semibold"
+            variant="outline"
+          >
+            <HelpCircle className="h-5 w-5 mr-2" />
+            <span>Hints</span>
+            <span className="ml-2 inline-flex items-center rounded-full bg-black text-white text-[11px] px-2 py-0.5">{purchasedHintIds.length}/14</span>
+          </Button>
             <div className="relative">
               <Button
                 onClick={handleSubmitGuess}
                 disabled={!isSubmitEnabled}
                 className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-400 cursor-not-allowed'} w-full max-w-md flex items-center justify-center text-lg font-semibold px-8 py-6 !text-white shadow-lg rounded-md disabled:opacity-100 disabled:!text-white`}
+              >
+                <Send className="h-5 w-5 mr-2" /> Submit Guess
+              </Button>
+              {!isSubmitEnabled && (
+                <div className="absolute inset-0" onClick={handleDisabledSubmitClick} aria-hidden="true" />
+              )}
+            </div>
+          </div>
+          {/* Mobile bottom navbar: Home + Hints + Submit */}
+          <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-[#1f1f1f]/95 backdrop-blur border-t border-gray-200 dark:border-gray-700 p-2 flex items-center gap-2">
+            <Button
+              onClick={() => onConfirmNavigation(() => onNavigateHome())}
+              variant="outline"
+              className="h-12 w-12 rounded-full text-black border-none bg-white hover:bg-gray-100"
+              aria-label="Go Home"
+              title="Return to Home"
+            >
+              <Home className="h-5 w-5" />
+            </Button>
+            <Button
+              onClick={handleHintClick}
+              className="flex-1 h-12 rounded-md bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] text-black hover:opacity-90 text-lg font-semibold"
+            >
+              <span>Hints</span>
+              <span className="ml-2 inline-flex items-center rounded-full bg-black text-white text-xs px-2 py-0.5">{purchasedHintIds.length}/14</span>
+            </Button>
+            <div className="relative flex-[2]">
+              <Button
+                onClick={handleSubmitGuess}
+                disabled={!isSubmitEnabled}
+                className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-400 cursor-not-allowed'} h-12 w-full rounded-md !text-white text-lg font-semibold flex items-center justify-center disabled:opacity-100 disabled:!text-white`}
               >
                 <Send className="h-5 w-5 mr-2" /> Submit Guess
               </Button>
@@ -534,7 +565,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
         <Button
           onClick={() => onConfirmNavigation(() => onNavigateHome())}
           variant="outline"
-          className="h-12 w-12 rounded-full text-black border-none bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] hover:opacity-90"
+          className="h-12 w-12 rounded-full text-black border-none bg-white hover:bg-gray-100"
           aria-label="Go Home"
           title="Return to Home"
         >
@@ -542,7 +573,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
         </Button>
         <Button
           onClick={handleHintClick}
-          className="flex-1 h-12 rounded-md bg-white text-black hover:bg-gray-100 dark:bg-white dark:text-black dark:hover:bg-gray-100 text-lg font-semibold"
+          className="flex-1 h-12 rounded-md bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] text-black hover:opacity-90 text-lg font-semibold"
         >
           <span>Hints</span>
           <span className="ml-2 inline-flex items-center rounded-full bg-black text-white text-xs px-2 py-0.5">{purchasedHintIds.length}/14</span>

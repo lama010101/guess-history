@@ -1085,8 +1085,14 @@ To avoid confusion from legacy duplicates, the following are the only files you 
   - Added optional prop `onFirstInteract?: () => void` fired on the first slider move; debounced with a ref to only fire once.
 - Hints button styling and count
   - Files: `GameLayout1.tsx` (desktop action row and mobile bottom navbar)
-  - Style: white button with black text; inline black pill displays `{used}/14` hints.
+  - Style: rainbow gradient button (same gradient as the previous Home button) with black text; inline black pill displays `{used}/14` hints.
+  - Home buttons now use a plain white background with black text (`bg-white hover:bg-gray-100 text-black`) on both desktop and mobile.
   - Example: `<span class="... bg-black text-white ...">{purchasedHints.length}/14</span>`.
+ - Hints modal layout and theming
+   - File: `src/components/HintModalV2New.tsx`
+   - Overall background: black (`DialogContent` + `DialogHeader` use `bg-black`).
+   - Inner surfaces: dark gray cards and controls (`bg-[#202020]`, hint rows `bg-[#333333]`).
+   - Close button: orange, circular icon button at top-right; ~2.67rem size with ~2.66rem X icon for visibility (`bg-orange-600 hover:bg-orange-700`).
 - Submit prompt behavior
   - File: `src/components/layouts/GameLayout1.tsx`
   - The "Select a location first" message only appears after the user clicks Submit with no guess (`showSelectLocationPrompt`).

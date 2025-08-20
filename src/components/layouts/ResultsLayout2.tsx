@@ -12,6 +12,7 @@ import { formatInteger } from '@/utils/format';
 import { HINT_TYPE_NAMES } from '@/constants/hints';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import type { PeerRoundRow } from '@/hooks/useRoundPeers';
 
 // Import Leaflet components and CSS
 import { MapContainer, TileLayer, Marker, Popup, ZoomControl, useMap, Polyline } from 'react-leaflet';
@@ -81,6 +82,7 @@ export interface ResultsLayoutProps {
   totalRounds?: number;
   nextRoundButton?: React.ReactNode;
   rateButton?: React.ReactNode;
+  peers?: PeerRoundRow[];
 }
 
 const ResultsLayout2: React.FC<ResultsLayoutProps> = ({ 
@@ -93,7 +95,8 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   round,
   totalRounds,
   nextRoundButton,
-  rateButton
+  rateButton,
+  peers = []
 }) => {
   const { user } = useAuth();
   const [earnedBadge, setEarnedBadge] = useState<BadgeType | null>(null);
@@ -156,16 +159,28 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
   const hasUserGuess = userLat !== null && userLng !== null;
   const correctPosition: L.LatLngTuple = [correctLat, correctLng];
-  const userPosition: L.LatLngTuple = hasUserGuess ? [userLat, userLng] : correctPosition;
+  const userPosition: L.LatLngTuple | null = hasUserGuess ? [userLat, userLng] as L.LatLngTuple : null;
+
+  const peerPositions: L.LatLngTuple[] = useMemo(() =>
+    (peers || [])
+      .filter(p => p.guessLat !== null && p.guessLng !== null)
+      .map(p => [p.guessLat as number, p.guessLng as number] as L.LatLngTuple)
+  , [peers]);
+
+  const allPositions: L.LatLngTuple[] = useMemo(() => {
+    const arr: L.LatLngTuple[] = [correctPosition];
+    if (userPosition) arr.push(userPosition);
+    return arr.concat(peerPositions);
+  }, [correctPosition, userPosition, peerPositions]);
 
   const bounds = useMemo(() => {
-    if (hasUserGuess) {
-      return L.latLngBounds(userPosition, correctPosition);
+    if (allPositions.length > 1) {
+      return L.latLngBounds(allPositions);
     }
     return null;
-  }, [userPosition, correctPosition, hasUserGuess]);
-  
-  const mapCenter = hasUserGuess ? L.latLngBounds(userPosition, correctPosition).getCenter() : correctPosition;
+  }, [allPositions]);
+
+  const mapCenter = bounds ? bounds.getCenter() : correctPosition;
 
   const userIcon = useMemo(() => createUserIcon(avatarUrl), [avatarUrl]);
 
@@ -217,6 +232,25 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                     </div>
                   </div>
                 </div>
+                
+                {/* Show peer avatars and names */}
+                {peers && peers.length > 0 && (
+                  <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <div className="text-sm text-muted-foreground mb-2 text-center">Playing with</div>
+                    <div className="flex justify-center items-center gap-2 flex-wrap">
+                      {peers.map((peer) => (
+                        <div key={peer.userId} className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 rounded-full px-2 py-1">
+                          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-semibold">
+                            {(peer.displayName || 'P').charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                            {peer.displayName || 'Player'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -348,7 +382,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   </Marker>
                   
                   {/* Show user's guess if it exists and isn't exactly on the correct location */}
-                  {result.guessLat && result.guessLng && 
+                  {result.guessLat != null && result.guessLng != null && 
                     (result.guessLat !== result.eventLat || result.guessLng !== result.eventLng) && (
                       <Marker 
                         position={[result.guessLat, result.guessLng]} 
@@ -357,8 +391,32 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                         <Popup>Your Guess</Popup>
                       </Marker>
                   )}
-                  {result.guessLat && result.guessLng && (
+                  {result.guessLat != null && result.guessLng != null && (
                     <Polyline positions={[[result.guessLat, result.guessLng], [result.eventLat, result.eventLng]]} color="white" dashArray="5, 10" />
+                  )}
+                  {/* Show peers' guesses */}
+                  {peers && peers.length > 0 && (
+                    <>
+                      {console.log('ResultsLayout2: Rendering peers:', peers.map(p => ({ userId: p.userId, displayName: p.displayName, guessLat: p.guessLat, guessLng: p.guessLng })))}
+                      {peers.map((p) => (
+                        p.guessLat !== null && p.guessLng !== null ? (
+                          <React.Fragment key={p.userId}>
+                            <Marker position={[p.guessLat, p.guessLng]}>
+                              <Popup>
+                                <div className="text-sm">
+                                  <div className="font-semibold">{p.displayName || 'Peer'}</div>
+                                  {p.distanceKm != null && <div>{formatInteger(Math.round(p.distanceKm))} km away</div>}
+                                  {p.guessYear != null && <div>Year: {p.guessYear}</div>}
+                                </div>
+                              </Popup>
+                            </Marker>
+                            <Polyline positions={[[p.guessLat, p.guessLng], [result.eventLat, result.eventLng]]} color="#6EE7B7" opacity={0.7} dashArray="4,8" />
+                          </React.Fragment>
+                        ) : (
+                          console.log('ResultsLayout2: Peer has null coordinates:', { userId: p.userId, displayName: p.displayName, guessLat: p.guessLat, guessLng: p.guessLng })
+                        )
+                      ))}
+                    </>
                   )}
                   <MapBoundsUpdater bounds={bounds} />
                 </MapContainer>
@@ -385,14 +443,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
             {result.hintDebts && result.hintDebts.length > 0 && (
               <HintDebtsCard 
-                hintDebts={result.hintDebts.map(debt => {
-                  const hintInfo = result.hintsUsed?.find(h => h.id === debt.hintId || h.hint_type === debt.hint_type);
-                  return {
-                    ...debt,
-                    hintId: hintInfo?.id || debt.hintId,
-                    hint_type: hintInfo?.hint_type || debt.hint_type,
-                  };
-                })}
+                hintDebts={result.hintDebts}
                 yearDifference={result.yearDifference ?? null}
                 distanceKm={result.distanceKm ?? null}
               />

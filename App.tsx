@@ -22,6 +22,7 @@ import TestAuthPage from "./pages/test/TestAuthPage";
 import AdminImagesPage from './pages/AdminImagesPage';
 import AdminBadgesPage from './pages/AdminBadgesPage';
 import LandingPage from './pages/LandingPage';
+import RoundResultsPage from '@/pages/RoundResultsPage';
 
 // Handler for auth redirects
 const AuthRedirectHandler = () => {
@@ -65,7 +66,9 @@ const App = () => {
                     <Route path="auth" element={<TestAuthPage />} />
                     <Route path="game" element={<TestGamePage />} />
                     <Route path="results" element={<TestResultsPage />} />
+                    <Route path="game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />
                     <Route path="final" element={<TestFinalPage />} />
+                    <Route path="game/room/:roomId/final" element={<TestFinalPage />} />
                     <Route path="leaderboard" element={<TestLeaderboardPage />} />
                     <Route path="profile" element={<TestProfilePage />} />
                     <Route path="settings" element={<TestSettingsPage />} />

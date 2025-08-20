@@ -227,11 +227,54 @@ updatePlayerScore(playerId, playerName, avatar, {
   isCorrect: distance < 50
 ## Development Setup
 
+...
+
+## Multiplayer Round Results (Peer Answers)
+
+- Hook: `src/hooks/useRoundPeers.ts`
+  - Fetches and subscribes to room-scoped round results via RPC `get_round_scoreboard` and realtime on `public.round_results`.
+  - Returns `peers: PeerRoundRow[]` with display names, scores, accuracies, guess lat/lng, and actual lat/lng.
+
+- Page integration: `src/pages/RoundResultsPage.tsx`
+  - Calls `useRoundPeers(roomId, roundNumber)` and passes `peers` into the results layout.
+  - Continues to map the local player's context result to the layout type as before.
+
+- Layout rendering: `src/components/layouts/ResultsLayout2.tsx`
+  - New optional prop: `peers?: PeerRoundRow[]`.
+  - Renders each peer's guess as a marker and a polyline to the correct location.
+  - Automatically adjusts map bounds to include the correct location, your guess, and peer guesses.
+  - No visual changes outside the map; UI remains otherwise unchanged.
+
+Notes:
+- This enhancement is realtime; peers appear/refresh as their `round_results` change.
+- RLS must allow room participants to read `round_results` and execute the scoreboard RPC.
+
+#### Multiplayer Membership Persistence (session_players)
+
+- Table: `public.session_players (room_id text, user_id uuid, display_name text, joined_at timestamptz, PK(room_id,user_id))`
+- RLS: authenticated can SELECT; users can INSERT/UPDATE/DELETE their own row only.
+- Client upsert points:
+  - `src/contexts/GameContext.tsx` → `ensureSessionMembership(roomId, userId?)` helper performs `upsert({ room_id, user_id, display_name })` with `onConflict: 'room_id,user_id'`.
+  - Called in `startGame()` when starting a multiplayer session (after setting `roomId`).
+  - Called in `hydrateRoomImages(roomId)` when hydrating a multiplayer room on refresh.
+- Purpose: Satisfies RLS policies that grant visibility/authorization to room participants for:
+  - Reading peer `round_results` rows
+  - Executing scoreboard RPCs (e.g., `get_round_scoreboard`)
+
+#### Round Indexing Consistency (0-based)
+
+- Internal DB uses 0-based `round_index`.
+- UI routes use 1-based `roundNumber`.
+- Conversions enforced in `src/hooks/useRoundPeers.ts`:
+  - Queries and realtime filter use `dbRoundIndex = max(0, roundNumber - 1)`.
+  - Realtime channel name and filter include `round_index=eq.<dbRoundIndex>` to avoid off-by-one refresh misses.
+
 ### Local Development
 ```bash
 # Start PartyKit server
 npm run partykit:dev
 
+{{ ... }}
 # Start frontend
 npm run dev
 
@@ -499,17 +542,6 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
 - **Server → Client message**: `progress`
   - Shape: `{ type: 'progress'; from: string; roundNumber: number; substep?: string }`
   - Broadcast to all clients in the room. Used for lightweight UI cues (e.g., MiniRoster status). Persistence is planned but not required for core flow.
-
-- **Key files**:
-  - Server: `server/lobby.ts` — Zod-validated `ProgressMessage` and broadcast logic.
-  - Shared types: `src/lib/partyClient.ts` — `LobbyClientMessage` and `LobbyServerMessage` include `progress`.
-
-## Multiplayer Scoreboards and RPCs
-
-- **Schema alignment** (`public.round_results`):
-  - New columns: `room_id text`, `guess_year int`, `guess_lat/lng double precision`, `actual_lat/lng double precision`, `distance_km numeric(8,3)`, `created_at`, `updated_at`.
-  - Indexes: `(room_id, round_index)`, `(room_id, user_id)` for scoreboard queries.
-  - RLS:
     - Own-only write policies (insert/update/delete).
     - Read policies allow:
       - Own rows; and
@@ -526,8 +558,9 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - Sorting: by `net_xp DESC`, then `total_score DESC`, then `avg_accuracy DESC`.
 
 - **Migrations**:
-  - File: `supabase/migrations/20250819_update_round_results_and_scoreboard_rpcs.sql`
-  - Also defines helper trigger `set_updated_at()` if missing.
+  - File: `supabase/migrations/20250818_create_session_players.sql` — Creates `public.session_players` and RLS policies. Must be applied before scoreboard RPCs. This file is idempotent and exists to ensure correct ordering when using CLI chronological application.
+  - File: `supabase/migrations/20250819_update_round_results_and_scoreboard_rpcs.sql` — Updates `public.round_results` schema and defines scoreboard RPCs; depends on `public.session_players`.
+  - Note: An original `20250820_create_session_players.sql` may also exist; `20250818_create_session_players.sql` duplicates it with guards so that CLI ordering is correct. When applying manually (SQL editor), always run `20250818_*` first, then `20250819_*`.
 
 ### Hook: useRoundPeers (Room-Scoped Round Results)
 

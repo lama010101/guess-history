@@ -147,6 +147,41 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     loadedIndices: preparedLoadedIndices,
   } = useGamePreparation();
 
+  // Ensure the current user is registered as a participant of a multiplayer room
+  const ensureSessionMembership = useCallback(async (targetRoomId: string, providedUserId?: string) => {
+    try {
+      if (!targetRoomId) return;
+      let userId = providedUserId;
+      if (!userId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id ?? undefined;
+      }
+      if (!userId) return;
+
+      // Fetch display name from profiles (do not invent values)
+      const { data: profile, error: profErr } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', userId)
+        .maybeSingle();
+      if (profErr) {
+        // Non-fatal, continue with null display_name
+        console.warn('[GameContext] ensureSessionMembership: profile fetch error', profErr);
+      }
+
+      const displayName = profile?.display_name ?? null;
+
+      const { error: upsertErr } = await supabase
+        .from('session_players')
+        .upsert({ room_id: targetRoomId, user_id: userId, display_name: displayName }, { onConflict: 'room_id,user_id' });
+      if (upsertErr) {
+        console.warn('[GameContext] ensureSessionMembership: upsert failed', upsertErr);
+      }
+    } catch (e) {
+      console.warn('[GameContext] ensureSessionMembership failed', e);
+    }
+  }, []);
+
   // Save game state to DB whenever it changes
   const saveGameState = useCallback(() => {
     console.log('Game state persisted to DB via recordRoundResult');
@@ -468,6 +503,10 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       setRoomId(newRoomId);
       // Try deterministic selection first for multiplayer; otherwise use prepare()
       const { data: { user } } = await supabase.auth.getUser();
+      if (isMultiplayer) {
+        // Upsert membership for RLS/RPC authorization
+        await ensureSessionMembership(newRoomId, user?.id);
+      }
       let preparedImages: GameImage[] | null = null;
 
       if (isMultiplayer) {
@@ -645,6 +684,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       const processed = await processRawImages(batch as any[]);
       setImages(processed);
       setRoomId(existingRoomId);
+      // Ensure user is recorded as participant in this room for multiplayer visibility
+      await ensureSessionMembership(existingRoomId, user?.id);
       if (!gameId) {
         // Generate a lightweight gameId so subsequent results can persist
         setGameId(uuidv4());
@@ -652,7 +693,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     } catch (e) {
       console.warn('[GameContext] hydrateRoomImages failed', e);
     }
-  }, [images, gameId, processRawImages]);
+  }, [images, gameId, processRawImages, ensureSessionMembership]);
 
   const recordRoundResult = useCallback(async (resultData: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'>, currentRoundIndex: number) => {
     if (!gameId) {

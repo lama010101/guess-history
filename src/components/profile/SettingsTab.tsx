@@ -249,14 +249,14 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
               <RadioGroupItem value="swipes" id="inertia-swipes" className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" />
               <Label htmlFor="inertia-swipes" className="flex items-center">
                 <Navigation className="h-4 w-4 mr-2" />
-                Swipe - Continued motion after drag
+                Panning - From one edge to the other
               </Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="swipes_recenter" id="inertia-recenter" className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" />
               <Label htmlFor="inertia-recenter" className="flex items-center">
                 <Navigation className="h-4 w-4 mr-2" />
-                Swipe + recenter - Motion, then auto-center
+                Panning + recenter - Motion, then auto-center
               </Label>
             </div>
           </RadioGroup>

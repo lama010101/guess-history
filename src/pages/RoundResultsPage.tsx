@@ -20,6 +20,8 @@ import { RoundResult as ContextRoundResult } from '@/types';
 import { RoundResult as LayoutRoundResultType } from '@/utils/resultsFetching';
 // Import supabase client
 import { supabase } from '@/integrations/supabase/client';
+// Multiplayer peers for round results
+import { useRoundPeers } from '@/hooks/useRoundPeers';
 // Import standardized scoring system
 import { 
   calculateTimeAccuracy,
@@ -107,6 +109,9 @@ const RoundResultsPage = () => {
   // Find the context result and image data
   const contextResult = roundResults.find(r => r.roundIndex === currentRoundIndex);
   const currentImage = images.length > currentRoundIndex ? images[currentRoundIndex] : null;
+
+  // --- Multiplayer peers: fetch other players' answers for this room/round ---
+  const { peers: peerRows } = useRoundPeers(roomId || null, Number.isFinite(roundNumber) ? roundNumber : null);
 
   // Fetch and process hint debts when user, image, and results are ready
   const fetchDebts = useCallback(async () => {
@@ -413,6 +418,7 @@ const RoundResultsPage = () => {
         error={null} 
         result={resultForLayout}
         avatarUrl={profile?.avatar_image_url || profile?.avatar_url || '/assets/default-avatar.png'}
+        peers={(peerRows || []).filter(p => !user || p.userId !== user.id)}
         nextRoundButton={
           <Button 
             onClick={handleNext} 

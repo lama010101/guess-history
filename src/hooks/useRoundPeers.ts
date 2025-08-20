@@ -41,86 +41,69 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
 
   const refresh = useCallback(async () => {
     if (!roomId || !roundNumber) {
+      console.log('useRoundPeers: Missing roomId or roundNumber', { roomId, roundNumber });
       setPeers([]);
       return;
     }
+    console.log('useRoundPeers: Fetching peers for', { roomId, roundNumber });
     setIsLoading(true);
     setError(null);
 
     try {
-      // 1) Base scoreboard rows (includes display_name, score/xp/accuracy)
-      const { data: scoreboard, error: rpcErr } = await (supabase as any)
-        .rpc('get_round_scoreboard', { p_room_id: roomId, p_round_number: roundNumber });
+      // Convert 1-based roundNumber to 0-based for DB
+      const dbRoundIndex = Math.max(0, Number(roundNumber) - 1);
+      console.log('useRoundPeers: Using dbRoundIndex:', dbRoundIndex);
 
-      if (rpcErr) {
-        console.warn('[useRoundPeers] get_round_scoreboard failed', rpcErr);
+      // 1. Fetch scoreboard via RPC
+      const { data: scoreboard, error: rpcError } = await (supabase as any).rpc('get_round_scoreboard', {
+        p_room_id: roomId,
+        p_round_number: dbRoundIndex
+      });
+      console.log('useRoundPeers: Scoreboard RPC result:', { scoreboard, rpcError });
+
+      if (rpcError) {
+        console.warn('[useRoundPeers] get_round_scoreboard failed', rpcError);
       }
 
       const scoreboardRows: Array<any> = Array.isArray(scoreboard) ? scoreboard : [];
 
-      // 2) Lat/Lng and other per-round fields from round_results
-      const { data: rrRows, error: rrErr } = await (supabase as any)
+      // 2. Fetch round_results for lat/lng enrichment
+      const { data: rrRows, error: rrError } = await (supabase as any)
         .from('round_results')
-        .select('user_id, guess_lat, guess_lng, actual_lat, actual_lng, distance_km, guess_year, score, accuracy, xp_total')
+        .select('user_id, guess_lat, guess_lng, actual_lat, actual_lng')
         .eq('room_id', roomId)
-        .eq('round_index', roundNumber);
+        .eq('round_index', dbRoundIndex);
+      console.log('useRoundPeers: Round results query:', { rrRows, rrError });
 
-      if (rrErr) {
-        console.warn('[useRoundPeers] round_results fetch failed', rrErr);
+      if (rrError) {
+        console.warn('[useRoundPeers] round_results fetch failed', rrError);
       }
 
-      const rrByUser = new Map<string, any>();
-      (rrRows || []).forEach((r: any) => rrByUser.set(String(r.user_id), r));
-
-      // 3) Merge: prefer RPC values for score/accuracy/xp and names; enrich with rr lat/lng
-      const mergedMap = new Map<string, PeerRoundRow>();
-
-      // Merge from RPC first (preferred for score/xp/accuracy/display names)
-      scoreboardRows.forEach((row: any) => {
-        const userId = String(row.user_id);
-        const rr = rrByUser.get(userId);
-        mergedMap.set(userId, {
-          userId,
-          displayName: String(row.display_name ?? ''),
-          score: Number(row.score ?? rr?.score ?? 0),
-          accuracy: Number(row.accuracy ?? rr?.accuracy ?? 0),
-          xpTotal: Number(row.xp_total ?? rr?.xp_total ?? 0),
-          xpDebt: Number(row.xp_debt ?? 0),
-          accDebt: Number(row.acc_debt ?? 0),
-          distanceKm: (row.distance_km ?? rr?.distance_km) ?? null,
-          guessYear: (row.guess_year ?? rr?.guess_year) ?? null,
-          guessLat: rr?.guess_lat ?? null,
-          guessLng: rr?.guess_lng ?? null,
-          actualLat: rr?.actual_lat ?? null,
-          actualLng: rr?.actual_lng ?? null,
-        });
+      // 3. Merge scoreboard + round_results
+      const mergedPeers: PeerRoundRow[] = (scoreboard || []).map((sb: any) => {
+        const rr = rrRows?.find((r: any) => r.user_id === sb.user_id);
+        return {
+          userId: sb.user_id,
+          displayName: sb.display_name || 'Unknown',
+          score: sb.score || 0,
+          accuracy: sb.accuracy || 0,
+          xpTotal: sb.xp_total || 0,
+          xpDebt: sb.xp_debt || 0,
+          accDebt: sb.acc_debt || 0,
+          distanceKm: sb.distance_km,
+          guessYear: sb.guess_year,
+          guessLat: rr?.guess_lat || null,
+          guessLng: rr?.guess_lng || null,
+          actualLat: rr?.actual_lat || null,
+          actualLng: rr?.actual_lng || null,
+        };
       });
+      console.log('useRoundPeers: Merged peers:', mergedPeers);
 
-      // Ensure any users only present in round_results are also represented
-      (rrRows || []).forEach((rr: any) => {
-        const userId = String(rr.user_id);
-        if (!mergedMap.has(userId)) {
-          mergedMap.set(userId, {
-            userId,
-            displayName: '',
-            score: Number(rr?.score ?? 0),
-            accuracy: Number(rr?.accuracy ?? 0),
-            xpTotal: Number(rr?.xp_total ?? 0),
-            xpDebt: 0,
-            accDebt: 0,
-            distanceKm: rr?.distance_km ?? null,
-            guessYear: rr?.guess_year ?? null,
-            guessLat: rr?.guess_lat ?? null,
-            guessLng: rr?.guess_lng ?? null,
-            actualLat: rr?.actual_lat ?? null,
-            actualLng: rr?.actual_lng ?? null,
-          });
-        }
-      });
-
-      const merged: PeerRoundRow[] = Array.from(mergedMap.values());
-
-      if (mountedRef.current) setPeers(merged);
+      if (mountedRef.current) {
+        console.log('useRoundPeers: Setting peers state:', mergedPeers);
+        setPeers(mergedPeers);
+      }
     } catch (e: any) {
       if (mountedRef.current) setError(e?.message || 'Failed to load peers');
     } finally {
@@ -135,16 +118,19 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
   useEffect(() => {
     if (!roomId || !roundNumber) return;
 
+    // Translate 1-based round number (UI) to 0-based DB index for subscription, too
+    const dbRoundIndex = Math.max(0, Number(roundNumber) - 1);
+
     const channel = supabase
-      .channel(`round_results:${roomId}:${roundNumber}`)
+      .channel(`round_results:${roomId}:${dbRoundIndex}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'round_results',
-        filter: `room_id=eq.${roomId}`,
+        filter: `room_id=eq.${roomId},round_index=eq.${dbRoundIndex}`,
       }, (payload) => {
         const newRow = (payload as any).new as any;
-        if (newRow && typeof newRow.round_index === 'number' && newRow.round_index === roundNumber) {
+        if (newRow && typeof newRow.round_index === 'number' && newRow.round_index === dbRoundIndex) {
           // Simple strategy: re-fetch to keep logic consistent with RLS and RPC output
           refresh();
         }

@@ -127,7 +127,12 @@ export default class Lobby implements Party.Server {
 
   private async persistRoundStart(startedAt: string, durationSec: number) {
     const env = (this.room.env as unknown as Env) || {};
-    if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return;
+    if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.warn(
+        "lobby: persistRoundStart skipped due to missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY"
+      );
+      return;
+    }
     const url = `${env.SUPABASE_URL}/rest/v1/room_rounds`;
     const headers = this.supabaseHeaders(env)!;
     // First round assumed at game start
@@ -138,7 +143,17 @@ export default class Lobby implements Party.Server {
       duration_sec: durationSec,
     }];
     try {
-      await fetch(url, { method: "POST", headers, body: JSON.stringify(payload) });
+      const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(payload) });
+      if (!res.ok) {
+        let body = "";
+        try {
+          body = await res.text();
+        } catch {}
+        console.warn(
+          `lobby: persistRoundStart failed ${res.status} ${res.statusText} at ${url}`,
+          body || "<no response body>"
+        );
+      }
     } catch (e) {
       console.warn("lobby: persistRoundStart failed", e);
     }

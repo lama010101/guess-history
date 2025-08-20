@@ -1,18 +1,16 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { redirectToHome, isMainDomain } from "@/lib/auth/crossDomain";
-import RedesignedAuthModal from "@/components/redesigned/RedesignedAuthModal";
-import RedesignedHeroSection from "@/components/redesigned/RedesignedHeroSection";
-import StatsSection from "@/components/redesigned/StatsSection";
-import RedesignedHowItWorksSection from "@/components/redesigned/RedesignedHowItWorksSection";
-import RedesignedGameModeSection from "@/components/redesigned/RedesignedGameModeSection";
-import RedesignedBenefitsSection from "@/components/redesigned/RedesignedBenefitsSection";
-import PricingSection from "@/components/redesigned/PricingSection";
-import RedesignedFAQSection from "@/components/redesigned/RedesignedFAQSection";
-import RedesignedNavbar from "@/components/redesigned/RedesignedNavbar";
-import StickyCTAButton from "@/components/redesigned/StickyCTAButton";
-
+import RedesignedAuthModal from "@/components/landing/RedesignedAuthModal";
+import RedesignedHeroSection from "@/components/landing/RedesignedHeroSection";
+import StatsSection from "@/components/landing/StatsSection";
+import RedesignedHowItWorksSection from "@/components/landing/RedesignedHowItWorksSection";
+import RedesignedGameModeSection from "@/components/landing/RedesignedGameModeSection";
+import RedesignedBenefitsSection from "@/components/landing/RedesignedBenefitsSection";
+import PricingSection from "@/components/landing/PricingSection";
+import RedesignedFAQSection from "@/components/landing/RedesignedFAQSection";
+import RedesignedNavbar from "@/components/landing/RedesignedNavbar";
+import StickyCTAButton from "@/components/landing/StickyCTAButton";
 const Main = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { session, isLoading } = useAuth();

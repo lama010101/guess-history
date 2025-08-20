@@ -21,6 +21,7 @@ export interface PrepareOptions {
   roomId?: string | null;
   count: number;
   seed?: string | null;
+  nonBlocking?: boolean;
 }
 
 export type PrepStatus = 'idle' | 'selecting' | 'fetching' | 'preloading' | 'done' | 'error';
@@ -79,6 +80,24 @@ export function useGamePreparation() {
     const userId = opts.userId ?? null;
     const roomId = opts.roomId ?? null;
     const count = Math.max(1, opts.count);
+    // Enforce multiplayer gating before any work
+    if (roomId && !opts.seed) {
+      try {
+        console.warn('[useGamePreparation] Multiplayer roomId provided without seed. Gating: not starting preparation.');
+      } catch {}
+      setStatus('idle');
+      setPrepared([]);
+      setLoadedIndices(new Set());
+      throw new Error('Missing seed for multiplayer preparation');
+    }
+
+    try {
+      console.debug('[useGamePreparation] begin prepare', {
+        roomId,
+        count,
+        seed_present: !!opts.seed,
+      });
+    } catch {}
 
     // 1) Select image IDs (and persist to game_sessions when roomId provided)
     const rpcArgs: any = {
@@ -88,6 +107,16 @@ export function useGamePreparation() {
     };
     if (opts.seed) rpcArgs.p_seed = opts.seed; // omit to use DB default when not provided
 
+    // Log sanitized args for diagnostics (avoid dumping large data)
+    try {
+      console.debug('[useGamePreparation] RPC create_game_session_and_pick_images args', {
+        p_user_id: rpcArgs.p_user_id,
+        p_room_id: rpcArgs.p_room_id,
+        p_count: rpcArgs.p_count,
+        p_seed_present: !!rpcArgs.p_seed,
+      });
+    } catch {}
+
     const { data: rows, error: pickErr } = await supabase.rpc(
       'create_game_session_and_pick_images',
       rpcArgs as any,
@@ -96,6 +125,21 @@ export function useGamePreparation() {
     if (pickErr) {
       setStatus('error');
       setError(pickErr.message || 'Failed to select images');
+      // Include code/details for quicker diagnosis (e.g., 404 on RPC missing, RLS, etc.)
+      try {
+        console.warn('[useGamePreparation] RPC failed', {
+          code: (pickErr as any).code,
+          message: pickErr.message,
+          details: (pickErr as any).details,
+          hint: (pickErr as any).hint,
+          rpcArgs: {
+            p_user_id: rpcArgs.p_user_id,
+            p_room_id: rpcArgs.p_room_id,
+            p_count: rpcArgs.p_count,
+            p_seed_present: !!rpcArgs.p_seed,
+          },
+        });
+      } catch {}
       throw pickErr;
     }
 
@@ -106,11 +150,36 @@ export function useGamePreparation() {
       : [];
 
     const ids: string[] = ordered.map((r: any) => r.image_id);
+    if (abortRef.current) {
+      try {
+        console.warn('[useGamePreparation] aborted after selection phase');
+      } catch {}
+      setStatus('error');
+      const err = new Error('Preparation aborted');
+      setError(err.message);
+      throw err;
+    }
+    try {
+      console.debug('[useGamePreparation] selected image IDs (first 5)', {
+        first5: ids.slice(0, 5),
+        total: ids.length,
+        seed_present: !!opts.seed,
+        roomId,
+      });
+    } catch {}
 
     if (ids.length < count) {
       const err = new Error(`Only ${ids.length} eligible images found (need ${count}).`);
       setStatus('error');
       setError(err.message);
+      try {
+        console.warn('[useGamePreparation] Insufficient images selected', {
+          wanted: count,
+          got: ids.length,
+          roomId,
+          userId,
+        });
+      } catch {}
       throw err;
     }
 
@@ -124,7 +193,25 @@ export function useGamePreparation() {
     if (fetchErr) {
       setStatus('error');
       setError(fetchErr.message || 'Failed to fetch image metadata');
+      try {
+        console.warn('[useGamePreparation] images fetch failed', {
+          code: (fetchErr as any).code,
+          message: fetchErr.message,
+          details: (fetchErr as any).details,
+          idsRequested: ids.length,
+        });
+      } catch {}
       throw fetchErr;
+    }
+
+    if (abortRef.current) {
+      try {
+        console.warn('[useGamePreparation] aborted after metadata fetch');
+      } catch {}
+      setStatus('error');
+      const err = new Error('Preparation aborted');
+      setError(err.message);
+      throw err;
     }
 
     const byId = new Map((imgs ?? []).map((i: any) => [i.id, i]));
@@ -149,36 +236,69 @@ export function useGamePreparation() {
       };
     });
 
-    // 4) Preload + decode with progress
-    setStatus('preloading');
-    setTotal(preparedList.length);
-    setLoaded(0);
-    setPrepared(preparedList);
-
-    for (let i = 0; i < preparedList.length; i++) {
-      if (abortRef.current) break;
-      await preloadOne(preparedList[i].url);
-      setLoaded((prev) => Math.min(preparedList.length, prev + 1));
-      setLoadedIndices((prev) => {
-        const next = new Set(prev);
-        next.add(i);
-        return next;
-      });
-    }
-
+    // 3.5) Early abort before committing prepared list
     if (abortRef.current) {
+      try {
+        console.warn('[useGamePreparation] aborted before commit prepared list');
+      } catch {}
       setStatus('error');
       const err = new Error('Preparation aborted');
       setError(err.message);
       throw err;
     }
 
-    setStatus('done');
+    // 4) Preload + decode with progress
+    setStatus('preloading');
+    setTotal(preparedList.length);
+    setLoaded(0);
+    setPrepared(preparedList);
+
+    const runPreload = async () => {
+      for (let i = 0; i < preparedList.length; i++) {
+        if (abortRef.current) break;
+        await preloadOne(preparedList[i].url);
+        setLoaded((prev) => Math.min(preparedList.length, prev + 1));
+        setLoadedIndices((prev) => {
+          const next = new Set(prev);
+          next.add(i);
+          return next;
+        });
+      }
+
+      if (abortRef.current) {
+        try {
+          console.warn('[useGamePreparation] preparation aborted mid-preload', {
+            planned: preparedList.length,
+          });
+        } catch {}
+        setStatus('error');
+        setError('Preparation aborted');
+        return;
+      }
+      setStatus('done');
+    };
+
+    if (opts.nonBlocking) {
+      try {
+        console.debug('[useGamePreparation] starting non-blocking preload');
+      } catch {}
+      // Fire and forget
+      void runPreload();
+      return { images: preparedList, ids };
+    }
+
+    await runPreload();
+    if (status === 'error') {
+      throw new Error(error || 'Preparation aborted');
+    }
     return { images: preparedList, ids };
   }, [resolveImageUrl]);
 
   const abort = useCallback(() => {
     abortRef.current = true;
+    try {
+      console.debug('[useGamePreparation] abort() called');
+    } catch {}
   }, []);
 
   return {

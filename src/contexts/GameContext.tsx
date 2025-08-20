@@ -447,25 +447,51 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     applyGameSettings(settings);
     
     try {
+      // Multiplayer gating: require seed when a roomId is specified
+      if (settings?.roomId && !settings.seed) {
+        try {
+          console.warn('[GameContext] Multiplayer start requested without seed. Gating preparation until seed is provided (start event).', {
+            roomId: settings.roomId,
+          });
+        } catch {}
+        setIsLoading(false);
+        setError(null); // not an error, just waiting for start
+        return;
+      }
       const newRoomId = settings?.roomId && settings.roomId.trim().length > 0
         ? settings.roomId
         : `room_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       const newGameId = uuidv4();
       setGameId(newGameId);
-      console.log(`[GameContext] [GameID: ${newGameId}] Starting new game, roomId: ${newRoomId}, seed: ${settings?.seed ?? 'none'}`);
+      const isMultiplayer = !!settings?.roomId && !!settings?.seed;
+      console.log(`[GameContext] [GameID: ${newGameId}] Starting new game, roomId: ${newRoomId}, seed: ${settings?.seed ?? 'none'}, isMultiplayer: ${isMultiplayer}`);
       setRoomId(newRoomId);
-      // Try new atomic RPC + preload path first
+      // Try deterministic selection first for multiplayer; otherwise use prepare()
       const { data: { user } } = await supabase.auth.getUser();
       let preparedImages: GameImage[] | null = null;
-      try {
-        const prep = await prepare({
-          userId: user?.id ?? null,
-          roomId: settings?.roomId ? newRoomId : null,
-          count: ROUNDS_PER_GAME,
-          seed: settings?.seed ?? null,
-        });
-        preparedImages = prep.images.map((img) => ({
-          id: img.id,
+
+      if (isMultiplayer) {
+        // Deterministic, shared set persisted by roomId and seed.
+        const imageBatch = await getOrPersistRoomImages(newRoomId, settings?.seed ?? '', ROUNDS_PER_GAME);
+        if (!imageBatch || imageBatch.length < ROUNDS_PER_GAME) {
+          console.warn('[GameContext] getOrPersistRoomImages returned insufficient images', imageBatch?.length);
+          setIsLoading(false);
+          setError('Could not fetch enough images for multiplayer');
+          return;
+        }
+
+        const resolveUrl = (img: any) => {
+          if (img.firebase_url) return String(img.firebase_url);
+          let finalUrl: string | null = img.image_url as string | null;
+          if (finalUrl && !finalUrl.startsWith('http')) {
+            const { data } = supabase.storage.from('images').getPublicUrl(finalUrl);
+            finalUrl = data?.publicUrl || '';
+          }
+          return finalUrl || '';
+        };
+
+        preparedImages = imageBatch.map((img: any) => ({
+          id: String(img.id),
           title: img.title,
           description: img.description,
           source_citation: img.source_citation,
@@ -474,41 +500,76 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           year: img.year,
           image_url: img.image_url,
           location_name: img.location_name,
-          url: img.url,
+          url: resolveUrl(img),
           firebase_url: img.firebase_url,
           confidence: img.confidence,
         }));
-      } catch (prepErr) {
-        console.warn('[GameContext] prepare() failed, falling back to legacy selection', prepErr);
-      }
 
-      if (!preparedImages) {
-        // Legacy hybrid no-repeat fetch
-        const imageBatch = settings?.roomId
-          ? await getOrPersistRoomImages(newRoomId, `${newRoomId}-${settings?.seed ?? ''}`, ROUNDS_PER_GAME)
-          : await getNewImages(user?.id ?? null, ROUNDS_PER_GAME);
-          
-        if (!imageBatch || imageBatch.length < ROUNDS_PER_GAME) {
-          console.warn("Could not fetch at least 5 images, fetched:", imageBatch?.length);
-          throw new Error(`Database only contains ${imageBatch?.length || 0} images. Need ${ROUNDS_PER_GAME} to start.`);
+        try {
+          console.debug('[GameContext] MP deterministic images selected (first 5 IDs)', {
+            first5: preparedImages.map(i => i.id).slice(0, 5),
+            total: preparedImages.length,
+            roomId: newRoomId,
+            seed: settings?.seed,
+          });
+        } catch {}
+
+        setImages(preparedImages);
+      } else {
+        try {
+          const prep = await prepare({
+            userId: user?.id ?? null,
+            roomId: null,
+            count: ROUNDS_PER_GAME,
+            seed: null,
+          });
+          preparedImages = prep.images.map((img) => ({
+            id: img.id,
+            title: img.title,
+            description: img.description,
+            source_citation: img.source_citation,
+            latitude: img.latitude,
+            longitude: img.longitude,
+            year: img.year,
+            image_url: img.image_url,
+            location_name: img.location_name,
+            url: img.url,
+            firebase_url: img.firebase_url,
+            confidence: img.confidence,
+          }));
+        } catch (prepErr) {
+          console.warn('[GameContext] prepare() failed', prepErr);
         }
 
-        // For solo play, shuffle locally; for multiplayer (roomId present), keep seeded order
-        const selectedImages = settings?.roomId ? (imageBatch as any) : shuffleArray(imageBatch as any);
-        const processedImages = await processRawImages(selectedImages);
-        setImages(processedImages);
-        console.log("Selected 5 images stored in context:", processedImages);
-      } else {
-        setImages(preparedImages);
-        console.log("Prepared and preloaded 5 images stored in context:", preparedImages);
+        if (!preparedImages) {
+          // Legacy no-repeat fetch for solo
+          const imageBatch = await getNewImages(user?.id ?? null, ROUNDS_PER_GAME);
+          if (!imageBatch || imageBatch.length < ROUNDS_PER_GAME) {
+            console.warn('Could not fetch at least 5 images, fetched:', imageBatch?.length);
+            setIsLoading(false);
+            setError('Could not fetch at least 5 images.');
+            return;
+          }
+          const mappedImages: GameImage[] = imageBatch.map((img: any) => ({
+            id: String(img.id),
+            title: img.title,
+            description: img.description,
+            source_citation: img.source_citation,
+            latitude: img.latitude,
+            longitude: img.longitude,
+            year: img.year,
+            image_url: img.image_url,
+            location_name: img.location_name,
+            url: img.url || img.image_url,
+            firebase_url: img.firebase_url,
+            confidence: img.confidence,
+          }));
+          setImages(mappedImages);
+        } else {
+          setImages(preparedImages);
+        }
       }
-
-      localStorage.setItem('gh_game_settings', JSON.stringify({
-        hintsAllowed,
-        roundTimerSec,
-        timerEnabled
-      }));
-
+      console.log("Prepared and preloaded 5 images stored in context:", preparedImages);
       console.log(`Game settings: ${hintsAllowed} hints, ${roundTimerSec}s timer, timer enabled: ${timerEnabled}`);
       
       setIsLoading(false);

@@ -32,7 +32,7 @@ const Room: React.FC = () => {
   const { roomCode = '' } = useParams<{ roomCode: string }>();
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const { startGame, roundTimerSec, timerEnabled, setRoundTimerSec, setTimerEnabled } = useGame();
+  const { startGame, abortPreparation, roundTimerSec, timerEnabled, setRoundTimerSec, setTimerEnabled } = useGame();
   const { user } = useAuth();
 
   const name = useMemo(() => {
@@ -147,6 +147,20 @@ const Room: React.FC = () => {
                 startedRef.current = true;
                 // Derive a deterministic UUID seed from roomCode and startedAt timestamp
                 const seed = uuidv5(`${roomCode}:${data.startedAt}`, uuidv5.URL);
+                try {
+                  console.debug('[Room] start event received', {
+                    roomCode,
+                    startedAt: data.startedAt,
+                    durationSec: data.durationSec,
+                    timerEnabled: data.timerEnabled,
+                    seed,
+                  });
+                } catch {}
+                // Ensure any ongoing preparation is aborted before reseeding
+                try {
+                  abortPreparation();
+                  console.debug('[Room] Aborted any existing preparation before starting game');
+                } catch {}
                 startGame({ roomId: roomCode, seed, timerSeconds: data.durationSec, timerEnabled: data.timerEnabled }).catch(() => {
                   startedRef.current = false;
                 });

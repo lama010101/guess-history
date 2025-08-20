@@ -27,12 +27,32 @@ export async function setCurrentRoundInSession(roomId: string, roundNumber: numb
 
     if (error) {
       // 42703 = undefined column, 42P01 = undefined table
-      if ((error as any).code !== '42703' && (error as any).code !== '42P01') {
-        console.warn('[roomState] setCurrentRoundInSession upsert error', error);
+      const code = (error as any).code;
+      const details = (error as any).details;
+      const message = (error as any).message || String(error);
+      if (code !== '42703' && code !== '42P01') {
+        console.warn('[roomState] setCurrentRoundInSession upsert error', {
+          code,
+          message,
+          details,
+          roomId,
+          roundNumber,
+        });
+      } else {
+        console.warn('[roomState] setCurrentRoundInSession skipped (missing table/column)', {
+          code,
+          message,
+          roomId,
+          roundNumber,
+        });
       }
     }
   } catch (e: any) {
-    console.warn('[roomState] setCurrentRoundInSession fallback due to error:', e?.message || e);
+    console.warn('[roomState] setCurrentRoundInSession fallback due to error:', {
+      message: e?.message || String(e),
+      roomId,
+      roundNumber,
+    });
   }
 }
 
@@ -56,10 +76,19 @@ export async function getOrCreateRoundState(
       .maybeSingle();
 
     if (error && (error as any).code !== 'PGRST116') {
-      if ((error as any).code === '42P01') {
+      const code = (error as any).code;
+      const details = (error as any).details;
+      const message = (error as any).message || String(error);
+      if (code === '42P01') {
         // table missing, fallback below
       } else {
-        console.warn('[roomState] select error', error);
+        console.warn('[roomState] room_rounds select error', {
+          code,
+          message,
+          details,
+          roomId,
+          roundNumber,
+        });
       }
     }
 
@@ -82,8 +111,16 @@ export async function getOrCreateRoundState(
       .single();
 
     if (insertErr && (insertErr as any).code !== 'PGRST116') {
-      if ((insertErr as any).code !== '42P01') {
-        console.warn('[roomState] insert/upsert error', insertErr);
+      const code = (insertErr as any).code;
+      const details = (insertErr as any).details;
+      const message = (insertErr as any).message || String(insertErr);
+      if (code !== '42P01') {
+        console.warn('[roomState] room_rounds upsert error', {
+          code,
+          message,
+          details,
+          insertPayload,
+        });
       }
       // Best-effort fallback using client time (only when table missing or other errors)
       return {
@@ -107,8 +144,17 @@ export async function getOrCreateRoundState(
       .maybeSingle();
 
     if (afterErr && (afterErr as any).code !== 'PGRST116') {
-      if ((afterErr as any).code !== '42P01') {
-        console.warn('[roomState] follow-up select error', afterErr);
+      const code = (afterErr as any).code;
+      const details = (afterErr as any).details;
+      const message = (afterErr as any).message || String(afterErr);
+      if (code !== '42P01') {
+        console.warn('[roomState] room_rounds follow-up select error', {
+          code,
+          message,
+          details,
+          roomId,
+          roundNumber,
+        });
       }
     }
 
@@ -122,7 +168,12 @@ export async function getOrCreateRoundState(
       duration_sec: durationSec,
     };
   } catch (e: any) {
-    console.warn('[roomState] getOrCreateRoundState fallback due to error:', e?.message || e);
+    console.warn('[roomState] getOrCreateRoundState fallback due to error:', {
+      message: e?.message || String(e),
+      roomId,
+      roundNumber,
+      durationSec,
+    });
     // Fallback if anything goes wrong
     return {
       room_id: roomId,

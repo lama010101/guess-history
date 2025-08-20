@@ -301,6 +301,28 @@ supabase functions deploy
 - Room lifecycle events
 - Error states and edge cases
 
+### Diagnostics & Logging — Multiplayer Start/Session
+- __Server (PartyKit)__: `server/lobby.ts`
+  - `persistRoundStart()` now logs when env vars are missing and when the Supabase REST call fails, including HTTP status and response body.
+  - Where to see: the terminal running `npm run partykit:dev` or the PartyKit worker logs in production.
+- __Client (RPC & images)__: `src/hooks/useGamePreparation.ts`
+  - Logs sanitized RPC args and detailed failures for `create_game_session_and_pick_images` (code, message, details, hint) and image metadata fetch errors.
+  - Also warns when selected image count is insufficient vs requested.
+  - Where to see: browser DevTools console.
+- __Client (round state)__: `src/utils/roomState.ts`
+  - Logs PostgREST/PG error codes and details for `room_rounds` and `game_sessions` operations, including params (`roomId`, `roundNumber`).
+  - Skips noisy logs when table/column is missing (`42P01`, `42703`) but still notes the skip with code.
+- __Common error codes__:
+  - `404` from RPC call → missing function `create_game_session_and_pick_images` or schema mismatch.
+  - `401/403` on REST or RPC → RLS/policy issues; verify policies in migrations.
+  - `42P01` (undefined table), `42703` (undefined column) → check migrations applied.
+  - `PGRST116` (No rows) is expected in `.maybeSingle()` not-found cases.
+- __First checks__ when failures occur:
+  - Verify env: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` for server persistence.
+  - Ensure these migrations are applied: `20250809_create_game_sessions.sql`, `20250809_add_room_rounds_and_current_round.sql`, `20250817_create_game_prep_rpc.sql`.
+  - Confirm RLS policies exist for `game_sessions`, `room_rounds`, and `images` as defined in migrations.
+- __Dev reproduction__: run `npm run dev:mp` and create a room to capture both server and client logs during start.
+
 ### Web Analytics (Vercel)
 
 - Library: `@vercel/analytics`
@@ -443,6 +465,30 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - Host sees a toggle (timer on/off) and a slider (5–300 seconds, step 5s) and the formatted time.
   - Participants see the formatted time and a note that the host controls the timer.
   - Timer values are also validated on the server.
+
+## Multiplayer Start Synchronization (Timer + Deterministic Image Order)
+
+- **Authoritative start** (`server/lobby.ts`)
+  - When all connected players are ready, server broadcasts:
+    - `start { startedAt: string, durationSec: number, timerEnabled: boolean }`
+  - Server persists round start metadata for recovery.
+
+- **Client handling** (`src/pages/Room.tsx`)
+  - On `start`:
+    1) Derive a deterministic image seed from `roomCode` and `startedAt` (UUIDv5 over a stable concatenation).
+    2) Call `GameContext.startGame({ roomId, seed, timerSeconds: durationSec, timerEnabled })` to initialize both images and timer consistently across clients.
+
+- **Deterministic images**
+  - `src/utils/imageHistory.ts`: seeded RNG + `seededShuffle` over the canonical set of playable images; persists image order per room/seed to Supabase so reconnects see the same sequence.
+  - `src/hooks/useGamePreparation.ts`: fetches metadata and preloads images using the provided `seed` and `roomId`, reporting progress.
+
+- **Timer initialization**
+  - `src/contexts/GameContext.tsx`: stores `roundTimerSec` and `timerEnabled` set from server values; `startGame` accepts these and the seed.
+  - `src/pages/GameRoundPage.tsx`: computes countdown based on shared `startedAt` and `durationSec` to align all clients; on timeout, auto-submission behavior is consistent.
+
+- **Recovery / refresh**
+  - If a client reconnects or refreshes, it can recompute the same seed from `roomId` + persisted `startedAt`, and load the persisted image order from Supabase.
+  - Timer resumes from the authoritative `startedAt` and `durationSec` so the remaining time matches other clients.
 
 ## Lobby Progress Protocol
 

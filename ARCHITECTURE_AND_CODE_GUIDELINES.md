@@ -225,9 +225,6 @@ updatePlayerScore(playerId, playerName, avatar, {
   score: calculatedScore,
   submissionTime: timeTaken,
   isCorrect: distance < 50
-});
-```
-
 ## Development Setup
 
 ### Local Development
@@ -241,6 +238,8 @@ npm run dev
 # Run tests
 npm run test:multiplayer
 ```
+
+- Note: When running `npm run dev`, Vite will automatically attempt to start the PartyKit dev server if it is not already listening on `VITE_PARTYKIT_HOST` (defaults to `localhost:1999`). This is implemented via a dev-only plugin in `vite.config.ts` (name: `start-partykit-dev`). No UI changes were made; this only affects the development workflow. If you prefer manual control, start PartyKit separately before Vite or set `VITE_PARTYKIT_HOST` appropriately.
 
 ### Production Deployment
 ```bash
@@ -529,6 +528,18 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
 - **Migrations**:
   - File: `supabase/migrations/20250819_update_round_results_and_scoreboard_rpcs.sql`
   - Also defines helper trigger `set_updated_at()` if missing.
+
+### Hook: useRoundPeers (Room-Scoped Round Results)
+
+- Location: `src/hooks/useRoundPeers.ts`
+- Purpose: Fetch and subscribe to per-round peer results for a PartyKit room without changing any UI.
+- API: `const { peers, isLoading, error, refresh } = useRoundPeers(roomId, roundNumber)`
+- Row shape (`PeerRoundRow`): `{ userId, displayName, score, accuracy, xpTotal, xpDebt, accDebt, distanceKm?, guessYear?, guessLat?, guessLng?, actualLat?, actualLng? }`
+- Data sources:
+  - RPC `public.get_round_scoreboard(p_room_id, p_round_number)` for names and core metrics (score, accuracy, xp, debts)
+  - Table `public.round_results` for lat/lng and per-round details (room-scoped RLS ensures only participants can read)
+- Realtime: Subscribes to Postgres changes on `public.round_results` filtered by `room_id` and re-fetches when rows for the same `round_index` change
+- TypeScript note: Until generated DB types include RPCs/tables, the hook casts `supabase` to `any` for `.rpc`/`.from` calls to avoid type errors.
 
 ## Multiplayer Session Provider (Plan)
 

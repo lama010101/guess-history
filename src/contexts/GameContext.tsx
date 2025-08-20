@@ -702,10 +702,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         .upsert({
           user_id: user.id,
           game_id: gameId,
+          room_id: roomId ?? null,
           round_index: currentRoundIndex,
           image_id: currentImage.id,
           score: fullResult.score,
-          accuracy: fullResult.accuracy,
+          accuracy: Number(resultData.accuracy ?? 0),
+          xp_total: (fullResult.xpWhere ?? 0) + (fullResult.xpWhen ?? 0),
           xp_where: fullResult.xpWhere,
           xp_when: fullResult.xpWhen,
           hints_used: fullResult.hintsUsed,
@@ -739,7 +741,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             return [...prevResults, fullResult];
         }
     });
-  }, [images, gameId]);
+  }, [images, gameId, roomId]);
 
   const handleTimeUp = useCallback((currentRoundIndex: number) => {
     if (currentRoundIndex < 0 || currentRoundIndex >= images.length) {

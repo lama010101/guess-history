@@ -101,10 +101,20 @@ const RoundResultsPage = () => {
   }, []);
 
   // Get data from GameContext
-  const { images, roundResults, isLoading: isContextLoading, error: contextError } = useGame();
+  const { images, roundResults, isLoading: isContextLoading, error: contextError, hydrateRoomImages, syncRoomId } = useGame();
 
   const roundNumber = parseInt(roundNumberStr || '1', 10);
   const currentRoundIndex = roundNumber - 1; // 0-based index
+
+  // Ensure context roomId is in sync with URL and membership is upserted
+  useEffect(() => {
+    if (roomId) {
+      syncRoomId(roomId);
+      if (!images || images.length === 0) {
+        hydrateRoomImages(roomId);
+      }
+    }
+  }, [roomId, images.length, hydrateRoomImages, syncRoomId]);
 
   // Find the context result and image data
   const contextResult = roundResults.find(r => r.roundIndex === currentRoundIndex);

@@ -55,6 +55,8 @@ interface GameContextState {
   fetchGlobalMetrics: () => Promise<void>;
   setProvisionalGlobalMetrics: (gameXP: number, gameAccuracy: number) => void;
   hydrateRoomImages: (roomId: string) => Promise<void>;
+  // Synchronize URL param roomId into context and ensure membership
+  syncRoomId: (roomId: string) => Promise<void>;
   // Preparation progress (for future UI)
   prepStatus: PrepStatus;
   prepProgress: { loaded: number; total: number };
@@ -181,6 +183,28 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       console.warn('[GameContext] ensureSessionMembership failed', e);
     }
   }, []);
+
+  // Backfill any NULL room_id rows for this game/user once we know the room
+  const repairMissingRoomId = useCallback(async (knownRoomId: string) => {
+    try {
+      if (!knownRoomId) return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !gameId) return;
+      const { error: updErr } = await supabase
+        .from('round_results')
+        .update({ room_id: knownRoomId })
+        .eq('user_id', user.id)
+        .eq('game_id', gameId)
+        .is('room_id', null);
+      if (updErr) {
+        console.warn('[GameContext] repairMissingRoomId: update failed', updErr);
+      } else {
+        console.log(`[GameContext] repairMissingRoomId: backfilled room_id for game ${gameId} to`, knownRoomId);
+      }
+    } catch (e) {
+      console.warn('[GameContext] repairMissingRoomId failed', e);
+    }
+  }, [gameId]);
 
   // Save game state to DB whenever it changes
   const saveGameState = useCallback(() => {
@@ -501,11 +525,13 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       const isMultiplayer = !!settings?.roomId && !!settings?.seed;
       console.log(`[GameContext] [GameID: ${newGameId}] Starting new game, roomId: ${newRoomId}, seed: ${settings?.seed ?? 'none'}, isMultiplayer: ${isMultiplayer}`);
       setRoomId(newRoomId);
+      try { sessionStorage.setItem('lastSyncedRoomId', newRoomId); } catch {}
       // Try deterministic selection first for multiplayer; otherwise use prepare()
       const { data: { user } } = await supabase.auth.getUser();
       if (isMultiplayer) {
         // Upsert membership for RLS/RPC authorization
         await ensureSessionMembership(newRoomId, user?.id);
+        await repairMissingRoomId(newRoomId);
       }
       let preparedImages: GameImage[] | null = null;
 
@@ -684,8 +710,10 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       const processed = await processRawImages(batch as any[]);
       setImages(processed);
       setRoomId(existingRoomId);
+      try { sessionStorage.setItem('lastSyncedRoomId', existingRoomId); } catch {}
       // Ensure user is recorded as participant in this room for multiplayer visibility
       await ensureSessionMembership(existingRoomId, user?.id);
+      await repairMissingRoomId(existingRoomId);
       if (!gameId) {
         // Generate a lightweight gameId so subsequent results can persist
         setGameId(uuidv4());
@@ -693,7 +721,53 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     } catch (e) {
       console.warn('[GameContext] hydrateRoomImages failed', e);
     }
-  }, [images, gameId, processRawImages, ensureSessionMembership]);
+  }, [images, gameId, processRawImages, ensureSessionMembership, repairMissingRoomId]);
+
+  // Sync URL roomId into context even when images are already hydrated
+  const syncRoomId = useCallback(async (incomingRoomId: string) => {
+    try {
+      if (!incomingRoomId) return;
+      const changed = roomId !== incomingRoomId;
+      if (changed) {
+        setRoomId(incomingRoomId);
+        try { sessionStorage.setItem('lastSyncedRoomId', incomingRoomId); } catch {}
+      }
+      const { data: { user } } = await supabase.auth.getUser();
+      await ensureSessionMembership(incomingRoomId, user?.id);
+      await repairMissingRoomId(incomingRoomId);
+      if (!gameId) {
+        setGameId(uuidv4());
+      }
+      if (changed) {
+        console.log('[GameContext] syncRoomId: updated roomId to', incomingRoomId);
+      } else {
+        console.log('[GameContext] syncRoomId: roomId already set, ensured membership/repair for', incomingRoomId);
+      }
+    } catch (e) {
+      console.warn('[GameContext] syncRoomId failed', e);
+    }
+  }, [roomId, ensureSessionMembership, gameId, repairMissingRoomId]);
+
+  // On first load, derive roomId from URL if present to avoid early NULL writes
+  useEffect(() => {
+    try {
+      const path = typeof window !== 'undefined' ? (window.location.pathname || '') : '';
+      const match = path.match(/\/room\/([^/]+)/);
+      const urlRoomId = (match && match[1]) ? match[1] : null;
+      if (urlRoomId && urlRoomId !== roomId) {
+        setRoomId(urlRoomId);
+        try { sessionStorage.setItem('lastSyncedRoomId', urlRoomId); } catch {}
+        (async () => {
+          const { data: { user } } = await supabase.auth.getUser();
+          await ensureSessionMembership(urlRoomId, user?.id);
+          await repairMissingRoomId(urlRoomId);
+          if (!gameId) setGameId(uuidv4());
+        })();
+      }
+    } catch (e) {
+      console.warn('[GameContext] URL roomId bootstrap failed', e);
+    }
+  }, [roomId, ensureSessionMembership, repairMissingRoomId, gameId]);
 
   const recordRoundResult = useCallback(async (resultData: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'>, currentRoundIndex: number) => {
     if (!gameId) {
@@ -737,35 +811,133 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         console.error('No user found, cannot persist round result');
         return;
       }
+      // Derive effective room id: prefer context, then URL, then sessionStorage
+      let effectiveRoomId: string | null = roomId;
+      if (!effectiveRoomId && typeof window !== 'undefined') {
+        const path = window.location.pathname || '';
+        const match = path.match(/\/room\/([^/]+)/);
+        effectiveRoomId = (match && match[1]) ? match[1] : null;
+        if (!effectiveRoomId) {
+          const last = sessionStorage.getItem('lastSyncedRoomId');
+          effectiveRoomId = last && last.length > 0 ? last : null;
+        }
+        if (effectiveRoomId) {
+          setRoomId(effectiveRoomId);
+          await ensureSessionMembership(effectiveRoomId, user.id);
+          await repairMissingRoomId(effectiveRoomId);
+        }
+      }
+      console.log('[GameContext] recordRoundResult effectiveRoomId:', effectiveRoomId ?? 'null');
 
-      const { data, error } = await supabase
-        .from('round_results')
-        .upsert({
-          user_id: user.id,
-          game_id: gameId,
-          room_id: roomId ?? null,
-          round_index: currentRoundIndex,
-          image_id: currentImage.id,
-          score: fullResult.score,
-          accuracy: Number(resultData.accuracy ?? 0),
-          xp_total: (fullResult.xpWhere ?? 0) + (fullResult.xpWhen ?? 0),
-          xp_where: fullResult.xpWhere,
-          xp_when: fullResult.xpWhen,
-          hints_used: fullResult.hintsUsed,
-          distance_km: fullResult.distanceKm,
-          guess_year: fullResult.guessYear,
-          guess_lat: fullResult.guessCoordinates?.lat,
-          guess_lng: fullResult.guessCoordinates?.lng,
-          actual_lat: fullResult.actualCoordinates.lat,
-          actual_lng: fullResult.actualCoordinates.lng
-        }, {
-          onConflict: 'user_id,game_id,round_index'
-        });
+      // Build full payload (preferred schema)
+      const payloadFull = {
+        user_id: user.id,
+        game_id: gameId,
+        room_id: effectiveRoomId ?? null,
+        round_index: currentRoundIndex,
+        image_id: currentImage.id,
+        score: fullResult.score,
+        accuracy: Number(resultData.accuracy ?? 0),
+        xp_total: (fullResult.xpWhere ?? 0) + (fullResult.xpWhen ?? 0),
+        xp_where: fullResult.xpWhere,
+        xp_when: fullResult.xpWhen,
+        hints_used: fullResult.hintsUsed,
+        distance_km: fullResult.distanceKm,
+        guess_year: fullResult.guessYear,
+        guess_lat: fullResult.guessCoordinates?.lat ?? null,
+        guess_lng: fullResult.guessCoordinates?.lng ?? null,
+        actual_lat: fullResult.actualCoordinates.lat,
+        actual_lng: fullResult.actualCoordinates.lng,
+      } as const;
 
-      if (error) {
-        console.error('Error persisting round result:', error);
+      // Choose the correct conflict target backed by a UNIQUE index
+      // - Multiplayer: (room_id, user_id, round_index)
+      // - Solo/legacy: (user_id, game_id, round_index)
+      const conflictTarget = (payloadFull.room_id && payloadFull.room_id.length > 0)
+        ? 'room_id,user_id,round_index'
+        : 'user_id,game_id,round_index';
+
+      let upsertData: any = null;
+      let upsertError: any = null;
+
+      // Attempt 1: full payload
+      {
+        const { data, error } = await supabase
+          .from('round_results')
+          .upsert(payloadFull, { onConflict: conflictTarget });
+        upsertData = data;
+        upsertError = error;
+      }
+
+      // Fallbacks for schema drift
+      if (upsertError) {
+        try {
+          const msg: string = String(upsertError.message || '');
+          console.warn('[GameContext] recordRoundResult: primary upsert failed, applying fallbacks', {
+            code: upsertError.code,
+            message: upsertError.message,
+          });
+
+          // Attempt 2: remove xp_total if missing
+          if (msg.includes("'xp_total'") || msg.toLowerCase().includes('xp_total')) {
+            const { xp_total, ...payloadNoXp } = payloadFull as any;
+            const { data, error } = await supabase
+              .from('round_results')
+              .upsert(payloadNoXp, { onConflict: conflictTarget });
+            upsertData = data;
+            upsertError = error;
+          }
+
+          // Attempt 3: if still error and room_id appears missing, remove room_id
+          if (upsertError) {
+            const msg2: string = String(upsertError.message || msg || '');
+            if (msg2.includes("'room_id'") || msg2.toLowerCase().includes('room_id')) {
+              const { room_id, ...payloadNoRoom } = payloadFull as any;
+              const { data, error } = await supabase
+                .from('round_results')
+                .upsert(payloadNoRoom, { onConflict: conflictTarget });
+              upsertData = data;
+              upsertError = error;
+            }
+          }
+
+          // Attempt 4: ultimate legacy-minimal payload
+          if (upsertError) {
+            const payloadLegacy: any = {
+              user_id: user.id,
+              game_id: gameId,
+              round_index: currentRoundIndex,
+              image_id: currentImage.id,
+              score: fullResult.score,
+              accuracy: Number(resultData.accuracy ?? 0),
+              xp_where: fullResult.xpWhere,
+              xp_when: fullResult.xpWhen,
+              hints_used: fullResult.hintsUsed,
+              distance_km: fullResult.distanceKm,
+              guess_year: fullResult.guessYear,
+              guess_lat: fullResult.guessCoordinates?.lat ?? null,
+              guess_lng: fullResult.guessCoordinates?.lng ?? null,
+              actual_lat: fullResult.actualCoordinates.lat,
+              actual_lng: fullResult.actualCoordinates.lng,
+            };
+            const { data, error } = await supabase
+              .from('round_results')
+              .upsert(payloadLegacy, { onConflict: conflictTarget });
+            upsertData = data;
+            upsertError = error;
+            if (!error) {
+              console.warn('[GameContext] recordRoundResult: persisted via legacy payload (without xp_total/room_id)');
+            }
+          }
+        } catch (fallbackErr) {
+          console.warn('[GameContext] recordRoundResult: fallback handling threw', fallbackErr);
+        }
+      }
+
+      if (upsertError) {
+        console.error('Error persisting round result (after fallbacks):', upsertError);
       } else {
-        console.log('Round result persisted successfully:', data);
+        console.log('Round result persisted successfully:', upsertData);
       }
     } catch (error) {
       console.error('Error in recordRoundResult:', error);
@@ -782,7 +954,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             return [...prevResults, fullResult];
         }
     });
-  }, [images, gameId, roomId]);
+  }, [images, gameId, roomId, ensureSessionMembership, repairMissingRoomId]);
 
   const handleTimeUp = useCallback((currentRoundIndex: number) => {
     if (currentRoundIndex < 0 || currentRoundIndex >= images.length) {
@@ -896,6 +1068,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     refreshGlobalMetrics,
     setProvisionalGlobalMetrics,
     hydrateRoomImages,
+    syncRoomId,
     // preparation state (no UI coupling)
     prepStatus,
     prepProgress,

@@ -39,8 +39,37 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
 
   useEffect(() => () => { mountedRef.current = false; }, []);
 
+  // Ensure current user is registered as a participant in this room to satisfy RPC/RLS
+  const membershipEnsuredRef = useRef(false);
+  useEffect(() => { membershipEnsuredRef.current = false; }, [roomId]);
+
+  const ensureMembership = useCallback(async () => {
+    try {
+      if (!roomId) return;
+      if (membershipEnsuredRef.current) return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) return;
+
+      // Fetch display name from profiles; fallback to null if unavailable
+      const { data: profile } = await (supabase as any)
+        .from('profiles')
+        .select('display_name')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const { error: upsertErr } = await (supabase as any)
+        .from('session_players')
+        .upsert({ room_id: roomId, user_id: user.id, display_name: profile?.display_name ?? null }, { onConflict: 'room_id,user_id' });
+      if (!upsertErr) {
+        membershipEnsuredRef.current = true;
+      }
+    } catch (e) {
+      // Non-fatal; RPC may still fail and we will surface/log that path
+    }
+  }, [roomId]);
+
   const refresh = useCallback(async () => {
-    if (!roomId || !roundNumber) {
+    if (!roomId || roundNumber == null) {
       console.log('useRoundPeers: Missing roomId or roundNumber', { roomId, roundNumber });
       setPeers([]);
       return;
@@ -54,6 +83,9 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       const dbRoundIndex = Math.max(0, Number(roundNumber) - 1);
       console.log('useRoundPeers: Using dbRoundIndex:', dbRoundIndex);
 
+      // Ensure we are a participant for RLS/RPC authorization
+      await ensureMembership();
+
       // 1. Fetch scoreboard via RPC
       const { data: scoreboard, error: rpcError } = await (supabase as any).rpc('get_round_scoreboard', {
         p_room_id: roomId,
@@ -65,7 +97,21 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
         console.warn('[useRoundPeers] get_round_scoreboard failed', rpcError);
       }
 
-      const scoreboardRows: Array<any> = Array.isArray(scoreboard) ? scoreboard : [];
+      let scoreboardRows: Array<any> = Array.isArray(scoreboard) ? scoreboard : [];
+
+      // Retry once if not a participant (race condition) after ensuring membership
+      if (rpcError && String(rpcError.message || '').toLowerCase().includes('not a participant')) {
+        try {
+          await ensureMembership();
+          const { data: retryData, error: retryErr } = await (supabase as any).rpc('get_round_scoreboard', {
+            p_room_id: roomId,
+            p_round_number: dbRoundIndex
+          });
+          if (!retryErr && Array.isArray(retryData)) {
+            scoreboardRows = retryData;
+          }
+        } catch {}
+      }
 
       // 2. Fetch round_results for lat/lng enrichment
       const { data: rrRows, error: rrError } = await (supabase as any)
@@ -80,7 +126,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       }
 
       // 3. Merge scoreboard + round_results
-      const mergedPeers: PeerRoundRow[] = (scoreboard || []).map((sb: any) => {
+      const mergedPeers: PeerRoundRow[] = (scoreboardRows).map((sb: any) => {
         const rr = rrRows?.find((r: any) => r.user_id === sb.user_id);
         return {
           userId: sb.user_id,
@@ -92,10 +138,10 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
           accDebt: sb.acc_debt || 0,
           distanceKm: sb.distance_km,
           guessYear: sb.guess_year,
-          guessLat: rr?.guess_lat || null,
-          guessLng: rr?.guess_lng || null,
-          actualLat: rr?.actual_lat || null,
-          actualLng: rr?.actual_lng || null,
+          guessLat: rr?.guess_lat ?? null,
+          guessLng: rr?.guess_lng ?? null,
+          actualLat: rr?.actual_lat ?? null,
+          actualLng: rr?.actual_lng ?? null,
         };
       });
       console.log('useRoundPeers: Merged peers:', mergedPeers);
@@ -116,7 +162,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
 
   // Realtime subscription: refresh on insert/update for this room/round
   useEffect(() => {
-    if (!roomId || !roundNumber) return;
+    if (!roomId || roundNumber == null) return;
 
     // Translate 1-based round number (UI) to 0-based DB index for subscription, too
     const dbRoundIndex = Math.max(0, Number(roundNumber) - 1);

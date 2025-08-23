@@ -82,14 +82,14 @@ const ImageRatingModal: React.FC<ImageRatingModalProps> = ({ isOpen, onClose, im
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Rate Image and Metadata Accuracy</DialogTitle>
+          <DialogTitle>Rate Accuracy</DialogTitle>
           <DialogDescription>
             Your feedback helps us improve our content
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="flex flex-col gap-2">
-            <label>IMAGE Quality & Accuracy</label>
+            <label>Image</label>
             <Slider
               defaultValue={[5]}
               min={1}
@@ -104,7 +104,7 @@ const ImageRatingModal: React.FC<ImageRatingModalProps> = ({ isOpen, onClose, im
           </div>
           
           <div className="flex flex-col gap-2">
-            <label>TITLE & DESCRIPTION accurate?</label>
+            <label>Title and Description</label>
             <div className="flex gap-2">
               <Button variant={descriptionAccurate === 'yes' ? 'default' : 'outline'} onClick={() => setDescriptionAccurate('yes')}>Yes</Button>
               <Button variant={descriptionAccurate === 'no' ? 'default' : 'outline'} onClick={() => setDescriptionAccurate('no')}>No</Button>
@@ -112,7 +112,7 @@ const ImageRatingModal: React.FC<ImageRatingModalProps> = ({ isOpen, onClose, im
           </div>
           
           <div className="flex flex-col gap-2">
-            <label>LOCATION accurate?</label>
+            <label>Location</label>
             <div className="flex gap-2">
               <Button variant={locationAccurate === 'yes' ? 'default' : 'outline'} onClick={() => setLocationAccurate('yes')}>Yes</Button>
               <Button variant={locationAccurate === 'no' ? 'default' : 'outline'} onClick={() => setLocationAccurate('no')}>No</Button>
@@ -120,7 +120,7 @@ const ImageRatingModal: React.FC<ImageRatingModalProps> = ({ isOpen, onClose, im
           </div>
 
           <div className="flex flex-col gap-2">
-            <label>DATE Accurate?</label>
+            <label>Date</label>
             <div className="flex gap-2">
               <Button variant={dateAccurate === 'yes' ? 'default' : 'outline'} onClick={() => setDateAccurate('yes')}>Yes</Button>
               <Button variant={dateAccurate === 'no' ? 'default' : 'outline'} onClick={() => setDateAccurate('no')}>No</Button>
@@ -128,7 +128,7 @@ const ImageRatingModal: React.FC<ImageRatingModalProps> = ({ isOpen, onClose, im
           </div>
 
           <div className="flex flex-col gap-2">
-            <label htmlFor="comments">COMMENT</label>
+            <label htmlFor="comments">Add your comment</label>
             <Textarea 
               id="comments"
               placeholder="Leave a comment (optional)..."

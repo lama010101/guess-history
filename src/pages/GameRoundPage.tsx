@@ -70,12 +70,12 @@ const GameRoundPage = () => {
     roundResults,
     recordRoundResult,
     isLoading: isContextLoading,
-    gameId: contextRoomId,
     roundTimerSec,
     timerEnabled,
     setGameId,
     handleTimeUp,
-    hydrateRoomImages
+    hydrateRoomImages,
+    syncRoomId
   } = useGame();
   const { toast } = useToast();
 
@@ -165,10 +165,18 @@ const GameRoundPage = () => {
 
   // Handle guess submission
   const handleSubmitGuess = useCallback(() => {
-    if (isSubmitting) return;
-    if (hasTimedOut) return; // Prevent submission after timeout
+    console.log('[GameRoundPage] handleSubmitGuess called');
+    if (isSubmitting) {
+      console.log('[GameRoundPage] Already submitting, returning');
+      return;
+    }
+    if (hasTimedOut) {
+      console.log('[GameRoundPage] Has timed out, returning');
+      return; // Prevent submission after timeout
+    }
 
     if (!imageForRound) {
+      console.log('[GameRoundPage] No imageForRound, showing toast');
       toast({
         title: 'Error',
         description: 'Cannot submit guess, image data is missing.',
@@ -179,11 +187,13 @@ const GameRoundPage = () => {
 
     // Defensive: Submit should only be possible when both year and location are selected
     if (selectedYear === null) {
+      console.log('[GameRoundPage] No selectedYear, showing toast');
       toast({ title: 'Missing Year', description: 'Please select a year before submitting.', variant: 'destructive' });
       return;
     }
 
     if (!hasGuessedLocation) {
+      console.log('[GameRoundPage] No location guessed, showing toast');
       toast({
         title: 'No location selected',
         description: 'Please select a location on the map first.',
@@ -192,7 +202,7 @@ const GameRoundPage = () => {
       return;
     }
 
-    console.log(`Submitting guess for round ${roundNumber}, Year: ${selectedYear}, Coords:`, currentGuess);
+    console.log(`[GameRoundPage] Submitting guess for round ${roundNumber}, Year: ${selectedYear}, Coords:`, currentGuess);
     setIsSubmitting(true);
     setIsTimerActive(false);
 
@@ -234,7 +244,9 @@ const GameRoundPage = () => {
         hintPenaltyPercent,
       };
 
+      console.log('[GameRoundPage] About to call recordRoundResult with:', resultData, currentRoundIndex);
       recordRoundResult(resultData, currentRoundIndex);
+      console.log('[GameRoundPage] recordRoundResult called, navigating to results');
 
       setCurrentGuess(null);
       navigate(`/test/game/room/${roomId}/round/${roundNumber}/results`);
@@ -393,22 +405,18 @@ const GameRoundPage = () => {
   };
 
   useEffect(() => {
-    // Always synchronize the context room ID with the URL room ID
-    // This prevents unwanted redirects due to ID mismatch after timeout/next round navigation
-    if (!isContextLoading && roomId && contextRoomId !== roomId) {
-      console.log(`Synchronizing context room ID with URL room ID: ${roomId}`);
-      // setGameId(roomId); // removed to avoid overwriting gameId with roomId
-      // Store this synchronization in session storage to help with navigation tracking
-      sessionStorage.setItem('lastSyncedRoomId', roomId);
+    // Always synchronize the context room ID with the URL room ID and ensure membership
+    if (!isContextLoading && roomId) {
+      syncRoomId(roomId);
     }
-    
+
     if (!isContextLoading && images.length > 0 && (isNaN(roundNumber) || roundNumber <= 0 || roundNumber > images.length)) {
        console.warn(`Invalid round number (${roundNumber}) for image count (${images.length}). Navigating to final page.`);
        navigate(`/test/game/room/${roomId}/final`);
        return;
     }
 
-  }, [roomId, roundNumber, images, isContextLoading, contextRoomId, navigate]);
+  }, [roomId, roundNumber, images, isContextLoading, syncRoomId, navigate]);
 
   // Loading state from context
   if (isContextLoading) {

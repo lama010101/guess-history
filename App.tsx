@@ -23,6 +23,7 @@ import AdminImagesPage from './pages/AdminImagesPage';
 import AdminBadgesPage from './pages/AdminBadgesPage';
 import LandingPage from './pages/LandingPage';
 import RoundResultsPage from '@/pages/RoundResultsPage';
+import GameRoundPage from '@/pages/GameRoundPage';
 
 // Handler for auth redirects
 const AuthRedirectHandler = () => {
@@ -65,6 +66,7 @@ const App = () => {
                     <Route index element={<TestHomePage />} />
                     <Route path="auth" element={<TestAuthPage />} />
                     <Route path="game" element={<TestGamePage />} />
+                    <Route path="game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
                     <Route path="results" element={<TestResultsPage />} />
                     <Route path="game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />
                     <Route path="final" element={<TestFinalPage />} />

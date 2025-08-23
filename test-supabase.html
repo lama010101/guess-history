@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supabase Connection Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 10px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+    .success { color: green; }
+    .error { color: red; }
+  </style>
+</head>
+<body>
+  <h1>Supabase Connection Test</h1>
+  
+  <div>
+    <h2>Configuration</h2>
+    <p>URL: <span id="supabase-url">Loading...</span></p>
+    <p>Public Key: <span id="supabase-key">Loading...</span></p>
+  </div>
+  
+  <div>
+    <h2>Test Connection</h2>
+    <button id="test-connection">Test Connection</button>
+    <div id="connection-result"></div>
+  </div>
+  
+  <div>
+    <h2>Test Query</h2>
+    <button id="test-query">Test Query (List Tables)</button>
+    <div id="query-result"></div>
+  </div>
+  
+  <div>
+    <h2>Session Players</h2>
+    <div>
+      <label>Room ID: <input type="text" id="room-id" value="VE5U9B"></label>
+      <button id="list-players">List Players</button>
+    </div>
+    <div id="players-result"></div>
+  </div>
+
+  <script>
+    // Initialize Supabase
+    const SUPABASE_URL = "https://jghesmrwhegaotbztrhr.supabase.co";
+    const SUPABASE_PUBLIC_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnaGVzbXJ3aGVnYW90Ynp0cmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ0MzAwMDEsImV4cCI6MjA2MDAwNjAwMX0.C-zSGAiZAIbvKh9vNb2_s3DHogSzSKImLkRbjr_h5xI";
+    
+    // Avoid shadowing the global 'supabase' UMD object by naming our client 'sb'
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY);
+    
+    // Display config
+    document.getElementById('supabase-url').textContent = SUPABASE_URL;
+    document.getElementById('supabase-key').textContent = SUPABASE_PUBLIC_KEY.substring(0, 20) + '...';
+    
+    // Test connection
+    document.getElementById('test-connection').addEventListener('click', async () => {
+      const resultEl = document.getElementById('connection-result');
+      resultEl.innerHTML = 'Testing connection...';
+      
+      try {
+        const { data, error } = await sb.auth.signInAnonymously();
+        
+        if (error) {
+          resultEl.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+          console.error('Connection error:', error);
+          return;
+        }
+        
+        resultEl.innerHTML = `
+          <p class="success">✓ Connected successfully!</p>
+          <p>User ID: ${data.user?.id || 'N/A'}</p>
+          <p>Session: ${data.session ? 'Active' : 'None'}</p>
+        `;
+      } catch (e) {
+        resultEl.innerHTML = `<p class="error">Exception: ${e.message}</p>`;
+        console.error('Exception:', e);
+      }
+    });
+    
+    // Test query
+    document.getElementById('test-query').addEventListener('click', async () => {
+      const resultEl = document.getElementById('query-result');
+      resultEl.innerHTML = 'Executing query...';
+      
+      try {
+        // Query a public table we expect to exist
+        const { data, error } = await sb
+          .from('session_players')
+          .select('room_id, user_id, display_name, joined_at')
+          .limit(10);
+          
+        if (error) {
+          resultEl.innerHTML = `<p class="error">Query error: ${error.message}</p>`;
+          console.error('Query error:', error);
+          return;
+        }
+        
+        resultEl.innerHTML = `
+          <p class="success">✓ Query successful! Sample session_players rows (${data.length}).</p>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+        `;
+      } catch (e) {
+        resultEl.innerHTML = `<p class="error">Exception: ${e.message}</p>`;
+        console.error('Exception:', e);
+      }
+    });
+    
+    // List players
+    document.getElementById('list-players').addEventListener('click', async () => {
+      const roomId = document.getElementById('room-id').value.trim();
+      const resultEl = document.getElementById('players-result');
+      resultEl.innerHTML = `Fetching players for room ${roomId}...`;
+      
+      try {
+        // First, sign in anonymously
+        const { data: authData, error: authError } = await sb.auth.signInAnonymously();
+        
+        if (authError) {
+          resultEl.innerHTML = `<p class="error">Auth error: ${authError.message}</p>`;
+          return;
+        }
+        
+        // Then query session_players
+        const { data: players, error: playersError } = await sb
+          .from('session_players')
+          .select('*')
+          .eq('room_id', roomId);
+          
+        if (playersError) {
+          resultEl.innerHTML = `<p class="error">Query error: ${playersError.message}</p>`;
+          console.error('Players query error:', playersError);
+          return;
+        }
+        
+        resultEl.innerHTML = `
+          <p class="success">✓ Found ${players.length} players in room ${roomId}</p>
+          <pre>${JSON.stringify(players, null, 2)}</pre>
+        `;
+        
+        // Try to get round results
+        const { data: roundResults, error: rrError } = await sb
+          .from('round_results')
+          .select('*')
+          .eq('room_id', roomId);
+          
+        if (rrError) {
+          resultEl.innerHTML += `<p class="error">Error fetching round results: ${rrError.message}</p>`;
+          console.error('Round results error:', rrError);
+        } else {
+          resultEl.innerHTML += `
+            <h3>Round Results (${roundResults.length})</h3>
+            <pre>${JSON.stringify(roundResults, null, 2)}</pre>
+          `;
+        }
+        
+      } catch (e) {
+        resultEl.innerHTML = `<p class="error">Exception: ${e.message}</p>`;
+        console.error('Exception:', e);
+      }
+    });
+  </script>
+</body>
+</html>

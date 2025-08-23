@@ -285,12 +285,121 @@ export type Database = {
         }
         Relationships: []
       }
+      session_players: {
+        Row: {
+          room_id: string
+          user_id: string
+          display_name: string | null
+          joined_at: string
+        }
+        Insert: {
+          room_id: string
+          user_id: string
+          display_name?: string | null
+          joined_at?: string
+        }
+        Update: {
+          room_id?: string
+          user_id?: string
+          display_name?: string | null
+          joined_at?: string
+        }
+        Relationships: []
+      }
+      round_results: {
+        Row: {
+          id: string
+          user_id: string
+          room_id: string | null
+          round_index: number
+          image_id: string
+          score: number
+          accuracy: number
+          xp_total: number
+          xp_where: number
+          xp_when: number
+          hints_used: number
+          xp_debt: number
+          acc_debt: number
+          guess_year: number | null
+          guess_lat: number | null
+          guess_lng: number | null
+          actual_lat: number | null
+          actual_lng: number | null
+          distance_km: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          room_id?: string | null
+          round_index: number
+          image_id: string
+          score?: number
+          accuracy?: number
+          xp_total?: number
+          xp_where?: number
+          xp_when?: number
+          hints_used?: number
+          xp_debt?: number
+          acc_debt?: number
+          guess_year?: number | null
+          guess_lat?: number | null
+          guess_lng?: number | null
+          actual_lat?: number | null
+          actual_lng?: number | null
+          distance_km?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          room_id?: string | null
+          round_index?: number
+          image_id?: string
+          score?: number
+          accuracy?: number
+          xp_total?: number
+          xp_where?: number
+          xp_when?: number
+          hints_used?: number
+          xp_debt?: number
+          acc_debt?: number
+          guess_year?: number | null
+          guess_lat?: number | null
+          guess_lng?: number | null
+          actual_lat?: number | null
+          actual_lng?: number | null
+          distance_km?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_round_scoreboard: {
+        Args: {
+          p_room_id: string
+          p_round_number: number
+        }
+        Returns: {
+          user_id: string
+          display_name: string
+          score: number
+          accuracy: number | null
+          xp_total: number | null
+          xp_debt: number | null
+          acc_debt: number | null
+          distance_km: number | null
+          guess_year: number | null
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

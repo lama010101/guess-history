@@ -77,6 +77,25 @@ This document provides comprehensive architecture guidelines for the Guess Histo
 - **Auto-pan Integration**: Respects `inertia_enabled` and `inertia_mode` (disabled when `inertia_enabled` is false or mode is `none`).
 - **Dynamic Hints**: Context-aware instruction tooltips based on selected inertia mode
 
+## Database Migrations
+
+### Manual Migration Process (Primary Method)
+
+Due to potential inconsistencies and environment issues with the Supabase CLI, the primary method for applying database migrations is manual execution through the Supabase SQL Editor. This ensures reliability and atomicity.
+
+**Workflow:**
+
+1.  **Consolidate Migrations**: Combine all new `.sql` migration files from the `supabase/migrations/` directory into a single script.
+2.  **Order Scripts**: Ensure the SQL commands are ordered chronologically based on their migration timestamps. Dependencies between migrations must be respected (e.g., a table creation must come before a policy that uses it).
+3.  **Wrap in a Transaction**: Enclose the entire consolidated script within a `BEGIN;` and `COMMIT;` block. This makes the entire operation atomic; if any part fails, the whole set of changes is rolled back.
+4.  **Execute in Supabase UI**:
+    *   Navigate to the **SQL Editor** in your Supabase project dashboard.
+    *   Create a new query.
+    *   Paste the complete, ordered, and transaction-wrapped script into the editor.
+    *   Click **RUN**.
+
+This approach bypasses the need for local tools like the Supabase CLI or `bun`/`npm` scripts for database changes, which have proven unreliable in some development environments.
+
 ## System Architecture
 
 ### Core Components
@@ -265,9 +284,74 @@ Notes:
 
 - Internal DB uses 0-based `round_index`.
 - UI routes use 1-based `roundNumber`.
-- Conversions enforced in `src/hooks/useRoundPeers.ts`:
-  - Queries and realtime filter use `dbRoundIndex = max(0, roundNumber - 1)`.
-  - Realtime channel name and filter include `round_index=eq.<dbRoundIndex>` to avoid off-by-one refresh misses.
+  - Conversions enforced in `src/hooks/useRoundPeers.ts`:
+  -  - Queries and realtime filter use `dbRoundIndex = max(0, roundNumber - 1)`.
+  -  - Realtime channel name and filter include `round_index=eq.<dbRoundIndex>` to avoid off-by-one refresh misses.
+
+#### Room ID Synchronization (URL → Context → Session)
+
+- Files and APIs
+  - `src/contexts/GameContext.tsx` → `syncRoomId(roomId: string)` sets `context.roomId`, persists it to `sessionStorage` (key: `lastSyncedRoomId`), and calls `ensureSessionMembership(roomId, userId)` to upsert into `public.session_players`.
+  - `src/contexts/GameContext.tsx` → `recordRoundResult(...)` derives an effective `roomId` from context → URL → `sessionStorage` (in that order) to persist `round_results` with correct `room_id` and 0-based `round_index`.
+
+- Page touchpoints
+  - `src/pages/GameRoundPage.tsx` → `useEffect(() => { if (roomId) syncRoomId(roomId); }, [roomId])` keeps context synchronized during play and on reload.
+  - `src/pages/RoundResultsPage.tsx` → `useEffect(() => { if (roomId) { syncRoomId(roomId); hydrateRoomImages(roomId); } }, [roomId])` ensures membership and image hydration for results visibility.
+
+- Why this matters
+  - Satisfies RLS by guaranteeing a row in `public.session_players` for the current user/room, enabling reads of peers' `round_results` and scoreboard RPCs.
+  - Prevents orphaned solo-scoped results by always writing `round_results.room_id` when in multiplayer.
+  - Ensures `useRoundPeers(roomId, roundNumber)` returns data after direct links and page reloads.
+
+  - Fallbacks and reloads
+  -  - Last `roomId` is cached in `sessionStorage` and used when navigating directly or after refresh.
+  -  - `hydrateRoomImages(roomId)` rehydrates the deterministic image order and related assets on results pages when needed.
+
+  #### Room ID Backfill Repair (round_results)
+  
+  - **Location**: `src/contexts/GameContext.tsx` → `repairMissingRoomId(knownRoomId: string)`
+  - **Behavior**: When a `knownRoomId` becomes available and `gameId` is set for the current user, update any `public.round_results` rows for this game where `room_id IS NULL` to the known value. This heals rows that may have been written before room synchronization completed.
+  - **Callers**:
+    - `startGame()` when starting a multiplayer session (after `ensureSessionMembership`).
+    - `hydrateRoomImages(roomId)` on refresh/rejoin flows.
+    - `syncRoomId(roomId)` and the initial URL bootstrap effect that derives `roomId` from the path.
+    - `recordRoundResult(...)` after deriving the effective room id (context → URL → `sessionStorage`).
+  - **Persistence helpers**:
+    - Session cache key: `sessionStorage['lastSyncedRoomId']` is written in all of the above touchpoints.
+    - `recordRoundResult(...)` logs the `effectiveRoomId` it will persist with for diagnostics and calls `repairMissingRoomId(effectiveRoomId)` when applicable.
+  - **Purpose**: Prevents empty `room_id` in `public.round_results`, ensures scoreboard RPCs and peer result subscriptions work for multiplayer, and maintains RLS visibility by consistently scoping rows to a room.
+  - **Diagnostics**: Console logs are prefixed with `[GameContext] repairMissingRoomId` on success/failure.
+  
+  - Indexing and params
+  -  - UI `roundNumber` is 1-based; DB uses 0-based `round_index`. Convert with `Math.max(0, roundNumber - 1)` consistently in RPCs and realtime subscriptions.
+
+#### Scoreboard RPC Indexing (2025-08-23)
+  
+- Migration `20250823_fix_scoreboard_round_index.sql` updates `public.get_round_scoreboard(p_room_id text, p_round_number int)` to convert the provided 1-based `p_round_number` to the DB’s 0-based `round_index` via `GREATEST(0, p_round_number - 1)`.
+- Callers should continue passing a human-facing 1-based round number; the RPC handles translation.
+- Authorization remains unchanged: only participants in `public.session_players` for the room may call.
+- Policies on `public.round_results` already allow room participants to select rows (`rr_select_participants_in_room`).
+
+#### Verification Script (session membership + scoreboard)
+  
+- Script: `scripts/test-session-players.ts`
+- Behavior:
+  - Ensures anonymous auth if needed.
+  - Upserts current user into `public.session_players` with `onConflict: 'room_id,user_id'`.
+  - Lists up to 10 players in the room.
+  - Calls `get_round_scoreboard(p_room_id, p_round_number)` with a 1-based round number.
+  - Fetches up to 10 `public.round_results` rows for the room.
+- Usage examples (Windows PowerShell):
+  - `npx tsx scripts/test-session-players.ts VE5U9B 1`
+  - `node --loader tsx scripts/test-session-players.ts VE5U9B 1`
+- Exit codes: returns 0 on success, 1 on any error, with detailed error logs including `code`, `message`, `details`, and `hint` fields where available.
+
+- Testing checklist
+  - Open `/test/play/room/:roomId/round/:roundNumber` directly → peers and their guesses should render.
+  - Reload both the round and results pages → peer results remain visible; coordinates including `(0,0)` render correctly.
+  - Submit a guess → corresponding `public.round_results` row includes `room_id` and 0-based `round_index`.
+  - Run `scripts/test-session-players.ts` with a room ID and round number to verify session membership and scoreboard RPCs.
+  - Sign out/in and rejoin → `ensureSessionMembership` upserts your `session_players` row; scoreboard RPCs work.
 
 ### Local Development
 ```bash
@@ -278,6 +362,7 @@ npm run partykit:dev
 # Start frontend
 npm run dev
 
+{{ ... }}
 # Run tests
 npm run test:multiplayer
 ```
@@ -573,6 +658,9 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - Table `public.round_results` for lat/lng and per-round details (room-scoped RLS ensures only participants can read)
 - Realtime: Subscribes to Postgres changes on `public.round_results` filtered by `room_id` and re-fetches when rows for the same `round_index` change
 - TypeScript note: Until generated DB types include RPCs/tables, the hook casts `supabase` to `any` for `.rpc`/`.from` calls to avoid type errors.
+
+ - Fix (2025-08-20): Preserve zero coordinates. The lat/lng merge in `useRoundPeers.ts` uses nullish coalescing (`??`) instead of `||` so valid `0` values are not coerced to `null`. Path: `src/hooks/useRoundPeers.ts`.
+ - Persistence source-of-truth: `src/contexts/GameContext.tsx` → `recordRoundResult()` writes to `public.round_results` including `room_id` and 0-based `round_index` (computed as `roundNumber - 1` from the 1-based UI). This ensures RPCs and realtime filters align with DB indexing.
 
 ## Multiplayer Session Provider (Plan)
 

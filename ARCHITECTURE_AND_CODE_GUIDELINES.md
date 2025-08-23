@@ -611,7 +611,7 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
     - Includes a link button to the full Friends page route (`/test/friends`) for advanced management (`src/pages/FriendsPage.tsx`).
   - Tech details:
     - Uses Supabase client: `@/integrations/supabase/client`.
-    - Notifications: `toast` from `@/components/ui/sonner` (no-op wrapper; safe in environments where toasts are globally disabled).
+    - Notifications: `toast` from `@/components/ui/use-toast` (project toast hook; renders via `Toaster`).
     - Kept separate from PartyKit lobby logic; does not alter ready/start flows.
 
 ## Compete (Sync) Lobby UI Layout (2025-08)
@@ -817,6 +817,35 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - `GameLayout1` wires `onTimeout` to `handleTimeComplete` so HUD-driven timeouts enforce these rules.
 
 ## Migration Guide
+
+## Room Invites (Schema + RLS) — 2025-08-23
+
+- **Purpose**: Track host-initiated friend invites for a given PartyKit room.
+- **Migration file**: `supabase/migrations/20250823_create_room_invites.sql`
+- **Types file**: `integrations/supabase/types.ts` (table `room_invites`)
+
+- **Table**: `public.room_invites`
+  - Columns:
+    - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
+    - `room_id TEXT NOT NULL`
+    - `inviter_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE`
+    - `friend_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE`
+    - `created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
+  - Indexes:
+    - Unique: `(room_id, inviter_user_id, friend_id)`
+    - Non-unique: `(room_id)`, `(inviter_user_id)`, `(friend_id)`
+
+- **RLS**: Enabled with the following policies
+  - `ri_select_inviter`: authenticated users can SELECT rows where `inviter_user_id = auth.uid()`
+  - `ri_select_invited`: authenticated users can SELECT rows where `friend_id = auth.uid()`
+  - `ri_insert_inviter`: authenticated users can INSERT only when `inviter_user_id = auth.uid()`
+  - `ri_delete_inviter`: authenticated users can DELETE only when `inviter_user_id = auth.uid()`
+
+- **Notes**:
+  - The `friend_id` foreign key references `public.profiles(id)` and is reflected in generated TS types. The `inviter_user_id` FK references `auth.users(id)` (not represented as a relational mapping in our local TS types).
+  - This table is intended for secure invite flows; only the inviter can create or cancel invites, and both inviter and invited can read relevant rows.
+  - Apply the migration using `scripts/apply-migrations.ts` once `SUPABASE_DB_URL` is configured.
+
   
   ### From Single Player to Multiplayer
   

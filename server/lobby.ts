@@ -26,13 +26,18 @@ const SettingsMessage = z.object({
   timerEnabled: z.boolean().optional(),
 });
 
+const KickMessage = z.object({
+  type: z.literal("kick"),
+  targetId: z.string().min(1),
+});
+
 const ProgressMessage = z.object({
   type: z.literal("progress"),
   roundNumber: z.number().int().min(1).max(100),
   substep: z.string().trim().max(64).optional(),
 });
 
-const IncomingMessage = z.union([JoinMessage, ChatMessage, ReadyMessage, SettingsMessage, ProgressMessage]);
+const IncomingMessage = z.union([JoinMessage, ChatMessage, ReadyMessage, SettingsMessage, KickMessage, ProgressMessage]);
 
 type Incoming = z.infer<typeof IncomingMessage>;
 
@@ -69,6 +74,8 @@ export default class Lobby implements Party.Server {
   // Timer settings (host-controlled)
   private timerSeconds: number = 60;
   private timerEnabled: boolean = true;
+  // Track live connections for administrative actions (kick)
+  private conns = new Map<string, Party.Connection>();
 
   constructor(readonly room: Party.Room) {}
 
@@ -175,6 +182,8 @@ export default class Lobby implements Party.Server {
   }
 
   async onConnect(conn: Party.Connection, _ctx: Party.ConnectionContext) {
+    // Track connection for administrative actions
+    this.conns.set(conn.id, conn);
     // Connection established, wait for a valid join message
     conn.addEventListener("message", async (evt) => {
       try {
@@ -281,6 +290,28 @@ export default class Lobby implements Party.Server {
           return;
         }
 
+        if (msg.type === "kick") {
+          // Only host can kick other players
+          if (conn.id !== this.hostId) return;
+          const targetId = msg.targetId;
+          if (!this.players.has(targetId)) return;
+          try {
+            const target = this.conns.get(targetId);
+            if (target) {
+              target.close(4000, "kicked by host");
+            }
+          } catch {}
+          // Cleanup state in case close event arrives later
+          this.players.delete(targetId);
+          this.ready.delete(targetId);
+          if (this.hostId === targetId) {
+            const first = this.players.keys().next();
+            this.hostId = first.done ? null : first.value;
+          }
+          this.broadcastRoster();
+          return;
+        }
+
         if (msg.type === "progress") {
           if (!this.players.has(conn.id)) return;
           const out: ProgressMsg = {
@@ -301,6 +332,8 @@ export default class Lobby implements Party.Server {
   }
 
   async onClose(conn: Party.Connection) {
+    // Remove from connection map
+    this.conns.delete(conn.id);
     const name = this.players.get(conn.id);
     if (name) {
       this.players.delete(conn.id);

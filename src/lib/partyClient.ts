@@ -64,4 +64,6 @@ export type LobbyClientMessage =
   | { type: 'ready'; ready: boolean }
   // Optional: host can send settings prior to start; server validates host
   | { type: 'settings'; timerSeconds?: number; timerEnabled?: boolean }
-  | { type: 'progress'; roundNumber: number; substep?: string };
+  | { type: 'progress'; roundNumber: number; substep?: string }
+  // Host-only: remove a player from the lobby
+  | { type: 'kick'; targetId: string };

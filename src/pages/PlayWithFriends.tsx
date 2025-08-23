@@ -47,20 +47,6 @@ const PlayWithFriends: React.FC = () => {
           </button>
         </div>
 
-        {/* Segmented mode pill (visual only) */}
-        <div className="mb-6">
-          <div className="mx-auto max-w-md">
-            <div className="flex rounded-full p-1 bg-gradient-to-r from-cyan-500 to-purple-500">
-              <div className="flex-1">
-                <div className="rounded-full bg-zinc-900/90 text-white text-center py-2 font-semibold">SYNC</div>
-              </div>
-              <div className="flex-1">
-                <div className="rounded-full text-zinc-300/70 text-center py-2 font-semibold">ASYNC</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <h1 className="text-2xl font-bold mb-4">Play with friends</h1>
 
         {/* Display name note */}
@@ -102,7 +88,7 @@ const PlayWithFriends: React.FC = () => {
                 id="join-code"
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                placeholder="ENTER CODE"
+                placeholder="Enter Code"
                 maxLength={6}
                 className="w-40 tracking-[0.4em] uppercase bg-zinc-950 border-zinc-700 text-white placeholder:text-zinc-500"
                 aria-label="Room code"
@@ -152,7 +138,7 @@ const PlayWithFriends: React.FC = () => {
             </p>
             <Button
               onClick={handleCreate}
-              className="w-full rounded-xl bg-history-primary hover:bg-history-primary/90"
+              className="w-full rounded-xl text-black bg-gradient-to-r from-emerald-400 to-cyan-400 hover:opacity-90"
             >
               Create room
             </Button>

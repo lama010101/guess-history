@@ -267,6 +267,38 @@ export type Database = {
         }
         Relationships: []
       }
+      room_invites: {
+        Row: {
+          id: string
+          room_id: string
+          inviter_user_id: string
+          friend_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          room_id: string
+          inviter_user_id: string
+          friend_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          room_id?: string
+          inviter_user_id?: string
+          friend_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_invites_friend_id_fkey"
+            columns: ["friend_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       settings: {
         Row: {
           id: string

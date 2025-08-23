@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Clock, X, Home } from 'lucide-react';
+import { X, Home, Copy, Users } from 'lucide-react';
 import { partyUrl, LobbyServerMessage, LobbyClientMessage } from '@/lib/partyClient';
 import { useGame } from '@/contexts/GameContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -234,6 +234,8 @@ const Room: React.FC = () => {
     return remainingSeconds > 0 ? `${minutes}m${remainingSeconds}s` : `${minutes}m`;
   }, []);
 
+  const readyCount = useMemo(() => roster.filter(r => r.ready).length, [roster]);
+
   // Host sends current settings to server whenever they change (debounced by ref to avoid spam)
   useEffect(() => {
     const ws = wsRef.current;
@@ -268,159 +270,165 @@ const Room: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full bg-history-light dark:bg-black text-white">
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold">Room {roomCode}</h1>
-            <div className="text-xs text-neutral-400">Status: {status}</div>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Home button */}
-            <Button
-              size="icon"
-              onClick={() => navigate('/test')}
-              className="h-9 w-9 rounded-full border-none text-black bg-[linear-gradient(90deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] hover:opacity-90"
-              aria-label="Go to Home"
-              type="button"
-            >
-              <Home className="h-4 w-4" />
-            </Button>
-            {/* Avatar/Menu dropdown */}
-            <NavMenu />
-            {isHost && (
-              <Button onClick={copyInvite} variant="secondary" className="bg-neutral-800 hover:bg-neutral-700">
-                {copied ? 'Link copied!' : 'Share invite link'}
-              </Button>
-            )}
-            {/* Close button (icon) to leave the lobby */}
-            <Button
-              size="icon"
-              onClick={() => navigate('/play')}
-              className="h-9 w-9 rounded-full bg-neutral-800 hover:bg-neutral-700"
-              aria-label="Close lobby"
-              type="button"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-            <Button onClick={() => navigate('/play')} variant="ghost" className="text-neutral-300">Leave</Button>
+      <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
+        {/* Top actions */}
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            size="icon"
+            onClick={() => navigate('/test')}
+            className="h-9 w-9 rounded-full border-none text-black bg-[linear-gradient(90deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] hover:opacity-90"
+            aria-label="Go to Home"
+            type="button"
+          >
+            <Home className="h-4 w-4" />
+          </Button>
+          <NavMenu />
+          <Button
+            size="icon"
+            onClick={() => navigate('/play')}
+            className="h-9 w-9 rounded-full bg-neutral-800 hover:bg-neutral-700"
+            aria-label="Leave lobby"
+            type="button"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+          <Button onClick={() => navigate('/play')} variant="ghost" className="text-neutral-300">Leave</Button>
+        </div>
+
+        {/* Mode pill */}
+        <div className="flex justify-center">
+          <div className="px-6 py-2 rounded-full bg-gradient-to-r from-emerald-400 to-teal-400 text-black font-semibold shadow">
+            SYNC
           </div>
         </div>
 
+        {/* Info row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="rounded-md border border-neutral-800 p-4 bg-neutral-950/30">
+          {/* Timer Settings */}
+          <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/40">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold">Players</h2>
-              <span className="text-xs text-neutral-400">{(roster.length || players.length)}/8</span>
+              <h2 className="font-semibold">Timer Settings</h2>
+              <div className="text-xs text-neutral-400">{formatTime(timerEnabled ? roundTimerSec : 0)}</div>
             </div>
-
-            {/* Round Timer (Host controls, everyone sees value) */}
-            <div className="mb-4 p-3 rounded bg-neutral-900/30 border border-neutral-800">
-              <div className="flex items-center gap-2 mb-2">
-                <Clock className="h-4 w-4 text-history-primary" />
-                <h3 className="text-sm font-semibold">Round Timer</h3>
-                <div className="ml-auto px-2 py-0.5 rounded bg-history-secondary/20 text-history-secondary text-xs">
-                  {timerEnabled ? formatTime(roundTimerSec) : 'No timer'}
+            <div className="text-xs text-neutral-400 mb-3">Timer is required in Sync mode</div>
+            <div className="flex items-center justify-between mb-1">
+              <Label className="text-sm">Round Duration</Label>
+              <div className="text-sm text-teal-300">{timerEnabled ? formatTime(roundTimerSec) : 'No timer'}</div>
+            </div>
+            {isHost ? (
+              <div>
+                <div className="flex items-center space-x-2 mb-2">
+                  <Switch
+                    id="lobby-timer-enabled"
+                    checked={!!timerEnabled}
+                    onCheckedChange={setTimerEnabled}
+                  />
+                  <Label htmlFor="lobby-timer-enabled" className="text-xs">
+                    {timerEnabled ? 'Timer enabled' : 'No time limit'}
+                  </Label>
+                </div>
+                <div className="px-1">
+                  <Slider
+                    value={[timerEnabled ? (roundTimerSec || 60) : 60]}
+                    min={5}
+                    max={300}
+                    step={5}
+                    onValueChange={(v) => setRoundTimerSec(v[0])}
+                    className="my-3"
+                  />
+                  <div className="flex justify-between text-[10px] text-neutral-400 mt-1">
+                    <span>5s</span>
+                    <span>30s</span>
+                    <span>1m</span>
+                    <span>2m</span>
+                    <span>3m</span>
+                    <span>4m</span>
+                    <span>5m</span>
+                  </div>
                 </div>
               </div>
-
-              {isHost ? (
-                <div>
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Switch
-                      id="lobby-timer-enabled"
-                      checked={!!timerEnabled}
-                      onCheckedChange={setTimerEnabled}
-                    />
-                    <Label htmlFor="lobby-timer-enabled" className="text-xs">
-                      {timerEnabled ? 'Timer enabled' : 'No time limit'}
-                    </Label>
-                  </div>
-
-                  {timerEnabled && (
-                    <div className="px-1">
-                      <Slider
-                        value={[roundTimerSec || 60]}
-                        min={5}
-                        max={300}
-                        step={5}
-                        onValueChange={(v) => setRoundTimerSec(v[0])}
-                        className="my-3"
-                      />
-                      <div className="flex justify-between text-[10px] text-neutral-400 mt-1">
-                        <span>5s</span>
-                        <span>30s</span>
-                        <span>1m</span>
-                        <span>2m</span>
-                        <span>3m</span>
-                        <span>4m</span>
-                        <span>5m</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-xs text-neutral-400">Host controls the timer</div>
-              )}
-            </div>
-            <ul className="space-y-2">
-              {roster.length > 0 ? (
-                roster.map((r, i) => (
-                  <li key={`${r.name}-${i}`} className="flex items-center justify-between text-sm bg-neutral-900/40 rounded px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      {r.host && <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-300">Host</span>}
-                      <span className="font-medium">{r.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={r.ready ? 'text-green-400' : 'text-neutral-500'}>{r.ready ? 'Ready' : 'Not ready'}</span>
-                      {r.id === ownId && (
-                        <Button size="sm" onClick={toggleReady} disabled={status !== 'open'} className={ownReady ? 'bg-green-600 hover:bg-green-500' : 'bg-history-primary hover:bg-history-primary/90'}>
-                          {ownReady ? 'Unready' : "I'm Ready"}
-                        </Button>
-                      )}
-                    </div>
-                  </li>
-                ))
-              ) : (
-                <li className="text-sm text-neutral-500">Waiting for players...</li>
-              )}
-            </ul>
-            {roster.length === 1 && (
-              <div className="mt-3 text-xs text-neutral-400">Share the invite link to bring friends into this room.</div>
+            ) : (
+              <div className="text-xs text-neutral-400">Host controls the timer</div>
             )}
           </div>
 
-          <div className="rounded-md border border-neutral-800 p-4 bg-neutral-950/30">
-            <h2 className="font-semibold mb-2">Chat</h2>
-            <div className="h-64 overflow-y-auto space-y-2 bg-neutral-950/40 p-2 rounded">
-              {chat.length === 0 && (
-                <div className="text-sm text-neutral-500">No messages yet</div>
+          {/* Room Information */}
+          <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/40">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold">Room Information</h2>
+              <div className="flex items-center gap-2 text-xs text-neutral-400">
+                <Users className="h-4 w-4" /> {(roster.length || players.length)} player{(roster.length || players.length) === 1 ? '' : 's'}
+              </div>
+            </div>
+            <Label className="text-xs text-neutral-400">Room Code</Label>
+            <div className="mt-1 flex items-center gap-2">
+              <Input value={roomCode} readOnly className="bg-neutral-950 border-neutral-700 text-white tracking-widest uppercase" />
+              {isHost && (
+                <Button onClick={copyInvite} size="icon" className="bg-neutral-800 hover:bg-neutral-700" aria-label="Copy invite link">
+                  <Copy className="h-4 w-4" />
+                </Button>
               )}
-              {chat.map((c) => (
-                <div key={c.id} className="text-sm">
-                  <span className="text-history-primary font-medium">{c.from}</span>:
-                  <span className="ml-2">{c.message}</span>
-                  <span className="ml-2 text-xs text-neutral-500">{new Date(c.timestamp).toLocaleTimeString()}</span>
-                </div>
-              ))}
             </div>
-            <div className="mt-3 flex items-center gap-2">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Type a message"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    sendChat();
-                  }
-                }}
-                className="bg-neutral-900 border-neutral-700 text-white"
-              />
-              <Button onClick={sendChat} disabled={status !== 'open'} className="bg-history-primary hover:bg-history-primary/90">
-                Send
+            {isHost && (
+              <Button onClick={copyInvite} className="mt-3 w-full bg-neutral-800 hover:bg-neutral-700" variant="secondary">
+                {copied ? 'Link copied!' : 'Share Invite'}
               </Button>
-            </div>
+            )}
           </div>
+        </div>
+
+        {/* Players grid */}
+        <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/40">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold">Players ({roster.length || players.length})</h2>
+            <div className="text-xs text-neutral-400">Room {roomCode} · Status: {status}</div>
+          </div>
+          {roster.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {roster.map((r, i) => {
+                const isYou = r.id === ownId;
+                return (
+                  <div key={`${r.name}-${i}`} className="rounded-lg bg-neutral-800/60 border border-neutral-700 px-3 py-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-8 w-8 rounded-full bg-neutral-700 flex items-center justify-center text-sm font-semibold">
+                          {r.name?.[0]?.toUpperCase() || '?' }
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium truncate max-w-[160px]">{r.name}</span>
+                            {r.host && <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-300">Host</span>}
+                          </div>
+                          <div className="text-xs text-neutral-400">{r.ready ? 'Ready' : 'Not ready'}</div>
+                        </div>
+                      </div>
+                      <div className="ml-3">
+                        {isYou ? (
+                          <Switch checked={ownReady} onCheckedChange={toggleReady} disabled={status !== 'open'} />
+                        ) : (
+                          <Switch checked={r.ready} disabled />
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-3 h-1.5 rounded-full bg-neutral-700 overflow-hidden">
+                      <div className={`h-full ${r.ready ? 'bg-emerald-400 w-full' : 'bg-neutral-500 w-1/5'}`}></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-sm text-neutral-500">Waiting for players...</div>
+          )}
+          {roster.length === 1 && (
+            <div className="mt-3 text-xs text-neutral-400">Share the invite link to bring friends into this room.</div>
+          )}
+        </div>
+
+        {/* Waiting banner */}
+        <div className="rounded-xl bg-teal-600/20 text-teal-300 border border-teal-600/40 p-3 text-center">
+          <div className="font-medium">Waiting for players ({readyCount}/{roster.length || players.length} ready)</div>
+          <div className="text-xs text-neutral-300 mt-1">All players must be ready to start in Sync mode</div>
         </div>
       </div>
     </div>

@@ -593,6 +593,20 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - Participants see the formatted time and a note that the host controls the timer.
   - Timer values are also validated on the server.
 
+## Compete (Sync) Lobby UI Layout (2025-08)
+
+- __Location__: `src/pages/Room.tsx`
+- __Header__: Centered “SYNC” pill for mode identification.
+- __Cards__:
+  - Timer Settings — host-only toggle and duration slider (5–300s). All players see formatted time.
+  - Room Information — shows room code; host-only copy/share invite controls.
+- __Players__: Grid of player cards with avatar initial, name, host badge, and readiness status.
+  - Your card shows an interactive ready switch; others show a disabled switch reflecting their state.
+  - A slim readiness bar indicates each player’s ready state.
+- __Bottom banner__: “Waiting for players (readyCount/total)” note; clarifies that all players must be ready in Sync mode.
+- __Chat__: The lobby chat panel has been removed in this layout.
+- __Top actions__: Home button, account menu, and leave controls remain on the top-right. Share invite is host-only.
+
 ## Multiplayer Start Synchronization (Timer + Deterministic Image Order)
 
 - **Authoritative start** (`server/lobby.ts`)

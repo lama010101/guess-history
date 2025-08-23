@@ -511,12 +511,6 @@ const Room: React.FC = () => {
             {/* Host-only Friends management */}
             {isHost && (
               <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/50">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-semibold">Friends</h2>
-                  <button type="button" onClick={() => navigate('/test/friends')} className="text-sm text-emerald-300 hover:text-emerald-200 inline-flex items-center gap-1">
-                    <ExternalLink className="h-4 w-4" /> Manage friends
-                  </button>
-                </div>
                 {/* Friends accordion with internal search + invite */}
                 {friendsLoading ? (
                   <div className="text-xs text-neutral-400">Loading friends…</div>
@@ -534,6 +528,16 @@ const Room: React.FC = () => {
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                           />
+                        </div>
+                        {/* Manage Friends link moved here */}
+                        <div className="-mt-2 mb-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => navigate('/test/friends')}
+                            className="text-xs text-emerald-300 hover:text-emerald-200 inline-flex items-center gap-1"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" /> Manage friends
+                          </button>
                         </div>
                         {filteredFriends.length === 0 ? (
                           <div className="text-xs text-neutral-400">No friends match your filter.</div>

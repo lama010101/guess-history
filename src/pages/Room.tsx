@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { X, Home, Copy, Users } from 'lucide-react';
+import { X, Home, Copy, Users, ArrowLeft, Zap, Share2, Search, UserPlus, UserMinus, ExternalLink } from 'lucide-react';
 import { partyUrl, LobbyServerMessage, LobbyClientMessage } from '@/lib/partyClient';
 import { useGame } from '@/contexts/GameContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { NavMenu } from '@/components/NavMenu';
 import { v5 as uuidv5 } from 'uuid';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/sonner';
 
 interface ChatItem {
   id: string;
@@ -50,6 +52,14 @@ const Room: React.FC = () => {
   const [ownReady, setOwnReady] = useState(false);
   const [copied, setCopied] = useState(false);
   const [ownId, setOwnId] = useState<string>('');
+
+  // Host-only: friends management
+  type FriendEntry = { id: string; display_name: string; avatar_url?: string };
+  const [friendsList, setFriendsList] = useState<FriendEntry[]>([]);
+  const [friendsLoading, setFriendsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<FriendEntry[]>([]);
+  const [searching, setSearching] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   const retryRef = useRef(0);
@@ -225,6 +235,99 @@ const Room: React.FC = () => {
     return roster.some(r => r.host && r.id === ownId);
   }, [roster, ownId]);
 
+  // Host-only friends helpers
+  const loadFriends = useCallback(async () => {
+    if (!user?.id) return;
+    setFriendsLoading(true);
+    try {
+      const { data: friendsRows, error: friendsErr } = await supabase
+        .from('friends')
+        .select('friend_id')
+        .eq('user_id', user.id);
+      if (friendsErr) throw friendsErr;
+      const ids = (friendsRows || []).map((r: any) => r.friend_id);
+      if (ids.length === 0) {
+        setFriendsList([]);
+      } else {
+        const { data: profiles, error: profilesErr } = await supabase
+          .from('profiles')
+          .select('id, display_name, avatar_url')
+          .in('id', ids);
+        if (profilesErr) throw profilesErr;
+        const mapped = (profiles || []).map((p: any) => ({ id: p.id, display_name: p.display_name || 'User', avatar_url: p.avatar_url || undefined }));
+        setFriendsList(mapped);
+      }
+    } catch (e) {
+      console.error('[Room] loadFriends error', e);
+      toast.error('Failed to load friends');
+    } finally {
+      setFriendsLoading(false);
+    }
+  }, [user?.id]);
+
+  const searchUsers = useCallback(async () => {
+    if (!searchTerm.trim() || !user?.id) return;
+    setSearching(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, display_name, avatar_url')
+        .ilike('display_name', `%${searchTerm}%`)
+        .neq('id', user.id)
+        .limit(20);
+      if (error) throw error;
+      const friendIds = new Set(friendsList.map(f => f.id));
+      const mapped = (data || [])
+        .filter((p: any) => !friendIds.has(p.id))
+        .map((p: any) => ({ id: p.id, display_name: p.display_name || 'User', avatar_url: p.avatar_url || undefined }));
+      setSearchResults(mapped);
+    } catch (e) {
+      console.error('[Room] searchUsers error', e);
+      toast.error('Failed to search users');
+    } finally {
+      setSearching(false);
+    }
+  }, [searchTerm, user?.id, friendsList]);
+
+  const addFriend = useCallback(async (u: FriendEntry) => {
+    if (!user?.id) return;
+    try {
+      const { error } = await supabase
+        .from('friends')
+        .insert([{ user_id: user.id, friend_id: u.id }]);
+      if (error) throw error;
+      setFriendsList(prev => [...prev, u]);
+      setSearchResults(prev => prev.filter(s => s.id !== u.id));
+      toast.success(`Added ${u.display_name}`);
+    } catch (e) {
+      console.error('[Room] addFriend error', e);
+      toast.error('Failed to add friend');
+    }
+  }, [user?.id]);
+
+  const removeFriend = useCallback(async (friendId: string) => {
+    if (!user?.id) return;
+    try {
+      const { error } = await supabase
+        .from('friends')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('friend_id', friendId);
+      if (error) throw error;
+      setFriendsList(prev => prev.filter(f => f.id !== friendId));
+      toast.success('Friend removed');
+    } catch (e) {
+      console.error('[Room] removeFriend error', e);
+      toast.error('Failed to remove friend');
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (isHost && user?.id) {
+      loadFriends();
+    }
+  }, [isHost, user?.id, loadFriends]);
+
   // Format time similar to Play Solo UI
   const formatTime = useCallback((seconds: number): string => {
     if (!seconds) return 'No timer';
@@ -271,33 +374,47 @@ const Room: React.FC = () => {
   return (
     <div className="min-h-screen w-full bg-history-light dark:bg-black text-white">
       <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
-        {/* Top actions */}
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            size="icon"
-            onClick={() => navigate('/test')}
-            className="h-9 w-9 rounded-full border-none text-black bg-[linear-gradient(90deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] hover:opacity-90"
-            aria-label="Go to Home"
-            type="button"
-          >
-            <Home className="h-4 w-4" />
-          </Button>
-          <NavMenu />
-          <Button
-            size="icon"
-            onClick={() => navigate('/play')}
-            className="h-9 w-9 rounded-full bg-neutral-800 hover:bg-neutral-700"
-            aria-label="Leave lobby"
-            type="button"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-          <Button onClick={() => navigate('/play')} variant="ghost" className="text-neutral-300">Leave</Button>
+        {/* Top bar */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            <Button
+              onClick={() => navigate(-1)}
+              variant="ghost"
+              className="px-2 text-neutral-300 hover:text-white"
+              aria-label="Back"
+              type="button"
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="icon"
+              onClick={() => navigate('/test')}
+              className="h-9 w-9 rounded-full border-none text-black bg-[linear-gradient(90deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] hover:opacity-90"
+              aria-label="Go to Home"
+              type="button"
+            >
+              <Home className="h-4 w-4" />
+            </Button>
+            <NavMenu />
+            <Button
+              size="icon"
+              onClick={() => navigate('/play')}
+              className="h-9 w-9 rounded-full bg-neutral-800 hover:bg-neutral-700"
+              aria-label="Leave lobby"
+              type="button"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Mode pill */}
         <div className="flex justify-center">
-          <div className="px-6 py-2 rounded-full bg-gradient-to-r from-emerald-400 to-teal-400 text-black font-semibold shadow">
+          <div className="px-6 py-2 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 text-black font-semibold shadow inline-flex items-center gap-2">
+            <Zap className="h-4 w-4" />
             SYNC
           </div>
         </div>
@@ -305,7 +422,7 @@ const Room: React.FC = () => {
         {/* Info row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Timer Settings */}
-          <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/40">
+          <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/50">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold">Timer Settings</h2>
               <div className="text-xs text-neutral-400">{formatTime(timerEnabled ? roundTimerSec : 0)}</div>
@@ -353,7 +470,7 @@ const Room: React.FC = () => {
           </div>
 
           {/* Room Information */}
-          <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/40">
+          <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/50">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold">Room Information</h2>
               <div className="flex items-center gap-2 text-xs text-neutral-400">
@@ -370,12 +487,80 @@ const Room: React.FC = () => {
               )}
             </div>
             {isHost && (
-              <Button onClick={copyInvite} className="mt-3 w-full bg-neutral-800 hover:bg-neutral-700" variant="secondary">
+              <Button onClick={copyInvite} className="mt-3 w-full bg-neutral-800 hover:bg-neutral-700 inline-flex items-center gap-2" variant="secondary">
+                <Share2 className="h-4 w-4" />
                 {copied ? 'Link copied!' : 'Share Invite'}
               </Button>
             )}
           </div>
         </div>
+
+        {/* Host-only Friends management */}
+        {isHost && (
+          <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/50">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold">Friends</h2>
+              <Button
+                variant="secondary"
+                className="inline-flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700"
+                onClick={() => navigate('/test/friends')}
+              >
+                <ExternalLink className="h-4 w-4" /> Manage in Friends Page
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+                <Input
+                  placeholder="Search users by name..."
+                  className="pl-9"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && searchUsers()}
+                />
+              </div>
+              <Button onClick={searchUsers} disabled={searching || !searchTerm.trim()}>
+                {searching ? 'Searching…' : 'Search'}
+              </Button>
+            </div>
+            {/* Friends list */}
+            <div className="mt-4">
+              <div className="text-sm text-neutral-300 mb-2">Your Friends ({friendsList.length})</div>
+              {friendsLoading ? (
+                <div className="text-xs text-neutral-400">Loading friends…</div>
+              ) : friendsList.length === 0 ? (
+                <div className="text-xs text-neutral-400">No friends yet. Use search to add some.</div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {friendsList.map(f => (
+                    <div key={f.id} className="flex items-center justify-between rounded-lg bg-neutral-800/60 border border-neutral-700 px-3 py-2">
+                      <div className="truncate text-sm">{f.display_name}</div>
+                      <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300" onClick={() => removeFriend(f.id)}>
+                        <UserMinus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Search results */}
+            {searchResults.length > 0 && (
+              <div className="mt-4">
+                <div className="text-sm text-neutral-300 mb-2">Results</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {searchResults.map(u => (
+                    <div key={u.id} className="flex items-center justify-between rounded-lg bg-neutral-800/60 border border-neutral-700 px-3 py-2">
+                      <div className="truncate text-sm">{u.display_name}</div>
+                      <Button size="sm" variant="ghost" className="text-emerald-300 hover:text-emerald-200" onClick={() => addFriend(u)}>
+                        <UserPlus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Players grid */}
         <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/40">

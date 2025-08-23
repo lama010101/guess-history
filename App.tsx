@@ -1,14 +1,12 @@
 import React, { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { TooltipProvider } from "./src/components/ui/tooltip";
 import { ThemeProvider } from "next-themes";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { AuthProvider, useAuth } from "./src/contexts/AuthContext";
+import { supabase } from "./src/integrations/supabase/client";
 
-import TestLayout from "./layouts/TestLayout";
+import TestLayout from "./src/layouts/TestLayout";
 import TestHomePage from "./pages/test/TestHomePage";
 import TestGamePage from "./pages/test/TestGamePage";
 import TestResultsPage from "./pages/test/TestResultsPage";
@@ -19,11 +17,9 @@ import TestFinalPage from "./pages/test/final";
 import TestRoomPage from "./pages/test/TestRoomPage";
 import TestFriendsPage from "./pages/test/TestFriendsPage";
 import TestAuthPage from "./pages/test/TestAuthPage";
-import AdminImagesPage from './pages/AdminImagesPage';
-import AdminBadgesPage from './pages/AdminBadgesPage';
-import LandingPage from './pages/LandingPage';
-import RoundResultsPage from '@/pages/RoundResultsPage';
-import GameRoundPage from '@/pages/GameRoundPage';
+import LandingPage from './src/pages/LandingPage';
+import RoundResultsPage from './src/pages/RoundResultsPage';
+import GameRoundPage from './src/pages/GameRoundPage';
 
 // Handler for auth redirects
 const AuthRedirectHandler = () => {
@@ -56,8 +52,6 @@ const App = () => {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <TooltipProvider>
-              <Toaster />
-              <Sonner />
               <BrowserRouter>
                 <AuthRedirectHandler />
                 <Routes>
@@ -77,8 +71,6 @@ const App = () => {
                     <Route path="room" element={<TestRoomPage />} />
                     <Route path="friends" element={<TestFriendsPage />} />
                   </Route>
-                  <Route path="/test/admin/images" element={<AdminImagesPage />} />
-                  <Route path="/test/admin/badges" element={<AdminBadgesPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </BrowserRouter>

@@ -593,6 +593,27 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - Participants see the formatted time and a note that the host controls the timer.
   - Timer values are also validated on the server.
 
+## Play Page Defaults and Friends Management (2025-08-23)
+
+- __Play page default tab__
+  - File: `src/pages/PlayWithFriends.tsx`
+  - Behavior: The Join tab is the default and appears first in the mobile segmented control. The Join card is rendered before Host for visual consistency.
+  - Join code input accepts 6 alphanumeric characters; paste-invite field auto-extracts a valid code when present.
+
+- **Host-only Friends management within Room**
+  - File: `src/pages/Room.tsx`
+  - Visibility: Panel appears only for the host (`isHost`).
+  - Features:
+    - Search users by display name (excludes self and already-friended IDs).
+    - Add friend: inserts into `public.friends (user_id, friend_id)`.
+    - Remove friend: deletes the `(user_id, friend_id)` row.
+    - Lists current friends by resolving IDs against `public.profiles (id, display_name, avatar_url)`.
+    - Includes a link button to the full Friends page route (`/test/friends`) for advanced management (`src/pages/FriendsPage.tsx`).
+  - Tech details:
+    - Uses Supabase client: `@/integrations/supabase/client`.
+    - Notifications: `toast` from `@/components/ui/sonner` (no-op wrapper; safe in environments where toasts are globally disabled).
+    - Kept separate from PartyKit lobby logic; does not alter ready/start flows.
+
 ## Compete (Sync) Lobby UI Layout (2025-08)
 
 - __Location__: `src/pages/Room.tsx`
@@ -606,6 +627,22 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
 - __Bottom banner__: “Waiting for players (readyCount/total)” note; clarifies that all players must be ready in Sync mode.
 - __Chat__: The lobby chat panel has been removed in this layout.
 - __Top actions__: Home button, account menu, and leave controls remain on the top-right. Share invite is host-only.
+
+## Play With Friends Page UI (/play)
+
+- __Location__: `src/pages/PlayWithFriends.tsx`
+- __Purpose__: Entry point for multiplayer. Host or join a lobby by code. No logic changes; UI-only.
+- __Header__: Top-left Back button (`navigate(-1)`).
+- __Mode pill__: Non-interactive segmented pill (“SYNC | ASYNC”) centered visually; mirrors Room page’s mode styling.
+- __Cards__:
+  - Host Game — primary button “Create room” generates a 6-char room code and navigates to `/room/:code?host=1`.
+  - Join Game — labeled input for 6-char room code (auto uppercases, tracking spacing). “Join” enabled only when valid.
+- __Display name note__: Shows the authenticated display name resolved from `AuthContext`.
+- __Capacity note__: “Rooms support up to 8 players. Share the 6-character code with friends.”
+ - __Mobile toggle__: A Host/Join segmented control appears on small screens and switches which card is visible; both cards are shown side-by-side on `md+` screens.
+ - __Paste invite link__: Join card includes a secondary input that auto-extracts a 6-character room code from a pasted URL or text and fills the primary code field.
+ - __Validation__: Join button is disabled until the code matches `/^[A-Z0-9]{6}$/`; input auto-uppercases.
+
 
 ## Multiplayer Start Synchronization (Timer + Deterministic Image Order)
 

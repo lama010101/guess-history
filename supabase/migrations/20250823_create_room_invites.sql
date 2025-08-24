@@ -56,6 +56,14 @@ BEGIN
       FOR DELETE TO authenticated
       USING ( inviter_user_id = auth.uid() );
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='room_invites' AND policyname='ri_delete_invited'
+  ) THEN
+    CREATE POLICY ri_delete_invited ON public.room_invites
+      FOR DELETE TO authenticated
+      USING ( friend_id = auth.uid() );
+  END IF;
 END $$;
 
 COMMIT;

@@ -37,11 +37,15 @@ const Room: React.FC = () => {
   const { startGame, abortPreparation, roundTimerSec, timerEnabled, setRoundTimerSec, setTimerEnabled } = useGame();
   const { user } = useAuth();
 
+  const [profileName, setProfileName] = useState<string>('');
+  const [profileLoaded, setProfileLoaded] = useState<boolean>(false);
+
   const name = useMemo(() => {
     const authName = (user?.user_metadata?.display_name || user?.user_metadata?.full_name || user?.user_metadata?.name || (user?.email ? user.email.split('@')[0] : '')) as string;
     const paramName = params.get('name')?.trim() || '';
-    return (authName?.trim() || paramName || 'Anonymous').slice(0, 32);
-  }, [user, params]);
+    const chosen = (profileName?.trim() || authName?.trim() || paramName || 'Anonymous').slice(0, 32);
+    return chosen;
+  }, [user, params, profileName]);
   const url = useMemo(() => partyUrl('lobby', roomCode), [roomCode]);
 
   const [players, setPlayers] = useState<string[]>([]);
@@ -68,6 +72,32 @@ const Room: React.FC = () => {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startedRef = useRef(false);
   const lastSentSettingsRef = useRef<{ sec: number; enabled: boolean } | null>(null);
+
+  // Load the user's profile display_name (preferred join name)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (user?.id) {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('id', user.id)
+            .maybeSingle();
+          if (!cancelled) {
+            if (!error) setProfileName((data?.display_name || '').trim());
+          }
+        }
+      } catch {
+        // ignore, fall back to auth metadata
+      } finally {
+        if (!cancelled) setProfileLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   const cleanupSocket = () => {
     try {
@@ -205,11 +235,13 @@ const Room: React.FC = () => {
       navigate('/play', { replace: true });
       return;
     }
+    // If authenticated, wait for profile load to ensure we send the correct name on join.
+    if (user?.id && !profileLoaded) return;
     connect();
     return () => {
       cleanupSocket();
     };
-  }, [connect, navigate, roomCode]);
+  }, [connect, navigate, roomCode, user?.id, profileLoaded]);
 
   // Remove previous auto-start behavior. Start is now driven by server 'start' event.
 
@@ -568,7 +600,7 @@ const Room: React.FC = () => {
               </div>
               {(() => {
                 const invitedExtras = invites
-                  .filter((inv) => !roster.some((r) => r.name === inv.display_name))
+                  .filter((inv) => !roster.some((r) => (r.name || '').trim().toLowerCase() === (inv.display_name || '').trim().toLowerCase()))
                   .map((inv) => ({ id: `invite:${inv.id}`, name: inv.display_name, ready: false, host: false, _inviteId: inv.id } as any));
                 const display = [...roster, ...invitedExtras];
                 return display.length > 0 ? (

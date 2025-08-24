@@ -614,6 +614,28 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
     - Notifications: `toast` from `@/components/ui/use-toast` (project toast hook; renders via `Toaster`).
     - Kept separate from PartyKit lobby logic; does not alter ready/start flows.
 
+## Room Invitations (Storage & Realtime) — 2025-08-23
+
+- __Storage__
+  - Table: `public.room_invites`
+    - Columns: `id uuid pk default gen_random_uuid()`, `room_id text not null`, `inviter_user_id uuid not null -> auth.users(id)`, `friend_id uuid not null -> public.profiles(id)`, `created_at timestamptz default now()`.
+  - Indexes: unique `(room_id, inviter_user_id, friend_id)`; plus indexes on `room_id`, `inviter_user_id`, `friend_id`.
+
+- __RLS Policies__ (enabled)
+  - `ri_select_inviter`: authenticated users can `SELECT` rows where `inviter_user_id = auth.uid()`.
+  - `ri_select_invited`: authenticated users can `SELECT` rows where `friend_id = auth.uid()`.
+  - `ri_insert_inviter`: authenticated users can `INSERT` only when `inviter_user_id = auth.uid()`.
+  - `ri_delete_inviter`: authenticated users can `DELETE` rows they created (`inviter_user_id = auth.uid()`).
+  - `ri_delete_invited`: authenticated users can `DELETE` rows where they are the invited friend (`friend_id = auth.uid()`).
+
+- __Realtime__
+  - Migration: `supabase/migrations/20250823_enable_realtime_room_invites.sql`:
+    - `ALTER TABLE public.room_invites REPLICA IDENTITY FULL` to ensure `DELETE` events include non-PK columns for server-side filtering by `friend_id`.
+    - `ALTER PUBLICATION supabase_realtime ADD TABLE public.room_invites` (idempotent guard) to receive changes.
+
+- __Types__
+  - `integrations/supabase/types.ts` includes `public.Tables.room_invites` (Row/Insert/Update and relationships) for type-safe queries.
+
 ## Compete (Sync) Lobby UI Layout (2025-08)
 
 - __Location__: `src/pages/Room.tsx`

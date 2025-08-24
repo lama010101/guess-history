@@ -4,6 +4,7 @@ import { NavProfile } from "@/components/NavProfile";
 import { useGame } from "@/contexts/GameContext";
 import { Badge } from "@/components/ui/badge";
 import { Target, Zap } from "lucide-react";
+import InvitesBell from "@/components/navigation/InvitesBell";
 
 const TestLayout = () => {
   const location = useLocation();
@@ -36,8 +37,9 @@ const TestLayout = () => {
                   </Badge>
                 </div>
 
-                {/* Right: Profile */}
-                <div className="ml-auto">
+                {/* Right: Invites + Profile */}
+                <div className="ml-auto flex items-center gap-2">
+                  <InvitesBell />
                   <NavProfile />
                 </div>
               </div>
@@ -56,7 +58,10 @@ const TestLayout = () => {
                   </Badge>
                 </div>
                 
-                <NavProfile />
+                <div className="flex items-center gap-2">
+                  <InvitesBell />
+                  <NavProfile />
+                </div>
               </div>
             )}
           </div>

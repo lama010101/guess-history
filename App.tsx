@@ -5,6 +5,7 @@ import { TooltipProvider } from "./src/components/ui/tooltip";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "./src/contexts/AuthContext";
 import { supabase } from "./src/integrations/supabase/client";
+import { Toaster } from "./src/components/ui/toaster";
 
 import TestLayout from "./src/layouts/TestLayout";
 import TestHomePage from "./pages/test/TestHomePage";
@@ -73,6 +74,7 @@ const App = () => {
                   </Route>
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
+                <Toaster />
               </BrowserRouter>
             </TooltipProvider>
           </AuthProvider>

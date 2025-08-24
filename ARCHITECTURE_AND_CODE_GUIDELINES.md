@@ -35,7 +35,35 @@
     - Client behavior (no UI changes): After a successful join is confirmed by `hello { you }`, `src/pages/Room.tsx` calls `declineInviteForRoom(roomCode, user.id)` once per mount (guarded by `clearedInvitesRef`) to silently clear any pending invites for that room/user.
     - Realtime: When invites are deleted, any listeners on `public.room_invites` receive delete events (REPLICA IDENTITY FULL).
 
-- **Environment**: `.env.example` defines `VITE_PARTYKIT_HOST` (default `localhost:1999`).
+     ### Invitation UI (Bell & Sheet)
+ 
+     - Component: `src/components/navigation/InvitesBell.tsx`
+       - Sheet: `SheetContent` side "right" with class `bg-zinc-950/85 text-white border-l border-zinc-800` (0.85 opacity background).
+       - Badge shows `pendingCount` over the bell.
+     - Accept: green button `bg-emerald-500 hover:bg-emerald-500/90 text-black` navigates to `/room/<roomId>`, then best-effort deletes the invite.
+     - Decline: red button `bg-red-500 hover:bg-red-500/90 text-white`; handler awaits `declineInvite(inv.id)` then `fetchInvites()` to refresh the list immediately.
+     - Data source: `useRoomInvites` provides `invites`, `pendingCount`, `declineInvite`, `fetchInvites`. Helper APIs are also available in `integrations/supabase/invites.ts`.
+      - Mobile width: panel uses `w-[85vw] sm:w-[420px]` for improved mobile usability.
+      - Invitation card style: background color is `#444` for consistent dark theme.
+      - Decline UX feedback: shows toast on success ("Invite declined") and failure (destructive variant) on decline action.
+      - Realtime invite notification: on `room_invites` INSERT (filtered by `friend_id`), the client fetches the inviter's `profiles.display_name` and shows a toast in the format: `[host] invites you to room <ROOM_ID>`. Source: `src/hooks/useRoomInvites.ts`.
+
+     #### Global Invite Listener (Headless)
+     - Component: `src/components/InviteListener.tsx`
+       - Purpose: Mounts `useRoomInvites()` without any UI to ensure the realtime subscription is always active for authenticated users.
+       - Mounted: In `src/App.tsx` near other headless components (logger, overlays), as `<InviteListener />`.
+       - Rationale: Guarantees invited users get instant notifications even if the bell UI is not currently rendered.
+
+     #### Host Realtime Invite Sync (Room page)
+     - Location: `src/pages/Room.tsx`
+     - Behavior:
+       - Subscribes to `public.room_invites` filtered by `inviter_user_id = <currentUserId>` and current `room_id` (via a client channel `room_invites:host:<userId>`).
+       - On INSERT: adds the invite to local state with a placeholder display name, then fetches the invitee’s `profiles.display_name` and updates the entry.
+       - On DELETE: removes the invite from local state by id.
+     - Types: Uses `Tables<'room_invites'>` from `integrations/supabase/types.ts` to type the realtime payload for reliability.
+     - Notes: No UI changes; this keeps the host’s invites list in sync in realtime.
+
+  - **Environment**: `.env.example` defines `VITE_PARTYKIT_HOST` (default `localhost:1999`).
 - **Routing (frontend)**: `App.tsx`
   - `/` → `LandingPage`
   - `/test` → `TestLayout` with nested routes: `index`, `auth`, `game`, `results`, `final`, `leaderboard`, `profile`, `settings`, `room`, `friends`.
@@ -154,6 +182,22 @@ This approach bypasses the need for local tools like the Supabase CLI or `bun`/`
 ### File Structure
 
 ```
+
+### Room page — “Maximum update depth exceeded” (2025-08-24)
+
+- **Symptom**: React warning triggered in `src/pages/Room.tsx` when state updates inside `useEffect` caused re-renders on every render.
+- **Root causes**:
+  - `connect()` effect recreating due to `name` dependency, causing repeated reconnects.
+  - Incoming `settings` messages always calling setters, even when values didn’t change.
+  - Host settings effect depending on `status`, retriggering sends on status toggles.
+  - `close` handler reading stale `status`.
+- **Fixes**:
+  - Read latest `name` from `latestNameRef` inside `connect()`; remove `name` from `connect` deps; trigger `connect()` from a separate effect keyed by route/profile readiness only.
+  - Guard server `settings` handler using `timerEnabledRef` and `roundTimerSecRef` to avoid redundant `setTimerEnabled`/`setRoundTimerSec`.
+  - Remove `status` from the host settings effect deps; keep idempotence with `lastSentSettingsRef`.
+  - Use `statusRef` in the WebSocket `close` handler.
+  - Refs synced in tiny effects: `latestNameRef`, `statusRef`, `timerEnabledRef`, `roundTimerSecRef`.
+  - File: `src/pages/Room.tsx`.
 src/multiplayer/
 ├── Server.ts                 # PartyKit server implementation
 ├── MultiplayerAdapter.ts     # Socket-agnostic adapter
@@ -607,13 +651,17 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
 - **Key files**:
   - Server: `server/lobby.ts` — handles `settings` from host, clamps values, includes `durationSec` and `timerEnabled` in `start` broadcast.
   - Shared types: `src/lib/partyClient.ts` — defines `LobbyClientMessage` and `LobbyServerMessage` including `settings` and extended `start`.
-  - Lobby UI: `src/pages/Room.tsx` — host-only timer toggle and slider (reuses Play Solo styling/logic); non-hosts see the selected duration. Uses `GameContext` setters to update `roundTimerSec` and `timerEnabled` and relies on an effect to send `settings` when changed.
+  - Lobby UI: `src/pages/Room.tsx` — host-only timer toggle and native range input slider; non-hosts see the selected duration. Uses `GameContext` setters to update `roundTimerSec` and `timerEnabled` and relies on an effect to send `settings` when changed.
   - Solo settings reference: `src/components/game/GameSettings.tsx`.
 
 - **UI behavior**:
   - Host sees a toggle (timer on/off) and a slider (5–300 seconds, step 5s) and the formatted time.
   - Participants see the formatted time and a note that the host controls the timer.
   - Timer values are also validated on the server.
+
+- **UI implementation note (2025-08-24)**:
+  - The round duration control uses a native HTML `input type="range"` (min 5, max 300, step 5), replacing the Shadcn Slider to eliminate touch-device flicker/sway.
+  - Editing is host-only; non-hosts see a read-only display with the note “Host controls the timer.”
 
 ## Play Page Defaults and Friends Management (2025-08-23)
 
@@ -1160,6 +1208,13 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
 - Real-time analytics dashboard
 
 ## UI Adjustments: Game & Round Results (2025-08)
+
+### Slider Thumb Styling — Home & Game (2025-08-24)
+
+- **Component**: `src/components/ui/slider.tsx` (Shadcn/Radix Slider wrapper)
+- **Change**: Slider thumb uses orange (`bg-orange-500` with `border-orange-500`) and a semi-transparent orange halo via `after:bg-orange-500/50` to match the native `.time-slider` style used in the Room page.
+- **Scope**: Applies anywhere the shared `Slider` is used, including `src/pages/HomePage.tsx`, `src/components/game/GameSettings.tsx`, and `src/components/game/YearSelector.tsx`.
+- **Track/Range**: Track stays neutral; filled range is hidden (`<SliderPrimitive.Range className="hidden" />`) to avoid a trailing colored line.
 
 - Game page
   - `src/components/navigation/GameOverlayHUD.tsx`: Centered score badges in top overlay; hide Home button on mobile.

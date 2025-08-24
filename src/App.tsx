@@ -10,6 +10,7 @@ import { LogProvider, useConsoleLogging } from "@/contexts/LogContext";
 import { LogWindowModal } from "@/components/LogWindowModal";
 import { AuthRedirectWrapper } from "@/components/AuthRedirectWrapper";
 import PreparationOverlay from "@/components/game/PreparationOverlay";
+import InviteListener from "@/components/InviteListener";
 
 import TestLayout from "./layouts/TestLayout";
 import HomePage from "./pages/HomePage";
@@ -133,6 +134,8 @@ const App = () => {
                     <PreparationOverlay />
                     {/* Auto PWA install prompt (non-blocking) */}
                     <InstallPrompt auto />
+                    {/* Headless listener: ensures realtime invite subscription is always active */}
+                    <InviteListener />
                     <Routes>
                       <Route path="/" element={<LandingPage />} />
                       {/* Require an active session (registered or anonymous) for all routes except landing */}

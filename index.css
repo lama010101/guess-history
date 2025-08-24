@@ -84,11 +84,49 @@
   }
 
   .time-slider {
-    @apply appearance-none bg-gray-300 dark:bg-gray-700 h-2 rounded-full cursor-pointer;
+    /* Native range slider used on Room page timer */
+    @apply appearance-none w-full bg-transparent cursor-pointer;
+  }
+
+  /* WebKit (Chrome, Safari, Edge Chromium) */
+  .time-slider::-webkit-slider-runnable-track {
+    @apply h-2 rounded-full bg-neutral-400 dark:bg-neutral-700;
   }
 
   .time-slider::-webkit-slider-thumb {
-    @apply appearance-none w-6 h-6 bg-history-secondary rounded-full;
+    @apply appearance-none rounded-full border-2;
+    width: 21px;
+    height: 21px;
+    background-color: #2dd4bf; /* teal-400 */
+    border-color: #2dd4bf;      /* teal-400 */
+    /* Create a semi-transparent circular halo around the knob */
+    box-shadow: 0 0 0 10px rgba(45, 212, 191, 0.35);
+    /* Center the thumb on the 8px track (21-8)/2 = 6.5 */
+    margin-top: -6.5px;
+  }
+
+  /* Firefox */
+  .time-slider::-moz-range-track {
+    @apply h-2 rounded-full bg-neutral-400 dark:bg-neutral-700;
+  }
+  /* Hide the filled left segment */
+  .time-slider::-moz-range-progress {
+    background: transparent;
+    height: 8px;
+  }
+  .time-slider::-moz-range-thumb {
+    width: 21px;
+    height: 21px;
+    border-radius: 9999px;
+    background-color: #2dd4bf; /* teal-400 */
+    border: 2px solid #2dd4bf; /* teal-400 */
+    box-shadow: 0 0 0 10px rgba(45, 212, 191, 0.35);
+  }
+
+  /* Legacy Edge/IE (best effort, no-op on modern browsers) */
+  .time-slider::-ms-fill-lower,
+  .time-slider::-ms-fill-upper {
+    background: transparent;
   }
 
   .map-container {

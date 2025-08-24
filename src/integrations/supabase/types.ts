@@ -1,222 +1,554 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
 export type Database = {
   public: {
     Tables: {
-      profiles: {
-        Row: {
-          id: string;
-          created_at: string | null;
-          updated_at: string | null;
-          username: string | null;
-          avatar_url: string | null;
-          display_name: string | null;
-          avatar_name: string | null;
-          avatar_image_url: string | null;
-          avatar_id: string | null;
-          is_guest: boolean;
-          earned_badges: string[] | null;
-        };
-        Insert: {
-          id: string;
-          created_at?: string | null;
-          updated_at?: string | null;
-          username?: string | null;
-          avatar_url?: string | null;
-          display_name?: string | null;
-          avatar_name?: string | null;
-          avatar_image_url?: string | null;
-          avatar_id?: string | null;
-          is_guest?: boolean;
-          earned_badges?: string[] | null;
-        };
-        Update: {
-          id?: string;
-          created_at?: string | null;
-          updated_at?: string | null;
-          username?: string | null;
-          avatar_url?: string | null;
-          display_name?: string | null;
-          avatar_name?: string | null;
-          avatar_image_url?: string | null;
-          avatar_id?: string | null;
-          is_guest?: boolean;
-          earned_badges?: string[] | null;
-        };
-      };
-
       avatars: {
         Row: {
-          id: string;
-          first_name: string;
-          last_name: string;
-          description: string | null;
-          birth_day: string | null;
-          birth_city: string | null;
-          birth_country: string | null;
-          death_day: string | null;
-          death_city: string | null;
-          death_country: string | null;
-          firebase_url: string;
-          ready: boolean | null;
-          created_at: string | null;
-        };
+          created_at: string | null
+          id: string
+          image_url: string
+          name: string
+        }
         Insert: {
-          id?: string;
-          first_name: string;
-          last_name: string;
-          description?: string | null;
-          birth_day?: string | null;
-          birth_city?: string | null;
-          birth_country?: string | null;
-          death_day?: string | null;
-          death_city?: string | null;
-          death_country?: string | null;
-          firebase_url: string;
-          ready?: boolean | null;
-          created_at?: string | null;
-        };
+          created_at?: string | null
+          id?: string
+          image_url: string
+          name: string
+        }
         Update: {
-          id?: string;
-          first_name?: string;
-          last_name?: string;
-          description?: string | null;
-          birth_day?: string | null;
-          birth_city?: string | null;
-          birth_country?: string | null;
-          death_day?: string | null;
-          death_city?: string | null;
-          death_country?: string | null;
-          firebase_url?: string;
-          ready?: boolean | null;
-          created_at?: string | null;
-        };
-      };
-
-      user_metrics: {
+          created_at?: string | null
+          id?: string
+          image_url?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      friends: {
         Row: {
-          id: string;
-          user_id: string;
-          xp_total: number;
-          overall_accuracy: number;
-          games_played: number;
-          created_at: string | null;
-          updated_at: string | null;
-          best_accuracy: number | null;
-          perfect_games: number | null;
-          global_rank: number | null;
-          time_accuracy: number | null;
-          location_accuracy: number | null;
-          challenge_accuracy: number | null;
-          year_bullseye: number | null;
-          location_bullseye: number | null;
-        };
+          created_at: string | null
+          friend_id: string
+          id: string
+          user_id: string
+        }
         Insert: {
-          id?: string;
-          user_id: string;
-          xp_total?: number;
-          overall_accuracy?: number;
-          games_played?: number;
-          created_at?: string | null;
-          updated_at?: string | null;
-          best_accuracy?: number | null;
-          perfect_games?: number | null;
-          global_rank?: number | null;
-          time_accuracy?: number | null;
-          location_accuracy?: number | null;
-          challenge_accuracy?: number | null;
-          year_bullseye?: number | null;
-          location_bullseye?: number | null;
-        };
+          created_at?: string | null
+          friend_id: string
+          id?: string
+          user_id: string
+        }
         Update: {
-          id?: string;
-          user_id?: string;
-          xp_total?: number;
-          overall_accuracy?: number;
-          games_played?: number;
-          created_at?: string | null;
-          updated_at?: string | null;
-          best_accuracy?: number | null;
-          perfect_games?: number | null;
-          global_rank?: number | null;
-          time_accuracy?: number | null;
-          location_accuracy?: number | null;
-          challenge_accuracy?: number | null;
-          year_bullseye?: number | null;
-          location_bullseye?: number | null;
-        };
-      };
-
+          created_at?: string | null
+          friend_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      game_rounds: {
+        Row: {
+          created_at: string | null
+          game_id: string
+          id: string
+          image_id: string
+          round_index: number
+        }
+        Insert: {
+          created_at?: string | null
+          game_id: string
+          id?: string
+          image_id: string
+          round_index: number
+        }
+        Update: {
+          created_at?: string | null
+          game_id?: string
+          id?: string
+          image_id?: string
+          round_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_rounds_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_rounds_image_id_fkey"
+            columns: ["image_id"]
+            isOneToOne: false
+            referencedRelation: "images"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      games: {
+        Row: {
+          completed: boolean | null
+          created_at: string | null
+          created_by: string | null
+          current_round: number | null
+          guest_id: string | null
+          id: string
+          mode: string
+          round_count: number | null
+          score: number | null
+          user_id: string | null
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          current_round?: number | null
+          guest_id?: string | null
+          id?: string
+          mode: string
+          round_count?: number | null
+          score?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          current_round?: number | null
+          guest_id?: string | null
+          id?: string
+          mode?: string
+          round_count?: number | null
+          score?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      guesses: {
+        Row: {
+          accuracy: number | null
+          created_at: string | null
+          game_id: string
+          guess_lat: number
+          guess_lon: number
+          guess_year: number
+          id: string
+          image_id: string
+          is_fallback_location: boolean | null
+          round_index: number
+          user_id: string | null
+        }
+        Insert: {
+          accuracy?: number | null
+          created_at?: string | null
+          game_id: string
+          guess_lat: number
+          guess_lon: number
+          guess_year: number
+          id?: string
+          image_id: string
+          is_fallback_location?: boolean | null
+          round_index: number
+          user_id?: string | null
+        }
+        Update: {
+          accuracy?: number | null
+          created_at?: string | null
+          game_id?: string
+          guess_lat?: number
+          guess_lon?: number
+          guess_year?: number
+          id?: string
+          image_id?: string
+          is_fallback_location?: boolean | null
+          round_index?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guesses_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guesses_image_id_fkey"
+            columns: ["image_id"]
+            isOneToOne: false
+            referencedRelation: "images"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      images: {
+        Row: {
+          accuracy_score: Json | null
+          ai_generated: boolean | null
+          created_at: string | null
+          description: string
+          id: string
+          image_url: string
+          latitude: number
+          location_name: string
+          longitude: number
+          mature_content: boolean | null
+          ready: boolean | null
+          title: string
+          true_event: boolean | null
+          year: number
+        }
+        Insert: {
+          accuracy_score?: Json | null
+          ai_generated?: boolean | null
+          created_at?: string | null
+          description: string
+          id?: string
+          image_url: string
+          latitude: number
+          location_name: string
+          longitude: number
+          mature_content?: boolean | null
+          ready?: boolean | null
+          title: string
+          true_event?: boolean | null
+          year: number
+        }
+        Update: {
+          accuracy_score?: Json | null
+          ai_generated?: boolean | null
+          created_at?: string | null
+          description?: string
+          id?: string
+          image_url?: string
+          latitude?: number
+          location_name?: string
+          longitude?: number
+          mature_content?: boolean | null
+          ready?: boolean | null
+          title?: string
+          true_event?: boolean | null
+          year?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_image_url: string | null
+          avatar_name: string | null
+          avatar_url: string | null
+          created_at: string | null
+          display_name: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_image_url?: string | null
+          avatar_name?: string | null
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_image_url?: string | null
+          avatar_name?: string | null
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      room_invites: {
+        Row: {
+          id: string
+          room_id: string
+          inviter_user_id: string
+          friend_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          room_id: string
+          inviter_user_id: string
+          friend_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          room_id?: string
+          inviter_user_id?: string
+          friend_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_invites_friend_id_fkey"
+            columns: ["friend_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       settings: {
         Row: {
-          id: string;
-          value: unknown;
-          updated_at: string | null;
-        };
+          id: string
+          updated_at: string | null
+          value: Json
+        }
         Insert: {
-          id: string;
-          value?: unknown;
-          updated_at?: string | null;
-        };
+          id: string
+          updated_at?: string | null
+          value: Json
+        }
         Update: {
-          id?: string;
-          value?: unknown;
-          updated_at?: string | null;
-        };
-      };
-
-      game_sessions: {
+          id?: string
+          updated_at?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
+      session_players: {
         Row: {
-          room_id: string;
-          seed: string;
-          image_ids: string[];
-          started_at: string;
-          current_round_number: number | null;
-        };
+          room_id: string
+          user_id: string
+          display_name: string | null
+          joined_at: string
+        }
         Insert: {
-          room_id: string;
-          seed: string;
-          image_ids: string[];
-          started_at?: string;
-          current_round_number?: number | null;
-        };
+          room_id: string
+          user_id: string
+          display_name?: string | null
+          joined_at?: string
+        }
         Update: {
-          room_id?: string;
-          seed?: string;
-          image_ids?: string[];
-          started_at?: string;
-          current_round_number?: number | null;
-        };
-      };
-
-      room_rounds: {
+          room_id?: string
+          user_id?: string
+          display_name?: string | null
+          joined_at?: string
+        }
+        Relationships: []
+      }
+      round_results: {
         Row: {
-          room_id: string;
-          round_number: number;
-          started_at: string;
-          duration_sec: number;
-        };
+          id: string
+          user_id: string
+          room_id: string | null
+          round_index: number
+          image_id: string
+          score: number
+          accuracy: number
+          xp_total: number
+          xp_where: number
+          xp_when: number
+          hints_used: number
+          xp_debt: number
+          acc_debt: number
+          guess_year: number | null
+          guess_lat: number | null
+          guess_lng: number | null
+          actual_lat: number | null
+          actual_lng: number | null
+          distance_km: number | null
+          created_at: string
+          updated_at: string
+        }
         Insert: {
-          room_id: string;
-          round_number: number;
-          started_at?: string;
-          duration_sec: number;
-        };
+          id?: string
+          user_id: string
+          room_id?: string | null
+          round_index: number
+          image_id: string
+          score?: number
+          accuracy?: number
+          xp_total?: number
+          xp_where?: number
+          xp_when?: number
+          hints_used?: number
+          xp_debt?: number
+          acc_debt?: number
+          guess_year?: number | null
+          guess_lat?: number | null
+          guess_lng?: number | null
+          actual_lat?: number | null
+          actual_lng?: number | null
+          distance_km?: number | null
+          created_at?: string
+          updated_at?: string
+        }
         Update: {
-          room_id?: string;
-          round_number?: number;
-          started_at?: string;
-          duration_sec?: number;
-        };
-      };
-      // Add other tables as needed
-    };
+          id?: string
+          user_id?: string
+          room_id?: string | null
+          round_index?: number
+          image_id?: string
+          score?: number
+          accuracy?: number
+          xp_total?: number
+          xp_where?: number
+          xp_when?: number
+          hints_used?: number
+          xp_debt?: number
+          acc_debt?: number
+          guess_year?: number | null
+          guess_lat?: number | null
+          guess_lng?: number | null
+          actual_lat?: number | null
+          actual_lng?: number | null
+          distance_km?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+    }
     Views: {
-      [_ in never]: never;
-    };
+      [_ in never]: never
+    }
     Functions: {
-      [_ in never]: never;
-    };
+      get_round_scoreboard: {
+        Args: {
+          p_room_id: string
+          p_round_number: number
+        }
+        Returns: {
+          user_id: string
+          display_name: string
+          score: number
+          accuracy: number | null
+          xp_total: number | null
+          xp_debt: number | null
+          acc_debt: number | null
+          distance_km: number | null
+          guess_year: number | null
+        }[]
+      }
+    }
     Enums: {
-      [_ in never]: never;
-    };
-  };
-};
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DefaultSchema = Database[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof Database },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof Database },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof Database },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const

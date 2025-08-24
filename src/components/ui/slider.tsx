@@ -22,8 +22,8 @@ const Slider = React.forwardRef<
     </SliderPrimitive.Track>
     {/* Thumb: ~33% smaller than previous (21px), 100% orange, halo persists */}
     <SliderPrimitive.Thumb
-      className="relative block h-[21px] w-[21px] rounded-full bg-teal-300 border-2 border-teal-300 transition-colors focus-visible:outline-none focus-visible:ring-0 disabled:pointer-events-none disabled:opacity-50
-                 after:content-[''] after:absolute after:-inset-[10.5px] after:rounded-full after:bg-teal-300/50 after:opacity-50 after:pointer-events-none after:transition-opacity"
+      className="relative block h-[21px] w-[21px] rounded-full bg-orange-500 border-2 border-orange-500 transition-colors focus-visible:outline-none focus-visible:ring-0 disabled:pointer-events-none disabled:opacity-50
+                 after:content-[''] after:absolute after:-inset-[10.5px] after:rounded-full after:bg-orange-500/50 after:opacity-50 after:pointer-events-none after:transition-opacity"
     />
   </SliderPrimitive.Root>
 ))

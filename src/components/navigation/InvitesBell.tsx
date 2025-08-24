@@ -5,16 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useRoomInvites } from "@/hooks/useRoomInvites";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 export const InvitesBell: React.FC = () => {
-  const { invites, pendingCount, declineInvite } = useRoomInvites();
+  const { invites, pendingCount, declineInvite, fetchInvites } = useRoomInvites();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const hasInvites = pendingCount > 0;
 
   const accept = async (id: string, roomId: string) => {
-    // Navigate to room and mark invite as handled (delete)
-    navigate(`/test/room?id=${encodeURIComponent(roomId)}&join=true`);
+    // Navigate to the active Room route and mark invite as handled (delete)
+    navigate(`/room/${encodeURIComponent(roomId)}`);
     try {
       await declineInvite(id);
     } catch (e) {
@@ -39,7 +41,7 @@ export const InvitesBell: React.FC = () => {
           )}
         </button>
       </SheetTrigger>
-      <SheetContent side="right" className="bg-zinc-950 text-white border-l border-zinc-800">
+      <SheetContent side="right" className="bg-zinc-950/85 text-white border-l border-zinc-800 w-[85vw] sm:w-[420px]">
         <SheetHeader>
           <SheetTitle>Invitations</SheetTitle>
         </SheetHeader>
@@ -48,7 +50,7 @@ export const InvitesBell: React.FC = () => {
             <div className="text-sm text-zinc-400">No pending invites.</div>
           ) : (
             invites.map((inv) => (
-              <div key={inv.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
+              <div key={inv.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-\[\#444\] p-3">
                 <div className="flex flex-col">
                   <div className="text-sm font-medium">Room {inv.room_id}</div>
                   <div className="text-xs text-zinc-400">Invited at {new Date(inv.created_at).toLocaleString()}</div>
@@ -57,7 +59,19 @@ export const InvitesBell: React.FC = () => {
                   <Button size="sm" className="bg-emerald-500 hover:bg-emerald-500/90 text-black" onClick={() => accept(inv.id, inv.room_id)}>
                     <Check className="h-4 w-4 mr-1" /> Accept
                   </Button>
-                  <Button size="sm" variant="secondary" className="bg-zinc-800 hover:bg-zinc-700" onClick={() => declineInvite(inv.id)}>
+                  <Button
+                    size="sm"
+                    className="bg-red-500 hover:bg-red-500/90 text-white"
+                    onClick={async () => {
+                      try {
+                        await declineInvite(inv.id);
+                        await fetchInvites();
+                        toast({ description: "Invite declined" });
+                      } catch (e) {
+                        toast({ description: "Failed to decline invite", variant: "destructive" });
+                      }
+                    }}
+                  >
                     <X className="h-4 w-4 mr-1" /> Decline
                   </Button>
                 </div>

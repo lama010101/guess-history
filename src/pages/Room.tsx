@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { X, Home, Copy, Users, ArrowLeft, Zap, Share2, Search, UserPlus, UserMinus, ExternalLink } from 'lucide-react';
@@ -14,6 +13,7 @@ import { v5 as uuidv5 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { declineInviteForRoom } from '../../integrations/supabase/invites';
+import type { Tables } from '@/integrations/supabase/types';
 
 interface ChatItem {
   id: string;
@@ -75,6 +75,10 @@ const Room: React.FC = () => {
   const lastSentSettingsRef = useRef<{ sec: number; enabled: boolean } | null>(null);
   const lastSentNameRef = useRef<string>('');
   const clearedInvitesRef = useRef(false);
+  const latestNameRef = useRef<string>('');
+  const statusRef = useRef<typeof status>(status);
+  const timerEnabledRef = useRef<boolean>(!!timerEnabled);
+  const roundTimerSecRef = useRef<number>(Number(roundTimerSec || 0));
 
   // Load the user's profile display_name (preferred join name)
   useEffect(() => {
@@ -134,12 +138,13 @@ const Room: React.FC = () => {
     ws.addEventListener('open', () => {
       setStatus('open');
       retryRef.current = 0; // reset backoff on success
-      const joinMsg: LobbyClientMessage = { type: 'join', name, userId: user?.id || undefined };
+      const joinName = (latestNameRef.current || '').trim();
+      const joinMsg: LobbyClientMessage = { type: 'join', name: joinName, userId: user?.id || undefined };
       ws.send(JSON.stringify(joinMsg));
       // reset ready status upon fresh connection
       setOwnReady(false);
       // track the last name we told the server to support runtime rename updates
-      lastSentNameRef.current = name;
+      lastSentNameRef.current = joinName;
     });
 
     ws.addEventListener('message', (ev) => {
@@ -186,10 +191,10 @@ const Room: React.FC = () => {
               break;
             case 'settings':
               // Live sync timer values from server (on join and when host changes settings)
-              if (typeof data.timerEnabled === 'boolean') {
+              if (typeof data.timerEnabled === 'boolean' && data.timerEnabled !== timerEnabledRef.current) {
                 setTimerEnabled(data.timerEnabled);
               }
-              if (typeof data.timerSeconds === 'number') {
+              if (typeof data.timerSeconds === 'number' && Number(data.timerSeconds) !== roundTimerSecRef.current) {
                 setRoundTimerSec(data.timerSeconds);
               }
               break;
@@ -245,7 +250,7 @@ const Room: React.FC = () => {
     });
 
     ws.addEventListener('close', () => {
-      if (status !== 'full') {
+      if (statusRef.current !== 'full') {
         scheduleReconnect();
       }
     });
@@ -254,7 +259,7 @@ const Room: React.FC = () => {
       ws.close();
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, url, navigate, scheduleReconnect]);
+  }, [url, navigate, scheduleReconnect, user?.id]);
 
   useEffect(() => {
     if (!roomCode) {
@@ -267,7 +272,7 @@ const Room: React.FC = () => {
     return () => {
       cleanupSocket();
     };
-  }, [connect, navigate, roomCode, user?.id, profileLoaded]);
+  }, [navigate, roomCode, user?.id, profileLoaded]);
 
   // If the computed display name changes after connection, inform the server
   useEffect(() => {
@@ -283,6 +288,12 @@ const Room: React.FC = () => {
       } catch {}
     }
   }, [name]);
+
+  // Keep refs in sync with latest dynamic values without causing re-creations
+  useEffect(() => { latestNameRef.current = name; }, [name]);
+  useEffect(() => { statusRef.current = status; }, [status]);
+  useEffect(() => { timerEnabledRef.current = !!timerEnabled; }, [timerEnabled]);
+  useEffect(() => { roundTimerSecRef.current = Number(roundTimerSec || 0); }, [roundTimerSec]);
 
   // Remove previous auto-start behavior. Start is now driven by server 'start' event.
 
@@ -357,7 +368,61 @@ const Room: React.FC = () => {
     }
   }, [user?.id, roomCode]);
 
-  
+  // Host-side realtime: keep invites list in sync for this room
+  useEffect(() => {
+    if (!isHost || !user?.id) return;
+    const channel = supabase
+      .channel(`room_invites:host:${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "room_invites",
+          filter: `inviter_user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const row = payload.new as Tables<'room_invites'>;
+          if (!row || row.room_id !== roomCode) return;
+          setInvites((prev) => {
+            if (prev.some((i) => i.id === row.id)) return prev;
+            return [{ id: row.id, friend_id: row.friend_id, display_name: '' }, ...prev];
+          });
+          // Enrich with invitee's display name asynchronously
+          supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('id', row.friend_id)
+            .maybeSingle()
+            .then(({ data, error }) => {
+              if (error) return;
+              const dn = (data?.display_name || '').trim();
+              if (!dn) return;
+              setInvites((prev) => prev.map((i) => (i.id === row.id ? { ...i, display_name: dn } : i)));
+            })
+            .catch(() => { /* ignore */ });
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "room_invites",
+          filter: `inviter_user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const row = payload.old as { id: string };
+          if (!row?.id) return;
+          setInvites((prev) => prev.filter((i) => i.id !== row.id));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isHost, user?.id, roomCode]);
 
   useEffect(() => {
     if (isHost && user?.id) {
@@ -397,7 +462,7 @@ const Room: React.FC = () => {
         lastSentSettingsRef.current = { sec, enabled };
       } catch {}
     }
-  }, [isHost, roundTimerSec, status]);
+  }, [isHost, roundTimerSec]);
 
   const copyInvite = useCallback(async () => {
     try {
@@ -530,13 +595,15 @@ const Room: React.FC = () => {
               </div>
               {isHost ? (
                 <div className="px-1">
-                  <Slider
-                    value={[roundTimerSec || 60]}
+                  <input
+                    type="range"
                     min={5}
                     max={300}
                     step={5}
-                    onValueChange={(v) => setRoundTimerSec(v[0])}
-                    className="my-3"
+                    value={roundTimerSec || 60}
+                    onChange={(e) => setRoundTimerSec(Number(e.target.value))}
+                    className="time-slider w-full my-3"
+                    aria-label="Round duration (seconds)"
                   />
                   <div className="flex justify-between text-[10px] text-neutral-400 mt-1">
                     <span>5s</span>

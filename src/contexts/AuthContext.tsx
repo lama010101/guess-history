@@ -50,18 +50,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     // Fetch initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        // Ensure profile exists with historical avatar
-        createUserProfileIfNotExists(
-          session.user.id,
-          session.user.user_metadata?.full_name || 'User'
-        );
-      }
-      setIsLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          // Ensure profile exists with historical avatar
+          createUserProfileIfNotExists(
+            session.user.id,
+            session.user.user_metadata?.full_name || 'User'
+          );
+        }
+      })
+      .catch((err) => {
+        // Avoid locking the app in a loading state on startup failures
+        try {
+          console.warn('AuthContext: getSession failed', err);
+        } catch {}
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
 
     return () => subscription.unsubscribe();
   }, []);

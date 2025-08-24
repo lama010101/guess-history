@@ -11,9 +11,17 @@ const RequireAuthSession = () => {
   const { user, isLoading } = useAuth();
   const location = useLocation();
 
-  if (isLoading) return null; // or a minimal loader if desired
+  if (isLoading) {
+    try {
+      console.debug('[RequireAuthSession] Waiting for auth session…');
+    } catch {}
+    return null; // keep UI unchanged
+  }
 
   if (!user) {
+    try {
+      console.debug('[RequireAuthSession] No user session found. Redirecting to / from', location.pathname);
+    } catch {}
     return <Navigate to="/" replace state={{ from: location }} />;
   }
 

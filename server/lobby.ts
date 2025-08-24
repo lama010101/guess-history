@@ -5,6 +5,7 @@ import { z } from "zod";
 const JoinMessage = z.object({
   type: z.literal("join"),
   name: z.string().trim().min(1).max(32),
+  userId: z.string().optional(),
   token: z.string().optional(),
 });
 
@@ -37,7 +38,12 @@ const ProgressMessage = z.object({
   substep: z.string().trim().max(64).optional(),
 });
 
-const IncomingMessage = z.union([JoinMessage, ChatMessage, ReadyMessage, SettingsMessage, KickMessage, ProgressMessage]);
+const RenameMessage = z.object({
+  type: z.literal("rename"),
+  name: z.string().trim().min(1).max(32),
+});
+
+const IncomingMessage = z.union([JoinMessage, ChatMessage, ReadyMessage, SettingsMessage, KickMessage, ProgressMessage, RenameMessage]);
 
 type Incoming = z.infer<typeof IncomingMessage>;
 
@@ -84,6 +90,22 @@ export default class Lobby implements Party.Server {
   private async enforceInviteToken(_token?: string): Promise<boolean> {
     // TODO: implement HMAC verification using env vars
     return true;
+  }
+
+  private async fetchProfileDisplayName(userId: string): Promise<string | null> {
+    try {
+      const env = (this.room.env as unknown as Env) || {};
+      if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return null;
+      const url = `${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=display_name&limit=1`;
+      const headers = this.supabaseHeaders(env)!;
+      const res = await fetch(url, { headers });
+      if (!res.ok) return null;
+      const rows = (await res.json()) as Array<{ display_name?: string | null }>;
+      const dn = rows && rows[0] && typeof rows[0].display_name === 'string' ? rows[0].display_name!.trim() : '';
+      return dn && dn.length > 0 ? dn.slice(0, 32) : null;
+    } catch {
+      return null;
+    }
   }
 
   // TODO: logEvent(type, payload)
@@ -206,7 +228,16 @@ export default class Lobby implements Party.Server {
             return;
           }
 
-          this.players.set(conn.id, msg.name);
+          let effectiveName = msg.name.trim().slice(0, 32);
+          // Server-side enrichment: prefer profiles.display_name when userId provided
+          if (msg.userId) {
+            const enriched = await this.fetchProfileDisplayName(msg.userId).catch(() => null);
+            if (enriched && enriched.length > 0) {
+              effectiveName = enriched.trim().slice(0, 32);
+            }
+          }
+
+          this.players.set(conn.id, effectiveName);
           // Assign host if none
           if (!this.hostId) this.hostId = conn.id;
           // New joins are not ready by default
@@ -216,7 +247,7 @@ export default class Lobby implements Party.Server {
           conn.send(
             JSON.stringify({
               type: "hello",
-              you: { id: conn.id, name: msg.name, host: this.hostId === conn.id },
+              you: { id: conn.id, name: effectiveName, host: this.hostId === conn.id },
             } satisfies HelloMsg)
           );
           // Send current timer settings to the newly joined client
@@ -227,7 +258,17 @@ export default class Lobby implements Party.Server {
               timerEnabled: this.timerEnabled,
             } satisfies SettingsMsg)
           );
-          await this.logEvent("join", { id: conn.id, name: msg.name });
+          await this.logEvent("join", { id: conn.id, name: effectiveName });
+          return;
+        }
+
+        if (msg.type === "rename") {
+          if (!this.players.has(conn.id)) return; // must have joined
+          const newName = msg.name.trim().slice(0, 32);
+          if (!newName) return;
+          this.players.set(conn.id, newName);
+          await this.logEvent("rename", { id: conn.id, name: newName });
+          this.broadcastRoster();
           return;
         }
 

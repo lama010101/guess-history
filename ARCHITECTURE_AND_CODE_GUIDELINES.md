@@ -12,7 +12,29 @@
       3) Otherwise → `<name>.partykit.dev` from `partykit.json` (production cloud)
   - Message shapes (source of truth):
     - Server→Client: `players`, `full`, `chat { from, message, timestamp }`, `roster { id, name, ready, host }[]`, `settings { timerSeconds?, timerEnabled? }`, `hello { you }`, `start { startedAt, durationSec, timerEnabled }`.
-    - Client→Server: `join { name, token? }`, `chat { message, timestamp }`, `ready { ready }`, `settings { timerSeconds?, timerEnabled? }`.
+    - Client→Server: `join { name, userId?, token? }`, `chat { message, timestamp }`, `ready { ready }`, `settings { timerSeconds?, timerEnabled? }`, `rename { name }`.
+
+### Lobby Message Shapes and Display Name Enrichment
+
+- **Lobby Message Shapes**:
+  - `join`: Sent by the client when a user joins the lobby. Contains `name` and optional `userId` and `token` fields.
+  - `rename`: Sent by the client when a user renames themselves. Contains `name` field.
+  - Server does not emit a dedicated `rename` event; display name changes are reflected in subsequent `roster` (and initial `hello`) messages.
+- **Display Name Enrichment**:
+  - The server enriches user display names with their `userId` and `name` from the `join` message.
+    - The server updates user display names in real-time when a `rename` message is received and includes updated names in the next `roster` broadcast.
+
+    ### Invited-User Decline Flow (Room Invites)
+
+    - Storage: `public.room_invites` with RLS.
+      - See `supabase/migrations/20250823_create_room_invites.sql` and `supabase/migrations/20250823_enable_realtime_room_invites.sql`.
+    - Helper APIs: `integrations/supabase/invites.ts`
+      - `fetchIncomingInvites(friendId)`
+      - `declineInvite(inviteId)`
+      - `declineInviteForRoom(roomId, userId)`
+    - Client behavior (no UI changes): After a successful join is confirmed by `hello { you }`, `src/pages/Room.tsx` calls `declineInviteForRoom(roomCode, user.id)` once per mount (guarded by `clearedInvitesRef`) to silently clear any pending invites for that room/user.
+    - Realtime: When invites are deleted, any listeners on `public.room_invites` receive delete events (REPLICA IDENTITY FULL).
+
 - **Environment**: `.env.example` defines `VITE_PARTYKIT_HOST` (default `localhost:1999`).
 - **Routing (frontend)**: `App.tsx`
   - `/` → `LandingPage`
@@ -635,6 +657,15 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
 
 - __Types__
   - `integrations/supabase/types.ts` includes `public.Tables.room_invites` (Row/Insert/Update and relationships) for type-safe queries.
+
+- __Invited-user decline (client helpers)__
+  - Location: `integrations/supabase/invites.ts`
+  - APIs:
+    - `fetchIncomingInvites(roomId: string, userId: string): Promise<RoomInviteRow[]>` — list pending invites for the invited friend in a room.
+    - `declineInvite(inviteId: string): Promise<void>` — delete a single invite (works for inviter or invited friend per RLS).
+    - `declineInviteForRoom(roomId: string, userId: string): Promise<number>` — delete all invites for a room for the invited friend; returns count.
+  - RLS ensures only inviter or invited friend can delete relevant rows. No service role required.
+  - UI note: an Invitation modal can call `declineInvite*` to remove the invite(s). Realtime on `public.room_invites` will propagate changes to any listeners.
 
 ## Compete (Sync) Lobby UI Layout (2025-08)
 

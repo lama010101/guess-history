@@ -13,6 +13,7 @@ import { NavMenu } from '@/components/NavMenu';
 import { v5 as uuidv5 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import { declineInviteForRoom } from '../../integrations/supabase/invites';
 
 interface ChatItem {
   id: string;
@@ -72,6 +73,8 @@ const Room: React.FC = () => {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startedRef = useRef(false);
   const lastSentSettingsRef = useRef<{ sec: number; enabled: boolean } | null>(null);
+  const lastSentNameRef = useRef<string>('');
+  const clearedInvitesRef = useRef(false);
 
   // Load the user's profile display_name (preferred join name)
   useEffect(() => {
@@ -131,10 +134,12 @@ const Room: React.FC = () => {
     ws.addEventListener('open', () => {
       setStatus('open');
       retryRef.current = 0; // reset backoff on success
-      const joinMsg: LobbyClientMessage = { type: 'join', name };
+      const joinMsg: LobbyClientMessage = { type: 'join', name, userId: user?.id || undefined };
       ws.send(JSON.stringify(joinMsg));
       // reset ready status upon fresh connection
       setOwnReady(false);
+      // track the last name we told the server to support runtime rename updates
+      lastSentNameRef.current = name;
     });
 
     ws.addEventListener('message', (ev) => {
@@ -156,6 +161,27 @@ const Room: React.FC = () => {
             case 'hello':
               if (data.you && typeof data.you.id === 'string') {
                 setOwnId(data.you.id);
+                // After a successful join, auto-decline any invites in this room for the current user
+                if (!clearedInvitesRef.current && user?.id) {
+                  declineInviteForRoom(roomCode, user.id)
+                    .then((deleted) => {
+                      try {
+                        console.debug('[Room] Cleared pending invites for current user on join', {
+                          roomCode,
+                          userId: user.id,
+                          deleted,
+                        });
+                      } catch {}
+                    })
+                    .catch((e) => {
+                      try {
+                        console.warn('[Room] Failed to clear invites on join', e);
+                      } catch {}
+                    })
+                    .finally(() => {
+                      clearedInvitesRef.current = true;
+                    });
+                }
               }
               break;
             case 'settings':
@@ -242,6 +268,21 @@ const Room: React.FC = () => {
       cleanupSocket();
     };
   }, [connect, navigate, roomCode, user?.id, profileLoaded]);
+
+  // If the computed display name changes after connection, inform the server
+  useEffect(() => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    const prev = lastSentNameRef.current || '';
+    const next = (name || '').trim();
+    if (next.length > 0 && next !== prev) {
+      const payload: LobbyClientMessage = { type: 'rename', name: next };
+      try {
+        ws.send(JSON.stringify(payload));
+        lastSentNameRef.current = next;
+      } catch {}
+    }
+  }, [name]);
 
   // Remove previous auto-start behavior. Start is now driven by server 'start' event.
 

@@ -59,11 +59,13 @@ export type LobbyServerMessage =
   | { type: 'progress'; from: string; roundNumber: number; substep?: string };
 
 export type LobbyClientMessage =
-  | { type: 'join'; name: string; token?: string }
+  | { type: 'join'; name: string; userId?: string; token?: string }
   | { type: 'chat'; message: string; timestamp: string }
   | { type: 'ready'; ready: boolean }
   // Optional: host can send settings prior to start; server validates host
   | { type: 'settings'; timerSeconds?: number; timerEnabled?: boolean }
   | { type: 'progress'; roundNumber: number; substep?: string }
   // Host-only: remove a player from the lobby
-  | { type: 'kick'; targetId: string };
+  | { type: 'kick'; targetId: string }
+  // Runtime display-name update; client may send when its name source changes
+  | { type: 'rename'; name: string };

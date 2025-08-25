@@ -282,6 +282,17 @@ VITE_AUTH_EMAIL_REDIRECT_TO=https://your-domain.com/auth/callback
   - Policy: `CREATE POLICY profiles_select_all_authenticated ON public.profiles FOR SELECT TO authenticated USING (true);`
   - Purpose: Enables Friends search and discovery to list other users (excluding self/friends at query time) for any authenticated user.
 
+### Friends Page — Search & Discovery (2025-08-26)
+
+- **Location**: `src/pages/FriendsPage.tsx`
+- **Behavior**:
+  - Tab "Find Users" preloads a paged list from `public.profiles` (excludes self and current friends).
+  - Typing in the search box performs instant client-side filtering over the loaded list using `display_name` and `original_name`.
+  - Pressing Enter or the Search button performs a server-side search via `.ilike('display_name', "%<term>%")`, excludes self, and limits results.
+  - Display logic: when a non-empty term is present, show server results (`searchResults`) if available; otherwise show the locally filtered list. When the term is empty, show the preloaded list.
+- **Why**: Provides responsive filtering UX while still allowing wider discovery via server queries when explicitly requested.
+- **RLS**: Requires the "profiles select all authenticated" policy above; no additional policies needed for search.
+
 - **Inline error feedback in Auth Modal (2025-08-16)**:
   - `src/components/AuthModal.tsx` surfaces inline errors on the Sign In tab without relying on toasts. This avoids “silent” failures when toasts are not mounted.
   - Error mapping:

@@ -18,6 +18,7 @@ interface ProfileFromSupabase {
   id: string;
   display_name: string | null;
   avatar_url: string | null;
+  avatar_name?: string | null; // e.g., "Ada Lovelace #7726"
 }
 
 type Friend = {
@@ -32,6 +33,7 @@ type User = {
   avatar_url?: string;
   display_name?: string;
   original_name?: string;
+  avatar_name?: string;
 };
 
 const FriendsPage = () => {
@@ -152,20 +154,36 @@ const FriendsPage = () => {
 
     setIsLoadingUsers(true);
     try {
-      const { data: usersData, error: usersError } = await supabase
-        .from('profiles')
-        .select('id, display_name, avatar_url')
-        .neq('id', user.id) // user.id is safe here due to the function guard
-        .order('display_name', { ascending: true })
-        .limit(50);
+      // Page through profiles to avoid truncating after early letters (A-C)
+      const pageSize = 200;
+      const maxToFetch = 1000; // safety cap
+      let offset = 0;
+      const aggregated: ProfileFromSupabase[] = [];
 
-      if (usersError) {
-        console.error('Error loading all users:', usersError);
-        toast.error('Failed to load users.');
-        throw usersError;
+      // Fetch pages until fewer than pageSize returned or max cap reached
+      // Keep ordering stable by display_name asc
+      while (aggregated.length < maxToFetch) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, display_name, avatar_url, avatar_name')
+          .neq('id', user.id)
+          .order('display_name', { ascending: true })
+          .range(offset, offset + pageSize - 1);
+
+        if (error) {
+          console.error('Error loading all users (paged):', error);
+          toast.error('Failed to load users.');
+          throw error;
+        }
+
+        const batch = (data as unknown as ProfileFromSupabase[] | null) || [];
+        if (batch.length === 0) break;
+        aggregated.push(...batch);
+        if (batch.length < pageSize) break; // last page
+        offset += pageSize;
       }
 
-      const allFetchedUsers = (usersData as unknown as ProfileFromSupabase[] | null) || [];
+      const allFetchedUsers = aggregated;
 
       if (allFetchedUsers.length > 0) {
         const friendIds = friends.map((f) => f.id);
@@ -184,7 +202,7 @@ const FriendsPage = () => {
               display_name: displayName,
               original_name: baseName,
               avatar_url: profile.avatar_url || undefined,
-              email: profile.email || undefined,
+              avatar_name: profile.avatar_name || undefined,
             } as User; // Cast to User type
           });
         setAllUsers(processedUsers);
@@ -204,12 +222,13 @@ const FriendsPage = () => {
 
     setIsSearching(true);
     try {
+      const term = searchTerm.trim();
       const { data: usersData, error: usersError } = await supabase
         .from('profiles')
-        .select('id, display_name, avatar_url')
-        .ilike('display_name', `%${searchTerm}%`)
+        .select('id, display_name, avatar_url, avatar_name')
+        .or(`display_name.ilike.%${term}%,avatar_name.ilike.%${term}%`)
         .neq('id', user.id) // user.id is safe here due to the function guard
-        .limit(20);
+        .limit(100);
 
       if (usersError) {
         console.error('Error searching users:', usersError);
@@ -236,7 +255,7 @@ const FriendsPage = () => {
               display_name: displayName,
               original_name: baseName,
               avatar_url: profile.avatar_url || undefined,
-              email: profile.email || undefined,
+              avatar_name: profile.avatar_name || undefined,
             } as User; // Cast to User type
           });
         setSearchResults(processedUsers);
@@ -351,7 +370,19 @@ const FriendsPage = () => {
   };
 
   // Get the list of users to display based on search state
-  const displayUsers = searchTerm.trim() ? searchResults : allUsers;
+  // Prefer instant client-side filtering from loaded users while typing,
+  // and use server results (searchResults) when explicitly requested.
+  const normalizedTerm = searchTerm.trim().toLowerCase();
+  const locallyFiltered = normalizedTerm
+    ? allUsers.filter((u) =>
+        (u.display_name || '').toLowerCase().includes(normalizedTerm) ||
+        (u.original_name || '').toLowerCase().includes(normalizedTerm) ||
+        (u.avatar_name || '').toLowerCase().includes(normalizedTerm)
+      )
+    : allUsers;
+  const displayUsers = normalizedTerm
+    ? (searchResults.length > 0 ? searchResults : locallyFiltered)
+    : allUsers;
 
   const closeProfileModal = () => {
     setIsProfileModalOpen(false);

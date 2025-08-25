@@ -6,6 +6,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "./src/contexts/AuthContext";
 import { supabase } from "./src/integrations/supabase/client";
 import { Toaster } from "./src/components/ui/toaster";
+import DevToastProbe from "./src/components/DevToastProbe";
 
 import TestLayout from "./src/layouts/TestLayout";
 import TestHomePage from "./pages/test/TestHomePage";
@@ -58,6 +59,7 @@ const App = () => {
               <BrowserRouter>
                 <AuthRedirectHandler />
                 <InviteListener />
+                {import.meta.env.DEV && <DevToastProbe />}
                 <Routes>
                   <Route path="/" element={<LandingPage />} />
                   <Route path="/test" element={<TestLayout />}>

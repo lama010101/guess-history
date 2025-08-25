@@ -13,6 +13,8 @@ export function Toaster() {
 
   return (
     <ToastProvider>
+      {/* debug: log number of toasts rendered */}
+      {(() => { try { console.debug('[Toaster] rendering toasts:', toasts.map(t => t.id)) } catch {} return null })()}
       {toasts.map(function ({ id, title, description, action, ...props }) {
         return (
           <Toast key={id} {...props}>

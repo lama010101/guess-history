@@ -134,6 +134,9 @@ let memoryState: State = { toasts: [] }
 
 function dispatch(action: Action) {
   memoryState = reducer(memoryState, action)
+  try {
+    console.debug('[toast/src] dispatch', action.type, { action, nextState: memoryState })
+  } catch {}
   listeners.forEach((listener) => {
     listener(memoryState)
   })
@@ -181,7 +184,7 @@ function useToast() {
         listeners.splice(index, 1)
       }
     }
-  }, [state])
+  }, [])
 
   return {
     ...state,

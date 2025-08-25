@@ -52,7 +52,10 @@
      - Component: `src/components/InviteListener.tsx`
        - Purpose: Mounts `useRoomInvites()` without any UI to ensure the realtime subscription is always active for authenticated users.
        - Mounted: In `src/App.tsx` near other headless components (logger, overlays), as `<InviteListener />`.
+       - Source: `src/App.tsx` imports `InviteListener` from `"./src/components/InviteListener"` and renders it above `<Routes>` so the hook is active on all pages.
        - Rationale: Guarantees invited users get instant notifications even if the bell UI is not currently rendered.
+       - Realtime auth token sync: `src/contexts/AuthContext.tsx` now calls `supabase.realtime.setAuth(session.access_token)` on auth state changes and on initial session load so Realtime channels are authorized under RLS. Without this, invite INSERT events may not be delivered to the invitee.
+       - Diagnostics: `src/hooks/useRoomInvites.ts` logs channel subscription status via `channel.subscribe((status) => ...)` including `SUBSCRIBED`/`CHANNEL_ERROR`, and logs each received INSERT payload. On `SUBSCRIBED`, it opportunistically refetches invites to reconcile any missed rows.
 
      #### Host Realtime Invite Sync (Room page)
      - Location: `src/pages/Room.tsx`
@@ -61,12 +64,31 @@
        - On INSERT: adds the invite to local state with a placeholder display name, then fetches the invitee’s `profiles.display_name` and updates the entry.
        - On DELETE: removes the invite from local state by id.
      - Types: Uses `Tables<'room_invites'>` from `integrations/supabase/types.ts` to type the realtime payload for reliability.
-     - Notes: No UI changes; this keeps the host’s invites list in sync in realtime.
+    - Notes: No UI changes; this keeps the host’s invites list in sync in realtime.
+
+    #### Lobby Chat (Room page)
+
+    - Location: `src/pages/Room.tsx`
+    - UI:
+      - Left column panel titled "Chat" under Room Information.
+      - Scrollable list (fixed height) with sender name and timestamp per message; message text wraps.
+      - Input box with Enter-to-send and an explicit Send button. Disabled until the WS `status === 'open'`.
+      - Auto-scrolls to the latest message on updates.
+    - Client state & handlers:
+      - `chat: ChatItem[]` where `ChatItem = { id, from, message, timestamp }`.
+      - `input: string` bound to the chat input.
+      - `sendChat()` builds `{ type: 'chat', message, timestamp }` and `ws.send(JSON.stringify(payload))`.
+      - Incoming server messages of type `chat` append to `chat`.
+    - Message shapes (source of truth in `src/lib/partyClient.ts`):
+      - Client→Server: `chat { message, timestamp }`
+      - Server→Client: `chat { from, message, timestamp }`
+    - Persistence: The PartyKit lobby best-effort persists messages to `public.room_chat` via service role; delivery to clients is realtime broadcast.
 
   - **Environment**: `.env.example` defines `VITE_PARTYKIT_HOST` (default `localhost:1999`).
 - **Routing (frontend)**: `App.tsx`
   - `/` → `LandingPage`
   - `/test` → `TestLayout` with nested routes: `index`, `auth`, `game`, `results`, `final`, `leaderboard`, `profile`, `settings`, `room`, `friends`.
+  - `/room/:roomCode` → `src/pages/Room.tsx` (primary multiplayer lobby route used by invite acceptance)
   - Admin: `/test/admin/images`, `/test/admin/badges`. Wildcards redirect to `/`.
 - **WebSocket endpoint**: `ws(s)://<resolved-host>/parties/lobby/:roomCode` (via `partyUrl('lobby', roomCode)`).
 

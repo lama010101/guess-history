@@ -79,6 +79,7 @@ const Room: React.FC = () => {
   const statusRef = useRef<typeof status>(status);
   const timerEnabledRef = useRef<boolean>(!!timerEnabled);
   const roundTimerSecRef = useRef<number>(Number(roundTimerSec || 0));
+  const chatListRef = useRef<HTMLDivElement | null>(null);
 
   // Load the user's profile display_name (preferred join name)
   useEffect(() => {
@@ -440,6 +441,22 @@ const Room: React.FC = () => {
     return remainingSeconds > 0 ? `${minutes}m${remainingSeconds}s` : `${minutes}m`;
   }, []);
 
+  const formatChatTime = useCallback((iso: string): string => {
+    try {
+      const d = new Date(iso);
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return '';
+    }
+  }, []);
+
+  // Auto-scroll chat to bottom on new messages
+  useEffect(() => {
+    const el = chatListRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [chat]);
+
   const readyCount = useMemo(() => roster.filter(r => r.ready).length, [roster]);
   const filteredFriends = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -643,6 +660,51 @@ const Room: React.FC = () => {
                   {copied ? 'Link copied!' : 'Share Invite'}
                 </Button>
               )}
+            </div>
+
+            {/* Chat Panel */}
+            <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/50">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="font-semibold">Chat</h2>
+                <div className="text-xs text-neutral-400">{chat.length} message{chat.length === 1 ? '' : 's'}</div>
+              </div>
+              <div
+                ref={chatListRef}
+                className="h-64 overflow-y-auto rounded-lg bg-neutral-950/40 border border-neutral-800 px-3 py-2 divide-y divide-neutral-800/60"
+                aria-label="Chat messages"
+              >
+                {chat.length === 0 ? (
+                  <div className="text-sm text-neutral-400 py-2">No messages yet…</div>
+                ) : (
+                  chat.map((c) => (
+                    <div key={c.id} className="py-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium truncate max-w-[60%]">{c.from}</span>
+                        <span className="text-[10px] text-neutral-400">{formatChatTime(c.timestamp)}</span>
+                      </div>
+                      <div className="text-sm text-neutral-200 break-words whitespace-pre-wrap mt-0.5">{c.message}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <Input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendChat();
+                    }
+                  }}
+                  placeholder={status === 'open' ? 'Type a message…' : 'Connecting…'}
+                  className="bg-neutral-950 border-neutral-700 text-white"
+                  aria-label="Type a chat message"
+                />
+                <Button onClick={sendChat} disabled={!input.trim() || status !== 'open'} className="bg-neutral-800 hover:bg-neutral-700">
+                  Send
+                </Button>
+              </div>
             </div>
           </div>
 

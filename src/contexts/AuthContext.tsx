@@ -39,6 +39,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+      // Ensure Realtime uses the latest access token so RLS-authorized events are delivered
+      try {
+        if (session?.access_token) {
+          supabase.realtime.setAuth(session.access_token);
+        }
+      } catch (e) {
+        try { console.warn('AuthContext: failed to set Realtime auth token', e); } catch {}
+      }
       if (session?.user) {
         // Ensure profile exists with historical avatar
         createUserProfileIfNotExists(
@@ -49,14 +57,45 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsLoading(false);
     });
 
-    // Fetch initial session
+    // Fetch initial session; if none, create an anonymous session so RLS-authorized realtime works for invitee
     supabase.auth
       .getSession()
-      .then(({ data: { session } }) => {
+      .then(async ({ data: { session } }) => {
+        if (!session?.user) {
+          // Create anonymous session
+          const { data: anonData, error: anonErr } = await supabase.auth.signInAnonymously();
+          if (anonErr) {
+            try { console.warn('AuthContext: anonymous sign-in failed', anonErr); } catch {}
+          } else if (anonData?.user) {
+            setSession(anonData.session ?? null);
+            setUser(anonData.user);
+            try {
+              if (anonData.session?.access_token) {
+                supabase.realtime.setAuth(anonData.session.access_token);
+              }
+            } catch (e) {
+              try { console.warn('AuthContext: failed to set Realtime auth token (anon)', e); } catch {}
+            }
+            // Ensure profile exists with historical avatar
+            createUserProfileIfNotExists(
+              anonData.user.id,
+              anonData.user.user_metadata?.full_name || 'Guest'
+            );
+            return; // Done; do not proceed with the below session handling
+          }
+        }
+
+        // We have an existing session; set state and Realtime auth
         setSession(session);
         setUser(session?.user ?? null);
+        try {
+          if (session?.access_token) {
+            supabase.realtime.setAuth(session.access_token);
+          }
+        } catch (e) {
+          try { console.warn('AuthContext: failed to set Realtime auth token (initial)', e); } catch {}
+        }
         if (session?.user) {
-          // Ensure profile exists with historical avatar
           createUserProfileIfNotExists(
             session.user.id,
             session.user.user_metadata?.full_name || 'User'
@@ -64,7 +103,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       })
       .catch((err) => {
-        // Avoid locking the app in a loading state on startup failures
         try {
           console.warn('AuthContext: getSession failed', err);
         } catch {}
@@ -180,9 +218,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Attempt to mark the profile as no longer a guest.
     // Some databases may not have the `is_guest` column (older schema).
+    // Some environments don't include `is_guest` in the typed schema; cast to any to avoid TS error while runtime handles missing-column gracefully.
     const { error: profileError } = await supabase
       .from('profiles')
-      .update({ is_guest: false })
+      .update({ is_guest: false } as any)
       .eq('id', user.id);
 
     if (profileError && !profileError.message.includes('is_guest')) {

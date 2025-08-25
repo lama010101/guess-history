@@ -11,7 +11,7 @@ export type Invite = RoomInvite & { inviter_display_name?: string };
 const shownInviteToastIds = new Set<string>();
 
 export function useRoomInvites() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [invites, setInvites] = useState<Invite[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -27,7 +27,7 @@ export function useRoomInvites() {
   }
 
   const fetchInvites = useCallback(async () => {
-    if (!userId) return;
+    if (authLoading || !userId) return;
     setLoading(true);
     setError(null);
     const { data, error } = await supabase
@@ -41,14 +41,14 @@ export function useRoomInvites() {
       setInvites(data ?? []);
     }
     setLoading(false);
-  }, [userId]);
+  }, [authLoading, userId]);
 
   useEffect(() => {
     fetchInvites();
   }, [fetchInvites]);
 
   useEffect(() => {
-    if (!userId) return;
+    if (authLoading || !userId) return;
     // Use a unique channel name per hook instance to prevent calling subscribe() twice
     const channelName = `room_invites:user:${userId}:${instanceIdRef.current}`;
     const channel = supabase
@@ -135,13 +135,27 @@ export function useRoomInvites() {
           const oldInvite = payload.old as RoomInvite;
           setInvites((prev) => prev.filter((i) => i.id !== oldInvite.id));
         }
-      )
-      .subscribe();
+      );
+
+    // Subscribe with status callback for diagnostics
+    channel.subscribe((status) => {
+      try {
+        console.log('[useRoomInvites] Channel status', { channel: channelName, status, at: new Date().toISOString() });
+      } catch {}
+      if (status === 'SUBSCRIBED') {
+        // Opportunistically refetch to reconcile any missed rows
+        fetchInvites();
+      }
+      if (status === 'CHANNEL_ERROR') {
+        try { console.error('[useRoomInvites] Channel error', channelName); } catch {}
+      }
+    });
 
     return () => {
+      try { console.log('[useRoomInvites] Removing channel', channelName); } catch {}
       supabase.removeChannel(channel);
     };
-  }, [userId, toast]);
+  }, [authLoading, userId, toast]);
 
   const declineInvite = useCallback(async (id: string) => {
     const { error } = await supabase.from("room_invites").delete().eq("id", id);

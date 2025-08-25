@@ -21,6 +21,8 @@ import TestAuthPage from "./pages/test/TestAuthPage";
 import LandingPage from './src/pages/LandingPage';
 import RoundResultsPage from './src/pages/RoundResultsPage';
 import GameRoundPage from './src/pages/GameRoundPage';
+import InviteListener from "./src/components/InviteListener";
+import Room from "./src/pages/Room";
 
 // Handler for auth redirects
 const AuthRedirectHandler = () => {
@@ -55,6 +57,7 @@ const App = () => {
             <TooltipProvider>
               <BrowserRouter>
                 <AuthRedirectHandler />
+                <InviteListener />
                 <Routes>
                   <Route path="/" element={<LandingPage />} />
                   <Route path="/test" element={<TestLayout />}>
@@ -72,6 +75,7 @@ const App = () => {
                     <Route path="room" element={<TestRoomPage />} />
                     <Route path="friends" element={<TestFriendsPage />} />
                   </Route>
+                  <Route path="/room/:roomCode" element={<Room />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
                 <Toaster />

@@ -122,6 +122,22 @@
   - Collaborate: `/test/collaborate/...` → turquoise.
   - Verify buttons, sliders, rings, gradients, SVGs.
 
+### Home Page Play Cards (2025-08-27)
+
+- **Location**: `src/pages/HomePage.tsx`
+- **Layout**: Horizontal mobile carousel (scroll-snap) with four square cards.
+- **Cards**:
+  - `SOLO` — starts classic solo flow via `handleStartGame('classic')`.
+  - `LEVEL UP` — alias of Solo for now; also calls `handleStartGame('classic')`.
+  - `COLLABORATE` — for signed-in users shows Coming Soon; guests get lock overlay + Sign In.
+  - `COMPETE` — requires sign-in; invokes friends flow via `handleStartGame('friends')`.
+- **Icons** (from `public/icons`, referenced with `<img src="/icons/*.webp" />`):
+  - Solo: `/icons/solo.webp`
+  - Level Up: `/icons/level.webp`
+  - Collaborate: `/icons/symbol.webp`
+  - Compete: `/icons/compete_cup.webp`
+  - Lock overlay (guest): `/icons/lock.webp`
+
 ### Game Modes and Timers (Hooks)
 
 - Files:

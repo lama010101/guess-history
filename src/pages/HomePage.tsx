@@ -13,10 +13,6 @@ import { useGame } from "@/contexts/GameContext";
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from "@/components/ui/button";
-import soloIcon from '@/assets/icons/solo.webp';
-import collaborateIcon from '@/assets/icons/collaborate.webp';
-import competeIcon from '@/assets/icons/compete.webp';
-import lockIcon from '@/assets/icons/lock.webp';
 
 const homePageStyle: React.CSSProperties = {
   position: 'fixed',
@@ -229,7 +225,7 @@ const HomePage = () => {
           className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-yellow-300 via-orange-400 to-orange-600 cursor-pointer"
           onClick={() => handleStartGame('classic')}
         >
-          <img src={soloIcon} alt="Solo" className="w-36 h-36 object-contain" />
+          <img src="/icons/solo.webp" alt="Solo" className="w-36 h-36 object-contain" />
         </div>
         <div
           className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1 cursor-pointer"
@@ -276,6 +272,21 @@ const HomePage = () => {
           )}
         </div>
       </div>
+      {/* Level Up Card (starts classic flow, no timer UI) */}
+      <div className="flex flex-col items-center justify-center gap-0 py-4 shrink-0 snap-center">
+        <div
+          className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-pink-400 via-fuchsia-500 to-violet-600 cursor-pointer"
+          onClick={() => handleStartGame('classic')}
+        >
+          <img src="/icons/level.webp" alt="Level Up" className="w-36 h-36 object-contain" />
+        </div>
+        <div
+          className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1 cursor-pointer"
+          onClick={() => handleStartGame('classic')}
+        >
+          LEVEL UP
+        </div>
+      </div>
       {/* Collaborate Card (formerly Friends card visuals, now shows Coming Soon) */}
       <div
         className={`relative flex flex-col items-center justify-center gap-0 py-4 shrink-0 snap-center ${(!user || isGuest) ? '' : 'cursor-pointer'}`}
@@ -293,7 +304,7 @@ const HomePage = () => {
         {(!user || isGuest) && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black/80 rounded-xl z-[100]">
             <div className="text-center p-4">
-              <img src={lockIcon} alt="Locked" className="h-20 w-20 mx-auto mb-3" />
+              <img src="/icons/lock.webp" alt="Locked" className="h-20 w-20 mx-auto mb-3" />
               <p className="text-black dark:text-white text-sm">COLLABORATE</p>
               <Button
                 className="mt-3 bg-white hover:bg-gray-100 text-black text-sm"
@@ -305,7 +316,7 @@ const HomePage = () => {
           </div>
         )}
         <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-cyan-300 via-sky-400 to-sky-600">
-          <img src={collaborateIcon} alt="Collaborate" className="w-36 h-36 object-contain" />
+          <img src="/icons/symbol.webp" alt="Collaborate" className="w-36 h-36 object-contain" />
         </div>
         <div className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1">
           COLLABORATE
@@ -322,7 +333,7 @@ const HomePage = () => {
         {(!user || isGuest) && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black/80 rounded-xl z-[100]">
             <div className="text-center p-4">
-              <img src={lockIcon} alt="Locked" className="h-20 w-20 mx-auto mb-3" />
+              <img src="/icons/lock.webp" alt="Locked" className="h-20 w-20 mx-auto mb-3" />
               <p className="text-black dark:text-white text-sm">COMPETE</p>
               <Button
                 className="mt-3 bg-white hover:bg-gray-100 text-black text-sm"
@@ -334,7 +345,7 @@ const HomePage = () => {
           </div>
         )}
         <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-purple-300 via-violet-500 to-purple-700">
-          <img src={competeIcon} alt="Compete" className="w-36 h-36 object-contain" />
+          <img src="/icons/compete_cup.webp" alt="Compete" className="w-36 h-36 object-contain" />
         </div>
         <div className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1">
           COMPETE

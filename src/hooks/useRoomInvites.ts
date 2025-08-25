@@ -9,6 +9,7 @@ export type Invite = RoomInvite & { inviter_display_name?: string };
 
 // De-duplicate invite toasts across multiple hook instances (InviteListener, InvitesBell)
 const shownInviteToastIds = new Set<string>();
+const POLL_INTERVAL_MS = 8000; // fallback polling to reconcile missed realtime events
 
 export function useRoomInvites() {
   const { user, isLoading: authLoading } = useAuth();
@@ -26,22 +27,58 @@ export function useRoomInvites() {
     instanceIdRef.current = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   }
 
-  const fetchInvites = useCallback(async () => {
-    if (authLoading || !userId) return;
-    setLoading(true);
-    setError(null);
-    const { data, error } = await supabase
-      .from("room_invites")
-      .select("id, room_id, inviter_user_id, friend_id, created_at")
-      .eq("friend_id", userId)
-      .order("created_at", { ascending: false });
-    if (error) {
-      setError(error.message);
-    } else {
-      setInvites(data ?? []);
-    }
-    setLoading(false);
-  }, [authLoading, userId]);
+  // Track whether we've completed an initial fetch to avoid spamming toasts for historical invites
+  const loadedOnceRef = useRef(false);
+
+  const fetchInvites = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (authLoading || !userId) return;
+      if (!opts?.silent) setLoading(true);
+      setError(null);
+      const { data, error } = await supabase
+        .from("room_invites")
+        .select("id, room_id, inviter_user_id, friend_id, created_at")
+        .eq("friend_id", userId)
+        .order("created_at", { ascending: false });
+      if (error) {
+        setError(error.message);
+      } else {
+        const rows = data ?? [];
+        // Optionally toast for newly discovered invites (post-initial-load or silent polls)
+        if (loadedOnceRef.current) {
+          const newlyDiscovered = rows.filter((r) => !shownInviteToastIds.has(r.id));
+          for (const r of newlyDiscovered) {
+            shownInviteToastIds.add(r.id);
+            toast({
+              title: "New room invite",
+              description: `You have a new invite to room ${r.room_id}`,
+              duration: 5000,
+            });
+            // Best-effort: enrich inviter's display name and update toast
+            supabase
+              .from('profiles')
+              .select('display_name')
+              .eq('id', r.inviter_user_id as string)
+              .maybeSingle()
+              .then(({ data: prof }) => {
+                const host = (prof?.display_name || r.inviter_user_id) as string;
+                toast({ title: "New room invite", description: `${host} invites you to room ${r.room_id}` });
+                setInvites((prev) => prev.map((i) => (i.id === r.id ? { ...i, inviter_display_name: host } : i)));
+              })
+              .catch(() => { /* ignore */ });
+          }
+        }
+        // Seed the dedupe set on first load so we don't toast historical invites later
+        if (!loadedOnceRef.current && rows.length) {
+          for (const r of rows) shownInviteToastIds.add(r.id);
+        }
+        setInvites(rows);
+      }
+      if (!opts?.silent) setLoading(false);
+      loadedOnceRef.current = true;
+    },
+    [authLoading, userId, toast]
+  );
 
   useEffect(() => {
     fetchInvites();
@@ -156,6 +193,15 @@ export function useRoomInvites() {
       supabase.removeChannel(channel);
     };
   }, [authLoading, userId, toast]);
+
+  // Polling fallback: reconcile missed events periodically without affecting UI loading state
+  useEffect(() => {
+    if (authLoading || !userId) return;
+    const id = setInterval(() => {
+      fetchInvites({ silent: true });
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [authLoading, userId, fetchInvites]);
 
   const declineInvite = useCallback(async (id: string) => {
     const { error } = await supabase.from("room_invites").delete().eq("id", id);

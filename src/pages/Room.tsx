@@ -3,6 +3,8 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { X, Home, Copy, Users, ArrowLeft, Zap, Share2, Search, UserPlus, UserMinus, ExternalLink } from 'lucide-react';
 import { partyUrl, LobbyServerMessage, LobbyClientMessage } from '@/lib/partyClient';
@@ -192,11 +194,29 @@ const Room: React.FC = () => {
               break;
             case 'settings':
               // Live sync timer values from server (on join and when host changes settings)
+              // Ignore exact echo messages from our own last send to avoid UI jitter
+              if (lastSentSettingsRef.current) {
+                const echoEnabled =
+                  typeof data.timerEnabled === 'boolean'
+                    ? data.timerEnabled === lastSentSettingsRef.current.enabled
+                    : true;
+                const echoSeconds =
+                  typeof data.timerSeconds === 'number'
+                    ? data.timerSeconds === lastSentSettingsRef.current.sec
+                    : true;
+                if (echoEnabled && echoSeconds) {
+                  break;
+                }
+              }
               if (typeof data.timerEnabled === 'boolean' && data.timerEnabled !== timerEnabledRef.current) {
                 setTimerEnabled(data.timerEnabled);
               }
-              if (typeof data.timerSeconds === 'number' && Number(data.timerSeconds) !== roundTimerSecRef.current) {
-                setRoundTimerSec(data.timerSeconds);
+              if (typeof data.timerSeconds === 'number') {
+                // Clamp to UI range and step to prevent oscillation if server holds a wider range
+                const uiSec = Math.max(5, Math.min(300, Math.round(Number(data.timerSeconds) / 5) * 5));
+                if (uiSec !== roundTimerSecRef.current) {
+                  setRoundTimerSec(uiSec);
+                }
               }
               break;
             case 'full':
@@ -469,17 +489,32 @@ const Room: React.FC = () => {
     const ws = wsRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     if (!isHost) return;
-    const sec = Number(roundTimerSec) || 60;
-    const enabled = true; // Timer is always displayed; simplified per new UI
+    const enabled = !!timerEnabled;
     const last = lastSentSettingsRef.current;
-    if (!last || last.sec !== sec || last.enabled !== enabled) {
-      const payload: LobbyClientMessage = { type: 'settings', timerSeconds: sec, timerEnabled: enabled } as any;
+    let next: { sec: number; enabled: boolean } | null = null;
+    let payload: LobbyClientMessage | null = null as any;
+    if (enabled) {
+      // Normalize to UI range (5–300) and step to avoid server/client mismatches
+      const raw = Number(roundTimerSec) || 60;
+      const clamped = Math.max(5, Math.min(300, Math.round(raw / 5) * 5));
+      next = { sec: clamped, enabled: true };
+      if (!last || last.sec !== clamped || last.enabled !== true) {
+        payload = { type: 'settings', timerSeconds: clamped, timerEnabled: true } as any;
+      }
+    } else {
+      // When disabling, omit timerSeconds to satisfy server schema (min 5)
+      next = { sec: 0, enabled: false };
+      if (!last || last.enabled !== false) {
+        payload = { type: 'settings', timerEnabled: false } as any;
+      }
+    }
+    if (payload) {
       try {
         ws.send(JSON.stringify(payload));
-        lastSentSettingsRef.current = { sec, enabled };
+        lastSentSettingsRef.current = next!;
       } catch {}
     }
-  }, [isHost, roundTimerSec]);
+  }, [isHost, roundTimerSec, timerEnabled]);
 
   const copyInvite = useCallback(async () => {
     try {
@@ -604,36 +639,48 @@ const Room: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left column */}
           <div className="space-y-6">
-            {/* Timer (simplified) */}
+            {/* Timer (Home page style) */}
             <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/50">
-              <div className="flex items-center justify-between mb-1">
-                <Label className="text-sm">Round Duration</Label>
-                <div className="text-sm text-teal-300">{formatTime(roundTimerSec)}</div>
-              </div>
-              {isHost ? (
-                <div className="px-1">
-                  <input
-                    type="range"
-                    min={5}
-                    max={300}
-                    step={5}
-                    value={roundTimerSec || 60}
-                    onChange={(e) => setRoundTimerSec(Number(e.target.value))}
-                    className="time-slider w-full my-3"
-                    aria-label="Round duration (seconds)"
+              <div className="flex items-center justify-center mb-2">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="room-timer-toggle"
+                    checked={!!timerEnabled}
+                    onCheckedChange={(checked) => setTimerEnabled(!!checked)}
+                    disabled={!isHost}
+                    className="mr-3 data-[state=checked]:bg-gray-600 h-4 w-8"
                   />
-                  <div className="flex justify-between text-[10px] text-neutral-400 mt-1">
+                  <Label htmlFor="room-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm text-white">
+                    <span>Round Timer</span>
+                  </Label>
+                </div>
+                {timerEnabled && (
+                  <span className="text-sm font-bold text-orange-500 ml-4">
+                    {formatTime(Number(roundTimerSec || 0))}
+                  </span>
+                )}
+              </div>
+              {timerEnabled && (
+                <div className="relative mb-1 px-1">
+                  <div className="pt-2">
+                    <Slider
+                      value={[Number(roundTimerSec || 60)]}
+                      min={5}
+                      max={300}
+                      step={5}
+                      onValueChange={(value) => setRoundTimerSec(Number(value[0] || 60))}
+                      className="w-full"
+                      disabled={!isHost}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-neutral-400">
                     <span>5s</span>
-                    <span>30s</span>
-                    <span>1m</span>
-                    <span>2m</span>
-                    <span>3m</span>
-                    <span>4m</span>
                     <span>5m</span>
                   </div>
                 </div>
-              ) : (
-                <div className="text-xs text-neutral-400">Host controls the timer</div>
+              )}
+              {!isHost && (
+                <div className="text-xs text-neutral-400 mt-1">Host controls the timer</div>
               )}
             </div>
 

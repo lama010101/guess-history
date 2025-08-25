@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, type Dispatch, type SetStateAction } from 'react';
 import { UserProfile, fetchUserProfile } from '@/utils/profile/profileService';
 import ResultsLayout2 from "@/components/layouts/ResultsLayout2"; // Use the original layout
 import { useToast } from "@/components/ui/use-toast";
@@ -17,7 +17,7 @@ import { makeRoundId } from '@/utils/roomState';
 import { GameImage } from '@/contexts/GameContext';
 import { RoundResult as ContextRoundResult } from '@/types';
 // Import the RoundResult type expected by ResultsLayout2
-import { RoundResult as LayoutRoundResultType } from '@/utils/resultsFetching';
+import { RoundResult as LayoutRoundResultType } from '@/utils/results/types';
 // Import supabase client
 import { supabase } from '@/integrations/supabase/client';
 // Multiplayer peers for round results
@@ -28,6 +28,9 @@ import {
   calculateLocationAccuracy,
   getTimeDifferenceDescription
 } from '@/utils/gameCalculations';
+// Timer integration
+import TimerDisplay from '@/components/game/TimerDisplay';
+import { useNextRoundTimer } from '@/hooks/useNextRoundTimer';
 
 // Removed imports for utils/resultsFetching as we use context now
 // import { fetchRoundResult, checkGameProgress, advanceToNextRound } from '@/utils/resultsFetching';
@@ -101,7 +104,7 @@ const RoundResultsPage = () => {
   }, []);
 
   // Get data from GameContext
-  const { images, roundResults, isLoading: isContextLoading, error: contextError, hydrateRoomImages, syncRoomId } = useGame();
+  const { images, roundResults, isLoading: isContextLoading, error: contextError, hydrateRoomImages, syncRoomId, roundTimerSec, timerEnabled } = useGame();
 
   const roundNumber = parseInt(roundNumberStr || '1', 10);
   const currentRoundIndex = roundNumber - 1; // 0-based index
@@ -142,12 +145,23 @@ const RoundResultsPage = () => {
     console.log('Query Params:', { userId: user.id, roundSessionId });
 
     try {
-      const { data: hintRecords, error } = await supabase
+      // Use an untyped query here because generated Database types do not yet include 'round_hints'
+      const { data, error } = await (supabase as any)
         .from('round_hints')
         .select('hint_id, xpDebt, accDebt, label, hint_type, purchased_at, round_id')
         .eq('user_id', user.id)
         .eq('round_id', roundSessionId)
         .order('purchased_at', { ascending: true });
+
+      const hintRecords = (data ?? []) as Array<{
+        hint_id: string;
+        xpDebt: number;
+        accDebt: number;
+        label: string;
+        hint_type: string;
+        purchased_at: string;
+        round_id: string;
+      }>;
 
       if (error) {
         console.error('Error fetching hint debts:', error);
@@ -371,6 +385,38 @@ const RoundResultsPage = () => {
     // setNavigating(false); // Navigation happens, so no need to unset here unless navigation fails
   };
 
+  // ---- Next-round countdown timer integration ----
+  const nextRoundDurationSec = (timerEnabled && typeof roundTimerSec === 'number' && roundTimerSec > 0) ? roundTimerSec : 0;
+
+  const { remainingMs, isActive: timerIsActive, controls } = useNextRoundTimer({
+    durationMs: Math.max(0, nextRoundDurationSec * 1000),
+    enabled: nextRoundDurationSec > 0,
+    autoStart: false, // start once results are ready
+    onExpire: handleNext,
+    tickMs: 1000,
+  });
+
+  const { start: timerStart, pause: timerPause, reset: timerReset, setRemaining: timerSetRemaining } = controls;
+
+  const remainingSec = Math.ceil(remainingMs / 1000);
+
+  // Bridge setter to seconds-based TimerDisplay API
+  const setRemainingSec = useCallback<Dispatch<SetStateAction<number>>>((updater) => {
+    const current = remainingSec;
+    const nextVal = typeof updater === 'function' ? (updater as (prev: number) => number)(current) : updater;
+    timerSetRemaining(Math.max(0, nextVal) * 1000);
+  }, [remainingSec, timerSetRemaining]);
+
+  // Start/pause timer when results are ready or navigating
+  useEffect(() => {
+    if (resultForLayout && nextRoundDurationSec > 0 && !navigating) {
+      timerReset(nextRoundDurationSec * 1000);
+      timerStart();
+    } else {
+      timerPause();
+    }
+  }, [resultForLayout, nextRoundDurationSec, navigating, timerReset, timerStart, timerPause]);
+
   // Show loading state from context (if game is still loading initially)
   // Note: This page might not be reachable if context is loading due to GameRoundPage checks
   if (isContextLoading && !resultForLayout) {
@@ -410,10 +456,17 @@ const RoundResultsPage = () => {
   }
 
   // Handle case where results for this specific round aren't found in context yet OR image is missing
-  // If result is not yet ready, show a simple loading state. Do NOT redirect.
+  // Show an intermediate loading state while results are being prepared.
   if (!resultForLayout) {
-    // Skip showing an intermediate page; wait silently until results are ready
-    return null;
+    return (
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-3 p-4 bg-background rounded shadow">
+          <Loader className="h-8 w-8 animate-spin text-history-primary" />
+          <h2 className="text-xl font-semibold text-history-primary">Preparing results...</h2>
+          <p className="text-sm text-muted-foreground">Calculating your score and loading the map…</p>
+        </div>
+      </div>
+    );
   }
 
 
@@ -430,14 +483,26 @@ const RoundResultsPage = () => {
         avatarUrl={profile?.avatar_image_url || profile?.avatar_url || '/assets/default-avatar.png'}
         peers={(peerRows || []).filter(p => !user || p.userId !== user.id)}
         nextRoundButton={
-          <Button 
-            onClick={handleNext} 
-            disabled={navigating} 
-            className="rounded-xl bg-orange-500 text-white font-semibold text-sm px-5 py-2 shadow-lg hover:bg-orange-500 active:bg-orange-500 transition-colors min-w-[120px]"
-          >
-            {navigating ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
-            <span className="ml-2">{roundNumber === images.length ? 'Finish Game' : 'Next Round'}</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            {nextRoundDurationSec > 0 && resultForLayout ? (
+              <TimerDisplay
+                remainingTime={remainingSec}
+                setRemainingTime={setRemainingSec}
+                isActive={timerIsActive}
+                onTimeout={handleNext}
+                roundTimerSec={nextRoundDurationSec}
+                externalTimer={true}
+              />
+            ) : null}
+            <Button 
+              onClick={handleNext} 
+              disabled={navigating || timerIsActive} 
+              className="rounded-xl bg-orange-500 text-white font-semibold text-sm px-5 py-2 shadow-lg hover:bg-orange-500 active:bg-orange-500 transition-colors min-w-[120px]"
+            >
+              {navigating ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
+              <span className="ml-2">{roundNumber === images.length ? 'Finish Game' : 'Next Round'}</span>
+            </Button>
+          </div>
         }
         homeButton={
           <Button

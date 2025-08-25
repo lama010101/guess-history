@@ -31,3 +31,12 @@ dist-ssr
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+
+.env
+.env.*.local
+.vercel/
+.next/
+.supabase/
+coverage/
+Thumbs.db
+desktop.ini

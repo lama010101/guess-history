@@ -26,7 +26,7 @@
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    background: #f97316; /* Tailwind orange-500 */
+    background: hsl(var(--secondary));
     cursor: pointer;
     margin-top: -10px; /* Centers the thumb on the track */
   }
@@ -60,7 +60,7 @@
   .time-slider::-moz-range-thumb {
     width: 20px;
     height: 20px;
-    background: #f97316; /* Tailwind orange-500 */
+    background: hsl(var(--secondary));
     border-radius: 50%;
     border: none;
   }
@@ -87,7 +87,7 @@
   .time-slider::-ms-thumb {
     width: 20px;
     height: 20px;
-    background: #f97316; /* Tailwind orange-500 */
+    background: hsl(var(--secondary));
     border-radius: 50%;
     margin-top: 0; /* Centered by track's border-width */
   }
@@ -189,6 +189,18 @@ html, body {
     --border: 0 0% 15%; /* Dark border */
     --input: 0 0% 12%; /* Dark input background */
     --ring: 0 0% 60%; /* Lighter ring for focus */
+  }
+
+  /* Compete mode theme override: switch secondary to purple */
+  body.mode-compete, .mode-compete {
+    --secondary: 270 85% 60%; /* purple */
+    --secondary-foreground: 0 0% 100%;
+  }
+
+  /* Collaborate mode theme override: switch secondary to turquoise */
+  body.mode-collaborate, .mode-collaborate {
+    --secondary: 189 90% 45%; /* turquoise */
+    --secondary-foreground: 0 0% 100%;
   }
 
   * {
@@ -436,6 +448,202 @@ document:has(.leaflet-fullscreen-on) .hud-element,
 }
 
 @layer utilities {
+  /* In compete mode, map common orange utilities to turquoise without touching solo */
+  /* Backgrounds */
+  .mode-compete .bg-orange-400 { background-color: hsl(var(--secondary)) !important; }
+  .mode-compete .bg-orange-500 { background-color: hsl(var(--secondary)) !important; }
+  .mode-compete .bg-orange-600 { background-color: hsl(var(--secondary)) !important; }
+  .mode-compete .bg-orange-700 { background-color: hsl(var(--secondary)) !important; }
+  .mode-compete .hover\:bg-orange-500:hover { background-color: hsl(var(--secondary)) !important; }
+  .mode-compete .hover\:bg-orange-600:hover { background-color: hsl(var(--secondary)) !important; }
+  .mode-compete .hover\:bg-orange-700:hover { background-color: hsl(var(--secondary)) !important; }
+  /* Alpha background variants (used by e.g. after:bg-orange-500/50) */
+  .mode-compete .bg-orange-500\/50 { background-color: hsl(var(--secondary) / 0.5) !important; }
+  .mode-compete .after\:bg-orange-500\/50::after { background-color: hsl(var(--secondary) / 0.5) !important; }
+
+  /* Text */
+  .mode-compete .text-orange-400 { color: hsl(var(--secondary)) !important; }
+  .mode-compete .text-orange-500 { color: hsl(var(--secondary)) !important; }
+  .mode-compete .text-orange-600 { color: hsl(var(--secondary)) !important; }
+
+  /* Borders */
+  .mode-compete .border-orange-400 { border-color: hsl(var(--secondary)) !important; }
+  .mode-compete .border-orange-500 { border-color: hsl(var(--secondary)) !important; }
+  .mode-compete .border-orange-600 { border-color: hsl(var(--secondary)) !important; }
+
+  /* Rings (including focus variants) */
+  .mode-compete .ring-orange-400 { --tw-ring-color: hsl(var(--secondary)) !important; }
+  .mode-compete .ring-orange-500 { --tw-ring-color: hsl(var(--secondary)) !important; }
+  .mode-compete .ring-orange-600 { --tw-ring-color: hsl(var(--secondary)) !important; }
+  .mode-compete .focus\:ring-orange-400:focus { --tw-ring-color: hsl(var(--secondary)) !important; }
+  .mode-compete .focus\:ring-orange-500:focus { --tw-ring-color: hsl(var(--secondary)) !important; }
+  .mode-compete .focus\:ring-orange-600:focus { --tw-ring-color: hsl(var(--secondary)) !important; }
+  .mode-compete .focus\:border-orange-400:focus { border-color: hsl(var(--secondary)) !important; }
+  .mode-compete .focus\:border-orange-500:focus { border-color: hsl(var(--secondary)) !important; }
+  .mode-compete .focus\:border-orange-600:focus { border-color: hsl(var(--secondary)) !important; }
+
+  /* SVG fill/stroke */
+  .mode-compete .fill-orange-400 { fill: hsl(var(--secondary)) !important; }
+  .mode-compete .fill-orange-500 { fill: hsl(var(--secondary)) !important; }
+  .mode-compete .fill-orange-600 { fill: hsl(var(--secondary)) !important; }
+  .mode-compete .stroke-orange-400 { stroke: hsl(var(--secondary)) !important; }
+  .mode-compete .stroke-orange-500 { stroke: hsl(var(--secondary)) !important; }
+  .mode-compete .stroke-orange-600 { stroke: hsl(var(--secondary)) !important; }
+
+  /* Outline */
+  .mode-compete .outline-orange-400 { outline-color: hsl(var(--secondary)) !important; }
+  .mode-compete .outline-orange-500 { outline-color: hsl(var(--secondary)) !important; }
+  .mode-compete .outline-orange-600 { outline-color: hsl(var(--secondary)) !important; }
+
+  /* Hover text/border */
+  .mode-compete .hover\:text-orange-400:hover { color: hsl(var(--secondary)) !important; }
+  .mode-compete .hover\:text-orange-500:hover { color: hsl(var(--secondary)) !important; }
+  .mode-compete .hover\:text-orange-600:hover { color: hsl(var(--secondary)) !important; }
+  .mode-compete .hover\:border-orange-400:hover { border-color: hsl(var(--secondary)) !important; }
+  .mode-compete .hover\:border-orange-500:hover { border-color: hsl(var(--secondary)) !important; }
+  .mode-compete .hover\:border-orange-600:hover { border-color: hsl(var(--secondary)) !important; }
+
+  /* Active states */
+  .mode-compete .active\:bg-orange-500:active { background-color: hsl(var(--secondary)) !important; }
+  .mode-compete .active\:bg-orange-600:active { background-color: hsl(var(--secondary)) !important; }
+  .mode-compete .active\:text-orange-500:active { color: hsl(var(--secondary)) !important; }
+  .mode-compete .active\:border-orange-500:active { border-color: hsl(var(--secondary)) !important; }
+
+  /* Gradients */
+  .mode-compete .from-orange-400 { --tw-gradient-from: hsl(var(--secondary)) var(--tw-gradient-from-position); --tw-gradient-to: hsl(var(--secondary) / 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+  .mode-compete .from-orange-500 { --tw-gradient-from: hsl(var(--secondary)) var(--tw-gradient-from-position); --tw-gradient-to: hsl(var(--secondary) / 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+  .mode-compete .from-orange-600 { --tw-gradient-from: hsl(var(--secondary)) var(--tw-gradient-from-position); --tw-gradient-to: hsl(var(--secondary) / 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+  .mode-compete .via-orange-400 { --tw-gradient-stops: var(--tw-gradient-from), hsl(var(--secondary)) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+  .mode-compete .via-orange-500 { --tw-gradient-stops: var(--tw-gradient-from), hsl(var(--secondary)) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+  .mode-compete .via-orange-600 { --tw-gradient-stops: var(--tw-gradient-from), hsl(var(--secondary)) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+  .mode-compete .to-orange-400 { --tw-gradient-to: hsl(var(--secondary)) var(--tw-gradient-to-position); }
+  .mode-compete .to-orange-500 { --tw-gradient-to: hsl(var(--secondary)) var(--tw-gradient-to-position); }
+  .mode-compete .to-orange-600 { --tw-gradient-to: hsl(var(--secondary)) var(--tw-gradient-to-position); }
+
+  /* Placeholder text */
+  .mode-compete .placeholder\:text-orange-400::placeholder { color: hsl(var(--secondary)) !important; }
+  .mode-compete .placeholder\:text-orange-500::placeholder { color: hsl(var(--secondary)) !important; }
+  .mode-compete .placeholder\:text-orange-600::placeholder { color: hsl(var(--secondary)) !important; }
+
+  /* Caret & Accent colors */
+  .mode-compete .caret-orange-400 { caret-color: hsl(var(--secondary)) !important; }
+  .mode-compete .caret-orange-500 { caret-color: hsl(var(--secondary)) !important; }
+  .mode-compete .caret-orange-600 { caret-color: hsl(var(--secondary)) !important; }
+  .mode-compete .accent-orange-400 { accent-color: hsl(var(--secondary)) !important; }
+  .mode-compete .accent-orange-500 { accent-color: hsl(var(--secondary)) !important; }
+  .mode-compete .accent-orange-600 { accent-color: hsl(var(--secondary)) !important; }
+
+  /* Shadow color */
+  .mode-compete .shadow-orange-400 { --tw-shadow-color: hsl(var(--secondary)) !important; }
+  .mode-compete .shadow-orange-500 { --tw-shadow-color: hsl(var(--secondary)) !important; }
+  .mode-compete .shadow-orange-600 { --tw-shadow-color: hsl(var(--secondary)) !important; }
+
+  /* Divide color */
+  .mode-compete .divide-orange-400 > :not([hidden]) ~ :not([hidden]) { border-color: hsl(var(--secondary)) !important; }
+  .mode-compete .divide-orange-500 > :not([hidden]) ~ :not([hidden]) { border-color: hsl(var(--secondary)) !important; }
+  .mode-compete .divide-orange-600 > :not([hidden]) ~ :not([hidden]) { border-color: hsl(var(--secondary)) !important; }
+
+  /* ARIA state variants */
+  .mode-compete .aria-selected\:bg-orange-500[aria-selected="true"] { background-color: hsl(var(--secondary)) !important; }
+  .mode-compete .aria-selected\:text-orange-500[aria-selected="true"] { color: hsl(var(--secondary)) !important; }
+
+  /* In collaborate mode, map common orange utilities to mode secondary (turquoise) */
+  /* Backgrounds */
+  .mode-collaborate .bg-orange-400 { background-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .bg-orange-500 { background-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .bg-orange-600 { background-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .bg-orange-700 { background-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .hover\:bg-orange-500:hover { background-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .hover\:bg-orange-600:hover { background-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .bg-orange-500\/50 { background-color: hsl(var(--secondary) / 0.5) !important; }
+  .mode-collaborate .after\:bg-orange-500\/50::after { background-color: hsl(var(--secondary) / 0.5) !important; }
+
+  /* Text */
+  .mode-collaborate .text-orange-400 { color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .text-orange-500 { color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .text-orange-600 { color: hsl(var(--secondary)) !important; }
+
+  /* Borders */
+  .mode-collaborate .border-orange-400 { border-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .border-orange-500 { border-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .border-orange-600 { border-color: hsl(var(--secondary)) !important; }
+
+  /* Rings (including focus variants) */
+  .mode-collaborate .ring-orange-400 { --tw-ring-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .ring-orange-500 { --tw-ring-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .ring-orange-600 { --tw-ring-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .focus\:ring-orange-400:focus { --tw-ring-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .focus\:ring-orange-500:focus { --tw-ring-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .focus\:ring-orange-600:focus { --tw-ring-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .focus\:border-orange-400:focus { border-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .focus\:border-orange-500:focus { border-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .focus\:border-orange-600:focus { border-color: hsl(var(--secondary)) !important; }
+
+  /* SVG fill/stroke */
+  .mode-collaborate .fill-orange-400 { fill: hsl(var(--secondary)) !important; }
+  .mode-collaborate .fill-orange-500 { fill: hsl(var(--secondary)) !important; }
+  .mode-collaborate .fill-orange-600 { fill: hsl(var(--secondary)) !important; }
+  .mode-collaborate .stroke-orange-400 { stroke: hsl(var(--secondary)) !important; }
+  .mode-collaborate .stroke-orange-500 { stroke: hsl(var(--secondary)) !important; }
+  .mode-collaborate .stroke-orange-600 { stroke: hsl(var(--secondary)) !important; }
+
+  /* Outline */
+  .mode-collaborate .outline-orange-400 { outline-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .outline-orange-500 { outline-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .outline-orange-600 { outline-color: hsl(var(--secondary)) !important; }
+
+  /* Hover text/border */
+  .mode-collaborate .hover\:text-orange-400:hover { color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .hover\:text-orange-500:hover { color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .hover\:text-orange-600:hover { color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .hover\:border-orange-400:hover { border-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .hover\:border-orange-500:hover { border-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .hover\:border-orange-600:hover { border-color: hsl(var(--secondary)) !important; }
+
+  /* Active states */
+  .mode-collaborate .active\:bg-orange-500:active { background-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .active\:bg-orange-600:active { background-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .active\:text-orange-500:active { color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .active\:border-orange-500:active { border-color: hsl(var(--secondary)) !important; }
+
+  /* Gradients */
+  .mode-collaborate .from-orange-400 { --tw-gradient-from: hsl(var(--secondary)) var(--tw-gradient-from-position); --tw-gradient-to: hsl(var(--secondary) / 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+  .mode-collaborate .from-orange-500 { --tw-gradient-from: hsl(var(--secondary)) var(--tw-gradient-from-position); --tw-gradient-to: hsl(var(--secondary) / 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+  .mode-collaborate .from-orange-600 { --tw-gradient-from: hsl(var(--secondary)) var(--tw-gradient-from-position); --tw-gradient-to: hsl(var(--secondary) / 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+  .mode-collaborate .via-orange-400 { --tw-gradient-stops: var(--tw-gradient-from), hsl(var(--secondary)) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+  .mode-collaborate .via-orange-500 { --tw-gradient-stops: var(--tw-gradient-from), hsl(var(--secondary)) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+  .mode-collaborate .via-orange-600 { --tw-gradient-stops: var(--tw-gradient-from), hsl(var(--secondary)) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+  .mode-collaborate .to-orange-400 { --tw-gradient-to: hsl(var(--secondary)) var(--tw-gradient-to-position); }
+  .mode-collaborate .to-orange-500 { --tw-gradient-to: hsl(var(--secondary)) var(--tw-gradient-to-position); }
+  .mode-collaborate .to-orange-600 { --tw-gradient-to: hsl(var(--secondary)) var(--tw-gradient-to-position); }
+
+  /* Placeholder text */
+  .mode-collaborate .placeholder\:text-orange-400::placeholder { color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .placeholder\:text-orange-500::placeholder { color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .placeholder\:text-orange-600::placeholder { color: hsl(var(--secondary)) !important; }
+
+  /* Caret & Accent colors */
+  .mode-collaborate .caret-orange-400 { caret-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .caret-orange-500 { caret-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .caret-orange-600 { caret-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .accent-orange-400 { accent-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .accent-orange-500 { accent-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .accent-orange-600 { accent-color: hsl(var(--secondary)) !important; }
+
+  /* Shadow color */
+  .mode-collaborate .shadow-orange-400 { --tw-shadow-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .shadow-orange-500 { --tw-shadow-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .shadow-orange-600 { --tw-shadow-color: hsl(var(--secondary)) !important; }
+
+  /* Divide color */
+  .mode-collaborate .divide-orange-400 > :not([hidden]) ~ :not([hidden]) { border-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .divide-orange-500 > :not([hidden]) ~ :not([hidden]) { border-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .divide-orange-600 > :not([hidden]) ~ :not([hidden]) { border-color: hsl(var(--secondary)) !important; }
+
+  /* ARIA state variants */
+  .mode-collaborate .aria-selected\:bg-orange-500[aria-selected="true"] { background-color: hsl(var(--secondary)) !important; }
+  .mode-collaborate .aria-selected\:text-orange-500[aria-selected="true"] { color: hsl(var(--secondary)) !important; }
+
   /* Hide scrollbars cross-browser */
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

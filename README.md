@@ -1,3 +1,6 @@
+FIRST READ ARCHITECTURE_AND_CODE_GUIDELINES.md that is the final source of truth
+
+
 # Guess-History – Multiplayer (PartyKit) Integration
 
 This project integrates a 2‑player lobby over PartyKit with strict typing and resilient reconnects.

@@ -6,53 +6,53 @@
 // Hint costs and accuracy penalties
 export const HINT_COSTS = {
   // Level 1 Hints (Basic)
-  continent: { xp: 10, acc: 1 },
-  century: { xp: 10, acc: 1 },
+  continent: { xp: 10, acc: 10 },
+  century: { xp: 10, acc: 10 },
   
   // Level 2 Hints (Intermediate)
-  distantLandmark: { xp: 20, acc: 2 },
-  distantDistance: { xp: 10, acc: 1 },
-  distantEvent: { xp: 20, acc: 2 },
-  distantTimeDiff: { xp: 10, acc: 1 },
+  distantLandmark: { xp: 20, acc: 20 },
+  distantDistance: { xp: 10, acc: 10 },
+  distantEvent: { xp: 20, acc: 20 },
+  distantTimeDiff: { xp: 10, acc: 10 },
   
   // Level 3 Hints (Advanced)
-  region: { xp: 50, acc: 5 },
-  narrowDecade: { xp: 50, acc: 5 },
+  region: { xp: 50, acc: 50 },
+  narrowDecade: { xp: 50, acc: 50 },
   
   // Level 4 Hints (Precise)
-  nearbyLandmark: { xp: 30, acc: 3 },
-  nearbyDistance: { xp: 10, acc: 1 },
-  contemporaryEvent: { xp: 30, acc: 3 },
-  closeTimeDiff: { xp: 10, acc: 1 },
+  nearbyLandmark: { xp: 30, acc: 30 },
+  nearbyDistance: { xp: 10, acc: 10 },
+  contemporaryEvent: { xp: 30, acc: 30 },
+  closeTimeDiff: { xp: 10, acc: 10 },
 
   // Level 5 Hints (Full Clues)
-  whereClues: { xp: 40, acc: 4 },
-  whenClues: { xp: 40, acc: 4 },
+  whereClues: { xp: 40, acc: 40 },
+  whenClues: { xp: 40, acc: 40 },
 
   // V2 numeric-prefixed hint types
   // Level 1
-  '1_where_continent': { xp: 10, acc: 1 },
-  '1_when_century': { xp: 10, acc: 1 },
+  '1_where_continent': { xp: 10, acc: 10 },
+  '1_when_century': { xp: 10, acc: 10 },
 
   // Level 2
-  '2_where_landmark': { xp: 20, acc: 2 },
-  '2_where_landmark_km': { xp: 10, acc: 1 },
-  '2_when_event': { xp: 20, acc: 2 },
-  '2_when_event_years': { xp: 10, acc: 1 },
+  '2_where_landmark': { xp: 20, acc: 20 },
+  '2_where_landmark_km': { xp: 10, acc: 10 },
+  '2_when_event': { xp: 20, acc: 20 },
+  '2_when_event_years': { xp: 10, acc: 10 },
 
   // Level 3
-  '3_where_region': { xp: 50, acc: 5 },
-  '3_when_decade': { xp: 50, acc: 5 },
+  '3_where_region': { xp: 50, acc: 50 },
+  '3_when_decade': { xp: 50, acc: 50 },
 
   // Level 4
-  '4_where_landmark': { xp: 30, acc: 3 },
-  '4_where_landmark_km': { xp: 10, acc: 1 },
-  '4_when_event': { xp: 30, acc: 3 },
-  '4_when_event_years': { xp: 10, acc: 1 },
+  '4_where_landmark': { xp: 30, acc: 30 },
+  '4_where_landmark_km': { xp: 10, acc: 10 },
+  '4_when_event': { xp: 30, acc: 30 },
+  '4_when_event_years': { xp: 10, acc: 10 },
 
   // Level 5
-  '5_where_clues': { xp: 40, acc: 4 },
-  '5_when_clues': { xp: 40, acc: 4 },
+  '5_where_clues': { xp: 40, acc: 40 },
+  '5_when_clues': { xp: 40, acc: 40 },
 };
 
 // Hint level descriptions

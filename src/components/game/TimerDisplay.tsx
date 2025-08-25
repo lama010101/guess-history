@@ -21,6 +21,7 @@ interface TimerDisplayProps {
   isActive: boolean;
   onTimeout?: () => void;
   roundTimerSec: number;
+  externalTimer?: boolean;
 }
 
 const TimerDisplay: React.FC<TimerDisplayProps> = ({
@@ -28,7 +29,8 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
   setRemainingTime,
   isActive,
   onTimeout,
-  roundTimerSec
+  roundTimerSec,
+  externalTimer = false
 }) => {
   const { soundEnabled, vibrateEnabled } = useSettingsStore();
   const countdownBeepRef = useRef<HTMLAudioElement | null>(null);
@@ -79,12 +81,15 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
     }
   }, [remainingTime, isActive, soundEnabled, vibrateEnabled]);
   
-  // Update timer when round changes
+  // Update timer when round changes (disabled if using external timer control)
   useEffect(() => {
+    if (externalTimer) {
+      return;
+    }
     if (roundTimerSec > 0) {
       setRemainingTime(roundTimerSec);
     }
-  }, [roundTimerSec, setRemainingTime]);
+  }, [roundTimerSec, setRemainingTime, externalTimer]);
 
   // Calculate progress for circular timer
   const { progress, isCritical, size, strokeWidth, radius, circumference, strokeDashoffset, color } = useMemo(() => {
@@ -111,8 +116,11 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
     return { progress, isCritical, size, strokeWidth, radius, circumference, strokeDashoffset, color };
   }, [remainingTime, roundTimerSec]);
 
-  // Timer countdown effect
+  // Timer countdown effect (disabled if using external timer control)
   useEffect(() => {
+    if (externalTimer) {
+      return;
+    }
     // If timer is not active, do nothing
     if (!isActive) {
       return;
@@ -143,7 +151,7 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
 
     // Clean up interval on unmount or when dependencies change
     return () => clearInterval(timerInterval);
-  }, [isActive, remainingTime, onTimeout, setRemainingTime]);
+  }, [isActive, remainingTime, onTimeout, setRemainingTime, externalTimer]);
 
   // Final strong vibration pattern on timeout
   useEffect(() => {

@@ -89,8 +89,100 @@
   - `/` → `LandingPage`
   - `/test` → `TestLayout` with nested routes: `index`, `auth`, `game`, `results`, `final`, `leaderboard`, `profile`, `settings`, `room`, `friends`.
   - `/room/:roomCode` → `src/pages/Room.tsx` (primary multiplayer lobby route used by invite acceptance)
+  - Mode-prefixed game routes (Solo and Compete):
+    - `/test/solo/game/room/:roomId/round/:roundNumber` → `src/pages/solo/SoloGameRoundPage.tsx`
+    - `/test/solo/game/room/:roomId/round/:roundNumber/results` → `src/pages/solo/SoloRoundResultsPage.tsx`
+    - `/test/compete/game/room/:roomId/round/:roundNumber` → `src/pages/compete/CompeteGameRoundPage.tsx`
+    - `/test/compete/game/room/:roomId/round/:roundNumber/results` → `src/pages/compete/CompeteRoundResultsPage.tsx`
+  - Note: Compete pages currently alias Solo implementations to preserve existing behavior; future iterations will diverge styling/features.
   - Admin: `/test/admin/images`, `/test/admin/badges`. Wildcards redirect to `/`.
 - **WebSocket endpoint**: `ws(s)://<resolved-host>/parties/lobby/:roomCode` (via `partyUrl('lobby', roomCode)`).
+
+### Mode-based Theming (Solo, Compete, Collaborate)
+
+- **Goal**: Solo keeps original orange accents. Compete shows purple. Collaborate shows turquoise.
+- **Body classes**: `App.tsx` `ModeClassWatcher` toggles on `<body>` based on route:
+  - `mode-solo` when path includes `/solo/`
+  - `mode-compete` when path includes `/compete/`
+  - `mode-collaborate` when path includes `/collaborate/` or `/collab/`
+- **CSS variables** (`src/index.css`):
+  - Default (Solo): `--secondary` = orange (25 95% 53%).
+  - Compete: `body.mode-compete { --secondary: 270 85% 60%; }` (purple)
+  - Collaborate: `body.mode-collaborate { --secondary: 189 90% 45%; }` (turquoise)
+- **Tailwind orange remapping (scoped)**: Under `@layer utilities` we map Tailwind `*-orange-*` utilities to `hsl(var(--secondary))` within both `.mode-compete` and `.mode-collaborate`:
+  - Background/text/border/ring (+ hover/focus/active), SVG fill/stroke, outline.
+  - Gradients: `from/via/to-orange-*`.
+  - Placeholder, caret, accent, divide, shadow, ARIA-selected.
+- **Component guidance**:
+  - Prefer tokens: `text-secondary`, `bg-secondary`, `text-history-secondary` to auto-inherit mode color.
+  - Avoid hardcoded hex/orange. Use `hsl(var(--secondary))` in custom CSS.
+- **Testing**:
+  - Solo: `/test/solo/...` → orange.
+  - Compete: `/test/compete/...` → purple.
+  - Collaborate: `/test/collaborate/...` → turquoise.
+  - Verify buttons, sliders, rings, gradients, SVGs.
+
+### Game Modes and Timers (Hooks)
+
+- Files:
+  - `hooks/useGameModeConfig.ts` — Derives `GameMode` from path or explicit prop. Modes: `'solo' | 'compete_sync' | 'compete_async'`. Provides flags: `isCompete`, `isSync`, `isAsync`, `roundTimerRequired`, `nextTimerEnabled`.
+  - `hooks/useRoundTimer.ts` — Generic countdown for round play (start/pause/reset, `onTimeout`, tick granularity). UI-agnostic.
+  - `hooks/useNextRoundTimer.ts` — Post-results "Next round" countdown (sync mode). UI-agnostic.
+
+- Integration plan (no visual changes by default):
+  - `src/components/layouts/GameLayout1.tsx` already accepts `gameMode`, `remainingTime`, `setRemainingTime`, and `isTimerActive` props. Pages can supply these from `useGameModeConfig()` and `useRoundTimer()` without changing layout visuals.
+  - `src/components/layouts/ResultsLayout2.tsx` supports `peers`. Pages may add an optional next-round auto-advance using `useNextRoundTimer()` when `nextTimerEnabled` is true (Compete Sync only). The timer is headless unless explicitly rendered by the page/layout.
+
+- Behavioral guidance:
+  - Compete Sync (`compete_sync`):
+    - Round timer is required; rounds auto-timeout via `onTimeout` to submit/lock in as per existing page logic.
+    - Results page may auto-continue after a short countdown using `useNextRoundTimer`.
+  - Compete Async (`compete_async`):
+    - Round timer optional; no next-timer on results.
+  - Solo (`solo`):
+    - Unchanged unless a page explicitly opts into timers.
+
+- Rationale: Shared, reusable hooks avoid duplication across Solo/Compete variants and keep layout components UI-focused. Pages own timer behavior based on mode flags.
+
+### Round Results Types and Next-Round Timer
+
+- __Type source of truth__
+  - Layout/result view type lives at `src/utils/results/types.ts` as `RoundResult` (includes image/event fields, accuracies, XP, hint debts, badges, confidence).
+  - Context/gameplay result type lives at `src/types.ts` as `RoundResult` (simpler per-round result from gameplay).
+  - `src/pages/RoundResultsPage.tsx` maps the context `RoundResult` to the layout `RoundResult` and must import the layout type as:
+    - `import { RoundResult as LayoutRoundResultType } from '@/utils/results/types'`.
+
+- __Results page integration__
+  - File: `src/pages/RoundResultsPage.tsx`.
+  - Uses `useNextRoundTimer` to drive a post-results countdown when `timerEnabled` is true in `GameContext`.
+  - Timer duration derives from `roundTimerSec` in `GameContext`.
+  - Timer is started when results are ready and paused during navigation.
+  - On expiry, the same handler as the “Next Round” button (`handleNext`) is invoked.
+  - The “Next Round” button is disabled while the timer is active or when navigation is in progress; a `TimerDisplay` is rendered next to the button when enabled.
+
+- __Related files__
+  - `src/hooks/useNextRoundTimer.ts` — headless countdown hook (start/pause/reset, onExpire).
+  - `src/components/game/TimerDisplay.tsx` — circular countdown UI used by results page (external timer mode).
+  - `src/components/layouts/ResultsLayout2.tsx` — consumes the mapped `RoundResult` and optionally renders peer guesses.
+  - `src/hooks/useRoundPeers.ts` — multiplayer peer results (room + 0-based round index).
+
+### Full-Screen Loading Overlays (Game → Results transition)
+
+- Locations:
+  - `src/components/layouts/GameLayout1.tsx` — shows a full-viewport overlay with spinner and "Preparing results..." text while a guess submission is in flight. Controlled by a local `isSubmitting` flag in the layout/page; the submit button itself shows no spinner.
+  - `src/pages/RoundResultsPage.tsx` — renders a full-viewport loading state with spinner and "Preparing results..." while results are being hydrated/calculated. When data is ready, the standard `ResultsLayout2` renders instantly.
+
+- Behavior and guidelines:
+  - Only show overlays during navigation/transition. Do not attach spinners to the submit button.
+  - Keep overlays theme-consistent (dark background, `text-secondary` accents) and avoid UI jumps.
+  - Timer integrity: round timers on the Game page are unaffected by the overlay; on Results, the next-round timer (via `useNextRoundTimer`) continues and disables "Next" appropriately.
+  - Multiplayer: peer synchronization (`useRoundPeers`) and session membership upsert are unaffected; overlays are purely visual.
+  - Error handling: prefer showing an inline error state if results fail to load instead of keeping the overlay indefinitely.
+
+- How to modify:
+  - Update overlay styling or copy in `GameLayout1.tsx` for submission-state visuals.
+  - Adjust the results loading branch in `RoundResultsPage.tsx` if copy or iconography changes are desired.
+  - Do not add per-button spinners; rely on the full-screen overlay to signal progress.
 
 Note: Sections below referencing modules under `src/multiplayer/*` (e.g., `Server.ts`, `MultiplayerAdapter.ts`) represent planned design. For the current implementation, treat `server/lobby.ts` and `src/lib/partyClient.ts` as canonical. The remainder of this document is preserved as an appendix for detailed design and UI notes.
 
@@ -650,16 +742,16 @@ The app provides a clean, accessible PWA install flow with an offline-first shel
   2) Exact match on `hintType` in `HINT_TYPE_NAMES`
   3) Base-ID extraction for `hintId` with suffixes (strip trailing `-...`) and prefix match
   4) Cost-based inference (uses the debt values when only generic categories are present):
-     - Where 50 XP / 5% → "Region"
-     - Where 20 XP / 2% → "Remote Landmark"
-     - Where 30 XP / 3% → "Nearby Landmark"
-     - Where 40 XP / 4% → "Geographical Clues"
-     - Where 10 XP / 1% → if numeric/`km` → "Distance to Landmark" (continent handled by heuristic below)
-     - When 50 XP / 5% → "Decade"
-     - When 20 XP / 2% → "Distant Event"
-     - When 30 XP / 3% → "Recent Event"
-     - When 40 XP / 4% → "Temporal Clues"
-     - When 10 XP / 1% → if numeric/`years` → "Years From Event" (century handled by heuristic below)
+     - Where 50 XP / 50% → "Region"
+     - Where 20 XP / 20% → "Remote Landmark"
+     - Where 30 XP / 30% → "Nearby Landmark"
+     - Where 40 XP / 40% → "Geographical Clues"
+     - Where 10 XP / 10% → if numeric/`km` → "Distance to Landmark" (continent handled by heuristic below)
+     - When 50 XP / 50% → "Decade"
+     - When 20 XP / 20% → "Distant Event"
+     - When 30 XP / 30% → "Recent Event"
+     - When 40 XP / 40% → "Temporal Clues"
+     - When 10 XP / 10% → if numeric/`years` → "Years From Event" (century handled by heuristic below)
   5) Heuristics:
      - When: raw contains `N(st|nd|rd|th) century` or `N(st|nd|rd|th)` → label "Century"
      - When: raw decade like `1930s`, `2020s` → label "Decade"
@@ -688,15 +780,10 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - Shape: `{ type: 'settings'; timerSeconds?: number; timerEnabled?: boolean }`
   - Sent by: Host only
   - Behavior: Server validates/clamps values and stores in room state.
-
-- **Server → Client message**: `start`
-  - Shape: `{ type: 'start'; startedAt: string; durationSec: number; timerEnabled: boolean }`
-  - Includes the effective timer values used to initialize the round timer on all clients.
-
 - **Key files**:
   - Server: `server/lobby.ts` — handles `settings` from host, clamps values, includes `durationSec` and `timerEnabled` in `start` broadcast.
   - Shared types: `src/lib/partyClient.ts` — defines `LobbyClientMessage` and `LobbyServerMessage` including `settings` and extended `start`.
-  - Lobby UI: `src/pages/Room.tsx` — host-only timer toggle and native range input slider; non-hosts see the selected duration. Uses `GameContext` setters to update `roundTimerSec` and `timerEnabled` and relies on an effect to send `settings` when changed.
+  - Lobby UI: `src/pages/Room.tsx` — host-only timer toggle (Switch) and Shadcn Slider (5–300s, step 5) matching the Home page; non-hosts see the formatted time and a note that the host controls the timer. An effect sends `settings` when values change.
   - Solo settings reference: `src/components/game/GameSettings.tsx`.
 
 - **UI behavior**:
@@ -704,16 +791,8 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - Participants see the formatted time and a note that the host controls the timer.
   - Timer values are also validated on the server.
 
-- **UI implementation note (2025-08-24)**:
-  - The round duration control uses a native HTML `input type="range"` (min 5, max 300, step 5), replacing the Shadcn Slider to eliminate touch-device flicker/sway.
-  - Editing is host-only; non-hosts see a read-only display with the note “Host controls the timer.”
-
-## Play Page Defaults and Friends Management (2025-08-23)
-
-- __Play page default tab__
-  - File: `src/pages/PlayWithFriends.tsx`
-  - Behavior: The Join tab is the default and appears first in the mobile segmented control. The Join card is rendered before Host for visual consistency.
-  - Join code input accepts 6 alphanumeric characters; paste-invite field auto-extracts a valid code when present.
+- **UI implementation note (2025-08-27)**:
+  - The round duration control uses the same Switch + Shadcn Slider UI used on the Home page (min 5, max 300, step 5). Controls are disabled for non-hosts and show “Host controls the timer.”
 
 - **Host-only Friends management within Room**
   - File: `src/pages/Room.tsx`

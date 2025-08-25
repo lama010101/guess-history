@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { TooltipProvider } from "./src/components/ui/tooltip";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "./src/contexts/AuthContext";
@@ -24,6 +24,10 @@ import RoundResultsPage from './src/pages/RoundResultsPage';
 import GameRoundPage from './src/pages/GameRoundPage';
 import InviteListener from "./src/components/InviteListener";
 import Room from "./src/pages/Room";
+import SoloGameRoundPage from './src/pages/solo/SoloGameRoundPage';
+import SoloRoundResultsPage from './src/pages/solo/SoloRoundResultsPage';
+import CompeteGameRoundPage from './src/pages/compete/CompeteGameRoundPage';
+import CompeteRoundResultsPage from './src/pages/compete/CompeteRoundResultsPage';
 
 // Handler for auth redirects
 const AuthRedirectHandler = () => {
@@ -47,6 +51,27 @@ const AuthRedirectHandler = () => {
   return null;
 };
 
+// Apply mode-specific class on <body> for scoped theming (solo vs compete)
+const ModeClassWatcher = () => {
+  const location = useLocation();
+  useEffect(() => {
+    try {
+      const path = location.pathname || "";
+      const isCompete = path.includes("/compete/");
+      const isSolo = path.includes("/solo/");
+      const isCollaborate = path.includes("/collaborate/") || path.includes("/collab/");
+      const body = document.body;
+      body.classList.toggle("mode-compete", !!isCompete);
+      body.classList.toggle("mode-solo", !!isSolo);
+      body.classList.toggle("mode-collaborate", !!isCollaborate);
+      if (!isCompete && !isSolo && !isCollaborate) {
+        body.classList.remove("mode-compete", "mode-solo", "mode-collaborate");
+      }
+    } catch {}
+  }, [location]);
+  return null;
+};
+
 const App = () => {
   const queryClient = new QueryClient();
 
@@ -58,6 +83,7 @@ const App = () => {
             <TooltipProvider>
               <BrowserRouter>
                 <AuthRedirectHandler />
+                <ModeClassWatcher />
                 <InviteListener />
                 {import.meta.env.DEV && <DevToastProbe />}
                 <Routes>
@@ -69,6 +95,14 @@ const App = () => {
                     <Route path="game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
                     <Route path="results" element={<TestResultsPage />} />
                     <Route path="game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />
+                    {/* Mode-prefixed routes (Solo & Compete) */}
+                    <Route path="solo/game/room/:roomId/round/:roundNumber" element={<SoloGameRoundPage />} />
+                    <Route path="solo/game/room/:roomId/round/:roundNumber/results" element={<SoloRoundResultsPage />} />
+                    <Route path="compete/game/room/:roomId/round/:roundNumber" element={<CompeteGameRoundPage />} />
+                    <Route path="compete/game/room/:roomId/round/:roundNumber/results" element={<CompeteRoundResultsPage />} />
+                    {/* Collaborate routes (alias compete pages for now) */}
+                    <Route path="collaborate/game/room/:roomId/round/:roundNumber" element={<CompeteGameRoundPage />} />
+                    <Route path="collaborate/game/room/:roomId/round/:roundNumber/results" element={<CompeteRoundResultsPage />} />
                     <Route path="final" element={<TestFinalPage />} />
                     <Route path="game/room/:roomId/final" element={<TestFinalPage />} />
                     <Route path="leaderboard" element={<TestLeaderboardPage />} />

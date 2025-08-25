@@ -8,6 +8,7 @@ import { ROUNDS_PER_GAME } from '@/utils/gameCalculations';
 import { Hint } from '@/hooks/useHintV2';
 import { RoundResult, GuessCoordinates } from '@/types';
 import { useGamePreparation, PrepStatus, PreparedImage } from '@/hooks/useGamePreparation';
+import { getLevelConstraints } from '@/lib/levelUpConfig';
 
 // Define the structure of an image object based on actual schema
 export interface GameImage {
@@ -49,6 +50,7 @@ interface GameContextState {
   setRoundTimerSec: (seconds: number) => void;
   setTimerEnabled: (enabled: boolean) => void; // Function to enable/disable timer
   startGame: (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string; seed?: string }) => Promise<void>; // Updated to accept settings incl. roomId + seed
+  startLevelUpGame: (level: number, settings?: { roomId?: string; seed?: string }) => Promise<void>;
   recordRoundResult: (result: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'>, currentRoundIndex: number) => void;
   handleTimeUp?: (currentRoundIndex: number) => void;
   resetGame: () => void;
@@ -652,6 +654,88 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     }
   }, [navigate, hintsAllowed, roundTimerSec, timerEnabled, clearSavedGameState]);
 
+  // Start a Level Up game for a given level (1..100) using year constraints and timer from levelUpConfig
+  const startLevelUpGame = useCallback(async (level: number, settings?: { roomId?: string; seed?: string }) => {
+    console.log(`[GameContext] Starting Level Up game for level ${level}...`);
+    clearSavedGameState();
+    setIsLoading(true);
+    setError(null);
+    setImages([]);
+    setRoundResults([]);
+
+    // Compute constraints and apply timer (no UI change)
+    const { minYear, maxYear, timerSeconds } = getLevelConstraints(level);
+    setTimerEnabled(true);
+    setRoundTimerSec(timerSeconds);
+
+    try {
+      // Multiplayer gating: require seed when a roomId is specified
+      if (settings?.roomId && !settings.seed) {
+        try {
+          console.warn('[GameContext] LevelUp MP start requested without seed. Gating preparation until seed is provided.', {
+            roomId: settings.roomId,
+          });
+        } catch {}
+        setIsLoading(false);
+        setError(null);
+        return;
+      }
+
+      const newRoomId = settings?.roomId && settings.roomId.trim().length > 0
+        ? settings.roomId
+        : `room_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const newGameId = uuidv4();
+      setGameId(newGameId);
+      const isMultiplayer = !!settings?.roomId && !!settings?.seed;
+      console.log(`[GameContext] [GameID: ${newGameId}] LevelUp start, roomId: ${newRoomId}, seed: ${settings?.seed ?? 'none'}, isMultiplayer: ${isMultiplayer}`, { minYear, maxYear, timerSeconds });
+      setRoomId(newRoomId);
+      try { sessionStorage.setItem('lastSyncedRoomId', newRoomId); } catch {}
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (isMultiplayer) {
+        await ensureSessionMembership(newRoomId, user?.id);
+        await repairMissingRoomId(newRoomId);
+      }
+
+      // Always use prepare() so year constraints flow to the RPC and selection persists server-side
+      const prep = await prepare({
+        userId: user?.id ?? null,
+        roomId: settings?.roomId ? newRoomId : null,
+        count: ROUNDS_PER_GAME,
+        seed: settings?.seed ?? null,
+        minYear,
+        maxYear,
+      });
+
+      const preparedImages: GameImage[] = prep.images.map((img) => ({
+        id: img.id,
+        title: img.title,
+        description: img.description,
+        source_citation: img.source_citation,
+        latitude: img.latitude,
+        longitude: img.longitude,
+        year: img.year,
+        image_url: img.image_url,
+        location_name: img.location_name,
+        url: img.url,
+        firebase_url: img.firebase_url,
+        confidence: img.confidence,
+      }));
+
+      setImages(preparedImages);
+      console.log('[GameContext] LevelUp prepared images (first 5 IDs)', preparedImages.slice(0, 5).map(i => i.id));
+
+      setIsLoading(false);
+      setTimeout(() => {
+        navigate(`/test/game/room/${newRoomId}/round/1`);
+      }, 100);
+    } catch (err) {
+      console.error('[GameContext] Error in startLevelUpGame:', err);
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      setIsLoading(false);
+    }
+  }, [clearSavedGameState, setRoundTimerSec, setTimerEnabled, navigate, prepare, ensureSessionMembership, repairMissingRoomId]);
+
   // Helper to process raw DB images into GameImage objects
   const processRawImages = useCallback(async (selectedImages: any[]): Promise<GameImage[]> => {
     return Promise.all(
@@ -1061,6 +1145,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     setRoundTimerSec: handleSetRoundTimerSec,
     setTimerEnabled,
     startGame,
+    startLevelUpGame,
     recordRoundResult,
     handleTimeUp,
     resetGame,

@@ -30,7 +30,7 @@ import {
 } from '@/utils/gameCalculations';
 // Timer integration
 import TimerDisplay from '@/components/game/TimerDisplay';
-import { useNextRoundTimer } from '@/hooks/useNextRoundTimer';
+import { useNextRoundTimer } from '../hooks/useNextRoundTimer';
 
 // Removed imports for utils/resultsFetching as we use context now
 // import { fetchRoundResult, checkGameProgress, advanceToNextRound } from '@/utils/resultsFetching';

@@ -21,6 +21,9 @@ export interface PrepareOptions {
   roomId?: string | null;
   count: number;
   seed?: string | null;
+  // Optional constraints for Level Up mode or other filtered selections
+  minYear?: number | null;
+  maxYear?: number | null;
   nonBlocking?: boolean;
 }
 
@@ -96,6 +99,8 @@ export function useGamePreparation() {
         roomId,
         count,
         seed_present: !!opts.seed,
+        minYear: opts.minYear ?? null,
+        maxYear: opts.maxYear ?? null,
       });
     } catch {}
 
@@ -106,6 +111,8 @@ export function useGamePreparation() {
       p_count: count,
     };
     if (opts.seed) rpcArgs.p_seed = opts.seed; // omit to use DB default when not provided
+    if (opts.minYear !== undefined && opts.minYear !== null) rpcArgs.p_min_year = opts.minYear;
+    if (opts.maxYear !== undefined && opts.maxYear !== null) rpcArgs.p_max_year = opts.maxYear;
 
     // Log sanitized args for diagnostics (avoid dumping large data)
     try {
@@ -114,6 +121,8 @@ export function useGamePreparation() {
         p_room_id: rpcArgs.p_room_id,
         p_count: rpcArgs.p_count,
         p_seed_present: !!rpcArgs.p_seed,
+        p_min_year: rpcArgs.p_min_year ?? null,
+        p_max_year: rpcArgs.p_max_year ?? null,
       });
     } catch {}
 

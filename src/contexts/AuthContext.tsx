@@ -57,35 +57,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsLoading(false);
     });
 
-    // Fetch initial session; if none, create an anonymous session so RLS-authorized realtime works for invitee
+    // Fetch initial session; do NOT auto-create anonymous sessions anymore
     supabase.auth
       .getSession()
-      .then(async ({ data: { session } }) => {
-        if (!session?.user) {
-          // Create anonymous session
-          const { data: anonData, error: anonErr } = await supabase.auth.signInAnonymously();
-          if (anonErr) {
-            try { console.warn('AuthContext: anonymous sign-in failed', anonErr); } catch {}
-          } else if (anonData?.user) {
-            setSession(anonData.session ?? null);
-            setUser(anonData.user);
-            try {
-              if (anonData.session?.access_token) {
-                supabase.realtime.setAuth(anonData.session.access_token);
-              }
-            } catch (e) {
-              try { console.warn('AuthContext: failed to set Realtime auth token (anon)', e); } catch {}
-            }
-            // Ensure profile exists with historical avatar
-            createUserProfileIfNotExists(
-              anonData.user.id,
-              anonData.user.user_metadata?.full_name || 'Guest'
-            );
-            return; // Done; do not proceed with the below session handling
-          }
-        }
-
-        // We have an existing session; set state and Realtime auth
+      .then(({ data: { session } }) => {
         setSession(session);
         setUser(session?.user ?? null);
         try {

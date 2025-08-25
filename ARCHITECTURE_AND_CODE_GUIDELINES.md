@@ -270,6 +270,18 @@ VITE_AUTH_EMAIL_REDIRECT_TO=https://your-domain.com/auth/callback
   - `src/components/AuthModal.tsx` → UI that calls the auth methods
   - `src/integrations/supabase/client.ts` → Supabase client with a fetch interceptor
 
+### Auth changes (2025-08-26)
+
+- **No automatic guest sign-in**
+  - File: `src/contexts/AuthContext.tsx`
+  - Behavior: On initial mount we no longer call `supabase.auth.signInAnonymously()` when no session exists. The session is left null until the user explicitly signs in (email/OAuth) or taps “Continue as Guest.”
+  - Rationale: Prevents unintended guest sessions on the landing page while keeping the explicit guest flow intact via `continueAsGuest()`.
+
+- **Profiles RLS — authenticated can read all profiles**
+  - Migration: `supabase/migrations/20250826_profiles_select_all_authenticated.sql`
+  - Policy: `CREATE POLICY profiles_select_all_authenticated ON public.profiles FOR SELECT TO authenticated USING (true);`
+  - Purpose: Enables Friends search and discovery to list other users (excluding self/friends at query time) for any authenticated user.
+
 - **Inline error feedback in Auth Modal (2025-08-16)**:
   - `src/components/AuthModal.tsx` surfaces inline errors on the Sign In tab without relying on toasts. This avoids “silent” failures when toasts are not mounted.
   - Error mapping:

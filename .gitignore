@@ -7,12 +7,13 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Build/output
 node_modules
 dist
 dist-ssr
 *.local
 
-# Editor directories and files
+# Editors/OS
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -23,3 +24,10 @@ dist-ssr
 *.sln
 *.sw?
 
+# PartyKit local runtime state
+.partykit/
+
+# Generic SQLite (if you never intend to commit any)
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal

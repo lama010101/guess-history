@@ -229,6 +229,7 @@ This document provides comprehensive architecture guidelines for the Guess Histo
   - `src/lib/useSettingsStore.ts` — Zustand store for user settings including `vibrate_enabled` and `gyroscope_enabled` with action toggles.
   - `src/utils/profile/profileService.ts` — `fetchUserSettings()`/`updateUserSettings()` source of truth. The `UserSettings` type includes optional `vibrate_enabled` and `gyroscope_enabled`. Default theme is `dark` and the UI no longer exposes `system`.
 - **Persistence**: Settings are stored in `public.settings` keyed by `id = <userId>`. Always use `fetchUserSettings(userId)` and `updateUserSettings(userId, settings)`.
+- **Error handling (Settings modal)**: `src/components/settings/GlobalSettingsModal.tsx` displays an inline error message and a "Retry" button when loading fails, and uses `use-toast` to surface load/refresh errors and a "Settings updated" success toast. This pattern keeps the UI responsive and consistent.
 - **Device APIs**: Uses `navigator.vibrate` (feature-detected) and `window.deviceorientation` events for gyro. iOS may require explicit motion permission prompts at first use.
 - **UX Notes**:
   - Vibrate: subtle tap per second during final 10s; stronger pattern at 0s.

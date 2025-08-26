@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import SettingsTab from '@/components/profile/SettingsTab';
 import { fetchUserSettings, UserSettings } from '@/utils/profile/profileService';
 import { useSettingsStore } from '@/lib/useSettingsStore';
+import { useToast } from '@/hooks/use-toast';
 
 interface GlobalSettingsModalProps {
   isOpen: boolean;
@@ -18,6 +19,33 @@ const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClo
   const [isLoading, setIsLoading] = useState(true);
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const setFromUserSettings = useSettingsStore(s => s.setFromUserSettings);
+  const { toast } = useToast();
+  const [error, setError] = useState<string | null>(null);
+
+  // Manual reload for retry button
+  const reload = async () => {
+    if (!user?.id) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const s = await fetchUserSettings(user.id);
+      setSettings(s);
+      setFromUserSettings({
+        sound_enabled: s?.sound_enabled,
+        vibrate_enabled: s?.vibrate_enabled,
+        gyroscope_enabled: s?.gyroscope_enabled,
+      });
+    } catch (e) {
+      console.error('Failed to load settings', e);
+      setError('Failed to load settings. Please try again.');
+      toast({
+        title: 'Failed to load settings',
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Load real user settings when modal opens
   useEffect(() => {
@@ -25,16 +53,28 @@ const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClo
     const load = async () => {
       if (!isOpen || !user?.id) return;
       setIsLoading(true);
-      const s = await fetchUserSettings(user.id);
-      if (cancelled) return;
-      setSettings(s);
-      // Hydrate Zustand store for quick access in UI and in-game
-      setFromUserSettings({
-        sound_enabled: s?.sound_enabled,
-        vibrate_enabled: s?.vibrate_enabled,
-        gyroscope_enabled: s?.gyroscope_enabled,
-      });
-      setIsLoading(false);
+      setError(null);
+      try {
+        const s = await fetchUserSettings(user.id);
+        if (cancelled) return;
+        setSettings(s);
+        // Hydrate Zustand store for quick access in UI and in-game
+        setFromUserSettings({
+          sound_enabled: s?.sound_enabled,
+          vibrate_enabled: s?.vibrate_enabled,
+          gyroscope_enabled: s?.gyroscope_enabled,
+        });
+      } catch (e) {
+        if (cancelled) return;
+        console.error('Failed to load settings', e);
+        setError('Failed to load settings. Please try again.');
+        toast({
+          title: 'Failed to load settings',
+          description: e instanceof Error ? e.message : String(e),
+        });
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
     };
     load();
     return () => { cancelled = true; };
@@ -42,13 +82,22 @@ const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClo
 
   const handleSettingsUpdated = async () => {
     if (!user?.id) return;
-    const s = await fetchUserSettings(user.id);
-    if (s) {
-      setSettings(s);
-      setFromUserSettings({
-        sound_enabled: s.sound_enabled,
-        vibrate_enabled: s.vibrate_enabled,
-        gyroscope_enabled: s.gyroscope_enabled,
+    try {
+      const s = await fetchUserSettings(user.id);
+      if (s) {
+        setSettings(s);
+        setFromUserSettings({
+          sound_enabled: s.sound_enabled,
+          vibrate_enabled: s.vibrate_enabled,
+          gyroscope_enabled: s.gyroscope_enabled,
+        });
+        toast({ title: 'Settings updated' });
+      }
+    } catch (e) {
+      console.error('Failed to refresh settings', e);
+      toast({
+        title: 'Failed to refresh settings',
+        description: e instanceof Error ? e.message : String(e),
       });
     }
   };
@@ -84,6 +133,11 @@ const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClo
           </div>
         ) : (
           <div className="py-4">
+            {error && (
+              <div className="mb-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
             {settings && (
               <SettingsTab 
                 userId={user.id}
@@ -94,6 +148,11 @@ const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClo
             )}
             
             <div className="mt-6 flex items-center justify-end gap-3">
+              {error && (
+                <Button onClick={reload}>
+                  Retry
+                </Button>
+              )}
               <Button 
                 variant="outline" 
                 onClick={onClose}

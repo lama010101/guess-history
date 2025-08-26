@@ -260,6 +260,16 @@ Due to potential inconsistencies and environment issues with the Supabase CLI, t
 
 This approach bypasses the need for local tools like the Supabase CLI or `bun`/`npm` scripts for database changes, which have proven unreliable in some development environments.
 
+### Game Preparation RPC — Client Call Contract (2025-08-26)
+
+- Function overloads exist for `public.create_game_session_and_pick_images`:
+  - 4-arg: `(p_count integer, p_user_id uuid, p_room_id text, p_seed uuid)`
+  - 6-arg: `(p_count integer, p_user_id uuid, p_room_id text, p_seed uuid, p_min_year integer, p_max_year integer)`
+- To avoid “Could not choose the best candidate function” errors, the client must disambiguate:
+  - Always include `p_min_year` and `p_max_year` in the RPC call. Passing `null` is fine and selects the 6-arg overload.
+  - Only include `p_seed` when a seed is explicitly provided. When omitted, the DB default `gen_random_uuid()` applies.
+- Source: `src/hooks/useGamePreparation.ts` constructs the RPC args accordingly.
+
 ## System Architecture
 
 ### Core Components

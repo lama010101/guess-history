@@ -109,10 +109,14 @@ export function useGamePreparation() {
       p_user_id: userId,
       p_room_id: roomId,
       p_count: count,
+      // Always include year bounds to disambiguate RPC overloads (prefer 6-arg variant)
+      p_min_year: opts.minYear ?? null,
+      p_max_year: opts.maxYear ?? null,
     };
-    if (opts.seed) rpcArgs.p_seed = opts.seed; // omit to use DB default when not provided
-    if (opts.minYear !== undefined && opts.minYear !== null) rpcArgs.p_min_year = opts.minYear;
-    if (opts.maxYear !== undefined && opts.maxYear !== null) rpcArgs.p_max_year = opts.maxYear;
+    // Only include p_seed if provided so DB default gen_random_uuid() is used when absent
+    if (opts.seed) {
+      rpcArgs.p_seed = opts.seed;
+    }
 
     // Log sanitized args for diagnostics (avoid dumping large data)
     try {

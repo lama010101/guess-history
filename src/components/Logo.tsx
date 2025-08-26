@@ -1,16 +1,24 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+
 interface LogoProps {
   className?: string;
 }
+
 const Logo = ({
   className = ""
 }: LogoProps) => {
-  return <Link to="/test" className={`flex items-center ${className}`}>
-      <h1 className="text-2xl md:text-4xl font-serif font-bold tracking-tight">
-        <span className="text-black dark:text-white">GUESS-</span>
-        <span className="text-red-500 text-[1.25em]">HISTORY</span>
-      </h1>
-    </Link>;
+  return (
+    <Link to="/test" className={`flex items-center ${className}`}>
+      <img
+        src="/icons/logo.webp"
+        alt="GUESS-HISTORY logo"
+        className="h-56 md:h-80 w-auto"
+        loading="eager"
+        decoding="async"
+      />
+    </Link>
+  );
 };
+
 export default Logo;

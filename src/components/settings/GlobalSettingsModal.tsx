@@ -59,7 +59,23 @@ const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClo
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">Settings</DialogTitle>
+          <div className="flex items-center justify-between">
+            <Button
+              onClick={() => {
+                if (onNavigateHome) {
+                  onNavigateHome();
+                } else if (typeof window !== 'undefined') {
+                  window.location.assign('/test');
+                }
+              }}
+              className="bg-white text-black hover:bg-gray-100 border border-gray-300"
+            >
+              <HomeIcon className="h-4 w-4 mr-2" />
+              Home
+            </Button>
+            <DialogTitle className="text-2xl font-bold">Settings</DialogTitle>
+            <div className="w-[86px]" aria-hidden="true" />
+          </div>
         </DialogHeader>
         
         {isLoading ? (
@@ -77,28 +93,13 @@ const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClo
               />
             )}
             
-            <div className="mt-6 flex items-center justify-between gap-3">
-              <Button
-                onClick={() => {
-                  if (onNavigateHome) {
-                    onNavigateHome();
-                  } else if (typeof window !== 'undefined') {
-                    window.location.assign('/');
-                  }
-                }}
-                className="bg-white text-black hover:bg-gray-100 border border-gray-300"
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <Button 
+                variant="outline" 
+                onClick={onClose}
               >
-                <HomeIcon className="h-4 w-4 mr-2" />
-                Home
+                Close
               </Button>
-              <div className="flex gap-3">
-                <Button 
-                  variant="outline" 
-                  onClick={onClose}
-                >
-                  Close
-                </Button>
-              </div>
             </div>
           </div>
         )}

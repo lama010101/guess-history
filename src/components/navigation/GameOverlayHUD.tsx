@@ -104,21 +104,6 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
           
 
         </div>
-        
-        {/* Right side - Settings button (top-right) - hidden on mobile */}
-        {onOpenSettingsModal && (
-          <div className="hidden lg:flex pointer-events-auto">
-            <Button
-              size="icon"
-              onClick={handleSettingsClick}
-              className="h-9 w-9 rounded-full border-none text-black bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] hover:opacity-90"
-              aria-label="Settings"
-              type="button"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* Bottom bar with Hint button and Home button */}

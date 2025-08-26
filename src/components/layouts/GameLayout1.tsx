@@ -12,7 +12,7 @@ import LocationSelector from '@/components/game/LocationSelector';
 import TimerDisplay from '@/components/game/TimerDisplay';
 import LazyImage from '@/components/ui/LazyImage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, MapPin, Home, Send, HelpCircle } from 'lucide-react';
+import { Calendar, MapPin, Settings as SettingsIcon, Send, HelpCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
@@ -493,29 +493,29 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           {/* Spacer below Where card to add empty space */}
           <div className="h-6" aria-hidden="true" />
 
-          {/* Desktop-only bottom actions: Home, Hints, Submit */}
+          {/* Desktop-only bottom actions: Settings, Hints, Submit (unified styles) */}
           <div className="hidden lg:flex items-center justify-center gap-3 mt-auto">
-          <Button
-            onClick={() => onConfirmNavigation(() => onNavigateHome())}
-            variant="outline"
-            className="text-black rounded-full px-6 py-6 text-lg font-semibold border-none bg-white hover:bg-gray-100"
-          >
-            <Home className="h-5 w-5 mr-2" /> Home
-          </Button>
-          <Button
-            onClick={handleHintClick}
-            className="bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] text-black hover:opacity-90 rounded-md px-4 py-4 text-base font-semibold"
-            variant="outline"
-          >
-            <HelpCircle className="h-5 w-5 mr-2" />
-            <span>Hints</span>
-            <span className="ml-2 inline-flex items-center rounded-full bg-black text-white text-[11px] px-2 py-0.5">{purchasedHintIds.length}/14</span>
-          </Button>
+            <Button
+              onClick={() => setIsSettingsModalOpen(true)}
+              className="rounded-md h-12 px-6 text-base font-semibold bg-white text-black hover:bg-gray-100 border-none"
+              variant="outline"
+            >
+              <SettingsIcon className="h-5 w-5 mr-2" /> Settings
+            </Button>
+            <Button
+              onClick={handleHintClick}
+              className="rounded-md h-12 px-6 text-base font-semibold bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] text-black hover:opacity-90"
+              variant="outline"
+            >
+              <HelpCircle className="h-5 w-5 mr-2" />
+              <span>Hints</span>
+              <span className="ml-2 inline-flex items-center rounded-full bg-black text-white text-[11px] px-2 py-0.5">{purchasedHintIds.length}/14</span>
+            </Button>
             <div className="relative">
               <Button
                 onClick={handleSubmitGuess}
                 disabled={!isSubmitEnabled}
-                className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-400 cursor-not-allowed'} w-full max-w-md flex items-center justify-center text-lg font-semibold px-8 py-6 !text-white shadow-lg rounded-md disabled:opacity-100 disabled:!text-white`}
+                className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-[#444444] cursor-not-allowed'} w-full max-w-md flex items-center justify-center text-base font-semibold h-12 px-6 !text-white shadow-lg rounded-md disabled:opacity-100 disabled:!text-white`}
               >
                 <Send className="h-5 w-5 mr-2" /> Submit Guess
               </Button>
@@ -524,20 +524,20 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
               )}
             </div>
           </div>
-          {/* Mobile bottom navbar: Home + Hints + Submit */}
+          {/* Mobile bottom navbar: Settings + Hints + Submit (unified styles) */}
           <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-[#1f1f1f]/95 backdrop-blur border-t border-gray-200 dark:border-gray-700 p-2 flex items-center gap-2">
             <Button
-              onClick={() => onConfirmNavigation(() => onNavigateHome())}
+              onClick={() => setIsSettingsModalOpen(true)}
+              className="h-12 rounded-md px-4 bg-white text-black hover:bg-gray-100 border-none text-base font-semibold"
+              aria-label="Open Settings"
+              title="Open Settings"
               variant="outline"
-              className="h-12 w-12 rounded-full text-black border-none bg-white hover:bg-gray-100"
-              aria-label="Go Home"
-              title="Return to Home"
             >
-              <Home className="h-5 w-5" />
+              <SettingsIcon className="h-5 w-5 mr-2" /> Settings
             </Button>
             <Button
               onClick={handleHintClick}
-              className="flex-1 h-12 rounded-md bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] text-black hover:opacity-90 text-lg font-semibold"
+              className="flex-1 h-12 rounded-md bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] text-black hover:opacity-90 text-base font-semibold"
             >
               <span>Hints</span>
               <span className="ml-2 inline-flex items-center rounded-full bg-black text-white text-xs px-2 py-0.5">{purchasedHintIds.length}/14</span>
@@ -546,7 +546,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
               <Button
                 onClick={handleSubmitGuess}
                 disabled={!isSubmitEnabled}
-                className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-400 cursor-not-allowed'} h-12 w-full rounded-md !text-white text-lg font-semibold flex items-center justify-center disabled:opacity-100 disabled:!text-white`}
+                className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-[#444444] cursor-not-allowed'} h-12 w-full rounded-md !text-white text-base font-semibold flex items-center justify-center disabled:opacity-100 disabled:!text-white`}
               >
                 <Send className="h-5 w-5 mr-2" /> Submit Guess
               </Button>
@@ -560,20 +560,20 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
         
       </div>
 
-      {/* Mobile bottom navbar: Home + Hints + Submit */}
+      {/* Mobile bottom navbar (duplicate section): Settings + Hints + Submit (unified styles) */}
       <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-[#1f1f1f]/95 backdrop-blur border-t border-gray-200 dark:border-gray-700 p-2 flex items-center gap-2">
         <Button
-          onClick={() => onConfirmNavigation(() => onNavigateHome())}
+          onClick={() => setIsSettingsModalOpen(true)}
           variant="outline"
-          className="h-12 w-12 rounded-full text-black border-none bg-white hover:bg-gray-100"
-          aria-label="Go Home"
-          title="Return to Home"
+          className="h-12 rounded-md px-4 bg-white text-black hover:bg-gray-100 border-none text-base font-semibold"
+          aria-label="Open Settings"
+          title="Open Settings"
         >
-          <Home className="h-5 w-5" />
+          <SettingsIcon className="h-5 w-5 mr-2" /> Settings
         </Button>
         <Button
           onClick={handleHintClick}
-          className="flex-1 h-12 rounded-md bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] text-black hover:opacity-90 text-lg font-semibold"
+          className="flex-1 h-12 rounded-md bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] text-black hover:opacity-90 text-base font-semibold"
         >
           <span>Hints</span>
           <span className="ml-2 inline-flex items-center rounded-full bg-black text-white text-xs px-2 py-0.5">{purchasedHintIds.length}/14</span>
@@ -582,7 +582,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           <Button
             onClick={handleSubmitGuess}
             disabled={!isSubmitEnabled}
-            className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-400 cursor-not-allowed'} h-12 w-full rounded-md !text-white text-lg font-semibold flex items-center justify-center disabled:opacity-100 disabled:!text-white`}
+            className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-[#444444] cursor-not-allowed'} h-12 w-full rounded-md !text-white text-base font-semibold flex items-center justify-center disabled:opacity-100 disabled:!text-white`}
           >
             <Send className="h-5 w-5 mr-2" /> Submit Guess
           </Button>
@@ -615,6 +615,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       <GlobalSettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
+        onNavigateHome={() => onConfirmNavigation(() => onNavigateHome())}
       />
     </div>
   );

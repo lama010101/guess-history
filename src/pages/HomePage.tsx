@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Target, Users, Timer, Lock, Play, Moon } from "lucide-react";
 import GlobalSettingsModal from '@/components/GlobalSettingsModal';
-// FriendsGameModal removed - now using direct lobby navigation
 import { AuthModal } from '@/components/AuthModal';
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
@@ -13,10 +11,7 @@ import { useGame } from "@/contexts/GameContext";
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from "@/components/ui/button";
-import soloIcon from '@/assets/icons/solo.webp';
-import collaborateIcon from '@/assets/icons/collaborate.webp';
-import competeIcon from '@/assets/icons/compete.webp';
-import lockIcon from '@/assets/icons/lock.webp';
+import Logo from '@/components/Logo';
 
 const homePageStyle: React.CSSProperties = {
   position: 'fixed',
@@ -26,7 +21,7 @@ const homePageStyle: React.CSSProperties = {
   bottom: 0,
   width: '100%',
   height: '100%',
-  backgroundImage: 'url("/images/background.jpg")',
+  backgroundImage: 'url("/images/background.webp")',
   backgroundSize: 'cover',
   backgroundPosition: 'center',
   backgroundRepeat: 'no-repeat',
@@ -50,10 +45,6 @@ const contentStyle: React.CSSProperties = {
   boxSizing: 'border-box',
 };
 
-// Game mode icon styles
-const iconContainerStyle = "flex items-center justify-center w-32 h-32 rounded-full mb-4 mx-auto";
-const iconStyle = "w-32 h-32";
-
 // Game mode colors
 const practiceColor = "bg-orange-500/20 text-orange-500";
 const friendsColor = "bg-blue-500/20 text-blue-500";
@@ -68,25 +59,22 @@ const HomePage = () => {
   const [isLoadingUserSettings, setIsLoadingUserSettings] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingMode, setPendingMode] = useState<string | null>(null);
-  // FriendsModal state removed - now using direct lobby navigation
   const [showLoadingPopup, setShowLoadingPopup] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
   console.log('[HomePage] Render', { isLoaded, user, isGuest });
   // Timer states
   const [isSoloTimerEnabled, setIsSoloTimerEnabled] = useState(false);
-  const [isFriendsTimerEnabled, setIsFriendsTimerEnabled] = useState(false);
   const [practiceTimerSeconds, setPracticeTimerSeconds] = useState(300); // 5 minutes
-  const [friendsTimerSeconds, setFriendsTimerSeconds] = useState(180); // 3 minutes
   const navigate = useNavigate();
   const gameContext = useGame();
   const { startGame, isLoading } = gameContext || {};
-  
+
   // Timer range in seconds with 5-second intervals from 5s to 5m (300s)
   const minTimerValue = 5; // 5 seconds
   const maxTimerValue = 300; // 5 minutes
   const stepSize = 5; // 5-second intervals
-  
+
   const formatTime = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`;
     const minutes = Math.floor(seconds / 60);
@@ -111,7 +99,7 @@ const HomePage = () => {
         console.error('Error loading user data:', error);
       } finally {
         setIsLoaded(true);
-          console.log('[HomePage] loadUserData complete, isLoaded:', true);
+        console.log('[HomePage] loadUserData complete, isLoaded:', true);
       }
     };
 
@@ -134,7 +122,7 @@ const HomePage = () => {
       setShowAuthModal(true);
       return;
     }
-    
+
     // Guest users can only play Practice mode
     if (isGuest && mode !== 'classic') {
       setPendingMode(null);
@@ -152,7 +140,7 @@ const HomePage = () => {
       navigate('/play');
       return;
     }
-    
+
     if (!gameContext) {
       console.error('Game context is not available');
       toast({
@@ -163,7 +151,7 @@ const HomePage = () => {
       setShowLoadingPopup(false);
       return;
     }
-    
+
     if (!isLoading) {
       try {
         // Pass timer settings to startGame if it's a solo game with timer enabled
@@ -175,7 +163,7 @@ const HomePage = () => {
               hintsPerGame: 5, // TODO: Make hints configurable
             }
           : {};
-        
+
         await startGame?.(gameSettings);
         // startGame handles navigation internally
       } catch (error) {
@@ -189,9 +177,7 @@ const HomePage = () => {
         setShowLoadingPopup(false);
       }
     }
-  }, [user, gameContext, startGame, isLoading, navigate, toast, setPendingMode, setShowAuthModal, isSoloTimerEnabled, practiceTimerSeconds, isFriendsTimerEnabled, friendsTimerSeconds, isGuest]);
-  
-  // handleStartFriendsGame removed - now using direct lobby navigation
+  }, [user, gameContext, startGame, isLoading, navigate, toast, setPendingMode, setShowAuthModal, isSoloTimerEnabled, practiceTimerSeconds, isGuest]);
 
   useEffect(() => {
     if (user && pendingMode && gameContext && startGame) {
@@ -220,135 +206,155 @@ const HomePage = () => {
   return (
     <div style={homePageStyle}>
       {showGuestBadge && <GuestBadge username={profile?.display_name || 'Guest'} />}
-      <div className="absolute inset-0 z-[100] w-full h-full overflow-y-auto p-8 box-border backdrop-blur-sm bg-white/75 dark:bg-black flex items-center justify-center min-h-screen">
-  {isLoaded ? (
-    <div className="flex flex-row items-start gap-[3rem] md:flex-row md:gap-[4rem] md:items-start overflow-x-auto md:overflow-visible snap-x snap-mandatory md:snap-none carousel-center-padding no-scrollbar px-2 touch-pan-x overscroll-x-contain">
-      {/* Solo Card */}
-      <div className="flex flex-col items-center justify-center gap-0 py-4 shrink-0 snap-center">
-        <div
-          className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-yellow-300 via-orange-400 to-orange-600 cursor-pointer"
-          onClick={() => handleStartGame('classic')}
-        >
-          <img src={soloIcon} alt="Solo" className="w-36 h-36 object-contain" />
-        </div>
-        <div
-          className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1 cursor-pointer"
-          onClick={() => handleStartGame('classic')}
-        >
-          SOLO
-        </div>
-        <div className="w-full mt-4">
-          <div className="flex items-center justify-center mb-2">
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="solo-timer-toggle"
-                checked={isSoloTimerEnabled}
-                onCheckedChange={setIsSoloTimerEnabled}
-                className="mr-3 data-[state=checked]:bg-gray-600 h-4 w-8"
-              />
-              <Label htmlFor="solo-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm text-black dark:text-white">
-                <span>Round Timer</span>
-              </Label>
-            </div>
-            {isSoloTimerEnabled && (
-              <span className="text-sm font-bold text-orange-500 ml-4">
-                {formatTime(practiceTimerSeconds)}
-              </span>
-            )}
-          </div>
-          {isSoloTimerEnabled && (
-            <div className="relative mb-4 px-4">
-              <div className="pt-2">
-                <Slider
-                  value={[practiceTimerSeconds]}
-                  min={minTimerValue}
-                  max={maxTimerValue}
-                  step={stepSize}
-                  onValueChange={(value) => setPracticeTimerSeconds(value[0])}
-                  className="w-full"
-                />
+      <div className="absolute inset-0 z-[100] w-full h-full overflow-y-auto p-4 md:p-8 box-border bg-black/85 flex items-start md:items-center justify-center min-h-screen">
+        {isLoaded ? (
+          <div className="w-full max-w-6xl mx-auto flex flex-col items-center">
+            <Logo className="mb-1 md:mb-0 justify-center" />
+            <div className="-mx-4 md:mx-0 md:-mt-4 w-screen md:w-auto flex flex-row items-start gap-[2rem] md:gap-[3rem] overflow-x-auto md:overflow-visible snap-x snap-mandatory md:snap-none no-scrollbar px-0 md:px-2 touch-pan-x overscroll-x-contain pl-0 md:pl-0">
+              {/* Mobile left spacer to center first card */}
+              <div className="shrink-0 w-[calc((100vw-13.5rem)/2)] md:hidden" aria-hidden="true" />
+              {/* Solo Card */}
+              <div className="flex flex-col items-center justify-center gap-0 py-2 md:py-2 shrink-0 snap-center">
+                <div
+                  className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-yellow-300 via-orange-400 to-orange-600 cursor-pointer"
+                  onClick={() => handleStartGame('classic')}
+                >
+                  <img src="/icons/solo.webp" alt="Solo" className="w-36 h-36 object-contain" />
+                </div>
+                <div
+                  className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1 cursor-pointer"
+                  onClick={() => handleStartGame('classic')}
+                >
+                  SOLO
+                </div>
+                {/* Pegged Solo Timer Controls */}
+                <div className="w-[13.5rem] mt-3">
+                  <div className="flex items-center mb-2 justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="solo-timer-toggle"
+                        checked={isSoloTimerEnabled}
+                        onCheckedChange={setIsSoloTimerEnabled}
+                        className="mr-3 data-[state=checked]:bg-gray-600 h-4 w-8"
+                      />
+                      <Label htmlFor="solo-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm text-white">
+                        <span>Round Timer</span>
+                      </Label>
+                    </div>
+                    {isSoloTimerEnabled && (
+                      <span className="text-sm font-bold text-orange-500">
+                        {formatTime(practiceTimerSeconds)}
+                      </span>
+                    )}
+                  </div>
+                  {isSoloTimerEnabled && (
+                    <div className="relative mb-2">
+                      <Slider
+                        value={[practiceTimerSeconds]}
+                        min={minTimerValue}
+                        max={maxTimerValue}
+                        step={stepSize}
+                        onValueChange={(value) => setPracticeTimerSeconds(value[0])}
+                        className="w-full"
+                      />
+                      <div className="flex justify-between text-xs text-gray-300 mt-1">
+                        <span>5s</span>
+                        <span>5m</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-300">
-                <span>5s</span>
-                <span>5m</span>
+              {/* Level Up Card (aliases Solo) */}
+              <div className="flex flex-col items-center justify-center gap-0 py-2 md:py-4 shrink-0 snap-center">
+                <div
+                  className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-pink-300 via-fuchsia-400 to-purple-600 cursor-pointer"
+                  onClick={() => handleStartGame('classic')}
+                >
+                  <img src="/icons/level.webp" alt="Level Up" className="w-36 h-36 object-contain" />
+                </div>
+                <div
+                  className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1 cursor-pointer"
+                  onClick={() => handleStartGame('classic')}
+                >
+                  LEVEL UP
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      </div>
-      {/* Collaborate Card (formerly Friends card visuals, now shows Coming Soon) */}
-      <div
-        className={`relative flex flex-col items-center justify-center gap-0 py-4 shrink-0 snap-center ${(!user || isGuest) ? '' : 'cursor-pointer'}`}
-        onClick={() => {
-          console.log('[HomePage] Collaborate card clicked. isGuest:', isGuest);
-          if (user && !isGuest) {
-            setShowComingSoon(true);
-          } else {
-            // Guests will be prompted to sign in via AuthModal; do not set pendingMode
-            setPendingMode(null);
-            setShowAuthModal(true);
-          }
-        }}
-      >
-        {(!user || isGuest) && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black/80 rounded-xl z-[100]">
-            <div className="text-center p-4">
-              <img src={lockIcon} alt="Locked" className="h-20 w-20 mx-auto mb-3" />
-              <p className="text-black dark:text-white text-sm">COLLABORATE</p>
-              <Button
-                className="mt-3 bg-white hover:bg-gray-100 text-black text-sm"
-                onClick={() => { setPendingMode(null); setShowAuthModal(true); }}
+              {/* Collaborate Card (formerly Friends card visuals, now shows Coming Soon) */}
+              <div
+                className={`relative flex flex-col items-center justify-center gap-0 py-2 md:py-2 shrink-0 snap-center ${(!user || isGuest) ? '' : 'cursor-pointer'}`}
+                onClick={() => {
+                  console.log('[HomePage] Collaborate card clicked. isGuest:', isGuest);
+                  if (user && !isGuest) {
+                    setShowComingSoon(true);
+                  } else {
+                    // Guests will be prompted to sign in via AuthModal; do not set pendingMode
+                    setPendingMode(null);
+                    setShowAuthModal(true);
+                  }
+                }}
               >
-                Sign In
-              </Button>
+                {(!user || isGuest) && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black/80 rounded-xl z-[100]">
+                    <div className="text-center p-4">
+                      <img src="/icons/lock.webp" alt="Locked" className="h-20 w-20 mx-auto mb-3" />
+                      <p className="text-black dark:text-white text-sm">COLLABORATE</p>
+                      <Button
+                        className="mt-3 bg-white hover:bg-gray-100 text-black text-sm"
+                        onClick={() => { setPendingMode(null); setShowAuthModal(true); }}
+                      >
+                        Sign In
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-cyan-300 via-sky-400 to-sky-600">
+                  <img src="/icons/collaborate.webp" alt="Collaborate" className="w-36 h-36 object-contain" />
+                </div>
+                <div className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1">
+                  COLLABORATE
+                </div>
+              </div>
+              {/* Compete Card (purple) — starts Friends mode; guest overlay with sign-in */}
+              <div
+                className={`relative flex flex-col items-center justify-center gap-0 py-2 md:py-2 shrink-0 snap-center ${(!user || isGuest) ? 'opacity-60' : 'cursor-pointer'}`}
+                onClick={() => {
+                  console.log('[HomePage] Compete card clicked. isGuest:', isGuest);
+                  if (!isGuest) handleStartGame('friends');
+                }}
+              >
+                {(!user || isGuest) && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black/80 rounded-xl z-[100]">
+                    <div className="text-center p-4">
+                      <img src="/icons/lock.webp" alt="Locked" className="h-20 w-20 mx-auto mb-3" />
+                      <p className="text-black dark:text-white text-sm">COMPETE</p>
+                      <Button
+                        className="mt-3 bg-white hover:bg-gray-100 text-black text-sm"
+                        onClick={() => handleStartGame('friends')}
+                      >
+                        Sign In
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-purple-300 via-violet-500 to-purple-700">
+                  <img src="/icons/compete.webp" alt="Compete" className="w-36 h-36 object-contain" />
+                </div>
+                <div className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1">
+                  COMPETE
+                </div>
+              </div>
             </div>
+            {/* Timer controls moved into the Solo card above */}
+          </div>
+        ) : (
+          <div className="text-center p-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+            <p className="text-black dark:text-white text-lg font-medium mt-2">Loading...</p>
           </div>
         )}
-        <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-cyan-300 via-sky-400 to-sky-600">
-          <img src={collaborateIcon} alt="Collaborate" className="w-36 h-36 object-contain" />
-        </div>
-        <div className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1">
-          COLLABORATE
-        </div>
       </div>
-      {/* Compete Card (purple) — starts Friends mode; guest overlay with sign-in */}
-      <div
-        className={`relative flex flex-col items-center justify-center gap-0 py-4 shrink-0 snap-center ${(!user || isGuest) ? 'opacity-60' : 'cursor-pointer'}`}
-        onClick={() => {
-          console.log('[HomePage] Compete card clicked. isGuest:', isGuest);
-          if (!isGuest) handleStartGame('friends');
-        }}
-      >
-        {(!user || isGuest) && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black/80 rounded-xl z-[100]">
-            <div className="text-center p-4">
-              <img src={lockIcon} alt="Locked" className="h-20 w-20 mx-auto mb-3" />
-              <p className="text-black dark:text-white text-sm">COMPETE</p>
-              <Button
-                className="mt-3 bg-white hover:bg-gray-100 text-black text-sm"
-                onClick={() => handleStartGame('friends')}
-              >
-                Sign In
-              </Button>
-            </div>
-          </div>
-        )}
-        <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-purple-300 via-violet-500 to-purple-700">
-          <img src={competeIcon} alt="Compete" className="w-36 h-36 object-contain" />
-        </div>
-        <div className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1">
-          COMPETE
-        </div>
-      </div>
-    </div>
-  ) : (
-    <div className="text-center p-4">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-      <p className="text-black dark:text-white text-lg font-medium mt-2">Loading...</p>
-    </div>
-  )}
-</div>
-      
+
       {/* Loading Popup */}
       {showLoadingPopup && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">

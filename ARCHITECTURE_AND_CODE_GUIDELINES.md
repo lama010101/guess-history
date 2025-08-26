@@ -1991,3 +1991,34 @@ Notes: UI changes are limited to the Home page and the shared `Logo` component p
   - Do not invent data. Populate `public/geo/gazetteer.json` from a vetted source (e.g., preprocessed Geonames) with the required fields only.
   - If a strict `User-Agent` is required for Nominatim policy compliance, introduce a minimal server proxy; browsers cannot set `User-Agent` headers.
   - Keep debounce/cancellation responsive. `GeoSearchInput` uses `AbortController` and clears timers on unmount.
+
+## UI Updates — Home and Game Pages (2025-08-27)
+
+- Home Logo image
+  - File: `src/components/Logo.tsx`
+  - Change: Replaced text logo with `<img src="/icons/logo.webp" />` inside the Link to `/test`.
+
+- Home play cards
+  - File: `src/pages/HomePage.tsx`
+  - Center Solo card on mobile by padding the scroll container: `pl-[calc((100vw-13.5rem)/2)]` so the first snap-center card is visually centered.
+  - Collaborate card icon now uses `/icons/collaborate.webp` (previously `/icons/symbol.webp`).
+
+- Game overlay settings button removed
+  - File: `src/components/navigation/GameOverlayHUD.tsx`
+  - Removed the top-right on-image Settings button (desktop-only) to simplify the HUD.
+
+- Bottom action bar updates (Game page)
+  - File: `src/components/layouts/GameLayout1.tsx`
+  - Renamed the bottom "Home" button to "Settings" on both desktop and mobile; it now opens the global settings modal.
+  - Unified button styles (shape, size, font) across Settings, Hints, and Submit: rounded-md, 48px height (h-12), consistent font weights.
+  - Standardized disabled Submit button to background `#444` with white text across all instances.
+  - Passed `onNavigateHome` into the settings modal so the modal can navigate home when requested.
+
+- Settings modal header/actions
+  - File: `src/components/settings/GlobalSettingsModal.tsx`
+  - Added a Home button at the top-left of the modal header (navigates to `/test` or via injected `onNavigateHome`).
+  - Bottom of the modal now only shows a Close button (removed the previous Home button from the footer).
+
+Notes
+- Assets referenced are in `public/icons/` and can be used directly with absolute paths (e.g., `/icons/logo.webp`).
+- Ensure mobile and desktop views are tested for scroll-snap centering and unified button sizing.

@@ -92,6 +92,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const isGuest = user ? !user.email : false;
 
   const continueAsGuest = async () => {
+    // Mark auth as loading; RequireAuthSession will wait until onAuthStateChange clears it
     setIsLoading(true);
     try {
       const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
@@ -100,13 +101,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (authData.user) {
         // Create profile with random historical avatar
         await createUserProfileIfNotExists(authData.user.id, 'Guest');
-        // Update the user state (already set by auth)
+        // Update the user state (already set by auth listener as well)
         setUser(authData.user);
       }
     } catch (error) {
       console.error('Error during guest sign-in:', error);
     } finally {
-      setIsLoading(false);
+      // Do not clear isLoading here; onAuthStateChange will set it to false once session is ready
     }
   };
 

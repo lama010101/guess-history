@@ -52,10 +52,10 @@ const LandingPage: React.FC = () => {
     loadImages();
   }, []);
 
-  // Redirect authenticated user straight to the home page (avoid while auth modal is open or a game is starting)
+  // Redirect authenticated user straight to the Home hub (avoid while auth modal is open or a game is starting)
   useEffect(() => {
     if (user && !authOpen && !isLoading && images.length === 0) {
-      navigate("/test", { replace: true });
+      navigate("/home", { replace: true });
     }
   }, [user, authOpen, isLoading, images.length, navigate]);
 
@@ -210,7 +210,7 @@ const LandingPage: React.FC = () => {
         onClose={() => setAuthOpen(false)}
         onAuthSuccess={() => {
           setAuthOpen(false);
-          navigate("/test", { replace: true });
+          navigate("/home", { replace: true });
         }}
         onGuestContinue={async () => {
           // AuthModal already performed continueAsGuest before invoking this callback.

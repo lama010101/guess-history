@@ -69,9 +69,9 @@ export function AuthModal({
       // Close the modal first
       onClose();
       
-      // Then navigate to home after a small delay to ensure the modal is closed
+      // Then navigate to Home after a small delay to ensure the modal is closed
       setTimeout(() => {
-        navigate('/test', { replace: true });
+        navigate('/home', { replace: true });
       }, 100);
     } catch (error) {
       console.error("Guest login error:", error);

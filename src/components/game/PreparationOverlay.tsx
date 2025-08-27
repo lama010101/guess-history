@@ -118,7 +118,7 @@ export default function PreparationOverlay() {
   const handleCancel = useCallback(() => {
     abortPreparation();
     // Navigate to a safe page
-    navigate('/test', { replace: true });
+    navigate('/home', { replace: true });
   }, [abortPreparation, navigate]);
 
   const shouldShow = isError || isActive || holdVisible;

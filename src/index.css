@@ -203,6 +203,12 @@ html, body {
     --secondary-foreground: 0 0% 100%;
   }
 
+  /* Level Up mode theme override: switch secondary to pink */
+  body.mode-levelup, .mode-levelup {
+    --secondary: 325 90% 60%; /* pink/fuchsia */
+    --secondary-foreground: 0 0% 100%;
+  }
+
   * {
     @apply border-border;
   }
@@ -643,6 +649,103 @@ document:has(.leaflet-fullscreen-on) .hud-element,
   /* ARIA state variants */
   .mode-collaborate .aria-selected\:bg-orange-500[aria-selected="true"] { background-color: hsl(var(--secondary)) !important; }
   .mode-collaborate .aria-selected\:text-orange-500[aria-selected="true"] { color: hsl(var(--secondary)) !important; }
+
+  /* In levelup mode, map common orange utilities to mode secondary (pink) */
+  /* Backgrounds */
+  .mode-levelup .bg-orange-400 { background-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .bg-orange-500 { background-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .bg-orange-600 { background-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .bg-orange-700 { background-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .hover\:bg-orange-500:hover { background-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .hover\:bg-orange-600:hover { background-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .bg-orange-500\/50 { background-color: hsl(var(--secondary) / 0.5) !important; }
+  .mode-levelup .after\:bg-orange-500\/50::after { background-color: hsl(var(--secondary) / 0.5) !important; }
+
+  /* Text */
+  .mode-levelup .text-orange-400 { color: hsl(var(--secondary)) !important; }
+  .mode-levelup .text-orange-500 { color: hsl(var(--secondary)) !important; }
+  .mode-levelup .text-orange-600 { color: hsl(var(--secondary)) !important; }
+
+  /* Borders */
+  .mode-levelup .border-orange-400 { border-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .border-orange-500 { border-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .border-orange-600 { border-color: hsl(var(--secondary)) !important; }
+
+  /* Rings (including focus variants) */
+  .mode-levelup .ring-orange-400 { --tw-ring-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .ring-orange-500 { --tw-ring-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .ring-orange-600 { --tw-ring-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .focus\:ring-orange-400:focus { --tw-ring-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .focus\:ring-orange-500:focus { --tw-ring-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .focus\:ring-orange-600:focus { --tw-ring-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .focus\:border-orange-400:focus { border-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .focus\:border-orange-500:focus { border-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .focus\:border-orange-600:focus { border-color: hsl(var(--secondary)) !important; }
+
+  /* SVG fill/stroke */
+  .mode-levelup .fill-orange-400 { fill: hsl(var(--secondary)) !important; }
+  .mode-levelup .fill-orange-500 { fill: hsl(var(--secondary)) !important; }
+  .mode-levelup .fill-orange-600 { fill: hsl(var(--secondary)) !important; }
+  .mode-levelup .stroke-orange-400 { stroke: hsl(var(--secondary)) !important; }
+  .mode-levelup .stroke-orange-500 { stroke: hsl(var(--secondary)) !important; }
+  .mode-levelup .stroke-orange-600 { stroke: hsl(var(--secondary)) !important; }
+
+  /* Outline */
+  .mode-levelup .outline-orange-400 { outline-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .outline-orange-500 { outline-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .outline-orange-600 { outline-color: hsl(var(--secondary)) !important; }
+
+  /* Hover text/border */
+  .mode-levelup .hover\:text-orange-400:hover { color: hsl(var(--secondary)) !important; }
+  .mode-levelup .hover\:text-orange-500:hover { color: hsl(var(--secondary)) !important; }
+  .mode-levelup .hover\:text-orange-600:hover { color: hsl(var(--secondary)) !important; }
+  .mode-levelup .hover\:border-orange-400:hover { border-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .hover\:border-orange-500:hover { border-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .hover\:border-orange-600:hover { border-color: hsl(var(--secondary)) !important; }
+
+  /* Active states */
+  .mode-levelup .active\:bg-orange-500:active { background-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .active\:bg-orange-600:active { background-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .active\:text-orange-500:active { color: hsl(var(--secondary)) !important; }
+  .mode-levelup .active\:border-orange-500:active { border-color: hsl(var(--secondary)) !important; }
+
+  /* Gradients */
+  .mode-levelup .from-orange-400 { --tw-gradient-from: hsl(var(--secondary)) var(--tw-gradient-from-position); --tw-gradient-to: hsl(var(--secondary) / 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+  .mode-levelup .from-orange-500 { --tw-gradient-from: hsl(var(--secondary)) var(--tw-gradient-from-position); --tw-gradient-to: hsl(var(--secondary) / 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+  .mode-levelup .from-orange-600 { --tw-gradient-from: hsl(var(--secondary)) var(--tw-gradient-from-position); --tw-gradient-to: hsl(var(--secondary) / 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+  .mode-levelup .via-orange-400 { --tw-gradient-stops: var(--tw-gradient-from), hsl(var(--secondary)) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+  .mode-levelup .via-orange-500 { --tw-gradient-stops: var(--tw-gradient-from), hsl(var(--secondary)) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+  .mode-levelup .via-orange-600 { --tw-gradient-stops: var(--tw-gradient-from), hsl(var(--secondary)) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+  .mode-levelup .to-orange-400 { --tw-gradient-to: hsl(var(--secondary)) var(--tw-gradient-to-position); }
+  .mode-levelup .to-orange-500 { --tw-gradient-to: hsl(var(--secondary)) var(--tw-gradient-to-position); }
+  .mode-levelup .to-orange-600 { --tw-gradient-to: hsl(var(--secondary)) var(--tw-gradient-to-position); }
+
+  /* Placeholder text */
+  .mode-levelup .placeholder\:text-orange-400::placeholder { color: hsl(var(--secondary)) !important; }
+  .mode-levelup .placeholder\:text-orange-500::placeholder { color: hsl(var(--secondary)) !important; }
+  .mode-levelup .placeholder\:text-orange-600::placeholder { color: hsl(var(--secondary)) !important; }
+
+  /* Caret & Accent colors */
+  .mode-levelup .caret-orange-400 { caret-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .caret-orange-500 { caret-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .caret-orange-600 { caret-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .accent-orange-400 { accent-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .accent-orange-500 { accent-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .accent-orange-600 { accent-color: hsl(var(--secondary)) !important; }
+
+  /* Shadow color */
+  .mode-levelup .shadow-orange-400 { --tw-shadow-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .shadow-orange-500 { --tw-shadow-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .shadow-orange-600 { --tw-shadow-color: hsl(var(--secondary)) !important; }
+
+  /* Divide color */
+  .mode-levelup .divide-orange-400 > :not([hidden]) ~ :not([hidden]) { border-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .divide-orange-500 > :not([hidden]) ~ :not([hidden]) { border-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .divide-orange-600 > :not([hidden]) ~ :not([hidden]) { border-color: hsl(var(--secondary)) !important; }
+
+  /* ARIA state variants */
+  .mode-levelup .aria-selected\:bg-orange-500[aria-selected="true"] { background-color: hsl(var(--secondary)) !important; }
+  .mode-levelup .aria-selected\:text-orange-500[aria-selected="true"] { color: hsl(var(--secondary)) !important; }
 
   /* Hide scrollbars cross-browser */
   .no-scrollbar::-webkit-scrollbar { display: none; }

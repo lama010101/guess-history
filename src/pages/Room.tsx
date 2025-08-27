@@ -59,6 +59,7 @@ const Room: React.FC = () => {
   const [ownReady, setOwnReady] = useState(false);
   const [copied, setCopied] = useState(false);
   const [mode, setMode] = useState<'sync' | 'async'>('sync');
+  const modeRef = useRef<'sync' | 'async'>('sync');
   const [ownId, setOwnId] = useState<string>('');
 
   // Host-only friends helpers
@@ -108,6 +109,8 @@ const Room: React.FC = () => {
       cancelled = true;
     };
   }, [user?.id]);
+
+  useEffect(() => { modeRef.current = mode; }, [mode]);
 
   const cleanupSocket = () => {
     try {
@@ -255,7 +258,7 @@ const Room: React.FC = () => {
                   abortPreparation();
                   console.debug('[Room] Aborted any existing preparation before starting game');
                 } catch {}
-                startGame({ roomId: roomCode, seed, timerSeconds: data.durationSec, timerEnabled: data.timerEnabled }).catch(() => {
+                startGame({ roomId: roomCode, seed, timerSeconds: data.durationSec, timerEnabled: data.timerEnabled, competeVariant: modeRef.current }).catch(() => {
                   startedRef.current = false;
                 });
               }
@@ -410,18 +413,21 @@ const Room: React.FC = () => {
             return [{ id: row.id, friend_id: row.friend_id, display_name: '' }, ...prev];
           });
           // Enrich with invitee's display name asynchronously
-          supabase
-            .from('profiles')
-            .select('display_name')
-            .eq('id', row.friend_id)
-            .maybeSingle()
-            .then(({ data, error }) => {
+          (async () => {
+            try {
+              const { data, error } = await supabase
+                .from('profiles')
+                .select('display_name')
+                .eq('id', row.friend_id)
+                .maybeSingle();
               if (error) return;
               const dn = (data?.display_name || '').trim();
               if (!dn) return;
               setInvites((prev) => prev.map((i) => (i.id === row.id ? { ...i, display_name: dn } : i)));
-            })
-            .catch(() => { /* ignore */ });
+            } catch {
+              // ignore
+            }
+          })();
         }
       )
       .on(
@@ -595,7 +601,7 @@ const Room: React.FC = () => {
           <div className="flex items-center gap-2">
             <Button
               size="icon"
-              onClick={() => navigate('/test')}
+              onClick={() => navigate('/home')}
               className="h-9 w-9 rounded-full border-none text-black bg-[linear-gradient(90deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] hover:opacity-90"
               aria-label="Go to Home"
               type="button"
@@ -782,7 +788,7 @@ const Room: React.FC = () => {
                         <div className="-mt-2 mb-3 text-right">
                           <button
                             type="button"
-                            onClick={() => navigate('/test/friends')}
+                            onClick={() => navigate('/home')}
                             className="text-xs text-emerald-300 hover:text-emerald-200 inline-flex items-center gap-1"
                           >
                             <ExternalLink className="h-3.5 w-3.5" /> Manage friends

@@ -13,6 +13,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from "@/components/ui/button";
 import Logo from '@/components/Logo';
 
+// Dev logging guard
+const isDev = (import.meta as any)?.env?.DEV === true;
+const devLog = (...args: any[]) => { if (isDev) console.log(...args); };
+
 const homePageStyle: React.CSSProperties = {
   position: 'fixed',
   top: 0,
@@ -62,13 +66,13 @@ const HomePage = () => {
   const [showLoadingPopup, setShowLoadingPopup] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
-  console.log('[HomePage] Render', { isLoaded, user, isGuest });
+  devLog('[HomePage] Render', { isLoaded, user, isGuest });
   // Timer states
   const [isSoloTimerEnabled, setIsSoloTimerEnabled] = useState(false);
   const [practiceTimerSeconds, setPracticeTimerSeconds] = useState(300); // 5 minutes
   const navigate = useNavigate();
   const gameContext = useGame();
-  const { startGame, isLoading } = gameContext || {};
+  const { startGame, isLoading, startLevelUpGame } = gameContext || {};
 
   // Timer range in seconds with 5-second intervals from 5s to 5m (300s)
   const minTimerValue = 5; // 5 seconds
@@ -99,7 +103,7 @@ const HomePage = () => {
         console.error('Error loading user data:', error);
       } finally {
         setIsLoaded(true);
-        console.log('[HomePage] loadUserData complete, isLoaded:', true);
+        devLog('[HomePage] loadUserData complete, isLoaded:', true);
       }
     };
 
@@ -115,7 +119,7 @@ const HomePage = () => {
   const { toast } = useToast();
 
   const handleStartGame = useCallback(async (mode: string) => {
-    console.log('[HomePage] handleStartGame start', mode, { user, isGuest });
+    devLog('[HomePage] handleStartGame start', mode, { user, isGuest });
     // Check if user is authenticated (either guest or registered)
     if (!user) {
       setPendingMode(mode);
@@ -135,9 +139,36 @@ const HomePage = () => {
     if (mode === 'friends') {
       // Route to the unified Play with Friends flow which uses PartyKit lobby at /room/:roomCode
       // We deliberately avoid the old /test/lobby/:roomId route.
-      console.log('[HomePage] Play Friends clicked. Redirecting to /play');
+      devLog('[HomePage] Play Friends clicked. Redirecting to /play');
       setShowLoadingPopup(false);
       navigate('/play');
+      return;
+    }
+
+    // Level Up mode: start dedicated flow (separate route prefix)
+    if (mode === 'levelup') {
+      if (!gameContext) {
+        console.error('Game context is not available');
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Unable to start Level Up. Please try again.',
+        });
+        setShowLoadingPopup(false);
+        return;
+      }
+      try {
+        await startLevelUpGame?.(1);
+      } catch (e) {
+        console.error('Error starting Level Up game:', e);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Failed to start Level Up. Please try again.',
+        });
+      } finally {
+        setShowLoadingPopup(false);
+      }
       return;
     }
 
@@ -177,7 +208,7 @@ const HomePage = () => {
         setShowLoadingPopup(false);
       }
     }
-  }, [user, gameContext, startGame, isLoading, navigate, toast, setPendingMode, setShowAuthModal, isSoloTimerEnabled, practiceTimerSeconds, isGuest]);
+  }, [user, gameContext, startGame, startLevelUpGame, isLoading, navigate, toast, setPendingMode, setShowAuthModal, isSoloTimerEnabled, practiceTimerSeconds, isGuest]);
 
   useEffect(() => {
     if (user && pendingMode && gameContext && startGame) {
@@ -209,7 +240,7 @@ const HomePage = () => {
       <div className="absolute inset-0 z-[100] w-full h-full overflow-y-auto p-4 md:p-8 box-border bg-black/85 flex items-start md:items-center justify-center min-h-screen">
         {isLoaded ? (
           <div className="w-full max-w-6xl mx-auto flex flex-col items-center">
-            <Logo className="mb-1 md:mb-0 justify-center" />
+            <Logo className="mt-0 mb-0 md:mb-0 justify-center" />
             <div className="-mx-4 md:mx-0 md:-mt-4 w-screen md:w-auto flex flex-row items-start gap-[2rem] md:gap-[3rem] overflow-x-auto md:overflow-visible snap-x snap-mandatory md:snap-none no-scrollbar px-0 md:px-2 touch-pan-x overscroll-x-contain pl-0 md:pl-0">
               {/* Mobile left spacer to center first card */}
               <div className="shrink-0 w-[calc((100vw-13.5rem)/2)] md:hidden" aria-hidden="true" />
@@ -265,17 +296,17 @@ const HomePage = () => {
                   )}
                 </div>
               </div>
-              {/* Level Up Card (aliases Solo) */}
+              {/* Level Up Card */}
               <div className="flex flex-col items-center justify-center gap-0 py-2 md:py-4 shrink-0 snap-center">
                 <div
                   className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-pink-300 via-fuchsia-400 to-purple-600 cursor-pointer"
-                  onClick={() => handleStartGame('classic')}
+                  onClick={() => handleStartGame('levelup')}
                 >
                   <img src="/icons/level.webp" alt="Level Up" className="w-36 h-36 object-contain" />
                 </div>
                 <div
                   className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1 cursor-pointer"
-                  onClick={() => handleStartGame('classic')}
+                  onClick={() => handleStartGame('levelup')}
                 >
                   LEVEL UP
                 </div>
@@ -284,7 +315,7 @@ const HomePage = () => {
               <div
                 className={`relative flex flex-col items-center justify-center gap-0 py-2 md:py-2 shrink-0 snap-center ${(!user || isGuest) ? '' : 'cursor-pointer'}`}
                 onClick={() => {
-                  console.log('[HomePage] Collaborate card clicked. isGuest:', isGuest);
+                  devLog('[HomePage] Collaborate card clicked. isGuest:', isGuest);
                   if (user && !isGuest) {
                     setShowComingSoon(true);
                   } else {
@@ -319,7 +350,7 @@ const HomePage = () => {
               <div
                 className={`relative flex flex-col items-center justify-center gap-0 py-2 md:py-2 shrink-0 snap-center ${(!user || isGuest) ? 'opacity-60' : 'cursor-pointer'}`}
                 onClick={() => {
-                  console.log('[HomePage] Compete card clicked. isGuest:', isGuest);
+                  devLog('[HomePage] Compete card clicked. isGuest:', isGuest);
                   if (!isGuest) handleStartGame('friends');
                 }}
               >

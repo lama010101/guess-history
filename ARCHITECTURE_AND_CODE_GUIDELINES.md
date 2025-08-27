@@ -87,29 +87,73 @@
   - **Environment**: `.env.example` defines `VITE_PARTYKIT_HOST` (default `localhost:1999`).
 - **Routing (frontend)**: `App.tsx`
   - `/` → `LandingPage`
-  - `/test` → `TestLayout` with nested routes: `index`, `auth`, `game`, `results`, `final`, `leaderboard`, `profile`, `settings`, `room`, `friends`.
+  - `/home` → `HomePage` (hub). All post-authentication redirects land here. The hub shows the four play cards (Solo, Level Up, Collaborate, Compete) and launches mode-specific routes.
+  - `/play` → Friends lobby entry route
   - `/room/:roomCode` → `src/pages/Room.tsx` (primary multiplayer lobby route used by invite acceptance)
-  - Mode-prefixed game routes (Solo and Compete):
-    - `/test/solo/game/room/:roomId/round/:roundNumber` → `src/pages/solo/SoloGameRoundPage.tsx`
-    - `/test/solo/game/room/:roomId/round/:roundNumber/results` → `src/pages/solo/SoloRoundResultsPage.tsx`
-    - `/test/compete/game/room/:roomId/round/:roundNumber` → `src/pages/compete/CompeteGameRoundPage.tsx`
-    - `/test/compete/game/room/:roomId/round/:roundNumber/results` → `src/pages/compete/CompeteRoundResultsPage.tsx`
-  - Note: Compete pages currently alias Solo implementations to preserve existing behavior; future iterations will diverge styling/features.
-  - Admin: `/test/admin/images`, `/test/admin/badges`. Wildcards redirect to `/`.
+  - Mode-prefixed game routes (Solo, Level Up, and Compete). Note: `/solo` is reserved exclusively for Solo gameplay; the hub is at `/home`:
+    - Solo:
+      - `/solo/game/room/:roomId/round/:roundNumber`
+      - `/solo/game/room/:roomId/round/:roundNumber/results`
+      - `/solo/game/room/:roomId/final`
+    - Level Up:
+      - `/level/game/room/:roomId/round/:roundNumber`
+      - `/level/game/room/:roomId/round/:roundNumber/results`
+      - `/level/game/room/:roomId/final`
+    - Compete (variants):
+      - Sync:
+        - `/compete/sync/game/room/:roomId/round/:roundNumber`
+        - `/compete/sync/game/room/:roomId/round/:roundNumber/results`
+        - `/compete/sync/game/room/:roomId/final`
+      - Async:
+        - `/compete/async/game/room/:roomId/round/:roundNumber`
+        - `/compete/async/game/room/:roomId/round/:roundNumber/results`
+        - `/compete/async/game/room/:roomId/final`
+  - Legacy cleanup: All legacy `/test` routes have been removed. Post-auth redirects go to `/home` (hub). Gameplay uses canonical mode routes (`/solo`, `/level`, `/compete/(sync|async)`).
 - **WebSocket endpoint**: `ws(s)://<resolved-host>/parties/lobby/:roomCode` (via `partyUrl('lobby', roomCode)`).
 
-### Mode-based Theming (Solo, Compete, Collaborate)
+### Development Logging Policy (2025-08-27)
 
-- **Goal**: Solo keeps original orange accents. Compete shows purple. Collaborate shows turquoise.
+- Implemented dev-only logging guards using `import.meta.env.DEV`.
+- Files adopting this policy:
+  - `src/contexts/GameContext.tsx`
+  - `src/pages/HomePage.tsx`
+- Pattern: use small helpers (e.g., `devLog`, `devDebug`) or guard blocks with `isDev` for verbose logs. Keep `console.error` unguarded for visibility.
+- Guidance: Avoid unguarded `console.log`/`console.debug` in production paths. Prefer the helpers or `isDev` checks for new debug output.
+
+### Legacy Routes and Ports Cleanup (2025-08-27)
+
+- Removed all legacy `/test/*` routes and references (e.g., `/test`, `/test/friends`). Use canonical routes instead.
+- Removed hardcoded port references such as `8092`.
+- Port/host policy:
+  - PartyKit dev runs on `localhost:1999` (see `package.json` `partykit:dev` and `.env.example` `VITE_PARTYKIT_HOST`).
+  - Always resolve the PartyKit host via `VITE_PARTYKIT_HOST` and `partyUrl(...)`. Do not hardcode ports in code or docs.
+
+### PWA Manifest & Service Worker Policy (2025-08-27)
+
+- __Manifest__ (`public/manifest.webmanifest`)
+  - Icons must reference existing assets under `public/icons/`.
+  - Current icons: `/icons/logo.webp` with sizes `192x192` and `512x512` for both `any` and `maskable` purposes.
+  - Do not reference absolute URLs or hardcoded hosts/ports in manifest assets.
+
+- __Service Worker__ (`public/sw.js`)
+  - Minimal app-shell caching of `'/'`, `'/index.html'`, and `'/manifest.webmanifest'`.
+  - Use versioned `CACHE_NAME` (e.g., `gh-static-v2`). Bump when changing cached files to force client update.
+  - Avoid precaching absolute URLs to prevent cross-origin/port pinning issues.
+
+### Mode-based Theming (Solo, Compete, Collaborate, Level Up)
+
+- **Goal**: Solo keeps original orange accents. Compete shows purple. Collaborate shows turquoise. Level up shows pink.
 - **Body classes**: `App.tsx` `ModeClassWatcher` toggles on `<body>` based on route:
   - `mode-solo` when path includes `/solo/`
   - `mode-compete` when path includes `/compete/`
   - `mode-collaborate` when path includes `/collaborate/` or `/collab/`
+  - `mode-levelup` when path includes `/levelup/`
 - **CSS variables** (`src/index.css`):
   - Default (Solo): `--secondary` = orange (25 95% 53%).
   - Compete: `body.mode-compete { --secondary: 270 85% 60%; }` (purple)
   - Collaborate: `body.mode-collaborate { --secondary: 189 90% 45%; }` (turquoise)
-- **Tailwind orange remapping (scoped)**: Under `@layer utilities` we map Tailwind `*-orange-*` utilities to `hsl(var(--secondary))` within both `.mode-compete` and `.mode-collaborate`:
+  - Level Up: `body.mode-levelup { --secondary: 325 90% 60%; }` (pink)
+- **Tailwind orange remapping (scoped)**: Under `@layer utilities` we map Tailwind `*-orange-*` utilities to `hsl(var(--secondary))` within `.mode-compete`, `.mode-collaborate`, and `.mode-levelup`:
   - Background/text/border/ring (+ hover/focus/active), SVG fill/stroke, outline.
   - Gradients: `from/via/to-orange-*`.
   - Placeholder, caret, accent, divide, shadow, ARIA-selected.
@@ -117,10 +161,41 @@
   - Prefer tokens: `text-secondary`, `bg-secondary`, `text-history-secondary` to auto-inherit mode color.
   - Avoid hardcoded hex/orange. Use `hsl(var(--secondary))` in custom CSS.
 - **Testing**:
-  - Solo: `/test/solo/...` → orange.
-  - Compete: `/test/compete/...` → purple.
-  - Collaborate: `/test/collaborate/...` → turquoise.
+  - Solo: `/solo/...` → orange.
+  - Compete: `/compete/...` → purple.
+  - Collaborate: `/collaborate/...` → turquoise.
   - Verify buttons, sliders, rings, gradients, SVGs.
+
+### Level Up Mode — Routing, Start Logic, and Integration (2025-08-27, updated)
+
+- __Routing__
+  - Prefix: `/level/...` with the same game/results pages as Solo for now.
+  - Paths:
+    - `/level/game/room/:roomId/round/:roundNumber` → `src/pages/solo/SoloGameRoundPage.tsx`
+    - `/level/game/room/:roomId/round/:roundNumber/results` → `src/pages/solo/SoloRoundResultsPage.tsx`
+  - Source: `App.tsx` defines these routes at the top level (no `/test` prefix).
+
+- __Entry points & auth gating__
+  - Home page card: `src/pages/HomePage.tsx` routes Level Up clicks through the centralized `handleStartGame('levelup')`.
+  - If `!user`, the click opens `AuthModal` and defers the action via `pendingMode = 'levelup'`.
+  - Guests are blocked consistently by the `handleStartGame('levelup')` gating logic; the card no longer bypasses this check.
+
+- __Start flow__
+  - Function: `src/contexts/GameContext.tsx` → `startLevelUpGame(level, settings?)`.
+  - Constraints: derives `{ minYear, maxYear, timerSeconds }` via `getLevelConstraints(level)` and applies them:
+    - `setTimerEnabled(true)` and `setRoundTimerSec(timerSeconds)`.
+  - Image selection: calls `useGamePreparation.prepare({ userId, roomId?, count: ROUNDS_PER_GAME, seed?, minYear, maxYear })`.
+  - Multiplayer gating: when `settings.roomId` is provided without `settings.seed`, preparation is gated (no error); when both are provided, deterministic images are selected and persisted server-side.
+  - Membership persistence: on multiplayer starts, calls `ensureSessionMembership(roomId, userId)` and `repairMissingRoomId(roomId)` to satisfy RLS and backfill `round_results.room_id`.
+  - Navigation: after preparation, navigates to `/level/game/room/${roomId}/round/1`.
+
+- __Theming__
+  - `App.tsx` `ModeClassWatcher` toggles the `mode-levelup` body class for Level Up routes.
+  - `src/index.css` sets Level Up `--secondary` to a pink hue and remaps `*-orange-*` utilities under `.mode-levelup`, giving Level Up a distinct pink-themed palette.
+
+- __Persistence & peers__
+  - Round results persist to `public.round_results` with 0-based `round_index` (UI uses 1-based routing). See “Round Indexing Consistency (0-based).”
+  - Multiplayer peer visibility relies on `public.session_players` upsert. See “Multiplayer Membership Persistence (session_players).”
 
 ### Game Modes and Timers (Hooks)
 
@@ -200,7 +275,7 @@ This document provides comprehensive architecture guidelines for the Guess Histo
   - `inertia_mode: 'none' | 'swipes' | 'swipes_recenter'` — Controls automatic panning behavior.
   - `inertia_level: number (1..5)` — Controls inertia strength/duration. Higher = longer glide (lower friction).
 - **Defaults**: `{ inertia_enabled: true, inertia_mode: 'swipes', inertia_level: 3 }`
-- **Storage contract**: Persist settings in `public.settings` with `id = <userId>`. Always use `fetchUserSettings(userId)` and `updateUserSettings(userId, settings)` from `profileService`. Do not prefix IDs (avoid formats like `user_settings_${userId}`) to ensure the fullscreen viewer and settings UI load the same row.
+- **Storage contract**: Persist settings in `public.settings` keyed by `id = <userId>`. Always use `fetchUserSettings(userId)` and `updateUserSettings(userId, settings)` from `profileService`. Do not prefix IDs (avoid formats like `user_settings_${userId}`) to ensure the fullscreen viewer and settings UI load the same row.
 
 ### Inertia Modes
 1. **None** — No automatic panning or inertia effects.
@@ -488,8 +563,8 @@ Notes:
 - RLS: authenticated can SELECT; users can INSERT/UPDATE/DELETE their own row only.
 - Client upsert points:
   - `src/contexts/GameContext.tsx` → `ensureSessionMembership(roomId, userId?)` helper performs `upsert({ room_id, user_id, display_name })` with `onConflict: 'room_id,user_id'`.
-  - Called in `startGame()` when starting a multiplayer session (after setting `roomId`).
-  - Called in `hydrateRoomImages(roomId)` when hydrating a multiplayer room on refresh.
+  - Called in `startGame()` when starting a multiplayer session (after `ensureSessionMembership`).
+  - Called in `hydrateRoomImages(roomId)` on refresh/rejoin flows.
 - Purpose: Satisfies RLS policies that grant visibility/authorization to room participants for:
   - Reading peer `round_results` rows
   - Executing scoreboard RPCs (e.g., `get_round_scoreboard`)
@@ -561,7 +636,7 @@ Notes:
 - Exit codes: returns 0 on success, 1 on any error, with detailed error logs including `code`, `message`, `details`, and `hint` fields where available.
 
 - Testing checklist
-  - Open `/test/play/room/:roomId/round/:roundNumber` directly → peers and their guesses should render.
+  - Open `/solo/play/room/:roomId/round/:roundNumber` directly → peers and their guesses should render.
   - Reload both the round and results pages → peer results remain visible; coordinates including `(0,0)` render correctly.
   - Submit a guess → corresponding `public.round_results` row includes `room_id` and 0-based `round_index`.
   - Run `scripts/test-session-players.ts` with a room ID and round number to verify session membership and scoreboard RPCs.
@@ -968,37 +1043,6 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
 - Source and Rate buttons use background `#444444` with white text across themes for consistency.
     - Source button in `ResultsLayout2.tsx` uses `bg-[#444444]` and matching border/hover.
     - Rate button in `RoundResultsPage.tsx` uses `bg-[#444444]` and matching border/hover.
-- Primary round action buttons are round with a subtle rainbow gradient background matching the design reference.
-    - Use: `rounded-full text-black border-none bg-gradient-to-r from-pink-300 via-orange-300 via-yellow-300 via-green-300 to-green-300 hover:opacity-90`.
-    - Implemented in:
-      - Top-right HUD Settings gear in `src/components/navigation/GameOverlayHUD.tsx` (replaces previous Home icon). Clicking opens `GlobalSettingsModal`.
-      - Desktop and mobile Home buttons in `src/components/layouts/GameLayout1.tsx`.
-      - Lobby Home in `src/pages/Room.tsx`.
-  - Round header text size reduced by one step (Tailwind `text-lg`) in `src/components/results/ResultsHeader.tsx`.
-  - Home button (where present) remains light grey and consistently styled across pages; in-game HUD now uses a Settings gear instead of Home.
-  
-  - When card and Where card affordances:
-    - When the year is not selected, the inline year input on the `When?` card shows placeholder text "Choose a year".
-    - When the location is not selected, the trailing label on the `Where?` card shows italic placeholder text "Choose a location".
-    - The Where placeholder no longer truncates; it is non-truncated and clickable. Clicking "Choose a location" focuses the inline year input so the user can begin typing a year immediately.
-    - Add a small spacer below the `Where?` card for breathing room on the page (`<div class="h-6" aria-hidden>`), placed after the card. Implemented in `src/components/layouts/GameLayout1.tsx` immediately after the `Where?` card.
-    - Where search input: a subtle clear (X) button appears when text is present; clicking it clears the input and closes the results dropdown while keeping focus for immediate re-typing. Implemented in `src/components/HomeMap.tsx`.
-
-- Home page game mode cards:
-  - `COMPETE` card: purple gradient with friends icon. Starts friends mode for signed-in users on click. Guests see a sign-in lock overlay (`z-[100]`, `dark:bg-black`) and can sign in.
-  - `COLLABORATE` card: cyan gradient, no icon. For signed-in users, opens a simple "COMING SOON" modal. Guests trigger `AuthModal`. Does not start a game.
-  - Icons: `COLLABORATE` uses `src/assets/icons/collaborate.webp`; `COMPETE` uses `src/assets/icons/compete.webp`.
-  - Icon sizing: All three Home mode icons are uniform: `<img class="w-36 h-36 object-contain">` within containers sized `w-[13.5rem] h-[13.5rem]`. Adjust in `src/pages/HomePage.tsx` in the Solo, Collaborate, and Compete card blocks.
-
-- Round Results spacing:
-  - `ResultsLayout2.tsx` uses `gap-8` between columns.
-  - Left column containers use `space-y-8`; right column uses `space-y-7` for balanced spacing.
-
-- Fullscreen zoom behavior:
-  - Zoom is disabled in fullscreen (no wheel, double-click, pinch, or double-tap).
-  - Panning is enabled at base zoom; offsets are clamped within bounds.
-  - Hint text shows "Drag to pan"; the zoom percentage badge is hidden.
-
 - Game page controls:
   - When exiting fullscreen on the image, the `When?` and `Where?` labels perform a 1s typewriter animation in orange, then revert to the normal label color (white in dark mode, dark gray in light). There is no card ring/pulse on initial reveal. Implemented in `src/components/layouts/GameLayout1.tsx` with local `titlesAnimating`, `whenAnimIndex`, and `whereAnimIndex` state.
   - The Hints button in the bottom action bar is compact with a `HelpCircle` icon and a small count chip (e.g., `3/14`).
@@ -1075,7 +1119,6 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - `ri_select_inviter`: authenticated users can SELECT rows where `inviter_user_id = auth.uid()`
   - `ri_select_invited`: authenticated users can SELECT rows where `friend_id = auth.uid()`
   - `ri_insert_inviter`: authenticated users can INSERT only when `inviter_user_id = auth.uid()`
-  - `ri_delete_inviter`: authenticated users can DELETE only when `inviter_user_id = auth.uid()`
 
 - **Notes**:
   - The `friend_id` foreign key references `public.profiles(id)` and is reflected in generated TS types. The `inviter_user_id` FK references `auth.users(id)` (not represented as a relational mapping in our local TS types).
@@ -1325,22 +1368,6 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
   - Clicking "Continue as guest" authenticates anonymously, immediately closes the modal, and triggers `startGame()` asynchronously.
   - `GameContext` updates `prepStatus` which makes `PreparationOverlay` visible right away; when prep completes, `startGame()` navigates to the game route.
   - No full page reloads are used in this flow.
-
-## Future Enhancements
-
-### Planned Features
-- Spectator mode
-- Private rooms with passwords
-- Tournament brackets
-- Real-time chat
-- Custom game modes
-- Achievement system
-
-### Technical Improvements
-- Connection pooling optimization
-- State compression
-- CDN integration for avatars
-- Real-time analytics dashboard
 
 ## UI Adjustments: Game & Round Results (2025-08)
 
@@ -1627,7 +1654,7 @@ UI specifics applied in `HintModalV2New`:
   - Track shows a neutral line: `bg-gray-300` in light, `dark:bg-white` in dark.
   - Filled range is hidden to remove the trailing orange segment.
   - Thumb size doubled to 32px (h-8 w-8) for better touch ergonomics.
-  - Touch/focus halo: a semi-transparent orange disk renders via a pseudo-element and appears on `:focus-visible` and `:active`.
+  - Touch/focus halo: a semi-transparent orange halo renders via a pseudo-element and appears on `:focus-visible` and `:active`.
 
 - __Map Avatar Halo__
   - File: `src/components/map/AvatarMarker.tsx`
@@ -1659,7 +1686,7 @@ Notes: UI changes are limited to the Home page and the shared `Logo` component p
 
 - Lobby header buttons
   - File: `src/pages/Room.tsx`
-  - Added a Home icon button that navigates to `/test`.
+  - Added a Home icon button that navigates to `/`.
   - Added the avatar/menu dropdown by rendering `<NavMenu />` in the header actions.
   - Imports: `Home` from `lucide-react`, `NavMenu` from `src/components/NavMenu`.
 
@@ -2017,9 +2044,11 @@ Notes: UI changes are limited to the Home page and the shared `Logo` component p
 
 - Settings modal header/actions
   - File: `src/components/settings/GlobalSettingsModal.tsx`
-  - Added a Home button at the top-left of the modal header (navigates to `/test` or via injected `onNavigateHome`).
+  - Added a Home button at the top-left of the modal header (navigates to `/` or via injected `onNavigateHome`).
   - Bottom of the modal now only shows a Close button (removed the previous Home button from the footer).
 
 Notes
 - Assets referenced are in `public/icons/` and can be used directly with absolute paths (e.g., `/icons/logo.webp`).
 - Ensure mobile and desktop views are tested for scroll-snap centering and unified button sizing.
+
+```

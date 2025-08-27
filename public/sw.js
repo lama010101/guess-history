@@ -1,5 +1,5 @@
 // Minimal service worker for Guess History
-const CACHE_NAME = 'gh-static-v1';
+const CACHE_NAME = 'gh-static-v2';
 const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest'];
 self.addEventListener('install', (event) => {
   event.waitUntil(

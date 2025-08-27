@@ -70,7 +70,7 @@ const AuthRedirectHandler = () => {
             // Scrub the hash so you don't leak tokens in your URL
             window.history.replaceState({}, document.title, window.location.pathname);
             // Navigate to home page after successful authentication
-            navigate('/test', { replace: true });
+            navigate('/home', { replace: true });
           } else {
             console.warn("No session found after OAuth redirect");
           }
@@ -140,10 +140,13 @@ const App = () => {
                       <Route path="/" element={<LandingPage />} />
                       {/* Require an active session (registered or anonymous) for all routes except landing */}
                       <Route element={<RequireAuthSession />}>
+                        {/* Hub (Home) layout and index */}
+                        <Route path="/home" element={<TestLayout />}>
+                          <Route index element={<HomePage />} />
+                        </Route>
                         <Route path="/play" element={<PlayWithFriends />} />
                         <Route path="/room/:roomCode" element={<Room />} />
-                        <Route path="/test" element={<TestLayout />}>
-                          <Route index element={<HomePage />} />
+                        <Route path="/solo" element={<TestLayout />}>
                           <Route path="auth" element={<AuthPage />} />
                           <Route path="leaderboard" element={<LeaderboardPage />} />
                           <Route path="profile" element={<ProfilePage />} />
@@ -158,7 +161,20 @@ const App = () => {
                           <Route path="lobby/:roomId" element={<LobbyPage />} />
                         </Route>
                         {/* Final Results page with its own MainNavbar */}
-                        <Route path="/test/game/room/:roomId/final" element={<FinalResultsPage />} />
+                        <Route path="/solo/game/room/:roomId/final" element={<FinalResultsPage />} />
+
+                        {/* Level Up game routes */}
+                        <Route path="/level/game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
+                        <Route path="/level/game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />
+                        <Route path="/level/game/room/:roomId/final" element={<FinalResultsPage />} />
+
+                        {/* Compete (multiplayer) routes - sync and async variants */}
+                        <Route path="/compete/sync/game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
+                        <Route path="/compete/sync/game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />
+                        <Route path="/compete/sync/game/room/:roomId/final" element={<FinalResultsPage />} />
+                        <Route path="/compete/async/game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
+                        <Route path="/compete/async/game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />
+                        <Route path="/compete/async/game/room/:roomId/final" element={<FinalResultsPage />} />
                       </Route>
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>

@@ -40,7 +40,7 @@ const AuthRedirectHandler = () => {
         // We have a hash from OAuth redirect - navigate to home after processing
         const { data, error } = await supabase.auth.getSession();
         if (data?.session && !error) {
-          navigate('/test');
+          navigate('/home');
         }
       }
     };
@@ -60,12 +60,14 @@ const ModeClassWatcher = () => {
       const isCompete = path.includes("/compete/");
       const isSolo = path.includes("/solo/");
       const isCollaborate = path.includes("/collaborate/") || path.includes("/collab/");
+      const isLevelUp = path.includes("/level/");
       const body = document.body;
       body.classList.toggle("mode-compete", !!isCompete);
       body.classList.toggle("mode-solo", !!isSolo);
       body.classList.toggle("mode-collaborate", !!isCollaborate);
-      if (!isCompete && !isSolo && !isCollaborate) {
-        body.classList.remove("mode-compete", "mode-solo", "mode-collaborate");
+      body.classList.toggle("mode-levelup", !!isLevelUp);
+      if (!isCompete && !isSolo && !isCollaborate && !isLevelUp) {
+        body.classList.remove("mode-compete", "mode-solo", "mode-collaborate", "mode-levelup");
       }
     } catch {}
   }, [location]);
@@ -85,9 +87,30 @@ const App = () => {
                 <AuthRedirectHandler />
                 <ModeClassWatcher />
                 <InviteListener />
-                {import.meta.env.DEV && <DevToastProbe />}
+                {(import.meta as any)?.env?.DEV && <DevToastProbe />}
                 <Routes>
-                  <Route path="/" element={<LandingPage />} />
+                  <Route path="/home" element={<LandingPage />} />
+                  <Route path="/" element={<Navigate to="/home" replace />} />
+                  {/* Top-level game routes (no '/test' prefix) */}
+                  <Route path="/solo/game/room/:roomId/round/:roundNumber" element={<SoloGameRoundPage />} />
+                  <Route path="/solo/game/room/:roomId/round/:roundNumber/results" element={<SoloRoundResultsPage />} />
+                  {/* Level Up routes (reuse Solo pages for now, distinct '/level' prefix) */}
+                  <Route path="/level/game/room/:roomId/round/:roundNumber" element={<SoloGameRoundPage />} />
+                  <Route path="/level/game/room/:roomId/round/:roundNumber/results" element={<SoloRoundResultsPage />} />
+                  {/* Compete and Collaborate routes */}
+                  {/* Compete (Sync) */}
+                  <Route path="/compete/sync/game/room/:roomId/round/:roundNumber" element={<CompeteGameRoundPage />} />
+                  <Route path="/compete/sync/game/room/:roomId/round/:roundNumber/results" element={<CompeteRoundResultsPage />} />
+                  {/* Compete (Async) */}
+                  <Route path="/compete/async/game/room/:roomId/round/:roundNumber" element={<CompeteGameRoundPage />} />
+                  <Route path="/compete/async/game/room/:roomId/round/:roundNumber/results" element={<CompeteRoundResultsPage />} />
+                  {/* Legacy/alias Compete path */}
+                  <Route path="/compete/game/room/:roomId/round/:roundNumber" element={<CompeteGameRoundPage />} />
+                  <Route path="/compete/game/room/:roomId/round/:roundNumber/results" element={<CompeteRoundResultsPage />} />
+                  <Route path="/collaborate/game/room/:roomId/round/:roundNumber" element={<CompeteGameRoundPage />} />
+                  <Route path="/collaborate/game/room/:roomId/round/:roundNumber/results" element={<CompeteRoundResultsPage />} />
+
+                  {/* Legacy test routes (keep for dev pages) */}
                   <Route path="/test" element={<TestLayout />}>
                     <Route index element={<TestHomePage />} />
                     <Route path="auth" element={<TestAuthPage />} />
@@ -95,14 +118,6 @@ const App = () => {
                     <Route path="game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
                     <Route path="results" element={<TestResultsPage />} />
                     <Route path="game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />
-                    {/* Mode-prefixed routes (Solo & Compete) */}
-                    <Route path="solo/game/room/:roomId/round/:roundNumber" element={<SoloGameRoundPage />} />
-                    <Route path="solo/game/room/:roomId/round/:roundNumber/results" element={<SoloRoundResultsPage />} />
-                    <Route path="compete/game/room/:roomId/round/:roundNumber" element={<CompeteGameRoundPage />} />
-                    <Route path="compete/game/room/:roomId/round/:roundNumber/results" element={<CompeteRoundResultsPage />} />
-                    {/* Collaborate routes (alias compete pages for now) */}
-                    <Route path="collaborate/game/room/:roomId/round/:roundNumber" element={<CompeteGameRoundPage />} />
-                    <Route path="collaborate/game/room/:roomId/round/:roundNumber/results" element={<CompeteRoundResultsPage />} />
                     <Route path="final" element={<TestFinalPage />} />
                     <Route path="game/room/:roomId/final" element={<TestFinalPage />} />
                     <Route path="leaderboard" element={<TestLeaderboardPage />} />
@@ -112,7 +127,7 @@ const App = () => {
                     <Route path="friends" element={<TestFriendsPage />} />
                   </Route>
                   <Route path="/room/:roomCode" element={<Room />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
+                  <Route path="*" element={<Navigate to="/home" replace />} />
                 </Routes>
                 <Toaster />
               </BrowserRouter>

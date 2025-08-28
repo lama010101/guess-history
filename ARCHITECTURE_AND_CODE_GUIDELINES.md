@@ -94,7 +94,7 @@
     - Solo:
       - `/solo/game/room/:roomId/round/:roundNumber`
       - `/solo/game/room/:roomId/round/:roundNumber/results`
-      - `/solo/game/room/:roomId/final`
+      - Final navigation: after the last round, the app navigates to `/home` (no dedicated Solo `/final` route at this time)
     - Level Up:
       - `/level/game/room/:roomId/round/:roundNumber`
       - `/level/game/room/:roomId/round/:roundNumber/results`
@@ -108,6 +108,10 @@
         - `/compete/async/game/room/:roomId/round/:roundNumber`
         - `/compete/async/game/room/:roomId/round/:roundNumber/results`
         - `/compete/async/game/room/:roomId/final`
+  - Mode-preserving navigation rule (2025-08-28):
+    - During gameplay (submit, timeout, next round, results), always derive the base mode path from the current URL by slicing everything before `'/game/'` and build navigation paths using that prefix.
+    - Example: if current path starts with `/level/...`, navigate to `${modeBasePath}/game/room/${roomId}/round/${n}` and `${modeBasePath}/game/room/${roomId}/final`.
+    - Special case: Solo has no dedicated `/final`; after the last round, navigate to `/home`.
   - Legacy cleanup: All legacy `/test` routes have been removed. Post-auth redirects go to `/home` (hub). Gameplay uses canonical mode routes (`/solo`, `/level`, `/compete/(sync|async)`).
 - **WebSocket endpoint**: `ws(s)://<resolved-host>/parties/lobby/:roomCode` (via `partyUrl('lobby', roomCode)`).
 
@@ -147,7 +151,7 @@
   - `mode-solo` when path includes `/solo/`
   - `mode-compete` when path includes `/compete/`
   - `mode-collaborate` when path includes `/collaborate/` or `/collab/`
-  - `mode-levelup` when path includes `/levelup/`
+  - `mode-levelup` when path includes `/level/`
 - **CSS variables** (`src/index.css`):
   - Default (Solo): `--secondary` = orange (25 95% 53%).
   - Compete: `body.mode-compete { --secondary: 270 85% 60%; }` (purple)
@@ -196,6 +200,49 @@
 - __Persistence & peers__
   - Round results persist to `public.round_results` with 0-based `round_index` (UI uses 1-based routing). See “Round Indexing Consistency (0-based).”
   - Multiplayer peer visibility relies on `public.session_players` upsert. See “Multiplayer Membership Persistence (session_players).”
+
+#### Level Up — Canonical Route Detection & "Play Again" Navigation (2025-08-28)
+
+- __Canonical detection__: Any path beginning with `/level/` is considered Level Up mode. Do not rely on query params or legacy `/test/levelup` routes.
+  - Consumers: `hooks/useGameModeConfig.ts`, `App.tsx` route guards, and any Level Up–specific effects should key off the `/level/` prefix exclusively.
+- __FinalResults → Play Again__: `src/pages/FinalResultsPage.tsx` routes all "Play Again" actions through the centralized `startGame()` helper.
+  - Rationale: Enforces uniform gating (auth/guest), consistent session setup, and correct redirection for all modes, including Level Up.
+  - No direct `navigate(...)` or legacy route pushes should remain in the results page; `startGame()` is the single entry.
+- __Legacy routes__: All `/test/*` routes are removed. Do not re-introduce them for Level Up. Use only the canonical `/level/...` routes listed above.
+
+### Level Up Mode — UI Components and Integration (2025-08-28)
+
+- __Components (source of truth)__: `src/components/levelup/`
+  - `LevelUpIntro.tsx` — Intro card rendered before Round 1 explaining requirements with a Start button.
+  - `LevelRoundProgressCard.tsx` — Per-round progress display showing if the round met ≥ 70% net.
+  - `LevelResultBanner.tsx` — Final pass/fail banner for the Level Up session.
+  - `LevelRequirementCard.tsx` — Requirement summary cards showing current vs. target.
+
+- __Integration points__:
+  - `src/pages/GameRoundPage.tsx`
+    - Detects Level Up via the `/level/` prefix and applies `body.mode-levelup` (safety in-page in addition to global watcher).
+    - Shows `LevelUpIntro` as an overlay only on Round 1 before any result exists for round index 0.
+    - While the intro is visible, the round timer is paused; it resumes when Start is pressed.
+  - `src/pages/RoundResultsPage.tsx`
+    - Above the standard results layout, renders `LevelRoundProgressCard` on Level Up routes.
+    - Computes net percent with `computeRoundNetPercent(timeAcc, locAcc, accDebtTotal)` using:
+      - `calculateTimeAccuracy(guessYear, actualYear)`
+      - `calculateLocationAccuracy(distanceKm)`
+      - Per-round `accDebt` aggregated from `hintDebts` (room-first round_id strategy).
+  - `src/pages/FinalResultsPage.tsx`
+    - Renders `LevelResultBanner` and two `LevelRequirementCard`s above the final score when on `/level/` routes.
+    - Pass criteria surfaced in UI:
+      - Overall net accuracy ≥ 50% (average of per-round net percents)
+      - Any round ≥ 70% net
+    - Existing pass logic and DB updates (games/profiles) remain in this page; UI is additive.
+
+- __Theming__: `src/index.css` remaps Tailwind `*-orange-*` utilities to `hsl(var(--secondary))` inside `.mode-levelup`. Level Up sets `--secondary` to pink; components can keep `bg-orange-500` etc. and will appear pink in Level Up mode.
+
+- __QA checklist__:
+  - Intro overlay appears only on Level Up Round 1, pauses timer, and uses pink accents.
+  - Round Results shows the per-round progress card with correct net percent (including hint penalties).
+  - Final Results shows pass/fail banner and both requirement cards with accurate values.
+  - Pink theming is consistent across the three pages.
 
 ### Game Modes and Timers (Hooks)
 

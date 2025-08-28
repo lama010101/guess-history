@@ -155,3 +155,15 @@
 .app {
   @apply w-full text-left;
 }
+
+/* Level Up mode theming overrides */
+.mode-levelup {
+  /* Shift secondary highlight to pink for Level Up */
+  --secondary: 330 95% 65%;
+}
+
+/* Remap prominent orange utilities to pink within Level Up context */
+.mode-levelup .bg-orange-500 { background-color: #ec4899 !important; }
+.mode-levelup .hover\:bg-orange-500:hover { background-color: #ec4899 !important; }
+.mode-levelup .active\:bg-orange-500:active { background-color: #ec4899 !important; }
+.mode-levelup .hover\:bg-orange-600:hover { background-color: #db2777 !important; }

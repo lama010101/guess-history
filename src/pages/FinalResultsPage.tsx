@@ -1,15 +1,16 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+
 import { Share2, Loader, Home, Target, Zap, RefreshCw } from "lucide-react";
-import RoundResultCard from '@/components/RoundResultCard';
-import { useGame } from "@/contexts/GameContext";
-import { Badge } from "@/components/ui/badge";
-import { useEffect, useRef } from 'react';
 import { NavProfile } from "@/components/NavProfile";
 import { formatInteger } from '@/utils/format';
 import { updateUserMetrics } from '@/utils/profile/profileService';
 import { supabase } from '@/integrations/supabase/client';
+import RoundResultCard from '@/components/RoundResultCard';
+import { useGame } from "@/contexts/GameContext";
+import { Badge } from "@/components/ui/badge";
+import { useEffect, useRef } from 'react';
 import { 
   calculateFinalScore,
   calculateTimeAccuracy,
@@ -18,9 +19,12 @@ import {
   averagePercent
 } from "@/utils/gameCalculations";
 import { makeRoundId } from "@/utils/roomState";
+import LevelResultBanner from '@/components/levelup/LevelResultBanner';
+import LevelRequirementCard from '@/components/levelup/LevelRequirementCard';
 
 const FinalResultsPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { 
     images, 
     isLoading: isContextLoading, 
@@ -37,6 +41,17 @@ const FinalResultsPage = () => {
   } = useGame();
   const submittedGameIdRef = useRef<string | null>(null);
   const provisionalAppliedRef = useRef<boolean>(false);
+  
+  // Apply Level Up theming via body class when under /level/ routes
+  useEffect(() => {
+    const isLevelUp = location.pathname.includes('/level/');
+    if (isLevelUp) {
+      document.body.classList.add('mode-levelup');
+    }
+    return () => {
+      document.body.classList.remove('mode-levelup');
+    };
+  }, [location.pathname]);
   
   const [isScrolled, setIsScrolled] = React.useState(false);
   const [isRoundSummaryOpen, setIsRoundSummaryOpen] = React.useState(true);
@@ -105,7 +120,7 @@ const FinalResultsPage = () => {
         try {
           const { data: hintRows, error } = await supabase
             .from('round_hints')
-            .select('round_id, xpDebt, accDebt')
+            .select('round_id, cost_xp, cost_accuracy')
             .eq('user_id', user.id)
             .in('round_id', roundIds as any);
           if (error) {
@@ -113,8 +128,8 @@ const FinalResultsPage = () => {
           } else if (hintRows && hintRows.length) {
             for (const r of hintRows as any[]) {
               const rid = r.round_id as string;
-              const xd = Number(r.xpDebt) || 0;
-              const ad = Number(r.accDebt) || 0;
+              const xd = Number(r.cost_xp) || 0;
+              const ad = Number(r.cost_accuracy) || 0;
               totalXpDebt += xd;
               perRoundAccDebt[rid] = (perRoundAccDebt[rid] || 0) + ad;
             }
@@ -154,6 +169,94 @@ const FinalResultsPage = () => {
       console.log('Processing game results to update user metrics...');
       submittedGameIdRef.current = gameId;
 
+      // Level Up pass/fail gate and progress persistence (run once per game after submission guard)
+      try {
+        const isLevelUpGame = location.pathname.includes('/level/');
+        if (isLevelUpGame) {
+          if (import.meta.env.DEV) {
+            console.log('[LevelUp] Detected Level Up route. Evaluating pass/fail...', { finalPercentNet, perRoundNetPercents });
+          }
+
+          // Fetch profile to check guest and current best level
+          const { data: profile, error: profileErr } = await supabase
+            .from('profiles')
+            .select('is_guest, level_up_best_level')
+            .eq('id', user.id)
+            .single();
+          if (profileErr) {
+            console.warn('[LevelUp] profile fetch error', profileErr);
+          }
+
+          const isGuest = profile?.is_guest === true;
+          if (isGuest) {
+            if (import.meta.env.DEV) console.log('[LevelUp] Guest user; skipping Level Up progress updates.');
+          } else {
+            const overallPass = finalPercentNet >= 50;
+            const roundPass = perRoundNetPercents.some((p) => p >= 70);
+            const passed = overallPass && roundPass;
+            if (import.meta.env.DEV) {
+              console.log('[LevelUp] overallPass:', overallPass, 'roundPass:', roundPass, 'passed:', passed);
+            }
+
+            if (passed) {
+              // Determine current game level from games table (default 1 if missing)
+              let currentLevel = 1;
+              try {
+                const { data: gameRow, error: gameErr } = await supabase
+                  .from('games')
+                  .select('level')
+                  .eq('id', gameId)
+                  .maybeSingle();
+                if (gameErr) {
+                  console.warn('[LevelUp] games level fetch error', gameErr);
+                } else if (gameRow && typeof (gameRow as any).level === 'number') {
+                  currentLevel = (gameRow as any).level;
+                }
+              } catch (e) {
+                console.warn('[LevelUp] exception fetching game level', e);
+              }
+
+              const newLevel = currentLevel + 1;
+
+              // Update games.level
+              try {
+                const { error: gameUpdateErr } = await supabase
+                  .from('games')
+                  .update({ level: newLevel })
+                  .eq('id', gameId);
+                if (gameUpdateErr) {
+                  console.warn('[LevelUp] update games.level error', gameUpdateErr);
+                } else if (import.meta.env.DEV) {
+                  console.log('[LevelUp] games.level updated to', newLevel);
+                }
+              } catch (e) {
+                console.warn('[LevelUp] exception updating games.level', e);
+              }
+
+              // Update profiles.level_up_best_level if improved
+              const bestLevel = typeof profile?.level_up_best_level === 'number' ? profile.level_up_best_level : 0;
+              if (newLevel > bestLevel) {
+                try {
+                  const { error: profileUpdateErr } = await supabase
+                    .from('profiles')
+                    .update({ level_up_best_level: newLevel })
+                    .eq('id', user.id);
+                  if (profileUpdateErr) {
+                    console.warn('[LevelUp] update profiles.level_up_best_level error', profileUpdateErr);
+                  } else if (import.meta.env.DEV) {
+                    console.log('[LevelUp] profiles.level_up_best_level updated to', newLevel);
+                  }
+                } catch (e) {
+                  console.warn('[LevelUp] exception updating profiles.level_up_best_level', e);
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[LevelUp] exception during evaluation', e);
+      }
+
       // Compute breakdown accuracies for persistence
       const totalWhenXP = roundResults.reduce((sum, result, index) => {
         const img = images[index];
@@ -188,7 +291,6 @@ const FinalResultsPage = () => {
 
   const handlePlayAgain = async () => {
     resetGame();
-    navigate('/test');
     await startGame();
   };
 
@@ -298,6 +400,11 @@ const FinalResultsPage = () => {
   const netFinalXP = Math.max(0, Math.round(finalXP - (totalXpDebtState || 0)));
   const totalScore = formatInteger(netFinalXP);
   const totalPercentage = formatInteger(finalPercentNet);
+  const isLevelUp = location.pathname.includes('/level/');
+  const overallPass = finalPercentNet >= 50;
+  const bestRoundNet = perRoundNetPercents.length > 0 ? Math.max(...perRoundNetPercents) : 0;
+  const roundPass = perRoundNetPercents.some((p) => p >= 70);
+  const passed = overallPass && roundPass;
   const totalWhenAccuracy = totalWhenXP > 0 ? (totalWhenXP / (roundResults.length * 100)) * 100 : 0;
   const totalWhereAccuracy = totalWhereXP > 0 ? (totalWhereXP / (roundResults.length * 100)) * 100 : 0;
   const totalHintsUsed = roundResults.reduce((sum, r) => sum + (r.hintsUsed || 0), 0);
@@ -343,6 +450,23 @@ const FinalResultsPage = () => {
 
       <main className="flex-grow p-4 sm:p-6 md:p-8 pb-36">
         <div className="max-w-4xl mx-auto w-full">
+          {isLevelUp && (
+            <div className="space-y-3 mb-6">
+              <LevelResultBanner passed={passed} />
+              <LevelRequirementCard
+                title="Overall net accuracy ≥ 50%"
+                met={overallPass}
+                currentLabel={`Current: ${formatInteger(finalPercentNet)}%`}
+                targetLabel="Target: ≥ 50%"
+              />
+              <LevelRequirementCard
+                title="Any round ≥ 70% net"
+                met={roundPass}
+                currentLabel={`Best round: ${formatInteger(bestRoundNet)}%`}
+                targetLabel="Target: ≥ 70%"
+              />
+            </div>
+          )}
           <div className="max-w-md mx-auto bg-[#333333] rounded-lg p-6 text-white mb-8 sm:mb-12">
             <h1 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4 text-center">FINAL SCORE</h1>
             <div className="flex justify-center items-center gap-4 mt-2">

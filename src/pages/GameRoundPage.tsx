@@ -1,5 +1,5 @@
-import { useNavigate, useParams } from 'react-router-dom';
-import { useEffect, useState, useCallback } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import GameLayout1 from "@/components/layouts/GameLayout1";
 import { Loader, MapPin } from "lucide-react";
 import { useGame } from '@/contexts/GameContext';
@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { getOrCreateRoundState, setCurrentRoundInSession } from '@/utils/roomState';
 import { Button } from '@/components/ui/button';
 import { SegmentedProgressBar } from '@/components/ui';
+import LevelUpIntro from '@/components/levelup/LevelUpIntro';
 import {
   Tooltip,
   TooltipContent,
@@ -32,6 +33,23 @@ const GameRoundPage = () => {
   // --- Hint system V2 ---
   const navigate = useNavigate();
   const { roomId, roundNumber: roundNumberStr } = useParams<{ roomId: string; roundNumber: string }>();
+  const location = useLocation();
+  // Derive base mode path (everything before '/game/') to keep navigation inside the current mode (e.g., /level, /solo, /compete/sync)
+  const modeBasePath = useMemo(() => {
+    const path = location.pathname;
+    const idx = path.indexOf('/game/');
+    return idx > 0 ? path.slice(0, idx) : '/solo';
+  }, [location.pathname]);
+  // Detect Level Up routes and apply theming
+  useEffect(() => {
+    const isLevelUp = location.pathname.includes('/level/');
+    if (isLevelUp) {
+      document.body.classList.add('mode-levelup');
+    }
+    return () => {
+      document.body.classList.remove('mode-levelup');
+    };
+  }, [location.pathname]);
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -48,9 +66,9 @@ const GameRoundPage = () => {
   }, [user]);
 
   const handleNavigateHome = useCallback(() => {
-    console.log("Attempting to navigate to /test"); // Added log
-    navigate('/test');
-    console.log("Called navigate('/test')"); // Added log
+    console.log("Attempting to navigate to /home");
+    navigate('/home');
+    console.log("Called navigate('/home')");
   }, [navigate]);
 
   const confirmNavigation = useCallback((navigateTo: () => void) => {
@@ -81,6 +99,23 @@ const GameRoundPage = () => {
 
   const roundNumber = parseInt(roundNumberStr || '1', 10);
   const currentRoundIndex = roundNumber - 1;
+  const isLevelUpRoute = useMemo(() => location.pathname.includes('/level/'), [location.pathname]);
+  const [showIntro, setShowIntro] = useState<boolean>(false);
+
+  // Show Level Up intro only for round 1 on Level Up routes, and before any result is recorded for round 0
+  useEffect(() => {
+    const hasResultForFirstRound = !!roundResults.find(r => r.roundIndex === 0);
+    setShowIntro(isLevelUpRoute && roundNumber === 1 && !hasResultForFirstRound);
+  }, [isLevelUpRoute, roundNumber, roundResults]);
+
+  // If intro is visible, pause the round timer; resume when dismissed (if timers are enabled)
+  useEffect(() => {
+    if (showIntro) {
+      setIsTimerActive(false);
+    } else if (timerEnabled) {
+      setIsTimerActive(true);
+    }
+  }, [showIntro, timerEnabled]);
 
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -249,7 +284,7 @@ const GameRoundPage = () => {
       console.log('[GameRoundPage] recordRoundResult called, navigating to results');
 
       setCurrentGuess(null);
-      navigate(`/test/game/room/${roomId}/round/${roundNumber}/results`);
+      navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
     } catch (error) {
       console.error('Error during guess submission:', error);
       toast({
@@ -319,7 +354,7 @@ const GameRoundPage = () => {
           variant: "info",
           className: "bg-white/70 text-black border border-gray-200",
         });
-        navigate(`/test/game/room/${roomId}/round/${roundNumber}/results`);
+        navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
         setIsSubmitting(false);
         return;
       } else if (selectedYear === null) {
@@ -343,7 +378,7 @@ const GameRoundPage = () => {
           variant: "info",
           className: "bg-white/70 text-black border border-gray-200",
         });
-        navigate(`/test/game/room/${roomId}/round/${roundNumber}/results`);
+        navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
         setIsSubmitting(false);
         return;
       } else {
@@ -388,7 +423,7 @@ const GameRoundPage = () => {
       }
       
       setTimeout(() => {
-        navigate(`/test/game/room/${roomId}/round/${roundNumber}/results`);
+        navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
         setIsSubmitting(false);
       }, 2000);
       
@@ -396,7 +431,7 @@ const GameRoundPage = () => {
       console.error("Error recording timeout result:", error);
       setIsSubmitting(false);
     }
-  }, [imageForRound, selectedYear, currentRoundIndex, recordRoundResult, toast, navigate, roomId, roundNumber, hasGuessedLocation, currentGuess, timerEnabled]);
+  }, [imageForRound, selectedYear, currentRoundIndex, recordRoundResult, toast, navigate, roomId, roundNumber, hasGuessedLocation, currentGuess, timerEnabled, modeBasePath]);
 
   const handleMapGuess = (lat: number, lng: number) => {
     console.log(`Guess placed at: Lat ${lat}, Lng ${lng}`);
@@ -411,8 +446,8 @@ const GameRoundPage = () => {
     }
 
     if (!isContextLoading && images.length > 0 && (isNaN(roundNumber) || roundNumber <= 0 || roundNumber > images.length)) {
-       console.warn(`Invalid round number (${roundNumber}) for image count (${images.length}). Navigating to final page.`);
-       navigate(`/test/game/room/${roomId}/final`);
+       console.warn(`Invalid round number (${roundNumber}) for image count (${images.length}). Navigating home.`);
+       navigate(`/home`);
        return;
     }
 
@@ -480,6 +515,13 @@ const GameRoundPage = () => {
         onPurchaseHint={purchaseHint}
         isHintLoading={isHintLoading}
       />
+
+      {/* Level Up Intro overlay BEFORE starting Round 1 (Level Up only) */}
+      {isLevelUpRoute && showIntro && (
+        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <LevelUpIntro onStart={() => setShowIntro(false)} />
+        </div>
+      )}
 
       {/* Confirmation Dialog */}
       <ConfirmNavigationDialog

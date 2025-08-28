@@ -1,5 +1,5 @@
-import { useNavigate, useParams } from 'react-router-dom';
-import { useEffect, useState, useCallback, type Dispatch, type SetStateAction } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useEffect, useState, useCallback, useMemo, type Dispatch, type SetStateAction } from 'react';
 import { UserProfile, fetchUserProfile } from '@/utils/profile/profileService';
 import ResultsLayout2 from "@/components/layouts/ResultsLayout2"; // Use the original layout
 import { useToast } from "@/components/ui/use-toast";
@@ -26,11 +26,11 @@ import { useRoundPeers } from '@/hooks/useRoundPeers';
 import { 
   calculateTimeAccuracy,
   calculateLocationAccuracy,
-  getTimeDifferenceDescription
+  getTimeDifferenceDescription,
+  computeRoundNetPercent
 } from '@/utils/gameCalculations';
-// Timer integration
-import TimerDisplay from '@/components/game/TimerDisplay';
-import { useNextRoundTimer } from '../hooks/useNextRoundTimer';
+import LevelRoundProgressCard from '@/components/levelup/LevelRoundProgressCard';
+// Timer integration removed to prevent flickering of Next Round button
 
 // Removed imports for utils/resultsFetching as we use context now
 // import { fetchRoundResult, checkGameProgress, advanceToNextRound } from '@/utils/resultsFetching';
@@ -93,9 +93,27 @@ const RoundResultsPage = () => {
   
   // Use useParams for new route structure
   const { roomId, roundNumber: roundNumberStr } = useParams<{ roomId: string; roundNumber: string }>(); 
+  const location = useLocation();
+  // Derive base mode path (everything before '/game/') so we can preserve /solo, /level, /compete/sync, /compete/async
+  const modeBasePath = useMemo(() => {
+    const path = location.pathname;
+    const idx = path.indexOf('/game/');
+    return idx > 0 ? path.slice(0, idx) : '/solo'; // default to /solo if not found
+  }, [location.pathname]);
+  
+  // Apply Level Up theming via body class when under /level/ routes
+  useEffect(() => {
+    const isLevelUp = location.pathname.includes('/level/');
+    if (isLevelUp) {
+      document.body.classList.add('mode-levelup');
+    }
+    return () => {
+      document.body.classList.remove('mode-levelup');
+    };
+  }, [location.pathname]);
   
   const handleNavigateHome = useCallback(() => {
-    navigate('/test');
+    navigate('/home');
   }, [navigate]);
   
   const confirmNavigation = useCallback((navigateTo: () => void) => {
@@ -104,7 +122,7 @@ const RoundResultsPage = () => {
   }, []);
 
   // Get data from GameContext
-  const { images, roundResults, isLoading: isContextLoading, error: contextError, hydrateRoomImages, syncRoomId, roundTimerSec, timerEnabled } = useGame();
+  const { images, roundResults, isLoading: isContextLoading, error: contextError, hydrateRoomImages, syncRoomId } = useGame();
 
   const roundNumber = parseInt(roundNumberStr || '1', 10);
   const currentRoundIndex = roundNumber - 1; // 0-based index
@@ -315,7 +333,6 @@ const RoundResultsPage = () => {
 
       // Construct the object matching LayoutRoundResultType from utils/resultsFetching
       const isCorrect = locationAccuracy >= 95; // Consider 95%+ as correct
-    console.log('Mapping result:', { isCorrect, locationAccuracy, guessLat: ctxResult.guessCoordinates?.lat, guessLng: ctxResult.guessCoordinates?.lng });
     const layoutResult: LayoutRoundResultType = {
           // Fields identified from linter errors & ResultsLayout2 usage
           imageId: img.id, 
@@ -352,8 +369,23 @@ const RoundResultsPage = () => {
       return layoutResult;
   }
 
-  // Generate the result in the format the layout expects
-  const resultForLayout = mapToLayoutResultType(contextResult, currentImage, hintDebts);
+  // Generate the result in the format the layout expects (memoized to avoid re-creating every render)
+  const resultForLayout = useMemo(() => {
+    return mapToLayoutResultType(contextResult, currentImage, hintDebts);
+  }, [contextResult, currentImage, hintDebts, earnedBadges]);
+
+  // --- Level Up per-round net percent (for progress card) ---
+  const isLevelUpRoute = useMemo(() => location.pathname.includes('/level/'), [location.pathname]);
+  const roundNetPercent = useMemo(() => {
+    if (!contextResult || !currentImage) return 0;
+    const actualYear = currentImage.year || 1900;
+    const guessYear = contextResult.guessYear ?? null;
+    const timeAcc = guessYear == null ? 0 : calculateTimeAccuracy(guessYear, actualYear);
+    const distanceKm = contextResult.distanceKm ?? null;
+    const locAcc = distanceKm == null ? 0 : calculateLocationAccuracy(distanceKm);
+    const totalAccDebt = hintDebts.reduce((sum, d) => sum + (Number(d.accDebt) || 0), 0);
+    return computeRoundNetPercent(timeAcc, locAcc, totalAccDebt);
+  }, [contextResult, currentImage, hintDebts]);
 
   // Handle navigation to next round or end of game
   const handleNext = () => {
@@ -373,49 +405,23 @@ const RoundResultsPage = () => {
     const isLastRound = currentRoundIndex === totalRounds - 1;
 
     if (isLastRound) {
-      console.log("Final round completed, navigating to final results page");
-      navigate(`/test/game/room/${roomId}/final`);
+      console.log("Final round completed, navigating to final within mode base (Solo -> /home)");
+      if (modeBasePath === '/solo') {
+        navigate(`/home`);
+      } else {
+        navigate(`${modeBasePath}/game/room/${roomId}/final`);
+      }
     } else {
       const nextRoundNumber = roundNumber + 1;
       console.log(`Navigating to next round: ${nextRoundNumber}`);
-      navigate(`/test/game/room/${roomId}/round/${nextRoundNumber}`);
+      navigate(`${modeBasePath}/game/room/${roomId}/round/${nextRoundNumber}`);
     }
     
     // No need to call advanceToNextRound, context handles state
     // setNavigating(false); // Navigation happens, so no need to unset here unless navigation fails
   };
 
-  // ---- Next-round countdown timer integration ----
-  const nextRoundDurationSec = (timerEnabled && typeof roundTimerSec === 'number' && roundTimerSec > 0) ? roundTimerSec : 0;
-
-  const { remainingMs, isActive: timerIsActive, controls } = useNextRoundTimer({
-    durationMs: Math.max(0, nextRoundDurationSec * 1000),
-    enabled: nextRoundDurationSec > 0,
-    autoStart: false, // start once results are ready
-    onExpire: handleNext,
-    tickMs: 1000,
-  });
-
-  const { start: timerStart, pause: timerPause, reset: timerReset, setRemaining: timerSetRemaining } = controls;
-
-  const remainingSec = Math.ceil(remainingMs / 1000);
-
-  // Bridge setter to seconds-based TimerDisplay API
-  const setRemainingSec = useCallback<Dispatch<SetStateAction<number>>>((updater) => {
-    const current = remainingSec;
-    const nextVal = typeof updater === 'function' ? (updater as (prev: number) => number)(current) : updater;
-    timerSetRemaining(Math.max(0, nextVal) * 1000);
-  }, [remainingSec, timerSetRemaining]);
-
-  // Start/pause timer when results are ready or navigating
-  useEffect(() => {
-    if (resultForLayout && nextRoundDurationSec > 0 && !navigating) {
-      timerReset(nextRoundDurationSec * 1000);
-      timerStart();
-    } else {
-      timerPause();
-    }
-  }, [resultForLayout, nextRoundDurationSec, navigating, timerReset, timerStart, timerPause]);
+  // Next-round countdown timer removed
 
   // Show loading state from context (if game is still loading initially)
   // Note: This page might not be reachable if context is loading due to GameRoundPage checks
@@ -474,6 +480,11 @@ const RoundResultsPage = () => {
   // Pass the correctly mapped result to the layout
   return (
     <>
+      {isLevelUpRoute && (
+        <div className="px-4 pt-4">
+          <LevelRoundProgressCard roundIndex={currentRoundIndex} netPercent={Math.round(roundNetPercent)} />
+        </div>
+      )}
       <ResultsLayout2 
         round={roundNumber}
         totalRounds={images.length}
@@ -484,19 +495,9 @@ const RoundResultsPage = () => {
         peers={(peerRows || []).filter(p => !user || p.userId !== user.id)}
         nextRoundButton={
           <div className="flex items-center gap-2">
-            {nextRoundDurationSec > 0 && resultForLayout ? (
-              <TimerDisplay
-                remainingTime={remainingSec}
-                setRemainingTime={setRemainingSec}
-                isActive={timerIsActive}
-                onTimeout={handleNext}
-                roundTimerSec={nextRoundDurationSec}
-                externalTimer={true}
-              />
-            ) : null}
             <Button 
               onClick={handleNext} 
-              disabled={navigating || timerIsActive} 
+              disabled={navigating}
               className="rounded-xl bg-orange-500 text-white font-semibold text-sm px-5 py-2 shadow-lg hover:bg-orange-500 active:bg-orange-500 transition-colors min-w-[120px]"
             >
               {navigating ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}

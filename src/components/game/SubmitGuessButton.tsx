@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -22,9 +22,14 @@ const SubmitGuessButton: React.FC<SubmitGuessButtonProps> = ({
   guessData
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { roomId, roundNumber: roundNumberStr } = useParams<{ roomId: string; roundNumber: string }>();
   const roundNumber = parseInt(roundNumberStr || '1', 10);
+  // Derive base mode path (everything before '/game/') so navigation stays within current mode
+  const path = location.pathname;
+  const splitIdx = path.indexOf('/game/');
+  const modeBasePath = splitIdx > 0 ? path.slice(0, splitIdx) : '/solo';
 
   const handleSubmit = async () => {
     if (!roomId || isNaN(roundNumber)) {
@@ -87,10 +92,14 @@ const SubmitGuessButton: React.FC<SubmitGuessButtonProps> = ({
       const nextRoundNumber = roundNumber + 1;
       if (nextRoundNumber <= 5) {
         console.log(`Navigating to next round: ${nextRoundNumber}`);
-        navigate(`/game/room/${roomId}/round/${nextRoundNumber}`);
+        navigate(`${modeBasePath}/game/room/${roomId}/round/${nextRoundNumber}`);
       } else {
-        console.log(`Navigating to final results for room ${roomId}`);
-        navigate(`/game/room/${roomId}/final`);
+        console.log(`Final round completed for room ${roomId}, navigating to final within mode (Solo -> /home)`);
+        if (modeBasePath === '/solo') {
+          navigate(`/home`);
+        } else {
+          navigate(`${modeBasePath}/game/room/${roomId}/final`);
+        }
       }
 
     } catch (err) {

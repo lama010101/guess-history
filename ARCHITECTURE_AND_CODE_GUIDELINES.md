@@ -266,6 +266,20 @@
 
 - Rationale: Shared, reusable hooks avoid duplication across Solo/Compete variants and keep layout components UI-focused. Pages own timer behavior based on mode flags.
 
+#### Server-Authoritative Round Timer Integration (2025-08-28)
+
+- **Hook**: `hooks/useServerCountdown.ts`
+- **Timer record API**: `src/lib/timers.ts` (`startTimer`, `getTimer`)
+- **Timer ID convention**: For room-based rounds, construct as `"${roomId}:round:${roundNumber}"` (roundNumber is 1-based per routing). This yields a stable composite key with `public.round_timers` (PK: `user_id + timer_id`).
+- **Game page integration**: `src/pages/GameRoundPage.tsx`
+  - Replaces local elapsed-time hydration with `useServerCountdown`.
+  - Passes `durationSec = roundTimerSec` and `autoStart = timerEnabled && !showIntro`.
+  - Mirrors hook state into existing props without UI changes:
+    - `remainingTime ← remainingSec`
+    - `isTimerActive ← !expired`
+  - On expiry, calls the existing `handleTimeComplete()` which routes to results and records a zero/partial score per prior behavior.
+- **Image hydration**: `hydrateRoomImages(roomId)` is invoked on mount when `images.length === 0`; dev-only logs added to trace hydration and round image selection.
+
 ### Round Results Types and Next-Round Timer
 
 - __Type source of truth__
@@ -2098,4 +2112,54 @@ Notes
 - Assets referenced are in `public/icons/` and can be used directly with absolute paths (e.g., `/icons/logo.webp`).
 - Ensure mobile and desktop views are tested for scroll-snap centering and unified button sizing.
 
-```
+## Server-Authoritative Countdown Timer (2025-08-28)
+
+- Overview
+  - Timers are stored and enforced in Postgres. Clients read server deadlines and compensate for local clock skew.
+  - Supports multiple independent timers keyed by `timer_id`, namespaced per user via composite PK `(user_id, timer_id)`.
+
+- Database
+  - Table: `public.round_timers`
+    - Columns: `user_id uuid`, `timer_id text`, `started_at timestamptz`, `end_at timestamptz`, `duration_sec int`, `created_at`, `updated_at`
+    - PK: `(user_id, timer_id)`
+    - Indexes: `user_id`, `end_at`
+    - RLS enabled with owner-only `SELECT/INSERT/UPDATE` (`user_id = auth.uid()`).
+  - Trigger: `public.touch_updated_at()` updates `updated_at` on row updates.
+  - RPCs (security definer):
+    - `start_timer(p_timer_id text, p_duration_sec int)` → upsert for `auth.uid()`, server-computed `end_at`; returns `{ timer_id, end_at, server_now, duration_sec, started_at }`.
+    - `get_timer(p_timer_id text)` → returns the same shape for `auth.uid()`.
+  - Grants: `grant execute on function start_timer, get_timer to authenticated`.
+
+- Client Code
+  - Supabase client: `src/integrations/supabase/client.ts` (existing)
+  - Timer utilities: `src/lib/timers.ts`
+    - `startTimer(timerId, durationSec)` calls `start_timer` RPC.
+    - `getTimer(timerId)` calls `get_timer` RPC.
+    - Both return a `TimerRecord` with `server_now` for skew compensation and log under `[timers]`.
+  - React hook: `src/hooks/useServerCountdown.ts`
+    - Computes fixed server offset: `offsetMs = server_now - Date.now()`.
+    - Tracks `remainingMs/remainingSec`, `expired`, `ready`, and runs an interval tick (default 250ms).
+    - `autoStart` will call `startTimer` if the timer is missing (requires `durationSec`).
+    - Invokes `onExpire` exactly once when remaining time reaches 0.
+  - Optional UI: `src/components/Timer/Countdown.tsx`
+    - Minimal renderer that uses `useServerCountdown`. Accepts `render` prop for custom display.
+
+- Usage Notes
+  - Persist timer by calling `startTimer(timerKey, durationSec)` when a round begins (e.g., host broadcast or solo start).
+  - Always render client countdown via `useServerCountdown({ timerId: timerKey })`; never trust local clocks.
+  - Multiple timers per user are supported via distinct `timerId` keys (e.g., `round:room123:1`).
+
+- Verification
+  - Refresh the page mid-round: remaining time should continue from the server deadline.
+  - Change local system clock: countdown remains accurate due to server offset.
+  - RLS: authenticated user can only access their own timers; other users get no rows.
+  - Multi-timer: start two different `timerId`s and verify independence.
+
+- Migrations
+  - Files (under `supabase/migrations/`):
+    - `20250828112930_round_timers_01_table.sql`
+    - `20250828112931_round_timers_02_policies.sql`
+    - `20250828112932_round_timers_03_trigger.sql`
+    - `20250828112933_round_timers_04_rpcs.sql`
+    - `20250828112934_round_timers_05_grants.sql`
+  - Apply with: `SUPABASE_DB_URL=... npx tsx scripts/apply-migrations.ts`

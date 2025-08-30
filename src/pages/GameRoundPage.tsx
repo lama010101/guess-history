@@ -7,7 +7,7 @@ import { GuessCoordinates } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserProfile, fetchUserProfile } from '@/utils/profile/profileService';
 import { useToast } from "@/components/ui/use-toast";
-import { getOrCreateRoundState, setCurrentRoundInSession } from '@/utils/roomState';
+import { setCurrentRoundInSession } from '@/utils/roomState';
 import { Button } from '@/components/ui/button';
 import { SegmentedProgressBar } from '@/components/ui';
 import LevelUpIntro from '@/components/levelup/LevelUpIntro';
@@ -27,6 +27,7 @@ import {
   calculateLocationXP, 
   ROUNDS_PER_GAME 
 } from '@/utils/gameCalculations';
+import { useServerCountdown } from '@/hooks/useServerCountdown';
 
 // Rename component
 const GameRoundPage = () => {
@@ -127,32 +128,35 @@ const GameRoundPage = () => {
   const [hasTimedOut, setHasTimedOut] = useState<boolean>(false);
   const [hasGuessedLocation, setHasGuessedLocation] = useState<boolean>(false);
 
-  // Initialize round timer from shared room/round state (persisted in Supabase)
+  // Server-authoritative countdown integration
+  const timerId = useMemo(() => {
+    // Deterministic per-room per-round ID
+    return roomId && !isNaN(roundNumber) ? `${roomId}:round:${roundNumber}` : '';
+  }, [roomId, roundNumber]);
+
+  const { ready: timerReady, expired: timerExpired, remainingSec, refetch } = useServerCountdown({
+    timerId,
+    durationSec: roundTimerSec,
+    autoStart: !!(timerEnabled && !showIntro && timerId),
+    onExpire: () => {
+      if (import.meta.env.DEV) console.debug('[GameRoundPage] Server timer expired');
+      handleTimeComplete();
+    },
+  });
+
+  // Reflect server timer into UI state without changing UI contract
   useEffect(() => {
-    let cancelled = false;
-    const initTimer = async () => {
-      if (!timerEnabled) {
-        setRemainingTime(0);
-        setIsTimerActive(false);
-        return;
-      }
-      if (!roomId || isNaN(roundNumber)) return;
-      try {
-        const state = await getOrCreateRoundState(roomId, roundNumber, roundTimerSec);
-        if (cancelled) return;
-        const elapsed = Math.floor((Date.now() - new Date(state.started_at).getTime()) / 1000);
-        // Clamp to protect against client/server clock skew giving extra time
-        const remainRaw = state.duration_sec - elapsed;
-        const clampedRemain = Math.max(0, Math.min(state.duration_sec, remainRaw));
-        setRemainingTime(clampedRemain);
-        setIsTimerActive(true);
-      } catch (e) {
-        console.warn('[GameRoundPage] getOrCreateRoundState failed; using local timer init', e);
-      }
-    };
-    initTimer();
-    return () => { cancelled = true; };
-  }, [roomId, roundNumber, roundTimerSec, timerEnabled]);
+    if (!timerEnabled) {
+      setRemainingTime(0);
+      setIsTimerActive(false);
+      return;
+    }
+    // Keep local state in sync with server countdown
+    if (timerReady) {
+      setRemainingTime(remainingSec);
+      setIsTimerActive(!timerExpired);
+    }
+  }, [timerEnabled, timerReady, remainingSec, timerExpired]);
 
   // Persist the current round number to game_sessions so reconnect can restore it
   useEffect(() => {
@@ -166,6 +170,7 @@ const GameRoundPage = () => {
   useEffect(() => {
     if (!roomId) return;
     if (images && images.length > 0) return;
+    if (import.meta.env.DEV) console.debug('[GameRoundPage] Hydrating room images for', roomId);
     hydrateRoomImages(roomId);
   }, [roomId, images.length, hydrateRoomImages]);
 
@@ -178,6 +183,12 @@ const GameRoundPage = () => {
       roundNumber <= images.length
         ? images[currentRoundIndex]
         : null;
+
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.debug('[GameRoundPage] imageForRound', { roundNumber, hasImage: !!imageForRound });
+    }
+  }, [roundNumber, imageForRound]);
 
   // V2 hint system - track purchased hints for this image
   const { purchasedHints, purchasedHintIds, xpDebt, accDebt, purchaseHint, availableHints, isHintLoading } = useHintV2(imageForRound, { roomId: roomId!, roundNumber });

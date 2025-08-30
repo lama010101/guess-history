@@ -9,6 +9,7 @@ import { Hint } from '@/hooks/useHintV2';
 import { RoundResult, GuessCoordinates } from '@/types';
 import { useGamePreparation, PrepStatus, PreparedImage } from '@/hooks/useGamePreparation';
 import { getLevelConstraints } from '@/lib/levelUpConfig';
+import { awardRoundAchievements, awardGameAchievements } from '@/utils/achievements';
 
 // Dev logging guard
 const isDev = (import.meta as any)?.env?.DEV === true;
@@ -300,8 +301,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       
       devLog(`[GameContext] [GameID: ${gameId || 'N/A'}] Fetching metrics for user ${user.id}`);
 
-      // Fetch metrics from Supabase
-      const { data: metrics, error: fetchError } = await supabase
+      // Fetch metrics from Supabase (loosen local typing to avoid typed table drift)
+      const sb: any = supabase;
+      const { data: metrics, error: fetchError } = await sb
         .from('user_metrics')
         .select('xp_total, overall_accuracy, games_played')
         .eq('user_id', user.id)
@@ -1030,117 +1032,69 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           console.warn('[GameContext] recordRoundResult: fallback handling threw', fallbackErr);
         }
       }
+      // Update local state after persistence attempts (regardless of fallback path)
+      setRoundResults((prev) => {
+        const next = [...prev];
+        next[currentRoundIndex] = fullResult;
+        return next;
+      });
+      saveGameState();
 
-      if (upsertError) {
-        console.error('Error persisting round result (after fallbacks):', upsertError);
-      } else {
-        console.log('Round result persisted successfully:', upsertData);
+      // Award round-level achievements (deduped per context)
+      try {
+        const contextIdForAchievements = effectiveRoomId ?? gameId;
+        await awardRoundAchievements({
+          userId: user.id,
+          contextId: contextIdForAchievements,
+          actualYear: currentImage.year,
+          result: fullResult,
+        });
+      } catch (achErr) {
+        console.warn('[GameContext] awardRoundAchievements failed', achErr);
       }
-    } catch (error) {
-      console.error('Error in recordRoundResult:', error);
+    } catch (persistErr) {
+      console.error('[GameContext] Error persisting round result', persistErr);
     }
+  }, [gameId, images, roomId, ensureSessionMembership, repairMissingRoomId, saveGameState]);
 
-    // Update local state
-    setRoundResults(prevResults => {
-        const existingIndex = prevResults.findIndex(r => r.roundIndex === currentRoundIndex);
-        if (existingIndex !== -1) {
-            const updatedResults = [...prevResults];
-            updatedResults[existingIndex] = fullResult;
-            return updatedResults;
-        } else {
-            return [...prevResults, fullResult];
-        }
-    });
-  }, [images, gameId, roomId, ensureSessionMembership, repairMissingRoomId]);
+  // After all rounds complete, award game-level achievements once per session/context
+  useEffect(() => {
+    if (!gameId) return;
+    if (images.length === 0) return;
+    if (roundResults.length !== images.length) return;
+    if (roundResults.some((r) => r == null)) return;
 
-  const handleTimeUp = useCallback((currentRoundIndex: number) => {
-    if (currentRoundIndex < 0 || currentRoundIndex >= images.length) {
-      console.error(`[GameContext] handleTimeUp: Invalid round index ${currentRoundIndex}.`);
-      return;
-    }
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const contextId = roomId ?? gameId;
+        const actualYears = images.map((img) => img.year);
+        await awardGameAchievements({
+          userId: user.id,
+          contextId,
+          actualYears,
+          results: roundResults,
+        });
+      } catch (e) {
+        console.warn('[GameContext] awardGameAchievements failed', e);
+      }
+    })();
+  }, [roundResults, images, gameId, roomId]);
 
-    const existingResult = roundResults.find(r => r.roundIndex === currentRoundIndex);
-    if (existingResult) {
-      console.log(`[GameContext] handleTimeUp: Result for round ${currentRoundIndex + 1} already exists.`);
-      return; // Avoid re-submitting
-    }
-
-    console.log(`[GameContext] Time's up for round ${currentRoundIndex + 1}! Recording null result.`);
-
-    console.log(`[GameContext] Time is up for round ${currentRoundIndex + 1}`);
-    
-    if (!images || images.length === 0 || !images[currentRoundIndex]) {
-      console.error(`[GameContext] handleTimeUp: Images array is empty or current image not found for index ${currentRoundIndex}. Cannot record result.`);
-      return; 
-    }
-
-    const currentImage = images[currentRoundIndex];
-    const hintsUsedForRound = (roundResults && roundResults[currentRoundIndex]?.hintsUsed !== undefined) 
-                              ? roundResults[currentRoundIndex].hintsUsed 
-                              : 0;
-    
-    // Get the current year guess if it exists (from partial round result), or use default year (1932)
-    // This preserves the user's selected year rather than setting it to null or the correct answer
-    const currentYearGuess = (roundResults && roundResults[currentRoundIndex]?.guessYear) || 1932;
-
-    const resultDataForTimeout: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'> = {
-      guessCoordinates: null, // No guess made as time is up
-      distanceKm: null,       // No distance calculated for location
-      score: 0,               // Score for a timed-out round is 0
-      guessYear: currentYearGuess, // Preserve user's selected year or use default
-      xpWhere: 0,             // Location XP is 0 as per requirement
-      xpWhen: 0,              // Time/Year XP is 0
-      accuracy: 0,            // Overall accuracy for this round is 0
-      hintsUsed: hintsUsedForRound, // Preserve hints used if any, otherwise 0
-    };
-
-    console.log('[GameContext] handleTimeUp: Recording result for timed-out round:', resultDataForTimeout);
-    recordRoundResult(resultDataForTimeout, currentRoundIndex);
-    
-    // Explicitly navigate to the round results page
-    // Use the URL room ID from the browser if available, otherwise use gameId
-    // This ensures consistency between URL and context room IDs
-    const urlParams = new URLSearchParams(window.location.pathname);
-    const urlRoomId = window.location.pathname.split('/room/')[1]?.split('/')[0] || null;
-    
-    // Use URL room ID if available, otherwise fall back to context gameId
-    const roomId = urlRoomId || gameId || 'default';
-    
-    const roundNumber = currentRoundIndex + 1; // Convert 0-based index to 1-based round number
-    console.log(`[GameContext] handleTimeUp: Navigating to results page for round ${roundNumber} with roomId ${roomId}`);
-    navigate(`/test/game/room/${roomId}/round/${roundNumber}/results`);
-  }, [images, recordRoundResult, roundResults, navigate, gameId]);
-
+  // Minimal resetGame implementation (no UI coupling)
   const resetGame = useCallback(() => {
-    console.log(`[GameContext] [GameID: ${gameId || 'N/A'}] Resetting game state...`);
-    clearSavedGameState();
-    setRoomId(null);
-    setGameId(null);
     setImages([]);
     setRoundResults([]);
     setError(null);
     setIsLoading(false);
-  }, [clearSavedGameState, gameId]);
+    setGameId(uuidv4());
+  }, []);
 
-  // === Record played images when game ends ===
-  useEffect(() => {
-    (async () => {
-      if (images.length > 0 && roundResults.length === images.length) {
-        const { data: { user } } = await supabase.auth.getUser();
-        try {
-          await recordPlayedImages(user?.id ?? null, images.map((img) => img.id));
-        } catch (err) {
-          console.error('[GameContext] Failed to record played images', err);
-        }
-      }
-    })();
-  }, [images, roundResults]);
-
-  // Timer initialization is handled in GameRoundPage.tsx
-
-  const contextValue = {
+  const contextValue: GameContextState = {
     gameId,
-    setGameId, // Add setGameId to the context value
+    setGameId,
+    refreshGlobalMetrics,
     roomId,
     images,
     roundResults,
@@ -1160,10 +1114,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     startGame,
     startLevelUpGame,
     recordRoundResult,
-    handleTimeUp,
     resetGame,
     fetchGlobalMetrics,
-    refreshGlobalMetrics,
     setProvisionalGlobalMetrics,
     hydrateRoomImages,
     syncRoomId,

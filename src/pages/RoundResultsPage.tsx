@@ -1,5 +1,5 @@
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { useEffect, useState, useCallback, useMemo, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef, type Dispatch, type SetStateAction } from 'react';
 import { UserProfile, fetchUserProfile } from '@/utils/profile/profileService';
 import ResultsLayout2 from "@/components/layouts/ResultsLayout2"; // Use the original layout
 import { useToast } from "@/components/ui/use-toast";
@@ -63,6 +63,18 @@ interface LayoutRoundResult {
     guessLng?: number | null;
 }
 */
+
+// Typed row for round_hints to avoid any in Supabase query
+type RoundHintRow = {
+  hint_id: string;
+  xpDebt: number;
+  accDebt: number;
+  label: string;
+  hint_type: string;
+  purchased_at: string;
+  round_id: string;
+  user_id?: string;
+};
 
 const RoundResultsPage = () => {
   // ---------------------------------- Hint debts ----------------------------------
@@ -135,7 +147,7 @@ const RoundResultsPage = () => {
         hydrateRoomImages(roomId);
       }
     }
-  }, [roomId, images.length, hydrateRoomImages, syncRoomId]);
+  }, [roomId, images, hydrateRoomImages, syncRoomId]);
 
   // Find the context result and image data
   const contextResult = roundResults.find(r => r.roundIndex === currentRoundIndex);
@@ -163,23 +175,16 @@ const RoundResultsPage = () => {
     console.log('Query Params:', { userId: user.id, roundSessionId });
 
     try {
-      // Use an untyped query here because generated Database types do not yet include 'round_hints'
-      const { data, error } = await (supabase as any)
+      // Query for round_hints (not in generated Database types yet)
+      // @ts-expect-error round_hints is not in generated types; safe to query by name
+      const { data, error } = await supabase
         .from('round_hints')
         .select('hint_id, xpDebt, accDebt, label, hint_type, purchased_at, round_id')
         .eq('user_id', user.id)
         .eq('round_id', roundSessionId)
         .order('purchased_at', { ascending: true });
 
-      const hintRecords = (data ?? []) as Array<{
-        hint_id: string;
-        xpDebt: number;
-        accDebt: number;
-        label: string;
-        hint_type: string;
-        purchased_at: string;
-        round_id: string;
-      }>;
+      const hintRecords = ((data ?? []) as unknown) as RoundHintRow[];
 
       if (error) {
         console.error('Error fetching hint debts:', error);
@@ -204,7 +209,7 @@ const RoundResultsPage = () => {
         return;
       }
       
-      const processedDebts = hintRecords.map((hint: any) => ({
+      const processedDebts = hintRecords.map((hint) => ({
         hintId: hint.hint_id,
         xpDebt: Number(hint.xpDebt) || 0,
         accDebt: Number(hint.accDebt) || 0,
@@ -233,38 +238,55 @@ const RoundResultsPage = () => {
   // State for navigation loading indicator
   const [navigating, setNavigating] = useState(false);
   const [earnedBadges, setEarnedBadges] = useState<Badge[]>([]);
+  const awardsSubmittedRef = useRef<boolean>(false);
 
   // Award badges when results are viewed
   useEffect(() => {
     const awardBadges = async () => {
-      if (!user || !contextResult || !currentImage || !roomId) return;
-      
+      if (!contextResult || !currentImage || !roomId) return;
+      if (awardsSubmittedRef.current) return; // dedupe within this page lifecycle
+
       try {
+        // Ensure we have an authenticated user (anonymous or registered)
+        let { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) {
+          try {
+            const { data, error } = await supabase.auth.signInAnonymously();
+            if (error) throw error;
+            authUser = data?.user || null;
+          } catch (signInError) {
+            console.error('RoundResultsPage: Anonymous sign-in failed:', signInError);
+            return;
+          }
+        }
+        if (!authUser) return;
+
         // Get the year accuracy and location accuracy to check for perfect scores
         const actualYear = currentImage.year || 1900;
         const guessYear = contextResult.guessYear ?? actualYear;
         const yearDifference = Math.abs(actualYear - guessYear);
-        
+
         // Check for perfect year (exact match)
-        const yearAccuracy = yearDifference === 0 ? 100 : 
-          Math.max(0, 100 - (yearDifference / 50) * 100);
-        
-        // Check for perfect location (95%+ accuracy)  
+        const yearAccuracy = yearDifference === 0 ? 100 : Math.max(0, 100 - (yearDifference / 50) * 100);
+
+        // Check for perfect location (95%+ accuracy)
         const maxDistKm = 2000;
         const clampedDist = Math.min(contextResult.distanceKm ?? maxDistKm, maxDistKm);
         const locationAccuracy = Math.round(100 * (1 - clampedDist / maxDistKm));
-        
+
         // Award badges based on performance
         const badges = await awardRoundBadges(
-          user.id, 
-          roomId, 
+          authUser.id,
+          roomId,
           currentRoundIndex,
           yearAccuracy,
           locationAccuracy,
           guessYear,
           actualYear
         );
-        
+
+        awardsSubmittedRef.current = true;
+
         // Show badge notification if any badges were earned
         if (badges.length > 0) {
           setEarnedBadges(badges);
@@ -279,9 +301,9 @@ const RoundResultsPage = () => {
         console.error('Error awarding badges:', error);
       }
     };
-    
+
     awardBadges();
-  }, [user, contextResult, currentImage, roomId, currentRoundIndex]);
+  }, [contextResult, currentImage, roomId, currentRoundIndex]);
 
   // Mapping function: Context -> Layout Type
   const mapToLayoutResultType = (
@@ -372,7 +394,7 @@ const RoundResultsPage = () => {
   // Generate the result in the format the layout expects (memoized to avoid re-creating every render)
   const resultForLayout = useMemo(() => {
     return mapToLayoutResultType(contextResult, currentImage, hintDebts);
-  }, [contextResult, currentImage, hintDebts, earnedBadges]);
+  }, [mapToLayoutResultType, contextResult, currentImage, hintDebts, earnedBadges]);
 
   // --- Level Up per-round net percent (for progress card) ---
   const isLevelUpRoute = useMemo(() => location.pathname.includes('/level/'), [location.pathname]);

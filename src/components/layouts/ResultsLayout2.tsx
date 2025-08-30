@@ -338,7 +338,11 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   Where
                 </h2>
                 <Badge variant="hint" className="text-sm">
-                  {result?.distanceKm == null ? 'No guess' : `${formatInteger(result.distanceKm)} km away`}
+                  {result?.distanceKm == null
+                    ? 'No guess'
+                    : (result.distanceKm === 0
+                        ? <span className="text-green-600 dark:text-green-400 font-medium">Perfect!</span>
+                        : `${formatInteger(result.distanceKm)} km away`)}
                 </Badge>
               </div>
               {/* badges moved below progress bar */}

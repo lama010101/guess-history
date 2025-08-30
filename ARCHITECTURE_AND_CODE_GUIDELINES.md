@@ -338,7 +338,18 @@
     - Hint list top margin: `mt-4` (was `mt-3`).
   - No behavioral changes; only spacing.
 
-Note: Sections below referencing modules under `src/multiplayer/*` (e.g., `Server.ts`, `MultiplayerAdapter.ts`) represent planned design. For the current implementation, treat `server/lobby.ts` and `src/lib/partyClient.ts` as canonical. The remainder of this document is preserved as an appendix for detailed design and UI notes.
+#### Perfect! Labels and Final Results Badge Popup (2025-08-30)
+
+- __Perfect! labels__
+  - `src/components/layouts/ResultsLayout2.tsx`: “Where” card shows green “Perfect!” when `distanceKm === 0` (already showed for time when `yearDifference === 0`).
+  - `src/components/RoundResultCard.tsx`: In the details section, “WHEN” shows “Perfect!” when `Math.abs(guessYear - image.year) === 0`; “WHERE” shows “Perfect!” when `result.distanceKm === 0`. Keeps “No guess” text when appropriate.
+- __Final Results badge popup__
+  - `src/pages/FinalResultsPage.tsx` awards game-level achievements on load via `awardGameAchievements({ userId, contextId, actualYears, results })` with `contextId = roomId || gameId`.
+  - Then evaluates and awards badges with `checkAndAwardBadges(userId, userMetrics)` and displays the first earned badge using `BadgeEarnedPopup`.
+  - Guarded by `awardsSubmittedRef` to dedupe per session. Badge queue handled via `earnedBadges[]` + `activeBadge`.
+  - User metrics for evaluation include: `games_played`, `perfect_rounds`, `perfect_games`, `time_accuracy`, `location_accuracy`, `overall_accuracy`, `xp_total`, `year_bullseye`, `location_bullseye` (see `src/utils/badges/types.ts`).
+
+  Note: Sections below referencing modules under `src/multiplayer/*` (e.g., `Server.ts`, `MultiplayerAdapter.ts`) represent planned design. For the current implementation, treat `server/lobby.ts` and `src/lib/partyClient.ts` as canonical. The remainder of this document is preserved as an appendix for detailed design and UI notes.
 
 ## Appendix — Detailed Design and UI Notes
 
@@ -2181,3 +2192,20 @@ Notes
     - `20250828112933_round_timers_04_rpcs.sql`
     - `20250828112934_round_timers_05_grants.sql`
   - Apply with: `SUPABASE_DB_URL=... npx tsx scripts/apply-migrations.ts`
+
+## E2E Testing (Playwright) — 2025-08-30
+
+- __Setup__
+  - Dev dependency: `@playwright/test` in `package.json`.
+  - Config: `playwright.config.ts` starts Vite dev server on `http://localhost:5173` and runs tests in Chromium/Firefox/WebKit.
+- __Commands__
+  - Install browsers: `npx playwright install`
+  - Run tests: `npm run test:e2e`
+  - Run tests UI: `npm run test:e2e:ui`
+- __Test locations__
+  - E2E specs live under `tests/e2e/`.
+  - Final Results smoke test: `tests/e2e/final-results.spec.ts` validates the static test page at `pages/test/final/index.tsx` without UI changes.
+- __Selectors policy__
+  - Prefer accessible roles/text (e.g., headings, buttons). Avoid adding bespoke data attributes unless stability becomes an issue.
+- __CI notes__
+  - Retries enabled on CI; server is reused locally for speed.

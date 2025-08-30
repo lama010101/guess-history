@@ -60,7 +60,7 @@ const RoundResultCard: React.FC<RoundResultCardProps> = ({ image, result, index 
                   <div className="flex-1 p-3 rounded-lg bg-gray-100 dark:bg-[#262626]">
                     <h4 className="flex items-center mb-2 text-sm font-medium text-history-primary dark:text-history-light"><Calendar className="h-4 w-4 mr-1" />WHEN</h4>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">{result.guessYear ? `${yearDifference} years off` : 'No guess'}</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{result.guessYear ? (yearDifference === 0 ? <span className="text-green-600 dark:text-green-400 font-medium">Perfect!</span> : `${yearDifference} years off`) : 'No guess'}</span>
                       <div className="flex items-center gap-2">
                         <Badge variant="accuracy" className="text-xs">{formatInteger(calculateTimeAccuracy(result.guessYear || 0, image.year || 0))}%</Badge>
                         <Badge variant="xp" className="text-xs">{formatInteger(result.xpWhen ?? 0)} XP</Badge>
@@ -70,7 +70,7 @@ const RoundResultCard: React.FC<RoundResultCardProps> = ({ image, result, index 
                   <div className="flex-1 p-3 rounded-lg bg-gray-100 dark:bg-[#2a2a2a]">
                     <h4 className="flex items-center mb-2 text-sm font-medium text-history-primary dark:text-history-light"><MapPin className="h-4 w-4 mr-1" />WHERE</h4>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">{result.distanceKm == null ? 'No guess' : `${formatInteger(result.distanceKm)} km away`}</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{result.distanceKm == null ? 'No guess' : (result.distanceKm === 0 ? <span className="text-green-600 dark:text-green-400 font-medium">Perfect!</span> : `${formatInteger(result.distanceKm)} km away`)}</span>
                       <div className="flex items-center gap-2">
                         <Badge variant="accuracy" className="text-xs">{formatInteger(calculateLocationAccuracy(result.distanceKm || 0))}%</Badge>
                         <Badge variant="xp" className="text-xs">{formatInteger(result.xpWhere ?? 0)} XP</Badge>

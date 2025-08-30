@@ -181,6 +181,37 @@ export type Database = {
           },
         ]
       }
+      // Achievements earned by users
+      achievements: {
+        Row: {
+          id: string
+          user_id: string
+          type: string
+          level: string | null
+          value: number | null
+          context_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: string
+          level?: string | null
+          value?: number | null
+          context_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: string
+          level?: string | null
+          value?: number | null
+          context_id?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       air_entries: {
         Row: {
           created_at: string

@@ -11,6 +11,10 @@ import RoundResultCard from '@/components/RoundResultCard';
 import { useGame } from "@/contexts/GameContext";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useRef } from 'react';
+import { BadgeEarnedPopup } from '@/components/badges/BadgeEarnedPopup';
+import { checkAndAwardBadges } from '@/utils/badges/badgeService';
+import type { Badge as EarnedBadgeType, BadgeRequirementCode } from '@/utils/badges/types';
+import { awardGameAchievements } from '@/utils/achievements';
 import { 
   calculateFinalScore,
   calculateTimeAccuracy,
@@ -42,6 +46,7 @@ const FinalResultsPage = () => {
   } = useGame();
   const submittedGameIdRef = useRef<string | null>(null);
   const provisionalAppliedRef = useRef<boolean>(false);
+  const awardsSubmittedRef = useRef<boolean>(false);
   
   // Apply Level Up theming via body class when under /level/ routes
   useEffect(() => {
@@ -58,6 +63,8 @@ const FinalResultsPage = () => {
   const [isRoundSummaryOpen, setIsRoundSummaryOpen] = React.useState(true);
   const [totalXpDebtState, setTotalXpDebtState] = React.useState(0);
   const [accDebtByRound, setAccDebtByRound] = React.useState<Record<string, number>>({});
+  const [earnedBadges, setEarnedBadges] = React.useState<EarnedBadgeType[]>([]);
+  const [activeBadge, setActiveBadge] = React.useState<EarnedBadgeType | null>(null);
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -119,16 +126,19 @@ const FinalResultsPage = () => {
         const gameRoundIds = !roomId && gameId ? images.map((_, idx) => makeRoundId(gameId, idx + 1)) : [];
         const roundIds = roomRoundIds.length > 0 ? roomRoundIds : gameRoundIds;
         try {
-          const { data: hintRows, error } = await supabase
+          // round_hints is not part of generated Database types; use expect-error and cast result shape
+          // @ts-expect-error round_hints table is not in generated types yet
+          const { data: rawRows, error } = await supabase
             .from('round_hints')
             .select('round_id, cost_xp, cost_accuracy')
             .eq('user_id', user.id)
-            .in('round_id', roundIds as any);
+            .in('round_id', roundIds);
           if (error) {
             console.warn('[FinalResults] hint debts query error', error);
-          } else if (hintRows && hintRows.length) {
-            for (const r of hintRows as any[]) {
-              const rid = r.round_id as string;
+          } else if (Array.isArray(rawRows) && rawRows.length) {
+            const rows = (rawRows as unknown) as Array<{ round_id: string; cost_xp: number | null; cost_accuracy: number | null }>;
+            for (const r of rows) {
+              const rid = r.round_id;
               const xd = Number(r.cost_xp) || 0;
               const ad = Number(r.cost_accuracy) || 0;
               totalXpDebt += xd;
@@ -210,8 +220,8 @@ const FinalResultsPage = () => {
                   .maybeSingle();
                 if (gameErr) {
                   console.warn('[LevelUp] games level fetch error', gameErr);
-                } else if (gameRow && typeof (gameRow as any).level === 'number') {
-                  currentLevel = (gameRow as any).level;
+                } else if (gameRow && typeof gameRow.level === 'number') {
+                  currentLevel = gameRow.level;
                 }
               } catch (e) {
                 console.warn('[LevelUp] exception fetching game level', e);
@@ -285,10 +295,77 @@ const FinalResultsPage = () => {
       } catch (error) {
         console.error('Error during metrics update:', error);
       }
+
+      // Award game-level achievements and evaluate/display earned badges once per game
+      if (!awardsSubmittedRef.current) {
+        try {
+          // Upsert achievements for this game/session (deduped by context)
+          const actualYears = images.map((img) => img.year || 0);
+          await awardGameAchievements({
+            userId: user.id,
+            contextId: roomId || gameId || null,
+            actualYears,
+            results: roundResults,
+          });
+
+          // Build userMetrics for badge evaluation (game-level)
+          const perfectRoundsCount = roundResults.reduce((sum, r, idx) => {
+            const img = images[idx];
+            if (!img || !r) return sum;
+            const timePerfect = typeof r.guessYear === 'number' && typeof img.year === 'number' && Math.abs(r.guessYear - img.year) === 0;
+            const locPerfect = r.distanceKm === 0;
+            return sum + (timePerfect && locPerfect ? 1 : 0);
+          }, 0);
+
+          const yearBullseyeCount = roundResults.reduce((sum, r, idx) => {
+            const img = images[idx];
+            if (!img || !r) return sum;
+            const ok = typeof r.guessYear === 'number' && typeof img.year === 'number' && Math.abs(r.guessYear - img.year) === 0;
+            return sum + (ok ? 1 : 0);
+          }, 0);
+
+          const locationBullseyeCount = roundResults.reduce((sum, r) => sum + (r && r.distanceKm === 0 ? 1 : 0), 0);
+
+          const userMetrics: Record<BadgeRequirementCode, number> = {
+            games_played: 1,
+            perfect_rounds: perfectRoundsCount,
+            perfect_games: finalPercentNet === 100 ? 1 : 0,
+            time_accuracy: Math.round(totalWhenAccuracy),
+            location_accuracy: Math.round(totalWhereAccuracy),
+            overall_accuracy: Math.round(finalPercentNet),
+            win_streak: 0,
+            daily_streak: 0,
+            xp_total: netFinalXP,
+            year_bullseye: yearBullseyeCount,
+            location_bullseye: locationBullseyeCount,
+          };
+
+          const newlyEarned = await checkAndAwardBadges(user.id, userMetrics);
+          if (newlyEarned && newlyEarned.length > 0) {
+            setEarnedBadges(newlyEarned);
+          }
+        } catch (e) {
+          console.warn('[FinalResults] exception during awarding game achievements/badges', e);
+        } finally {
+          awardsSubmittedRef.current = true;
+        }
+      }
     };
 
     updateMetricsAndFetchGlobal();
   }, [roundResults, images, gameId, roomId, setProvisionalGlobalMetrics, refreshGlobalMetrics]);
+
+  // Manage active badge popup from queue
+  useEffect(() => {
+    if (!activeBadge && earnedBadges.length > 0) {
+      setActiveBadge(earnedBadges[0]);
+    }
+  }, [earnedBadges, activeBadge]);
+
+  const handleBadgePopupClose = () => {
+    setEarnedBadges((prev) => prev.slice(1));
+    setActiveBadge(null);
+  };
 
   const handlePlayAgain = async () => {
     try {
@@ -352,8 +429,9 @@ const FinalResultsPage = () => {
         document.body.removeChild(textarea);
         alert('Results copied to clipboard!');
       }
-    } catch (err: any) {
-      if (err?.name !== 'AbortError') {
+    } catch (err: unknown) {
+      const name = (typeof err === 'object' && err && 'name' in err) ? (err as { name?: string }).name : undefined;
+      if (name !== 'AbortError') {
         console.error('Error sharing results:', err);
         alert('Could not share results. Please try again.');
       }
@@ -590,6 +668,9 @@ const FinalResultsPage = () => {
           </section>
         </div>
       </main>
+
+      {/* Badge unlock popup (game-level) */}
+      <BadgeEarnedPopup badge={activeBadge} onClose={handleBadgePopupClose} />
 
       <footer className="fixed bottom-0 left-0 w-full z-50 bg-black shadow-[0_-2px_12px_rgba(0,0,0,0.5)] px-4 py-3 flex justify-center items-center border-t border-gray-800">
         <div className="w-full max-w-md flex items-center justify-between gap-4">

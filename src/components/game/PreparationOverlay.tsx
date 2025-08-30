@@ -54,7 +54,7 @@ export default function PreparationOverlay() {
 
   const liveAnnouncement = useMemo(() => {
     if (isError) return `Preparation failed. ${prepError ?? ''}`.trim();
-    if (total > 0) return `You will soon be dropped back in time. ${loaded} of ${total} images ready.`;
+    if (total > 0) return `You're about to be dropped into history... ${loaded} of ${total} images ready.`;
     switch (prepStatus) {
       case 'selecting':
         return 'Selecting images.';

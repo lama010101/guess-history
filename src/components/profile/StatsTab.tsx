@@ -2,13 +2,17 @@ import React from 'react';
 import { Progress } from "@/components/ui/progress";
 import { UserStats } from '@/utils/profile/profileService';
 import { formatInteger } from '@/utils/format';
+import { BadgeGrid } from '@/components/badges/BadgeGrid';
+import { BadgeEvaluation } from '@/utils/badges/types';
 
 interface StatsTabProps {
   stats: UserStats;
   isLoading: boolean;
+  badgeEvaluations?: BadgeEvaluation[];
+  badgesLoading?: boolean;
 }
 
-const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading }) => {
+const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading, badgeEvaluations = [], badgesLoading = false }) => {
   if (isLoading) {
     return (
       <div className="flex justify-center py-8">
@@ -122,10 +126,30 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading }) => {
               </div>
             </div>
           )}
+          
+          {/* Earned badges preview */}
+          {!badgesLoading && (
+            <div className="mt-8 bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm">
+              <h4 className="font-medium mb-3 text-history-primary dark:text-history-light">Earned Badges</h4>
+              <BadgeGrid
+                badges={(badgeEvaluations || [])
+                  .filter((e) => e.earned)
+                  .map((e) => ({
+                    badge: e.badge,
+                    earned: e.earned,
+                    progress: e.progress,
+                  }))}
+                showAllTabs={false}
+                showProgress={false}
+                emptyMessage="No badges earned yet. Keep playing!"
+                size="sm"
+              />
+            </div>
+          )}
         </>
       )}
     </div>
   );
 };
 
-export default StatsTab; 
+export default StatsTab;

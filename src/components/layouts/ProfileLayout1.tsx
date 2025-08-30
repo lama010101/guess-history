@@ -169,7 +169,12 @@ const ProfileLayout1 = () => {
           </div>
           
           <TabsContent value="stats">
-            <StatsTab stats={stats || getDefaultStats()} isLoading={statsLoading} />
+            <StatsTab 
+              stats={stats || getDefaultStats()} 
+              isLoading={statsLoading}
+              badgeEvaluations={badgeEvaluations}
+              badgesLoading={badgesLoading}
+            />
           </TabsContent>
           
 

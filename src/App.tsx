@@ -146,16 +146,22 @@ const App = () => {
                         </Route>
                         <Route path="/play" element={<PlayWithFriends />} />
                         <Route path="/room/:roomCode" element={<Room />} />
+                        <Route path="/leaderboard" element={<TestLayout />}>
+                          <Route index element={<LeaderboardPage />} />
+                        </Route>
+                        <Route path="/profile" element={<TestLayout />}>
+                          <Route index element={<ProfilePage />} />
+                        </Route>
+                        <Route path="/friends" element={<TestLayout />}>
+                          <Route index element={<FriendsPage />} />
+                        </Route>
                         <Route path="/solo" element={<TestLayout />}>
                           <Route path="auth" element={<AuthPage />} />
-                          <Route path="leaderboard" element={<LeaderboardPage />} />
-                          <Route path="profile" element={<ProfilePage />} />
                           <Route path="settings" element={<SettingsPage />} />
                           <Route element={<ProtectedRoute />}>
                             <Route path="account" element={<UserProfilePage />} />
                           </Route>
                           <Route path="room" element={<GameRoomPage />} />
-                          <Route path="friends" element={<FriendsPage />} />
                           <Route path="game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
                           <Route path="game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />
                           <Route path="lobby/:roomId" element={<LobbyPage />} />

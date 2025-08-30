@@ -294,41 +294,32 @@ const FinalResultsPage = () => {
     try {
       resetGame();
       const path = location.pathname || '';
-      // Level Up mode
+      
+      // Handle different game modes based on the current path
       if (path.startsWith('/level/')) {
-        try {
-          let levelToStart: number | null = null;
-          if (gameId) {
-            const { data: gameRow, error: gameErr } = await supabase
-              .from('games')
-              .select('level')
-              .eq('id', gameId)
-              .maybeSingle();
-            if (!gameErr && gameRow && typeof (gameRow as any).level === 'number') {
-              levelToStart = (gameRow as any).level as number;
-            }
-          }
-          await startLevelUpGame(levelToStart ?? 1);
-        } catch (e) {
-          console.warn('[FinalResults] Play Again LevelUp fallback to level 1 due to error', e);
-          await startLevelUpGame(1);
-        }
-        return;
-      }
-
-      // Compete mode: preserve variant (sync/async)
-      if (path.startsWith('/compete/')) {
-        const variant: 'sync' | 'async' = path.includes('/compete/async/') ? 'async' : 'sync';
+        // Level Up mode - preserve the current level
+        const levelMatch = path.match(/^\/level(?:\/(\d+))?/);
+        const level = levelMatch && levelMatch[1] ? parseInt(levelMatch[1], 10) : 1;
+        await startLevelUpGame(level);
+      } else if (path.startsWith('/compete/')) {
+        // Compete mode - preserve variant (sync/async) and create new room
+        const variant = path.includes('/compete/async/') ? 'async' : 'sync';
         const newRoomId = `room_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
         const seed = Date.now().toString(36);
         await startGame({ roomId: newRoomId, seed, competeVariant: variant });
-        return;
+      } else if (path.startsWith('/collaborate/')) {
+        // Collaborate mode - create new room with sync variant
+        const newRoomId = `room_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const seed = Date.now().toString(36);
+        await startGame({ roomId: newRoomId, seed, competeVariant: 'sync' });
+      } else {
+        // Default to starting a new solo game if no specific mode is detected
+        await startGame();
       }
-
-      // Default: Solo
-      await startGame();
-    } catch (err) {
-      console.error('[FinalResults] Error in handlePlayAgain', err);
+    } catch (error) {
+      console.error('Error in handlePlayAgain:', error);
+      // Fallback to home page if there's an error
+      navigate('/home');
     }
   };
 
@@ -605,7 +596,7 @@ const FinalResultsPage = () => {
           <Button
             onClick={handleHome}
             variant="outline"
-            className="text-black rounded-full px-6 py-6 text-lg font-semibold border-none bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] hover:opacity-90"
+            className="rounded-full px-6 py-6 text-lg font-semibold bg-white text-black hover:bg-gray-100"
           >
             <Home className="h-5 w-5 mr-2" /> Home
           </Button>

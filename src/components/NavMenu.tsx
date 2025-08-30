@@ -184,6 +184,32 @@ export const NavMenu = () => {
             </Tooltip>
           </TooltipProvider>
           
+          {/* Play with friends - restricted for guests */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuItem asChild>
+                  <Link 
+                    to={isGuest ? "#" : "/play"}
+                    className="flex items-center justify-between"
+                    onClick={handleRestrictedFeatureClick}
+                  >
+                    <div className="flex items-center">
+                      <Users className="mr-2 h-4 w-4" />
+                      <span>Play with friends</span>
+                    </div>
+                    {isGuest && <Lock className="h-3 w-3 text-amber-500" />}
+                  </Link>
+                </DropdownMenuItem>
+              </TooltipTrigger>
+              {isGuest && (
+                <TooltipContent side="right">
+                  <p>Available after sign up</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
+          
           <DropdownMenuItem asChild>
             <Link to="/leaderboard" className="flex items-center">
               <Award className="mr-2 h-4 w-4" />

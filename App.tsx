@@ -28,6 +28,11 @@ import SoloGameRoundPage from './src/pages/solo/SoloGameRoundPage';
 import SoloRoundResultsPage from './src/pages/solo/SoloRoundResultsPage';
 import CompeteGameRoundPage from './src/pages/compete/CompeteGameRoundPage';
 import CompeteRoundResultsPage from './src/pages/compete/CompeteRoundResultsPage';
+import FriendsPage from "./src/pages/FriendsPage";
+import LeaderboardPage from "./src/pages/LeaderboardPage";
+import ProfilePage from "./src/pages/ProfilePage";
+import SettingsPage from "./src/pages/SettingsPage";
+import PlayWithFriends from "./src/pages/PlayWithFriends";
 
 // Handler for auth redirects
 const AuthRedirectHandler = () => {
@@ -109,6 +114,13 @@ const App = () => {
                   <Route path="/compete/game/room/:roomId/round/:roundNumber/results" element={<CompeteRoundResultsPage />} />
                   <Route path="/collaborate/game/room/:roomId/round/:roundNumber" element={<CompeteGameRoundPage />} />
                   <Route path="/collaborate/game/room/:roomId/round/:roundNumber/results" element={<CompeteRoundResultsPage />} />
+
+                  {/* Main application pages */}
+                  <Route path="/friends" element={<FriendsPage />} />
+                  <Route path="/leaderboard" element={<LeaderboardPage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/play" element={<PlayWithFriends />} />
 
                   {/* Legacy test routes (keep for dev pages) */}
                   <Route path="/test" element={<TestLayout />}>

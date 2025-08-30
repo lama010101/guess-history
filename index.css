@@ -167,3 +167,13 @@
 .mode-levelup .hover\:bg-orange-500:hover { background-color: #ec4899 !important; }
 .mode-levelup .active\:bg-orange-500:active { background-color: #ec4899 !important; }
 .mode-levelup .hover\:bg-orange-600:hover { background-color: #db2777 !important; }
+
+/* Alpha background variants used by fullscreen controls (map to Level Up secondary/pink) */
+.mode-levelup .bg-orange-500\/60 { background-color: hsl(var(--secondary) / 0.6) !important; }
+.mode-levelup .bg-orange-500\/70 { background-color: hsl(var(--secondary) / 0.7) !important; }
+.mode-levelup .bg-orange-500\/80 { background-color: hsl(var(--secondary) / 0.8) !important; }
+.mode-levelup .bg-orange-500\/90 { background-color: hsl(var(--secondary) / 0.9) !important; }
+.mode-levelup .hover\:bg-orange-500\/70:hover { background-color: hsl(var(--secondary) / 0.7) !important; }
+.mode-levelup .hover\:bg-orange-500\/90:hover { background-color: hsl(var(--secondary) / 0.9) !important; }
+.mode-levelup .active\:bg-orange-500\/70:active { background-color: hsl(var(--secondary) / 0.7) !important; }
+.mode-levelup .active\:bg-orange-500\/90:active { background-color: hsl(var(--secondary) / 0.9) !important; }

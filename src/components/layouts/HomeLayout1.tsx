@@ -138,16 +138,20 @@ const HomeLayout1 = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-history-light to-white dark:from-history-dark dark:to-gray-900">
-      <div className="container mx-auto px-4 pt-12 pb-24">
-        <header className="text-center mb-16">
-          <h1 className="text-4xl md:text-6xl font-bold text-history-primary dark:text-history-light mb-4">
-            Guess <span className="text-history-secondary">History</span>
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-            Test your knowledge of historical places and times in this immersive guessing game
-          </p>
-        </header>
+      <div className="container mx-auto px-4 min-h-screen flex flex-col">
+        {/* Top spacer with centered logo and subtitle (logo sits exactly midway between top and play cards) */}
+        <div className="flex-1 flex items-center justify-center pt-16 md:pt-8 lg:pt-0">
+          <header className="text-center select-none">
+            <h1 className="text-4xl md:text-6xl font-bold text-history-primary dark:text-history-light mb-4">
+              Guess <span className="text-history-secondary">History</span>
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+              Test your knowledge of historical places and times in this immersive guessing game
+            </p>
+          </header>
+        </div>
 
+        {/* Cards centered vertically overall via equal top/bottom spacers */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           <div className="history-card rounded-xl p-6 transform transition-all duration-300 hover:scale-105 hover:shadow-xl">
             <div className="h-48 bg-history-primary/10 rounded-lg flex items-center justify-center mb-4">
@@ -222,12 +226,14 @@ const HomeLayout1 = () => {
           </div>
         </div>
 
+        {/* Bottom actions and equal spacer to keep cards vertically centered */}
         <div className="mt-16 text-center">
           <Button className="flex items-center gap-2">
             <Info className="h-4 w-4" /> 
             How to Play
           </Button>
         </div>
+        <div className="flex-1" />
       </div>
       
       {/* Auth Modal */}

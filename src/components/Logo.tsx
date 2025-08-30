@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 
 interface LogoProps {
   className?: string;
@@ -9,7 +8,7 @@ const Logo = ({
   className = ""
 }: LogoProps) => {
   return (
-    <Link to="/test" className={`flex items-center ${className}`}>
+    <div className={`flex items-center ${className}`}>
       <img
         src="/icons/logo.webp"
         alt="GUESS-HISTORY logo"
@@ -17,7 +16,7 @@ const Logo = ({
         loading="eager"
         decoding="async"
       />
-    </Link>
+    </div>
   );
 };
 

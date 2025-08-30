@@ -405,12 +405,8 @@ const RoundResultsPage = () => {
     const isLastRound = currentRoundIndex === totalRounds - 1;
 
     if (isLastRound) {
-      console.log("Final round completed, navigating to final within mode base (Solo -> /home)");
-      if (modeBasePath === '/solo') {
-        navigate(`/home`);
-      } else {
-        navigate(`${modeBasePath}/game/room/${roomId}/final`);
-      }
+      console.log("Final round completed, navigating to final results page");
+      navigate(`${modeBasePath}/game/room/${roomId}/final`);
     } else {
       const nextRoundNumber = roundNumber + 1;
       console.log(`Navigating to next round: ${nextRoundNumber}`);
@@ -469,7 +465,7 @@ const RoundResultsPage = () => {
         <div className="flex flex-col items-center space-y-3 p-4 bg-background rounded shadow">
           <Loader className="h-8 w-8 animate-spin text-history-primary" />
           <h2 className="text-xl font-semibold text-history-primary">Preparing results...</h2>
-          <p className="text-sm text-muted-foreground">Calculating your score and loading the map…</p>
+          <p className="text-sm text-muted-foreground">Calculating your score…</p>
         </div>
       </div>
     );

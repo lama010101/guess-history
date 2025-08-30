@@ -31,6 +31,7 @@ const FinalResultsPage = () => {
     error: contextError, 
     startGame,
     resetGame,
+    startLevelUpGame,
     roundResults,
     refreshGlobalMetrics,
     globalXP = 0,
@@ -290,13 +291,50 @@ const FinalResultsPage = () => {
   }, [roundResults, images, gameId, roomId, setProvisionalGlobalMetrics, refreshGlobalMetrics]);
 
   const handlePlayAgain = async () => {
-    resetGame();
-    await startGame();
+    try {
+      resetGame();
+      const path = location.pathname || '';
+      // Level Up mode
+      if (path.startsWith('/level/')) {
+        try {
+          let levelToStart: number | null = null;
+          if (gameId) {
+            const { data: gameRow, error: gameErr } = await supabase
+              .from('games')
+              .select('level')
+              .eq('id', gameId)
+              .maybeSingle();
+            if (!gameErr && gameRow && typeof (gameRow as any).level === 'number') {
+              levelToStart = (gameRow as any).level as number;
+            }
+          }
+          await startLevelUpGame(levelToStart ?? 1);
+        } catch (e) {
+          console.warn('[FinalResults] Play Again LevelUp fallback to level 1 due to error', e);
+          await startLevelUpGame(1);
+        }
+        return;
+      }
+
+      // Compete mode: preserve variant (sync/async)
+      if (path.startsWith('/compete/')) {
+        const variant: 'sync' | 'async' = path.includes('/compete/async/') ? 'async' : 'sync';
+        const newRoomId = `room_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const seed = Date.now().toString(36);
+        await startGame({ roomId: newRoomId, seed, competeVariant: variant });
+        return;
+      }
+
+      // Default: Solo
+      await startGame();
+    } catch (err) {
+      console.error('[FinalResults] Error in handlePlayAgain', err);
+    }
   };
 
   const handleHome = () => {
     resetGame();
-    navigate("/");
+    navigate("/home");
   };
 
   // Share game results via Web Share API with clipboard fallback

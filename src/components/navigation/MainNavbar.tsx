@@ -101,7 +101,7 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
             <Badge 
               variant="xp" 
               className="flex items-center gap-1 text-sm cursor-pointer"
-              onClick={() => navigate('/test/leaderboard')}
+              onClick={() => navigate('/leaderboard')}
               aria-label={`Global XP: ${formatInteger(globalXP || 0)}`}
             >
               <Award className="h-4 w-4" />

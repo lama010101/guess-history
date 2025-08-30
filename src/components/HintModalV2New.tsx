@@ -239,12 +239,12 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
               <span className="sr-only">Close</span>
             </Button>
           </div>
-          <p className="text-gray-400 italic text-center text-sm mt-0 mb-1">Using a hint will reduce your score.</p>
+          <p className="text-gray-400 italic text-center text-sm mt-1 mb-2">Using a hint will reduce your score.</p>
         </DialogHeader>
 
-        <div className="p-4 pt-0">
+        <div className="p-4 pt-2">
           {/* Summary pills */}
-          <div className="mt-0 rounded-lg border border-gray-800 bg-[#202020] p-3">
+          <div className="mt-2 rounded-lg border border-gray-800 bg-[#202020] p-3">
             <div className="flex justify-around text-sm">
               <div className="text-center">
                 <p className="text-white">Accuracy Penalty</p>
@@ -258,7 +258,7 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
           </div>
 
           {/* Segmented control */}
-          <div className="mt-3">
+          <div className="mt-4">
             <div className="flex w-full overflow-hidden border border-gray-800 bg-[#202020]">
               <button
                 className={`flex-1 px-4 py-2 text-sm font-semibold flex items-center justify-center gap-2 rounded-[2px] ${activeTab === 'when' ? 'bg-white text-black' : 'text-gray-300'}`}
@@ -276,7 +276,7 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
           </div>
 
           {/* Hint list for active tab */}
-          <div className="mt-3 space-y-3">
+          <div className="mt-4 space-y-3">
             {(activeTab === 'when' ? hintsByColumn.when : hintsByColumn.where).map((hint) => (
               <HintButtonUI
                 key={`${activeTab}-${hint.id}`}

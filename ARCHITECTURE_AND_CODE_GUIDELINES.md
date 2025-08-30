@@ -201,13 +201,15 @@
   - Round results persist to `public.round_results` with 0-based `round_index` (UI uses 1-based routing). See “Round Indexing Consistency (0-based).”
   - Multiplayer peer visibility relies on `public.session_players` upsert. See “Multiplayer Membership Persistence (session_players).”
 
-#### Level Up — Canonical Route Detection & "Play Again" Navigation (2025-08-28)
+#### Level Up — Canonical Route Detection & "Play Again" Navigation (2025-08-28, updated)
 
 - __Canonical detection__: Any path beginning with `/level/` is considered Level Up mode. Do not rely on query params or legacy `/test/levelup` routes.
   - Consumers: `hooks/useGameModeConfig.ts`, `App.tsx` route guards, and any Level Up–specific effects should key off the `/level/` prefix exclusively.
-- __FinalResults → Play Again__: `src/pages/FinalResultsPage.tsx` routes all "Play Again" actions through the centralized `startGame()` helper.
-  - Rationale: Enforces uniform gating (auth/guest), consistent session setup, and correct redirection for all modes, including Level Up.
-  - No direct `navigate(...)` or legacy route pushes should remain in the results page; `startGame()` is the single entry.
+- __FinalResults → Play Again__: `src/pages/FinalResultsPage.tsx` preserves the current mode and restarts appropriately.
+  - Level Up: detects `/level/` prefix and calls `startLevelUpGame(level)`, fetching `level` from `games.level` for the just-finished game when available, otherwise defaults to `1`.
+  - Compete: detects `/compete/(sync|async)/...` and calls `startGame({ roomId, seed, competeVariant })` with a freshly generated `roomId` and `seed`, preserving the variant.
+  - Solo: falls back to `startGame()`.
+  - No direct `navigate(...)` or legacy route pushes remain in the results page; navigation after start is handled by the context.
 - __Legacy routes__: All `/test/*` routes are removed. Do not re-introduce them for Level Up. Use only the canonical `/level/...` routes listed above.
 
 ### Level Up Mode — UI Components and Integration (2025-08-28)
@@ -319,6 +321,22 @@
   - Update overlay styling or copy in `GameLayout1.tsx` for submission-state visuals.
   - Adjust the results loading branch in `RoundResultsPage.tsx` if copy or iconography changes are desired.
   - Do not add per-button spinners; rely on the full-screen overlay to signal progress.
+
+### UI Consistency Updates (2025-08-30)
+
+- __Hints button label (GameLayout2)__
+  - File: `src/components/layouts/GameLayout2.tsx`
+  - Change: Renamed bottom-right image action from "Hints V2" to "Hints" for consistency with other layouts and copy.
+
+- __Hint modal spacing (HintModalV2New)__
+  - File: `src/components/HintModalV2New.tsx`
+  - Tweaks for more balanced visual rhythm:
+    - Header subtitle margins: `mt-1 mb-2` (was `mt-0 mb-1`).
+    - Content padding top: `pt-2` (was `pt-0`).
+    - Summary pills container top margin: `mt-2` (was `mt-0`).
+    - Segmented control top margin: `mt-4` (was `mt-3`).
+    - Hint list top margin: `mt-4` (was `mt-3`).
+  - No behavioral changes; only spacing.
 
 Note: Sections below referencing modules under `src/multiplayer/*` (e.g., `Server.ts`, `MultiplayerAdapter.ts`) represent planned design. For the current implementation, treat `server/lobby.ts` and `src/lib/partyClient.ts` as canonical. The remainder of this document is preserved as an appendix for detailed design and UI notes.
 

@@ -70,7 +70,7 @@ const GameLayout2: React.FC<GameLayout2Props> = ({ onComplete, gameMode = 'solo'
             onClick={handleHintClick}
           >
             <HelpCircle className="h-4 w-4 mr-2" />
-            Hints V2
+            Hints
           </Button>
           <Button 
             size="sm" 

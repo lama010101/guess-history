@@ -196,13 +196,22 @@ export const NavProfile = () => {
           </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <Link to="/test" className="flex items-center">
+            <Link to="/home" className="flex items-center">
               <Home className="mr-2 h-4 w-4" />
               <span>Home</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link to="/test/friends" className="flex items-center">
+            <Link
+              to="/friends"
+              className="flex items-center"
+              onClick={(e) => {
+                if (isGuest) {
+                  e.preventDefault();
+                  setShowAuthModal(true);
+                }
+              }}
+            >
               <Users className="mr-2 h-4 w-4" />
               <span>Friends</span>
             </Link>
@@ -214,13 +223,22 @@ export const NavProfile = () => {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link to="/test/leaderboard" className="flex items-center">
+            <Link to="/leaderboard" className="flex items-center">
               <Award className="mr-2 h-4 w-4" />
               <span>Leaderboard</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link to="/test/profile" className="flex items-center">
+            <Link
+              to="/profile"
+              className="flex items-center"
+              onClick={(e) => {
+                if (isGuest) {
+                  e.preventDefault();
+                  setShowAuthModal(true);
+                }
+              }}
+            >
               <UserRound className="mr-2 h-4 w-4" />
               <span>Profile</span>
             </Link>

@@ -152,7 +152,7 @@ export const NavMenu = () => {
           
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <Link to="/test" className="flex items-center">
+            <Link to="/home" className="flex items-center">
               <Home className="mr-2 h-4 w-4" />
               <span>Home</span>
             </Link>
@@ -164,7 +164,7 @@ export const NavMenu = () => {
               <TooltipTrigger asChild>
                 <DropdownMenuItem asChild>
                   <Link 
-                    to={isGuest ? "#" : "/test/friends"} 
+                    to={isGuest ? "#" : "/friends"} 
                     className="flex items-center justify-between" 
                     onClick={handleRestrictedFeatureClick}
                   >
@@ -185,14 +185,14 @@ export const NavMenu = () => {
           </TooltipProvider>
           
           <DropdownMenuItem asChild>
-            <Link to="/test/leaderboard" className="flex items-center">
+            <Link to="/leaderboard" className="flex items-center">
               <Award className="mr-2 h-4 w-4" />
               <span>Leaderboard</span>
             </Link>
           </DropdownMenuItem>
           
           <DropdownMenuItem asChild>
-            <Link to="/test/settings" className="flex items-center">
+            <Link to="/settings" className="flex items-center">
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
             </Link>
@@ -200,7 +200,7 @@ export const NavMenu = () => {
           
           {!isGuest && (
             <DropdownMenuItem asChild>
-              <Link to="/test/profile" className="flex items-center">
+              <Link to="/profile" className="flex items-center">
                 <User className="mr-2 h-4 w-4" />
                 <span>Profile</span>
               </Link>

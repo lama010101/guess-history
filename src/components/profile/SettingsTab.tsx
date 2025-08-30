@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+
 import { UserSettings, updateUserSettings } from '@/utils/profile/profileService';
 import { useSettingsStore } from '@/lib/useSettingsStore';
 import { useTheme } from 'next-themes';
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 // Removed Select imports (language option removed)
 import { Switch } from "@/components/ui/switch";
 import { toast } from '@/components/ui/use-toast';
-import { Settings as SettingsIcon, Moon, Sun, Navigation } from "lucide-react";
+import { Moon, Sun, Navigation } from "lucide-react";
 
 interface SettingsTabProps {
   userId: string;
@@ -17,12 +17,16 @@ interface SettingsTabProps {
   onSettingsUpdated: () => void;
 }
 
-const SettingsTab: React.FC<SettingsTabProps> = ({ 
+export interface SettingsTabHandle {
+  save: () => Promise<void>;
+}
+
+const SettingsTab = forwardRef<SettingsTabHandle, SettingsTabProps>(({ 
   userId, 
   settings, 
   isLoading,
   onSettingsUpdated
-}) => {
+}, ref) => {
   const { theme, setTheme } = useTheme();
   const [updatedSettings, setUpdatedSettings] = useState<UserSettings>(settings);
   const { soundEnabled, toggleSound, vibrateEnabled, gyroscopeEnabled, toggleVibrate, toggleGyroscope } = useSettingsStore();
@@ -65,7 +69,12 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
       setSaving(false);
     }
   };
-  
+
+  useImperativeHandle(ref, () => ({
+    save: handleSaveSettings,
+  }));
+
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-8">
@@ -77,6 +86,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
   return (
     <div className="glass-card rounded-xl p-6">
 
+
       
       <div className="space-y-6">
         {saveSuccess && (
@@ -84,49 +94,66 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
             Settings saved successfully.
           </div>
         )}
-        {/* Theme Setting */}
+        {/* Theme Setting as inline label + toggle */}
         <div>
-          <Label className="mb-3 block text-history-primary dark:text-history-light">Theme</Label>
-          <RadioGroup 
-            value={updatedSettings.theme} 
-            onValueChange={(value) => {
-              setUpdatedSettings({...updatedSettings, theme: value as 'light' | 'dark'});
-              setTheme(value as 'light' | 'dark');
-            }}
-            className="flex flex-col sm:flex-row gap-4"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="light" id="light" className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" />
-              <Label htmlFor="light" className="flex items-center">
-                <Sun className="h-4 w-4 mr-2" />
-                Light
+          <div className="flex items-center justify-between">
+            <Label htmlFor="theme-toggle" className="text-history-primary dark:text-history-light mr-4">Theme</Label>
+            <div className="flex items-center space-x-3">
+              <Switch
+                id="theme-toggle"
+                checked={(updatedSettings.theme ?? theme) === 'dark'}
+                onCheckedChange={(checked) => {
+                  const next = checked ? 'dark' : 'light';
+                  setUpdatedSettings({ ...updatedSettings, theme: next });
+                  setTheme(next);
+                }}
+              />
+              <Label htmlFor="theme-toggle" className="flex items-center">
+                {(updatedSettings.theme ?? theme) === 'dark' ? (
+                  <><Moon className="h-4 w-4 mr-2" /> Dark</>
+                ) : (
+                  <><Sun className="h-4 w-4 mr-2" /> Light</>
+                )}
               </Label>
             </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="dark" id="dark" className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" />
-              <Label htmlFor="dark" className="flex items-center">
-                <Moon className="h-4 w-4 mr-2" />
-                Dark
-              </Label>
-            </div>
-          </RadioGroup>
+          </div>
         </div>
 
-        {/* Sound Setting */}
+        {/* Sound Setting inline */}
         <div>
-          <Label className="mb-3 block text-history-primary dark:text-history-light">Sound</Label>
-          <div className="flex items-center space-x-3">
-            <Switch
-              id="sound-toggle"
-              checked={updatedSettings.sound_enabled ?? soundEnabled}
-              onCheckedChange={(checked) => {
-                setUpdatedSettings({ ...updatedSettings, sound_enabled: checked });
-                toggleSound(); // Update the global sound state
-              }}
-            />
-            <Label htmlFor="sound-toggle">
-              {(updatedSettings.sound_enabled ?? soundEnabled) ? 'On' : 'Off'}
-            </Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="sound-toggle" className="text-history-primary dark:text-history-light mr-4">Sound</Label>
+            <div className="flex items-center space-x-3">
+              <Switch
+                id="sound-toggle"
+                checked={updatedSettings.sound_enabled ?? soundEnabled}
+                onCheckedChange={(checked) => {
+                  setUpdatedSettings({ ...updatedSettings, sound_enabled: checked });
+                  toggleSound(); // Update the global sound state
+                }}
+              />
+              <Label htmlFor="sound-toggle">
+                {(updatedSettings.sound_enabled ?? soundEnabled) ? 'On' : 'Off'}
+              </Label>
+            </div>
+          </div>
+        </div>
+
+        {/* Vibrate Toggle inline */}
+        <div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="vibrate-toggle" className="text-history-primary dark:text-history-light mr-4">Vibrate</Label>
+            <div className="flex items-center space-x-3">
+              <Switch
+                id="vibrate-toggle"
+                checked={updatedSettings.vibrate_enabled ?? vibrateEnabled}
+                onCheckedChange={(checked) => {
+                  setUpdatedSettings({ ...updatedSettings, vibrate_enabled: checked });
+                  if ((vibrateEnabled ?? false) !== checked) toggleVibrate();
+                }}
+              />
+              <Label htmlFor="vibrate-toggle">{(updatedSettings.vibrate_enabled ?? vibrateEnabled) ? 'On' : 'Off'}</Label>
+            </div>
           </div>
         </div>
 
@@ -164,16 +191,18 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
           </div>
         </div>
         
-        {/* Inertia Enable + Level */}
+        {/* Inertia Enable + Level with inline header */}
         <div>
-          <Label className="mb-3 block text-history-primary dark:text-history-light">Panning Inertia</Label>
-          <div className="flex items-center gap-3 mb-3">
-            <Switch
-              id="inertia-enabled"
-              checked={updatedSettings.inertia_enabled !== false}
-              onCheckedChange={(checked) => setUpdatedSettings({ ...updatedSettings, inertia_enabled: checked })}
-            />
-            <Label htmlFor="inertia-enabled">{updatedSettings.inertia_enabled === false ? 'Off' : 'On'}</Label>
+          <div className="flex items-center justify-between mb-3">
+            <Label htmlFor="inertia-enabled" className="text-history-primary dark:text-history-light mr-4">Panning Inertia</Label>
+            <div className="flex items-center gap-3">
+              <Switch
+                id="inertia-enabled"
+                checked={updatedSettings.inertia_enabled !== false}
+                onCheckedChange={(checked) => setUpdatedSettings({ ...updatedSettings, inertia_enabled: checked })}
+              />
+              <Label htmlFor="inertia-enabled">{updatedSettings.inertia_enabled === false ? 'Off' : 'On'}</Label>
+            </div>
           </div>
           {updatedSettings.inertia_enabled !== false && (
             <div className="mt-2">
@@ -196,35 +225,21 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
           )}
         </div>
 
-        {/* Vibrate Toggle */}
+        {/* Gyroscope Toggle inline */}
         <div>
-          <Label className="mb-3 block text-history-primary dark:text-history-light">Vibrate</Label>
-          <div className="flex items-center space-x-3">
-            <Switch
-              id="vibrate-toggle"
-              checked={updatedSettings.vibrate_enabled ?? vibrateEnabled}
-              onCheckedChange={(checked) => {
-                setUpdatedSettings({ ...updatedSettings, vibrate_enabled: checked });
-                if ((vibrateEnabled ?? false) !== checked) toggleVibrate();
-              }}
-            />
-            <Label htmlFor="vibrate-toggle">{(updatedSettings.vibrate_enabled ?? vibrateEnabled) ? 'On' : 'Off'}</Label>
-          </div>
-        </div>
-
-        {/* Gyroscope Toggle */}
-        <div>
-          <Label className="mb-3 block text-history-primary dark:text-history-light">Gyroscope (Image Panning)</Label>
-          <div className="flex items-center space-x-3">
-            <Switch
-              id="gyroscope-toggle"
-              checked={updatedSettings.gyroscope_enabled ?? gyroscopeEnabled}
-              onCheckedChange={(checked) => {
-                setUpdatedSettings({ ...updatedSettings, gyroscope_enabled: checked });
-                if ((gyroscopeEnabled ?? false) !== checked) toggleGyroscope();
-              }}
-            />
-            <Label htmlFor="gyroscope-toggle">{(updatedSettings.gyroscope_enabled ?? gyroscopeEnabled) ? 'On' : 'Off'}</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="gyroscope-toggle" className="text-history-primary dark:text-history-light mr-4">Gyroscope (Image Panning)</Label>
+            <div className="flex items-center space-x-3">
+              <Switch
+                id="gyroscope-toggle"
+                checked={updatedSettings.gyroscope_enabled ?? gyroscopeEnabled}
+                onCheckedChange={(checked) => {
+                  setUpdatedSettings({ ...updatedSettings, gyroscope_enabled: checked });
+                  if ((gyroscopeEnabled ?? false) !== checked) toggleGyroscope();
+                }}
+              />
+              <Label htmlFor="gyroscope-toggle">{(updatedSettings.gyroscope_enabled ?? gyroscopeEnabled) ? 'On' : 'Off'}</Label>
+            </div>
           </div>
         </div>
 
@@ -261,22 +276,9 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
             </div>
           </RadioGroup>
         </div>
-
-
-        
-        <div className="pt-4">
-          <Button 
-            onClick={handleSaveSettings}
-            disabled={saving}
-            className="w-full sm:w-auto bg-white text-black hover:bg-gray-100 border border-gray-300"
-          >
-            <SettingsIcon className="mr-2 h-4 w-4" />
-            {saving ? "Saving..." : "Save Settings"}
-          </Button>
-        </div>
       </div>
     </div>
   );
-};
+});
 
-export default SettingsTab; 
+export default SettingsTab;

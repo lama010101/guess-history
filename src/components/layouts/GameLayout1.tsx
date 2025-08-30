@@ -499,8 +499,10 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
               onClick={() => setIsSettingsModalOpen(true)}
               className="rounded-md h-12 px-6 text-base font-semibold bg-white text-black hover:bg-gray-100 border-none"
               variant="outline"
+              aria-label="Open Settings"
+              title="Open Settings"
             >
-              <SettingsIcon className="h-5 w-5 mr-2" /> Settings
+              <SettingsIcon className="h-5 w-5" />
             </Button>
             <Button
               onClick={handleHintClick}
@@ -533,7 +535,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
               title="Open Settings"
               variant="outline"
             >
-              <SettingsIcon className="h-5 w-5 mr-2" /> Settings
+              <SettingsIcon className="h-5 w-5" />
             </Button>
             <Button
               onClick={handleHintClick}
@@ -569,7 +571,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           aria-label="Open Settings"
           title="Open Settings"
         >
-          <SettingsIcon className="h-5 w-5 mr-2" /> Settings
+          <SettingsIcon className="h-5 w-5" />
         </Button>
         <Button
           onClick={handleHintClick}

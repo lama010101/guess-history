@@ -5,13 +5,16 @@ interface YearSelectorProps {
   selectedYear?: number | null;
   onChange: (year: number) => void;
   onFirstInteract?: () => void;
+  // Optional dynamic bounds for the slider
+  minYear?: number;
+  maxYear?: number;
 }
 
-const YearSelector: React.FC<YearSelectorProps> = ({ selectedYear, onChange, onFirstInteract }) => {
-  const minYear = 1850;
-  const maxYear = 2025;
+const YearSelector: React.FC<YearSelectorProps> = ({ selectedYear, onChange, onFirstInteract, minYear, maxYear }) => {
+  const effectiveMin = typeof minYear === 'number' ? minYear : 1850;
+  const effectiveMax = typeof maxYear === 'number' ? maxYear : 2026;
   const hasInteractedRef = useRef(false);
-  const mid = Math.round((minYear + maxYear) / 2);
+  const mid = Math.round((effectiveMin + effectiveMax) / 2);
 
   return (
     <div className="w-full">
@@ -19,8 +22,8 @@ const YearSelector: React.FC<YearSelectorProps> = ({ selectedYear, onChange, onF
       <div className="relative mb-0">
         <Slider
           value={[selectedYear ?? mid]}
-          min={minYear}
-          max={maxYear}
+          min={effectiveMin}
+          max={effectiveMax}
           step={1}
           onValueChange={(v) => {
             if (!hasInteractedRef.current) {
@@ -33,8 +36,8 @@ const YearSelector: React.FC<YearSelectorProps> = ({ selectedYear, onChange, onF
         />
         {/* Endpoint labels without ticks */}
         <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400 px-1 mt-2 select-none">
-          <span>{minYear}</span>
-          <span>{maxYear}</span>
+          <span>{effectiveMin}</span>
+          <span>{effectiveMax}</span>
         </div>
       </div>
     </div>
@@ -42,3 +45,4 @@ const YearSelector: React.FC<YearSelectorProps> = ({ selectedYear, onChange, onF
 };
 
 export default YearSelector;
+

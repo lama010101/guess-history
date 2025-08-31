@@ -4,6 +4,7 @@ import { AuthModal } from "@/components/AuthModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGame } from "@/contexts/GameContext";
 import { useNavigate } from "react-router-dom";
+import Logo from "@/components/Logo";
 
 const SLIDE_DURATION_MS = 3000;
 
@@ -127,6 +128,9 @@ const LandingPage: React.FC = () => {
 
         {/* Hero content */}
         <main className="relative z-20 flex flex-col items-center justify-center text-center text-white px-4 h-full">
+          <div className="mb-6 -mt-20">
+            <Logo className="h-24 md:h-32" />
+          </div>
           <h1
             className="text-4xl md:text-6xl font-extrabold leading-tight max-w-3xl"
             style={{

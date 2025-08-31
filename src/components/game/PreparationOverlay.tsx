@@ -54,7 +54,7 @@ export default function PreparationOverlay() {
 
   const liveAnnouncement = useMemo(() => {
     if (isError) return `Preparation failed. ${prepError ?? ''}`.trim();
-    if (total > 0) return `You're about to be dropped into history... ${loaded} of ${total} images ready.`;
+    if (total > 0) return `You're about to be dropped into history... guess which year and location you've landed in. ${loaded} of ${total} images ready.`;
     switch (prepStatus) {
       case 'selecting':
         return 'Selecting images.';
@@ -143,7 +143,7 @@ export default function PreparationOverlay() {
           ) : (
             <Loader2 className="h-6 w-6 animate-spin text-history-primary" />
           )}
-          <h2 className="text-xl font-semibold">{isError ? 'Preparation failed' : 'Sending you back in time…'}</h2>
+          <h2 className="text-xl font-semibold">{isError ? 'Preparation failed' : "You're about to be dropped into history…"}</h2>
         </div>
 
         {/* Body */}

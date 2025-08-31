@@ -22,10 +22,11 @@ interface GameOverlayHUDProps {
   className?: string;
   isTimerActive?: boolean;
   onTimeout?: () => void;
-  setRemainingTime?: (time: number) => void;
+  setRemainingTime?: React.Dispatch<React.SetStateAction<number>>;
   timerEnabled?: boolean;
   xpDebt?: number;
   accDebt?: number;
+  roundTimerSec?: number;
 }
 
 const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
@@ -48,7 +49,8 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
   setRemainingTime = () => {},
   timerEnabled = true,
   xpDebt = 0,
-  accDebt = 0
+  accDebt = 0,
+  roundTimerSec = 0
 }) => {
   // Show hint counter as X/Y where Y is the total allowed hints
   const isHintDisabled = hintsUsed >= hintsAllowed;
@@ -76,7 +78,8 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
               setRemainingTime={setRemainingTime}
               isActive={isTimerActive}
               onTimeout={onTimeout}
-              roundTimerSec={rawRemainingTime || 0}
+              roundTimerSec={roundTimerSec || 0}
+              externalTimer={true}
             />
           )}
         </div>

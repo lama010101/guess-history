@@ -28,6 +28,7 @@ import {
   ROUNDS_PER_GAME 
 } from '@/utils/gameCalculations';
 import { useServerCountdown } from '@/hooks/useServerCountdown';
+import { buildTimerId } from '@/lib/timerId';
 
 // Rename component
 const GameRoundPage = () => {
@@ -51,7 +52,7 @@ const GameRoundPage = () => {
       document.body.classList.remove('mode-levelup');
     };
   }, [location.pathname]);
-  const { user } = useAuth();
+  const { user, isLoading: authLoading, continueAsGuest } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
@@ -65,6 +66,16 @@ const GameRoundPage = () => {
     };
     loadProfile();
   }, [user]);
+
+  // Ensure we have an authenticated session (guest is fine) before starting timers
+  useEffect(() => {
+    if (!authLoading && !user) {
+      try { if (import.meta.env.DEV) console.debug('[GameRoundPage] No user session; signing in anonymously for timers'); } catch {}
+      continueAsGuest().catch((e) => {
+        try { console.warn('[GameRoundPage] continueAsGuest failed', e); } catch {}
+      });
+    }
+  }, [authLoading, user, continueAsGuest]);
 
   const handleNavigateHome = useCallback(() => {
     console.log("Attempting to navigate to /home");
@@ -92,6 +103,7 @@ const GameRoundPage = () => {
     roundTimerSec,
     timerEnabled,
     setGameId,
+    gameId,
     handleTimeUp,
     hydrateRoomImages,
     syncRoomId
@@ -107,6 +119,11 @@ const GameRoundPage = () => {
   useEffect(() => {
     const hasResultForFirstRound = !!roundResults.find(r => r.roundIndex === 0);
     setShowIntro(isLevelUpRoute && roundNumber === 1 && !hasResultForFirstRound);
+    if (import.meta.env.DEV) {
+      try {
+        console.debug('[GameRoundPage] intro:derive', { isLevelUpRoute, roundNumber, hasResultForFirstRound, showIntro: isLevelUpRoute && roundNumber === 1 && !hasResultForFirstRound });
+      } catch {}
+    }
   }, [isLevelUpRoute, roundNumber, roundResults]);
 
   // If intro is visible, pause the round timer; resume when dismissed (if timers are enabled)
@@ -115,6 +132,9 @@ const GameRoundPage = () => {
       setIsTimerActive(false);
     } else if (timerEnabled) {
       setIsTimerActive(true);
+    }
+    if (import.meta.env.DEV) {
+      try { console.debug('[GameRoundPage] intro:toggle', { showIntro, timerEnabled }); } catch {}
     }
   }, [showIntro, timerEnabled]);
 
@@ -130,19 +150,37 @@ const GameRoundPage = () => {
 
   // Server-authoritative countdown integration
   const timerId = useMemo(() => {
-    // Deterministic per-room per-round ID
-    return roomId && !isNaN(roundNumber) ? `${roomId}:round:${roundNumber}` : '';
-  }, [roomId, roundNumber]);
+    // Canonical: gh:{gameId}:{roundIndex}
+    try {
+      if (!gameId || isNaN(currentRoundIndex)) return '';
+      return buildTimerId(gameId, currentRoundIndex);
+    } catch {
+      return '';
+    }
+  }, [gameId, currentRoundIndex]);
+
+  const autoStart = useMemo(() => !!(timerEnabled && !showIntro && timerId && user), [timerEnabled, showIntro, timerId, user]);
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      try { console.debug('[GameRoundPage] timer:config', { timerId, roundTimerSec, timerEnabled, showIntro, autoStart, hasUser: !!user, authLoading }); } catch {}
+    }
+  }, [timerId, roundTimerSec, timerEnabled, showIntro, autoStart, user, authLoading]);
 
   const { ready: timerReady, expired: timerExpired, remainingSec, refetch } = useServerCountdown({
     timerId,
     durationSec: roundTimerSec,
-    autoStart: !!(timerEnabled && !showIntro && timerId),
+    autoStart,
     onExpire: () => {
       if (import.meta.env.DEV) console.debug('[GameRoundPage] Server timer expired');
       handleTimeComplete();
     },
   });
+
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      try { console.debug('[GameRoundPage] timer:state', { timerReady, timerExpired, remainingSec }); } catch {}
+    }
+  }, [timerReady, timerExpired, remainingSec]);
 
   // Reflect server timer into UI state without changing UI contract
   useEffect(() => {
@@ -153,10 +191,23 @@ const GameRoundPage = () => {
     }
     // Keep local state in sync with server countdown
     if (timerReady) {
+      if (import.meta.env.DEV) {
+        try { console.debug('[GameRoundPage] timer:sync', { remainingSec, timerExpired }); } catch {}
+      }
       setRemainingTime(remainingSec);
       setIsTimerActive(!timerExpired);
     }
   }, [timerEnabled, timerReady, remainingSec, timerExpired]);
+
+  // Fallback: on intro dismissal, force a refetch to hydrate/start the server timer
+  useEffect(() => {
+    if (timerEnabled && !showIntro && timerId && user) {
+      if (import.meta.env.DEV) {
+        try { console.debug('[GameRoundPage] timer:refetch after intro dismissal', { timerId, hasUser: !!user }); } catch {}
+      }
+      refetch();
+    }
+  }, [showIntro, timerEnabled, timerId, refetch, user]);
 
   // Persist the current round number to game_sessions so reconnect can restore it
   useEffect(() => {
@@ -505,7 +556,7 @@ const GameRoundPage = () => {
       {/* Main game content */}
       <GameLayout1
         onComplete={handleSubmitGuess}
-        gameMode="solo"
+        gameMode={isLevelUpRoute ? 'levelup' : 'solo'}
         currentRound={roundNumber}
         image={imageForRound}
         onMapGuess={handleMapGuess}

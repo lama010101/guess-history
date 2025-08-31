@@ -272,15 +272,36 @@
 
 - **Hook**: `hooks/useServerCountdown.ts`
 - **Timer record API**: `src/lib/timers.ts` (`startTimer`, `getTimer`)
-- **Timer ID convention**: For room-based rounds, construct as `"${roomId}:round:${roundNumber}"` (roundNumber is 1-based per routing). This yields a stable composite key with `public.round_timers` (PK: `user_id + timer_id`).
+- **Timer ID convention (canonical)**: Use `buildTimerId(gameId, roundIndex)` from `src/lib/timerId.ts`, which returns `gh:{gameId}:{roundIndex}`. `roundIndex` is 0-based and must be a non-negative integer. Avoid legacy room-based IDs.
 - **Game page integration**: `src/pages/GameRoundPage.tsx`
+  - Uses the canonical builder: `const timerId = buildTimerId(gameId, currentRoundIndex)`.
   - Replaces local elapsed-time hydration with `useServerCountdown`.
   - Passes `durationSec = roundTimerSec` and `autoStart = timerEnabled && !showIntro`.
   - Mirrors hook state into existing props without UI changes:
     - `remainingTime ← remainingSec`
     - `isTimerActive ← !expired`
   - On expiry, calls the existing `handleTimeComplete()` which routes to results and records a zero/partial score per prior behavior.
+- **Unit test & script**
+  - Test: `tests/unit/timerId.test.ts` validates happy/error paths of `buildTimerId()`.
+  - Script: `npm run test:unit` executes the test via `tsx`.
 - **Image hydration**: `hydrateRoomImages(roomId)` is invoked on mount when `images.length === 0`; dev-only logs added to trace hydration and round image selection.
+
+#### Round Timer UI Contract (2025-08-30)
+
+- **GameOverlayHUD → TimerDisplay**
+  - File: `src/components/navigation/GameOverlayHUD.tsx`
+  - Passes `roundTimerSec` as the total round duration and enables `externalTimer` on `TimerDisplay` to prevent an internal countdown. Never pass remaining time as the duration.
+- **TimerDisplay behavior**
+  - File: `src/components/game/TimerDisplay.tsx`
+  - Progress is computed as `remainingTime / roundTimerSec`. When `externalTimer` is true, the component does not decrement time itself; it only renders, plays last-10s beeps, and optional vibration based on settings.
+- **Reset behavior**
+  - File: `src/contexts/GameContext.tsx` → `resetGame()`
+  - Fully resets gameplay and timer state to avoid stale Level Up timers/rooms:
+    - Clears images, round results, error/loading.
+    - `setRoomId(null)`
+    - `setTimerEnabled(false)`
+    - `setRoundTimerSec(0)`
+    - Generates a new `gameId`.
 
 ### Round Results Types and Next-Round Timer
 

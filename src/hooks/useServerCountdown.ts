@@ -23,15 +23,33 @@ export type UseServerCountdown = {
  */
 export function useServerCountdown(opts: UseServerCountdownOptions): UseServerCountdown {
   const { timerId, durationSec, autoStart = false, intervalMs = 250, onExpire } = opts;
+  if (import.meta.env.DEV) {
+    try {
+      console.debug('[useServerCountdown] init', { timerId, durationSec, autoStart, intervalMs });
+    } catch {}
+  }
 
   const [ready, setReady] = useState(false);
   const [expired, setExpired] = useState(false);
   const [remainingMs, setRemainingMs] = useState(0);
 
+  // Handle empty timerId case immediately
+  useEffect(() => {
+    if (!timerId) {
+      setReady(true);
+      setExpired(false);
+      setRemainingMs(0);
+      if (import.meta.env.DEV) {
+        try { console.debug('[useServerCountdown] No timerId, skipping server interaction'); } catch {}
+      }
+    }
+  }, [timerId]);
+
   const endAtRef = useRef<number | null>(null);
   const offsetMsRef = useRef<number>(0);
   const expiredCalledRef = useRef<boolean>(false);
   const tickTimerRef = useRef<number | null>(null);
+  const prevSecRef = useRef<number | null>(null);
 
   const computeNowServerMs = () => Date.now() + offsetMsRef.current;
 
@@ -39,16 +57,27 @@ export function useServerCountdown(opts: UseServerCountdownOptions): UseServerCo
     if (tickTimerRef.current !== null) {
       window.clearInterval(tickTimerRef.current);
       tickTimerRef.current = null;
+      if (import.meta.env.DEV) {
+        try { console.debug('[useServerCountdown] clearTick'); } catch {}
+      }
     }
   };
 
   const startTick = () => {
     clearTick();
+    if (import.meta.env.DEV) {
+      try { console.debug('[useServerCountdown] startTick', { intervalMs }); } catch {}
+    }
     tickTimerRef.current = window.setInterval(() => {
       if (endAtRef.current == null) return;
       const now = computeNowServerMs();
       const remain = Math.max(0, endAtRef.current - now);
       setRemainingMs(remain);
+      const sec = Math.ceil(remain / 1000);
+      if (import.meta.env.DEV && prevSecRef.current !== sec) {
+        prevSecRef.current = sec;
+        try { console.debug('[useServerCountdown] tick', { sec, remainMs: remain }); } catch {}
+      }
       const isExpired = remain <= 0;
       if (isExpired && !expiredCalledRef.current) {
         expiredCalledRef.current = true;
@@ -59,14 +88,34 @@ export function useServerCountdown(opts: UseServerCountdownOptions): UseServerCo
   };
 
   const hydrate = useCallback(async (): Promise<TimerRecord | null> => {
+    if (!timerId) {
+      if (import.meta.env.DEV) {
+        try { console.debug('[useServerCountdown] hydrate:skip', { reason: 'no-timer-id' }); } catch {}
+      }
+      setReady(true);
+      setExpired(false);
+      setRemainingMs(0);
+      clearTick();
+      return null;
+    }
+
+    if (import.meta.env.DEV) {
+      try { console.debug('[useServerCountdown] hydrate:start', { timerId, autoStart, durationSec }); } catch {}
+    }
     setReady(false);
     setExpired(false);
     expiredCalledRef.current = false;
 
     let row = await getTimer(timerId);
+    if (import.meta.env.DEV) {
+      try { console.debug('[useServerCountdown] hydrate:getTimer', { found: !!row }); } catch {}
+    }
     if (!row && autoStart) {
       if (!durationSec || durationSec <= 0) throw new Error('durationSec required to autoStart');
       row = await startTimer(timerId, durationSec);
+      if (import.meta.env.DEV) {
+        try { console.debug('[useServerCountdown] hydrate:startTimer', { started: !!row, durationSec }); } catch {}
+      }
     }
 
     if (row) {
@@ -80,6 +129,16 @@ export function useServerCountdown(opts: UseServerCountdownOptions): UseServerCo
       setRemainingMs(remain);
       setExpired(remain <= 0);
       setReady(true);
+      if (import.meta.env.DEV) {
+        try {
+          console.debug('[useServerCountdown] hydrate:row', {
+            offsetMs: offsetMsRef.current,
+            endAt: endAtRef.current,
+            remainMs: remain,
+            remainSec: Math.ceil(remain / 1000),
+          });
+        } catch {}
+      }
       startTick();
       return row;
     } else {
@@ -90,6 +149,9 @@ export function useServerCountdown(opts: UseServerCountdownOptions): UseServerCo
       setExpired(true);
       setReady(true);
       clearTick();
+      if (import.meta.env.DEV) {
+        try { console.debug('[useServerCountdown] hydrate:none', { reason: !autoStart ? 'no-timer-no-autostart' : 'unknown' }); } catch {}
+      }
       return null;
     }
   }, [timerId, autoStart, durationSec]);
@@ -100,6 +162,9 @@ export function useServerCountdown(opts: UseServerCountdownOptions): UseServerCo
   }, [hydrate]);
 
   const refetch = useCallback(async () => {
+    if (import.meta.env.DEV) {
+      try { console.debug('[useServerCountdown] refetch'); } catch {}
+    }
     return hydrate();
   }, [hydrate]);
 

@@ -1082,12 +1082,15 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     })();
   }, [roundResults, images, gameId, roomId]);
 
-  // Minimal resetGame implementation (no UI coupling)
+  // Reset game state, timer, and Level Up related flags
   const resetGame = useCallback(() => {
     setImages([]);
     setRoundResults([]);
     setError(null);
     setIsLoading(false);
+    setRoomId(null);
+    setTimerEnabled(false);
+    setRoundTimerSec(0);
     setGameId(uuidv4());
   }, []);
 

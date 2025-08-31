@@ -36,6 +36,13 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
   const countdownBeepRef = useRef<HTMLAudioElement | null>(null);
   const lastVibrateSecondRef = useRef<number | null>(null);
   
+  // Debug incoming props (dev only)
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      try { console.debug('[TimerDisplay] props', { externalTimer, isActive, remainingTime, roundTimerSec }); } catch {}
+    }
+  }, [externalTimer, isActive, remainingTime, roundTimerSec]);
+  
   // Initialize audio element
   useEffect(() => {
     if (typeof window !== 'undefined') {

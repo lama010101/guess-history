@@ -169,7 +169,18 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const game = useGame();
   const { totalGameAccuracy, totalGameXP, roundTimerSec, timerEnabled } = game;
   const parsedYear = parseInt(yearInput, 10);
-  const isYearValid = !isNaN(parsedYear) && parsedYear >= 1850 && parsedYear <= 2025;
+  // Dynamic year bounds based on prepared images for this game session
+  const dynamicMinYear = useMemo(() => {
+    const ys = (game?.images || []).map(img => img.year).filter(y => typeof y === 'number' && !isNaN(y));
+    if (ys.length === 0) return 1850;
+    return Math.min(...ys);
+  }, [game?.images]);
+  const dynamicMaxYear = useMemo(() => {
+    const ys = (game?.images || []).map(img => img.year).filter(y => typeof y === 'number' && !isNaN(y));
+    if (ys.length === 0) return 2025;
+    return Math.max(...ys);
+  }, [game?.images]);
+  const isYearValid = !isNaN(parsedYear) && parsedYear >= dynamicMinYear && parsedYear <= dynamicMaxYear;
   const isYearSelected = isYearValid; // only valid numeric year counts as selected
   const isSubmitEnabled = !!currentGuess && isYearSelected;
 
@@ -189,32 +200,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   // V2 hint system
   
   
-  // Handle timer timeout
-  const handleTimeout = useCallback(() => {
-    console.log(`[GameLayout1] Timer expired for round ${currentRound}`);
-    
-    // Call the handleTimeUp function from the GameContext
-    if (game.handleTimeUp) {
-      // Convert 1-based currentRound to 0-based index for the context
-      game.handleTimeUp(currentRound - 1);
-      
-      // Note: We don't call onComplete here because handleTimeUp handles navigation
-      // This prevents double navigation that could cause issues
-    } else {
-      console.error('[GameLayout1] game.handleTimeUp is not available on context');
-      
-      // Fallback behavior if handleTimeUp is not available
-      // If no guess was made, submit a default guess at 0,0 (but don't show toast)
-      if (!currentGuess) {
-        onMapGuess(0, 0);
-      }
-      
-      // Only call onComplete in the fallback case
-      if (onComplete) {
-        onComplete();
-      }
-    }
-  }, [game, currentRound, currentGuess, onMapGuess, onComplete]);
+  // Timer timeout is handled upstream (server-authoritative) via props.onTimeout
   
 
 
@@ -308,6 +294,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             onTimeout={onTimeout}
             setRemainingTime={setRemainingTime}
             timerEnabled={timerEnabled}
+            roundTimerSec={roundTimerSec}
             xpDebt={xpDebt}
             accDebt={accDebt}
           />
@@ -365,7 +352,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                     onBlur={() => {
                       const parsed = parseInt(yearInput, 10);
                       if (!isNaN(parsed)) {
-                        const clamped = Math.max(1850, Math.min(2025, parsed));
+                        const clamped = Math.max(dynamicMinYear, Math.min(dynamicMaxYear, parsed));
                         if (clamped !== selectedYear) onYearChange(clamped);
                         setYearInput(String(clamped));
                       } else {
@@ -405,6 +392,8 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                   selectedYear={yearInteracted ? selectedYear : null}
                   onChange={(y) => { onYearChange(y); setYearInteracted(true); setYearInput(String(y)); }}
                   onFirstInteract={() => setYearInteracted(true)}
+                  minYear={dynamicMinYear}
+                  maxYear={dynamicMaxYear}
                 />
               </div>
             </CardContent>

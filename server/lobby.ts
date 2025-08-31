@@ -92,6 +92,59 @@ export default class Lobby implements Party.Server {
     return true;
   }
 
+  // Build canonical timer ID for a given 0-based round index
+  // Format: gh:{gameId}:{roundIndex}
+  private buildTimerIdForRound(roundIndex: number): string {
+    const ri = Math.max(0, Math.floor(Number(roundIndex) || 0));
+    return `gh:${this.room.id}:${ri}`;
+  }
+
+  // Start authoritative server timer via Supabase RPC
+  // Returns startedAt from server on success, otherwise null
+  private async startRoundTimer(durationSec: number): Promise<{ startedAt: string; durationSec: number } | null> {
+    const env = (this.room.env as unknown as Env) || {};
+    if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.warn("lobby: startRoundTimer skipped due to missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+      return null;
+    }
+
+    const timerId = this.buildTimerIdForRound(0); // round 1 => index 0
+    const url = `${env.SUPABASE_URL}/rest/v1/rpc/start_timer`;
+    const baseHeaders = this.supabaseHeaders(env)!;
+    // Override Prefer to get representation back from RPC
+    const headers = { ...baseHeaders, Prefer: "return=representation" } as Record<string, string>;
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ p_timer_id: timerId, p_duration_sec: Math.max(5, Math.min(600, durationSec)) }),
+      });
+      if (!res.ok) {
+        let body = "";
+        try { body = await res.text(); } catch {}
+        console.warn(`lobby: startRoundTimer failed ${res.status} ${res.statusText} for ${url}`, body || "<no response body>");
+        return null;
+      }
+      let rows: any = null;
+      try {
+        rows = await res.json();
+      } catch {
+        rows = null;
+      }
+      if (!Array.isArray(rows) || rows.length === 0 || !rows[0]?.started_at) {
+        console.warn("lobby: startRoundTimer returned no rows or invalid payload");
+        return null;
+      }
+      const startedAt: string = rows[0].started_at;
+      const dur: number = Number(rows[0].duration_sec) || Math.max(5, Math.min(600, durationSec));
+      return { startedAt, durationSec: dur };
+    } catch (e) {
+      console.warn("lobby: startRoundTimer exception", e);
+      return null;
+    }
+  }
+
   private async fetchProfileDisplayName(userId: string): Promise<string | null> {
     try {
       const env = (this.room.env as unknown as Env) || {};
@@ -319,10 +372,25 @@ export default class Lobby implements Party.Server {
           // If everyone currently in the room is ready, start the game
           const allReady = Array.from(this.players.keys()).every((id) => this.ready.get(id) === true);
           if (!this.started && this.players.size > 0 && allReady) {
-            this.started = true;
-            const startedAt = new Date().toISOString();
             const durationSec = Math.max(5, Math.min(600, this.timerSeconds || 60));
             const timerEnabled = !!this.timerEnabled;
+            this.started = true;
+
+            let startedAt: string | null = null;
+            if (timerEnabled) {
+              const started = await this.startRoundTimer(durationSec);
+              if (!started) {
+                // Could not start authoritative timer; reset and wait for retry
+                this.started = false;
+                console.warn("lobby: unable to start authoritative timer; not broadcasting start");
+                return;
+              }
+              startedAt = started.startedAt;
+            } else {
+              // Timer disabled: still mark a start for synchronization
+              startedAt = new Date().toISOString();
+            }
+
             this.broadcast({ type: "start", startedAt, durationSec, timerEnabled });
             await this.logEvent("start", { startedAt, durationSec, timerEnabled });
             // Persist authoritative round 1 start for async/refresh recovery

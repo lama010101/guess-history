@@ -12,7 +12,7 @@ function randomCode(len = 6): string {
   return out;
 }
 
-const PlayWithFriends: React.FC = () => {
+const Compete: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [joinCode, setJoinCode] = useState<string>('');
@@ -153,4 +153,4 @@ const PlayWithFriends: React.FC = () => {
   );
 };
 
-export default PlayWithFriends;
+export default Compete;

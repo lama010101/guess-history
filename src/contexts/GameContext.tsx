@@ -10,6 +10,7 @@ import { RoundResult, GuessCoordinates } from '@/types';
 import { useGamePreparation, PrepStatus, PreparedImage } from '@/hooks/useGamePreparation';
 import { getLevelConstraints } from '@/lib/levelUpConfig';
 import { awardRoundAchievements, awardGameAchievements } from '@/utils/achievements';
+import { setCurrentRoundInSession } from '@/utils/roomState';
 
 // Dev logging guard
 const isDev = (import.meta as any)?.env?.DEV === true;
@@ -647,17 +648,17 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       devLog(`Game settings: ${hintsAllowed} hints, ${roundTimerSec}s timer, timer enabled: ${timerEnabled}`);
       
       setIsLoading(false);
+      // Persist round 1 immediately so reloads know where to land
+      try { await setCurrentRoundInSession(newRoomId, 1, settings?.seed); } catch {}
       
-      setTimeout(() => {
-        // Use distinct path prefixes to avoid mode mixups
-        const isMultiplayer = !!(settings?.roomId && settings?.seed);
-        if (isMultiplayer) {
-          const variant = settings?.competeVariant === 'async' ? 'async' : 'sync';
-          navigate(`/compete/${variant}/game/room/${newRoomId}/round/1`);
-        } else {
-          navigate(`/solo/game/room/${newRoomId}/round/1`);
-        }
-      }, 100);
+      // Navigate immediately without artificial delay
+      const isMultiplayerNow = !!(settings?.roomId && settings?.seed);
+      if (isMultiplayerNow) {
+        const variant = settings?.competeVariant === 'async' ? 'async' : 'sync';
+        navigate(`/compete/${variant}/game/room/${newRoomId}/round/1`);
+      } else {
+        navigate(`/solo/game/room/${newRoomId}/round/1`);
+      }
 
     } catch (err) {
       console.error("Error in startGame:", err);

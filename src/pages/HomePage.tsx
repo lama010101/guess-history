@@ -139,9 +139,9 @@ const HomePage = () => {
     if (mode === 'friends') {
       // Route to the unified Play with Friends flow which uses PartyKit lobby at /room/:roomCode
       // We deliberately avoid the old /test/lobby/:roomId route.
-      devLog('[HomePage] Play Friends clicked. Redirecting to /play');
+      devLog('[HomePage] Play Friends clicked. Redirecting to /compete');
       setShowLoadingPopup(false);
-      navigate('/play');
+      navigate('/compete');
       return;
     }
 
@@ -237,7 +237,7 @@ const HomePage = () => {
   return (
     <div style={homePageStyle}>
       {showGuestBadge && <GuestBadge username={profile?.display_name || 'Guest'} />}
-      <div className="absolute inset-0 z-[100] w-full h-full overflow-y-auto p-4 md:p-8 box-border bg-black/85 flex items-start md:items-center justify-center min-h-screen">
+      <div className="absolute inset-0 z-[100] w-full h-full overflow-y-auto p-4 md:p-8 box-border bg-black/85 flex items-start justify-center min-h-screen">
         {isLoaded ? (
           <div className="w-full max-w-6xl mx-auto flex flex-col items-center">
             <Logo className="mt-20 mb-0 md:mt-0 md:mb-0 justify-center"/>

@@ -65,6 +65,45 @@ export async function setCurrentRoundInSession(roomId: string, roundNumber: numb
 }
 
 /**
+ * Read the persisted current round number from game_sessions for a room.
+ * Returns null if unavailable or on expected schema errors (missing table/column).
+ */
+export async function getCurrentRoundFromSession(roomId: string): Promise<number | null> {
+  try {
+    if (!roomId) return null;
+    const { data, error } = await supabase
+      .from('game_sessions' as any)
+      .select('current_round_number')
+      .eq('room_id', roomId)
+      .maybeSingle();
+
+    if (error) {
+      const code = (error as any).code;
+      const message = (error as any).message || String(error);
+      // 42703 = undefined column, 42P01 = undefined table, PGRST116 = no rows
+      if (code !== '42703' && code !== '42P01' && code !== 'PGRST116') {
+        console.warn('[roomState] getCurrentRoundFromSession error', { code, message, roomId });
+      }
+      return null;
+    }
+
+    const num = (data as any)?.current_round_number;
+    if (typeof num === 'number' && Number.isFinite(num)) return num;
+    if (typeof num === 'string') {
+      const parsed = parseInt(num, 10);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  } catch (e: any) {
+    console.warn('[roomState] getCurrentRoundFromSession fallback due to error:', {
+      message: e?.message || String(e),
+      roomId,
+    });
+    return null;
+  }
+}
+
+/**
  * Fetch existing round state for a room+round, or create it with current time.
  * Uses upsert on (room_id, round_number) to avoid races.
  * Falls back gracefully when table is missing by returning a local state.
@@ -101,7 +140,7 @@ export async function getOrCreateRoundState(
     }
 
     if (data) {
-      return data as RoomRoundState;
+      return (data as unknown) as RoomRoundState;
     }
 
     // 2) Not found: insert a new row relying on server default for started_at
@@ -140,7 +179,7 @@ export async function getOrCreateRoundState(
     }
 
     if (inserted) {
-      return inserted as RoomRoundState;
+      return (inserted as unknown) as RoomRoundState;
     }
 
     // 3) If row existed and was ignored by upsert, fetch it now
@@ -166,7 +205,7 @@ export async function getOrCreateRoundState(
       }
     }
 
-    if (after) return after as RoomRoundState;
+    if (after) return (after as unknown) as RoomRoundState;
 
     // Fallback if still not found
     return {

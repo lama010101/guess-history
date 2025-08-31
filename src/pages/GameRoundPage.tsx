@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { UserProfile, fetchUserProfile } from '@/utils/profile/profileService';
 import { useToast } from "@/components/ui/use-toast";
 import { setCurrentRoundInSession } from '@/utils/roomState';
+import { getCurrentRoundFromSession } from '@/utils/roomState';
 import { Button } from '@/components/ui/button';
 import { SegmentedProgressBar } from '@/components/ui';
 import LevelUpIntro from '@/components/levelup/LevelUpIntro';
@@ -224,6 +225,29 @@ const GameRoundPage = () => {
     if (import.meta.env.DEV) console.debug('[GameRoundPage] Hydrating room images for', roomId);
     hydrateRoomImages(roomId);
   }, [roomId, images.length, hydrateRoomImages]);
+
+  // After hydration, auto-redirect to the persisted round if it differs from the URL
+  const redirectedRef = useMemo(() => ({ done: false }), []);
+  useEffect(() => {
+    if (!roomId) return;
+    if (redirectedRef.done) return;
+    // When images are present or even if not, we can still navigate to the stored round number
+    (async () => {
+      const persistedRound = await getCurrentRoundFromSession(roomId);
+      if (!persistedRound || isNaN(persistedRound)) return;
+      if (persistedRound !== roundNumber) {
+        redirectedRef.done = true;
+        navigate(`${modeBasePath}/game/room/${roomId}/round/${persistedRound}`);
+      }
+    })();
+  }, [roomId, roundNumber, modeBasePath, navigate, redirectedRef]);
+
+  // Persist URL-derived round to the backend session so refresh lands on same round
+  useEffect(() => {
+    if (!roomId) return;
+    if (!roundNumber || isNaN(roundNumber)) return;
+    setCurrentRoundInSession(roomId, roundNumber).catch(() => {});
+  }, [roomId, roundNumber]);
 
   // Determine the image for this round
   const imageForRound =

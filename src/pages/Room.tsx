@@ -224,8 +224,8 @@ const Room: React.FC = () => {
               break;
             case 'full':
               setStatus('full');
-              // Redirect to /play per spec
-              setTimeout(() => navigate('/play', { replace: true }), 300);
+              // Redirect to /compete per spec
+              setTimeout(() => navigate('/compete', { replace: true }), 300);
               break;
             case 'chat':
               if (
@@ -287,7 +287,7 @@ const Room: React.FC = () => {
 
   useEffect(() => {
     if (!roomCode) {
-      navigate('/play', { replace: true });
+      navigate('/compete', { replace: true });
       return;
     }
     // If authenticated, wait for profile load to ensure we send the correct name on join.
@@ -611,7 +611,7 @@ const Room: React.FC = () => {
             <NavMenu />
             <Button
               size="icon"
-              onClick={() => navigate('/play')}
+              onClick={() => navigate('/compete')}
               className="h-9 w-9 rounded-full bg-neutral-800 hover:bg-neutral-700"
               aria-label="Leave lobby"
               type="button"

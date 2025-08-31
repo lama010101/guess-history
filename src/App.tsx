@@ -31,7 +31,7 @@ import AuthPage from "./pages/AuthPage";
 
 import LandingPage from "./pages/LandingPage";
 import RoundResultsPage from "./pages/RoundResultsPage";
-import PlayWithFriends from "./pages/PlayWithFriends";
+import Compete from "./pages/PlayWithFriends";
 import Room from "./pages/Room";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
 
@@ -145,7 +145,7 @@ const App = () => {
                         <Route path="/home" element={<TestLayout />}>
                           <Route index element={<HomePage />} />
                         </Route>
-                        <Route path="/play" element={<PlayWithFriends />} />
+                        <Route path="/compete" element={<Compete />} />
                         <Route path="/room/:roomCode" element={<Room />} />
                         <Route path="/leaderboard" element={<TestLayout />}>
                           <Route index element={<LeaderboardPage />} />
@@ -182,6 +182,10 @@ const App = () => {
                         <Route path="/compete/async/game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
                         <Route path="/compete/async/game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />
                         <Route path="/compete/async/game/room/:roomId/final" element={<FinalResultsPage />} />
+                        {/* Collaborate (co-op) routes */}
+                        <Route path="/collaborate/game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
+                        <Route path="/collaborate/game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />
+                        <Route path="/collaborate/game/room/:roomId/final" element={<FinalResultsPage />} />
                         
                         {/* Admin routes */}
                         <Route path="/admin" element={<AdminGameConfigPage />} />

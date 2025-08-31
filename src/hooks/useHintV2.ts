@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import { makeRoundId } from '@/utils/roomState';
 import { useGameConfig } from '@/config/gameConfig';
+import { acquireChannel } from '../../integrations/supabase/realtime';
 
 // Hint interface definition
 export interface Hint {
@@ -60,10 +61,7 @@ export const useHintV2 = (
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isHintLoading, setIsHintLoading] = useState<boolean>(false);
   
-  // Refs for managing Supabase realtime subscriptions
-  const channelRef = useRef<any>(null);
-  const isSubscribedRef = useRef<boolean>(false);
-  const channelNameRef = useRef<string>('');
+  // Using shared realtime channel registry; no direct subscribe refs needed
 
   // Fetch hints for the current image
   const fetchHints = useCallback(async () => {
@@ -295,91 +293,50 @@ export const useHintV2 = (
     }
   }, [availableHints, purchasedHintIds, user, imageData, opts?.roomId, opts?.roundNumber]);
 
-  // Set up realtime subscription for hint purchases
+  // Set up realtime subscription for hint purchases using shared channel helper
   useEffect(() => {
     if (!user || !imageData || !supabase) return;
 
     addLog(`Running main effect for user ${user.id} and image ${imageData.id}`);
+    // Initial load
     fetchHints();
 
-    const setupRealtimeSubscription = async () => {
-      if (channelRef.current && isSubscribedRef.current) {
-        addLog('Subscription already active. Skipping setup.');
-        return;
+    // Use a stable per-user channel to deduplicate across hook instances
+    const channelName = `hints:user:${user.id}`;
+    addLog(`Attaching realtime listeners on channel: ${channelName}`);
+    const handle = acquireChannel(channelName);
+
+    handle.channel.on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'round_hints',
+        filter: `user_id=eq.${user.id}`,
+      },
+      (payload) => {
+        try { addLog(`Realtime round_hints update: ${JSON.stringify(payload)}`); } catch {}
+        fetchHints();
       }
-
-      try {
-        // Clean up any existing subscription first
-        if (channelRef.current && isSubscribedRef.current) {
-          addLog('Removing existing subscription before creating a new one');
-          await channelRef.current.unsubscribe();
-          isSubscribedRef.current = false;
-        }
-
-        // Create a unique channel name with timestamp to avoid conflicts
-        const timestamp = new Date().getTime();
-        const newChannelName = `hints-${imageData.id}-${timestamp}`;
-        channelNameRef.current = newChannelName;
-        
-        addLog(`Setting up new realtime subscription on channel: ${newChannelName}`);
-        
-        // Create and subscribe to the channel
-        const channel = supabase.channel(newChannelName);
-        
-        channel
-          .on('postgres_changes', 
-            { 
-              event: '*', 
-              schema: 'public', 
-              table: 'round_hints',
-              filter: `user_id=eq.${user.id}` 
-            }, 
-            (payload) => {
-              addLog(`Received realtime update for round_hints: ${JSON.stringify(payload)}`);
-              fetchHints();
-            }
-          )
-          .on('postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'user_metrics',
-              filter: `user_id=eq.${user.id}`
-            },
-            (payload) => {
-              addLog(`Received realtime update for user_metrics: ${JSON.stringify(payload)}`);
-              fetchHints();
-            }
-          )
-          .subscribe((status) => {
-            addLog(`Subscription status for ${newChannelName}: ${status}`);
-            if (status === 'SUBSCRIBED') {
-              isSubscribedRef.current = true;
-              channelRef.current = channel;
-            }
-          });
-      } catch (error) {
-        addLog(`Error setting up realtime subscription: ${error}`);
+    );
+    handle.channel.on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'user_metrics',
+        filter: `user_id=eq.${user.id}`,
+      },
+      (payload) => {
+        try { addLog(`Realtime user_metrics update: ${JSON.stringify(payload)}`); } catch {}
+        fetchHints();
       }
-    };
+    );
 
-    setupRealtimeSubscription();
-
-    // Clean up subscription on unmount or when dependencies change
+    // Cleanup via shared registry
     return () => {
-      const cleanup = async () => {
-        if (channelRef.current && isSubscribedRef.current) {
-          addLog(`Cleaning up subscription for channel: ${channelNameRef.current}`);
-          try {
-            await channelRef.current.unsubscribe();
-            isSubscribedRef.current = false;
-          } catch (error) {
-            addLog(`Error cleaning up subscription: ${error}`);
-          }
-        }
-      };
-      
-      cleanup();
+      try { addLog(`Releasing realtime channel: ${channelName}`); } catch {}
+      handle.release();
     };
   }, [user, imageData, fetchHints, addLog]);
 

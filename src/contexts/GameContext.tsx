@@ -649,7 +649,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       
       setIsLoading(false);
       // Persist round 1 immediately so reloads know where to land
-      try { await setCurrentRoundInSession(newRoomId, 1, settings?.seed); } catch {}
+      try { await setCurrentRoundInSession(newRoomId, 1); } catch {}
       
       // Navigate immediately without artificial delay
       const isMultiplayerNow = !!(settings?.roomId && settings?.seed);

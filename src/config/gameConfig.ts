@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
+import { acquireChannel } from '../../integrations/supabase/realtime';
 import { HINT_COSTS } from '@/constants/hints';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -68,22 +69,22 @@ export function useGameConfig() {
       } catch {}
     })();
 
-    const channel = supabase
-      .channel('game_config_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_config' }, async (payload) => {
+    const handle = acquireChannel('game_config_realtime');
+    handle.channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'game_config' },
+      async () => {
         try {
           const cfg = await getGameConfig();
           setConfig(cfg);
         } catch {}
-      })
-      .subscribe((status) => {
-        // no-op
-      });
+      }
+    );
 
     mounted.current = true;
     return () => {
       isActive = false;
-      try { supabase.removeChannel(channel); } catch {}
+      try { handle.release(); } catch {}
     };
   }, []);
 

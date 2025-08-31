@@ -243,11 +243,7 @@ const GameRoundPage = () => {
   }, [roomId, roundNumber, modeBasePath, navigate, redirectedRef]);
 
   // Persist URL-derived round to the backend session so refresh lands on same round
-  useEffect(() => {
-    if (!roomId) return;
-    if (!roundNumber || isNaN(roundNumber)) return;
-    setCurrentRoundInSession(roomId, roundNumber).catch(() => {});
-  }, [roomId, roundNumber]);
+  
 
   // Determine the image for this round
   const imageForRound =

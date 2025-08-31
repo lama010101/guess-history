@@ -468,6 +468,25 @@ Due to potential inconsistencies and environment issues with the Supabase CLI, t
 ### Admin Game Config — Client Save & RLS (2025-08-31)
 
 - **Table**: `public.game_config` with a single canonical row `{ id: 'global' }`.
+
+### Multiplayer Session Persistence — game_sessions (2025-08-31)
+
+- __Purpose__: Persist deterministic multiplayer session data per room in `public.game_sessions` (`room_id` PK) including `seed`, `image_ids[]`, and `current_round_number`.
+- __Schema__: See `supabase/migrations/20250809_create_game_sessions.sql`. Columns: `room_id text PK`, `seed text not null`, `image_ids text[] not null`, `current_round_number integer not null default 1`, `started_at timestamptz not null default now()`. RLS enabled with auth SELECT/INSERT/UPDATE allowed.
+- __Update vs Upsert__
+  - `src/utils/roomState.ts` `setCurrentRoundInSession(roomId, roundNumber)` now performs an UPDATE of `current_round_number` filtered by `room_id`.
+  - Rationale: avoids accidental INSERTs that violate NOT NULL constraints (e.g., `image_ids`) and prevents PostgREST 400 errors when payloads are incomplete.
+  - Diagnostics: logs when 0 rows are updated (session row missing) so callers can ensure creation happens earlier in the start flow.
+- __Creation__: The row is created during game start/session prep (server RPC or preparer) when `seed` and `image_ids` are known. Do not rely on `setCurrentRoundInSession` to create rows.
+- __Call site rules__
+  - Use the 2-arg signature everywhere: `setCurrentRoundInSession(roomId, roundNumber)`.
+  - Call once per round navigation. Avoid duplicate calls in multiple `useEffect`s.
+
+### Game Round Page — Round Persistence Deduplication (2025-08-31)
+
+- __File__: `src/pages/GameRoundPage.tsx`
+- __Rule__: Only a single effect persists the URL-derived round to `game_sessions` via `setCurrentRoundInSession(roomId, roundNumber)`. Duplicate effects were removed to prevent double updates and duplicate Realtime traffic.
+- __Result__: Fewer 400s from conflicting writes and no duplicate Realtime subscription warnings tied to per-round persistence.
 - **Client save (no API route)**: The admin page saves directly using the authenticated Supabase client, relying on RLS for authorization.
   - Page: `src/pages/admin/AdminGameConfigPage.tsx`
     - Calls `saveConfigPatch(supabase, patch)` instead of POSTing to `/api/admin/save-config`.

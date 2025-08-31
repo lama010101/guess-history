@@ -17,21 +17,16 @@ export function makeRoundId(roomId: string, roundNumber: number): string {
 
 /**
  * Persist the current round number for a given room in game_sessions.
- * Uses upsert on room_id and tolerates missing column/table gracefully.
+ * Uses UPDATE on room_id to avoid accidental INSERTs that violate NOT NULL constraints
+ * (e.g., image_ids) and to prevent 400 errors when the session row is not created yet.
  */
-export async function setCurrentRoundInSession(roomId: string, roundNumber: number, seed?: string): Promise<void> {
+export async function setCurrentRoundInSession(roomId: string, roundNumber: number): Promise<void> {
   try {
-    // Ensure a non-null seed to satisfy schema (seed TEXT NOT NULL).
-    // If a deterministic seed isn't provided by caller, derive a stable fallback from roomId.
-    const payload = {
-      room_id: roomId,
-      current_round_number: roundNumber,
-      seed: (seed ?? roomId),
-    } as any;
-
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('game_sessions' as any)
-      .upsert(payload, { onConflict: 'room_id' } as any);
+      .update({ current_round_number: roundNumber } as any)
+      .eq('room_id', roomId)
+      .select('room_id');
 
     if (error) {
       // 42703 = undefined column, 42P01 = undefined table
@@ -39,7 +34,7 @@ export async function setCurrentRoundInSession(roomId: string, roundNumber: numb
       const details = (error as any).details;
       const message = (error as any).message || String(error);
       if (code !== '42703' && code !== '42P01') {
-        console.warn('[roomState] setCurrentRoundInSession upsert error', {
+        console.warn('[roomState] setCurrentRoundInSession update error', {
           code,
           message,
           details,
@@ -53,6 +48,16 @@ export async function setCurrentRoundInSession(roomId: string, roundNumber: numb
           roomId,
           roundNumber,
         });
+      }
+      return;
+    }
+
+    if (Array.isArray(data) && data.length === 0) {
+      // No session row yet: creation should be handled elsewhere (e.g., game start RPC)
+      if (import.meta.env.DEV) {
+        try {
+          console.debug('[roomState] setCurrentRoundInSession: no row updated (session not created yet)', { roomId, roundNumber });
+        } catch {}
       }
     }
   } catch (e: any) {

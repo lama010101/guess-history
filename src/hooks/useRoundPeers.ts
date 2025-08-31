@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { acquireChannel } from '../../integrations/supabase/realtime';
 
 export interface PeerRoundRow {
   userId: string;
@@ -167,28 +168,22 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
     // Translate 1-based round number (UI) to 0-based DB index for subscription, too
     const dbRoundIndex = Math.max(0, Number(roundNumber) - 1);
 
-    const channel = supabase
-      .channel(`round_results:${roomId}:${dbRoundIndex}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'round_results',
-        filter: `room_id=eq.${roomId},round_index=eq.${dbRoundIndex}`,
-      }, (payload) => {
-        const newRow = (payload as any).new as any;
-        if (newRow && typeof newRow.round_index === 'number' && newRow.round_index === dbRoundIndex) {
-          // Simple strategy: re-fetch to keep logic consistent with RLS and RPC output
-          refresh();
-        }
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          // Optionally log
-        }
-      });
+    const handle = acquireChannel(`round_results:${roomId}:${dbRoundIndex}`);
+    handle.channel.on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'round_results',
+      filter: `room_id=eq.${roomId},round_index=eq.${dbRoundIndex}`,
+    }, (payload) => {
+      const newRow = (payload as any).new as any;
+      if (newRow && typeof newRow.round_index === 'number' && newRow.round_index === dbRoundIndex) {
+        // Simple strategy: re-fetch to keep logic consistent with RLS and RPC output
+        refresh();
+      }
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      handle.release();
     };
   }, [roomId, roundNumber, refresh]);
 

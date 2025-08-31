@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
+import { acquireChannel } from "../../integrations/supabase/realtime";
 
 export type RoomInvite = Database["public"]["Tables"]["room_invites"]["Row"];
 export type Invite = RoomInvite & { inviter_display_name?: string };
@@ -20,12 +21,7 @@ export function useRoomInvites() {
 
   const userId = user?.id;
 
-  // Unique id per hook instance to avoid reusing the same channel object across components
-  const instanceIdRef = useRef<string>("");
-  if (!instanceIdRef.current) {
-    // lightweight unique id for channel suffix
-    instanceIdRef.current = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-  }
+  // With shared channel registry, we use a stable per-user channel name and ref-counted cleanup
 
   // Track whether we've completed an initial fetch to avoid spamming toasts for historical invites
   const loadedOnceRef = useRef(false);
@@ -55,17 +51,20 @@ export function useRoomInvites() {
               duration: 5000,
             });
             // Best-effort: enrich inviter's display name and update toast
-            supabase
-              .from('profiles')
-              .select('display_name')
-              .eq('id', r.inviter_user_id as string)
-              .maybeSingle()
-              .then(({ data: prof }) => {
+            (async () => {
+              try {
+                const { data: prof } = await supabase
+                  .from('profiles')
+                  .select('display_name')
+                  .eq('id', r.inviter_user_id as string)
+                  .maybeSingle();
                 const host = (prof?.display_name || r.inviter_user_id) as string;
                 toast({ title: "New room invite", description: `${host} invites you to room ${r.room_id}` });
                 setInvites((prev) => prev.map((i) => (i.id === r.id ? { ...i, inviter_display_name: host } : i)));
-              })
-              .catch(() => { /* ignore */ });
+              } catch {
+                // ignore
+              }
+            })();
           }
         }
         // Seed the dedupe set on first load so we don't toast historical invites later
@@ -86,11 +85,9 @@ export function useRoomInvites() {
 
   useEffect(() => {
     if (authLoading || !userId) return;
-    // Use a unique channel name per hook instance to prevent calling subscribe() twice
-    const channelName = `room_invites:user:${userId}:${instanceIdRef.current}`;
-    const channel = supabase
-      .channel(channelName)
-      .on(
+    const channelName = `room_invites:user:${userId}`;
+    const handle = acquireChannel(channelName);
+    handle.channel.on(
         "postgres_changes",
         {
           event: "INSERT",
@@ -159,8 +156,8 @@ export function useRoomInvites() {
             }
           })();
         }
-      )
-      .on(
+      );
+    handle.channel.on(
         "postgres_changes",
         {
           event: "DELETE",
@@ -174,23 +171,11 @@ export function useRoomInvites() {
         }
       );
 
-    // Subscribe with status callback for diagnostics
-    channel.subscribe((status) => {
-      try {
-        console.log('[useRoomInvites] Channel status', { channel: channelName, status, at: new Date().toISOString() });
-      } catch {}
-      if (status === 'SUBSCRIBED') {
-        // Opportunistically refetch to reconcile any missed rows
-        fetchInvites();
-      }
-      if (status === 'CHANNEL_ERROR') {
-        try { console.error('[useRoomInvites] Channel error', channelName); } catch {}
-      }
-    });
+    // Subscribe is handled internally by the shared registry; keep only event listeners
 
     return () => {
-      try { console.log('[useRoomInvites] Removing channel', channelName); } catch {}
-      supabase.removeChannel(channel);
+      try { console.log('[useRoomInvites] Releasing channel', channelName); } catch {}
+      handle.release();
     };
   }, [authLoading, userId, toast]);
 

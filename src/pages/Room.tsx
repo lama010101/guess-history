@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { declineInviteForRoom } from '../../integrations/supabase/invites';
 import type { Tables } from '@/integrations/supabase/types';
+import { acquireChannel } from '../../integrations/supabase/realtime';
 
 interface ChatItem {
   id: string;
@@ -395,59 +396,58 @@ const Room: React.FC = () => {
   // Host-side realtime: keep invites list in sync for this room
   useEffect(() => {
     if (!isHost || !user?.id) return;
-    const channel = supabase
-      .channel(`room_invites:host:${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "room_invites",
-          filter: `inviter_user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const row = payload.new as Tables<'room_invites'>;
-          if (!row || row.room_id !== roomCode) return;
-          setInvites((prev) => {
-            if (prev.some((i) => i.id === row.id)) return prev;
-            return [{ id: row.id, friend_id: row.friend_id, display_name: '' }, ...prev];
-          });
-          // Enrich with invitee's display name asynchronously
-          (async () => {
-            try {
-              const { data, error } = await supabase
-                .from('profiles')
-                .select('display_name')
-                .eq('id', row.friend_id)
-                .maybeSingle();
-              if (error) return;
-              const dn = (data?.display_name || '').trim();
-              if (!dn) return;
-              setInvites((prev) => prev.map((i) => (i.id === row.id ? { ...i, display_name: dn } : i)));
-            } catch {
-              // ignore
-            }
-          })();
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "DELETE",
-          schema: "public",
-          table: "room_invites",
-          filter: `inviter_user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const row = payload.old as { id: string };
-          if (!row?.id) return;
-          setInvites((prev) => prev.filter((i) => i.id !== row.id));
-        }
-      )
-      .subscribe();
+    const channelName = `room_invites:host:${user.id}`;
+    const handle = acquireChannel(channelName);
+    handle.channel.on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'room_invites',
+        filter: `inviter_user_id=eq.${user.id}`,
+      },
+      (payload) => {
+        const row = payload.new as Tables<'room_invites'>;
+        if (!row || row.room_id !== roomCode) return;
+        setInvites((prev) => {
+          if (prev.some((i) => i.id === row.id)) return prev;
+          return [{ id: row.id, friend_id: row.friend_id, display_name: '' }, ...prev];
+        });
+        // Enrich with invitee's display name asynchronously
+        (async () => {
+          try {
+            const { data, error } = await supabase
+              .from('profiles')
+              .select('display_name')
+              .eq('id', row.friend_id)
+              .maybeSingle();
+            if (error) return;
+            const dn = (data?.display_name || '').trim();
+            if (!dn) return;
+            setInvites((prev) => prev.map((i) => (i.id === row.id ? { ...i, display_name: dn } : i)));
+          } catch {
+            // ignore
+          }
+        })();
+      }
+    );
+    handle.channel.on(
+      'postgres_changes',
+      {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'room_invites',
+        filter: `inviter_user_id=eq.${user.id}`,
+      },
+      (payload) => {
+        const row = payload.old as { id: string };
+        if (!row?.id) return;
+        setInvites((prev) => prev.filter((i) => i.id !== row.id));
+      }
+    );
 
     return () => {
-      supabase.removeChannel(channel);
+      handle.release();
     };
   }, [isHost, user?.id, roomCode]);
 

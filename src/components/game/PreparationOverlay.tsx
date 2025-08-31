@@ -25,14 +25,15 @@ export default function PreparationOverlay() {
   const isActive = activeStatuses.has(prepStatus as any);
   const isError = prepStatus === 'error';
 
-  const subtext = useMemo(() => {
+  // Determine the target subtext based on status (no delay here)
+  const targetSubtext = useMemo(() => {
     switch (prepStatus) {
       case 'selecting':
-        return 'Selecting images…';
+        return 'Selecting 5 random images…';
       case 'fetching':
-        return 'Fetching image metadata…';
+        return 'Fetching related information…';
       case 'preloading':
-        return 'Preloading images…';
+        return 'Images are generated using AI.';
       case 'done':
         return 'Ready';
       case 'error':
@@ -41,6 +42,15 @@ export default function PreparationOverlay() {
         return '';
     }
   }, [prepStatus, prepError]);
+
+  // Displayed subtext with 0.5s delay on each change
+  const [displaySubtext, setDisplaySubtext] = useState('');
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDisplaySubtext(targetSubtext);
+    }, 500); // 0.5s delay
+    return () => window.clearTimeout(timeout);
+  }, [targetSubtext]);
 
   const { loaded = 0, total = 0 } = prepProgress || { loaded: 0, total: 0 };
   const filledSegments = useMemo(() => {
@@ -143,13 +153,13 @@ export default function PreparationOverlay() {
           ) : (
             <Loader2 className="h-6 w-6 animate-spin text-history-primary" />
           )}
-          <h2 className="text-xl font-semibold">{isError ? 'Preparation failed' : "You're about to be dropped into history…"}</h2>
+          <h2 className="text-xl font-semibold">{isError ? 'Preparation failed' : "Dropping you into history…"}</h2>
         </div>
 
         {/* Body */}
         <div className="mt-4 space-y-4">
           {/* Subtext and live region */}
-          <p className="text-sm text-muted-foreground">{subtext}</p>
+          <p className="text-sm text-muted-foreground text-center">{displaySubtext}</p>
           <p className="sr-only" aria-live="polite" role="status">{liveAnnouncement}</p>
 
           {/* Segmented progress bar (always 5 segments) */}

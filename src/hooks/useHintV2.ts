@@ -7,6 +7,7 @@ import { HINT_COSTS, HINT_DEPENDENCIES, HINT_TYPE_NAMES } from '@/constants/hint
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import { makeRoundId } from '@/utils/roomState';
+import { useGameConfig } from '@/config/gameConfig';
 
 // Hint interface definition
 export interface Hint {
@@ -51,6 +52,7 @@ export const useHintV2 = (
 ): UseHintV2Return => {
   const { user } = useAuth();
   const { addLog } = useLogs();
+  const config = useGameConfig();
   
   // State variables
   const [availableHints, setAvailableHints] = useState<Hint[]>([]);
@@ -248,13 +250,18 @@ export const useHintV2 = (
         roundSessionId = makeRoundId(roomFromUrl, roundNumFromUrl);
       }
 
+      // Determine costs from live config, falling back to hint defaults
+      const override = config?.hints?.[hintToPurchase.type as string];
+      const xpDebtVal = (override?.xp ?? hintToPurchase.xp_cost ?? 0);
+      const accDebtVal = (override?.acc ?? hintToPurchase.accuracy_penalty ?? 0);
+
       const insertPayload = {
         id: uuidv4(),
         user_id: user.id,
         round_id: roundSessionId,
         hint_id: hintToPurchase.id,
-        xpDebt: hintToPurchase.xp_cost,
-        accDebt: hintToPurchase.accuracy_penalty,
+        xpDebt: xpDebtVal,
+        accDebt: accDebtVal,
         label: hintLabel,
         hint_type: hintType,
         purchased_at: new Date().toISOString()
@@ -266,7 +273,7 @@ export const useHintV2 = (
       // Try direct insert first
       
       const { data: insertData, error } = await supabase
-        .from('round_hints')
+        .from('round_hints' as any)
         .insert([insertPayload])
         .select('*');
 
@@ -411,8 +418,16 @@ export const useHintV2 = (
   );
 
   // Calculate total XP debt and accuracy debt from purchased hints
-  const xpDebt = purchasedHints.reduce((total, hint) => total + (hint.xp_cost || 0), 0);
-  const accDebt = purchasedHints.reduce((total, hint) => total + (hint.accuracy_penalty || 0), 0);
+  const xpDebt = purchasedHints.reduce((total, hint) => {
+    const c = config?.hints?.[hint.type as string];
+    const v = (c?.xp ?? hint.xp_cost ?? 0);
+    return total + v;
+  }, 0);
+  const accDebt = purchasedHints.reduce((total, hint) => {
+    const c = config?.hints?.[hint.type as string];
+    const v = (c?.acc ?? hint.accuracy_penalty ?? 0);
+    return total + v;
+  }, 0);
 
   return {
     availableHints,

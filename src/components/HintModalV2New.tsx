@@ -11,6 +11,7 @@ import { Clock, MapPin, X } from 'lucide-react';
 
 import { HINT_TYPE_NAMES, HINT_DEPENDENCIES, HINT_LEVEL_DESCRIPTIONS, HINT_TYPE_DESCRIPTIONS } from '@/constants/hints';
 import { formatInteger } from '@/utils/format';
+import { useGameConfig } from '@/config/gameConfig';
 
 interface Hint {
   id: string;
@@ -34,10 +35,14 @@ interface HintModalV2NewProps {
   isLoading: boolean;
 }
 
-const getHintCostAndPenalty = (hint: Hint): { xp: number, acc: number } => {
+const getHintCostAndPenalty = (
+  hint: Hint,
+  hintsConfig?: Record<string, { xp?: number; acc?: number }>
+): { xp: number; acc: number } => {
+  const override = hintsConfig?.[hint.type];
   return {
-    xp: hint.xp_cost || 0,
-    acc: hint.accuracy_penalty || 0
+    xp: (override?.xp ?? hint.xp_cost ?? 0),
+    acc: (override?.acc ?? hint.accuracy_penalty ?? 0),
   };
 };
 
@@ -56,9 +61,10 @@ const HintButtonUI: React.FC<{
   isLoading: boolean;
   onPurchase: (hint: Hint) => void;
   isLocked: boolean;
-}> = ({ hint, purchasedHintIds, isLoading, onPurchase, isLocked }) => {
+  hintsConfig?: Record<string, { xp?: number; acc?: number }>
+}> = ({ hint, purchasedHintIds, isLoading, onPurchase, isLocked, hintsConfig }) => {
   const [lockedClicked, setLockedClicked] = useState(false);
-  const { xp: costXp, acc: penaltyAcc } = getHintCostAndPenalty(hint);
+  const { xp: costXp, acc: penaltyAcc } = getHintCostAndPenalty(hint, hintsConfig);
   const label1 = HINT_TYPE_NAMES[hint.type] ??
     hint.type.replace(/^\d+_/, '').replace(/_/g, ' ').replace(/(when|where)/g, '').trim();
 
@@ -137,6 +143,7 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
   const [purchasingHintId, setPurchasingHintId] = useState<string | null>(null);
   const [lockedInfoOpen, setLockedInfoOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'when' | 'where'>('when');
+  const config = useGameConfig();
 
   const isHintPurchased = (hintId: string): boolean => purchasedHintIds.includes(hintId);
 
@@ -285,6 +292,7 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
                 isLoading={isLoading || purchasingHintId === hint.id}
                 onPurchase={handlePurchase}
                 isLocked={isHintLocked(hint)}
+                hintsConfig={config?.hints as Record<string, { xp?: number; acc?: number }>}
               />
             ))}
           </div>

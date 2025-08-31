@@ -113,6 +113,8 @@
     - Example: if current path starts with `/level/...`, navigate to `${modeBasePath}/game/room/${roomId}/round/${n}` and `${modeBasePath}/game/room/${roomId}/final`.
     - Special case: Solo has no dedicated `/final`; after the last round, navigate to `/home`.
   - Legacy cleanup: All legacy `/test` routes have been removed. Post-auth redirects go to `/home` (hub). Gameplay uses canonical mode routes (`/solo`, `/level`, `/compete/(sync|async)`).
+  - Providers: `App.tsx` wraps the entire `<Routes>` tree inside `GameProvider` (under `BrowserRouter`). This ensures `useGame()` is available to `LandingPage`, `HomePage`, and all game pages for `startGame`/`startLevelUpGame` and navigation.
+  - Admin guard: The `/admin` route is nested under `RequireAuthSession` so only users with an active Supabase session (registered or guest) can access `AdminGameConfigPage`. Signed-out users are redirected to `/`.
 - **WebSocket endpoint**: `ws(s)://<resolved-host>/parties/lobby/:roomCode` (via `partyUrl('lobby', roomCode)`).
 
 ### Development Logging Policy (2025-08-27)
@@ -359,6 +361,24 @@
     - Hint list top margin: `mt-4` (was `mt-3`).
   - No behavioral changes; only spacing.
 
+### Config-Driven Hints (Costs & Accuracy Penalties) (2025-08-31)
+
+- __Source of truth__
+  - Live config: `src/config/gameConfig.ts` via `useGameConfig()`; hint overrides under `config.hints[hintKey] = { xp, acc }`.
+  - Fallbacks: `src/constants/hints.ts` provides default costs/penalties when a key is missing in the live config.
+
+- __Runtime application__
+  - `src/hooks/useHintV2.ts` resolves XP cost and accuracy debt per hint from `config.hints` when present, else from defaults. The resolved values drive purchase validation, persisted debts, and round scoring.
+
+- __UI display__
+  - `src/components/HintModalV2New.tsx` shows costs/penalties from the live config. No UI structural changes; only value sourcing changed.
+
+- __Typing__
+  - Hints are accessed via a simple record on `GameConfig`. Keep Typescript types aligned with `gameConfig.ts`; defaults remain typed in `constants/hints.ts`.
+
+- __Testing__
+  - After updating game config, reopen the Hint modal or start a new round to see updated values. Verify Round Results reflect correct hint debts.
+
 #### Perfect! Labels and Final Results Badge Popup (2025-08-30)
 
 - __Perfect! labels__
@@ -445,7 +465,18 @@ Due to potential inconsistencies and environment issues with the Supabase CLI, t
     *   Paste the complete, ordered, and transaction-wrapped script into the editor.
     *   Click **RUN**.
 
-This approach bypasses the need for local tools like the Supabase CLI or `bun`/`npm` scripts for database changes, which have proven unreliable in some development environments.
+### Admin Game Config — Client Save & RLS (2025-08-31)
+
+- **Table**: `public.game_config` with a single canonical row `{ id: 'global' }`.
+- **Client save (no API route)**: The admin page saves directly using the authenticated Supabase client, relying on RLS for authorization.
+  - Page: `src/pages/admin/AdminGameConfigPage.tsx`
+    - Calls `saveConfigPatch(supabase, patch)` instead of POSTing to `/api/admin/save-config`.
+  - Service: `src/server/configService.ts`
+    - `saveConfigPatch(client, patch)` validates the patch via Zod, deep-merges over the current config, validates final config, and `upsert`s `{ id: 'global', config }`.
+- **RLS policies (admin only)**: Policies check `auth.jwt() -> 'user_metadata' ->> 'role' = 'admin'` for insert/update.
+  - Migration: `supabase/migrations/20250831_update_game_config_rls.sql` drops prior policies and recreates them with the nested `user_metadata.role` check.
+- **Route guard**: `/admin` is wrapped by `RequireAuthSession` in `App.tsx` so only users with an active session can access the page. Admin enforcement for writes is handled by RLS.
+- **Note**: The legacy `pages/api/admin/save-config.js` is unused in Vite SPA deployments and kept only as reference. Do not rely on it.
 
 ### Game Preparation RPC — Client Call Contract (2025-08-26)
 

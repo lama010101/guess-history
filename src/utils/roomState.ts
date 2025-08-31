@@ -19,11 +19,19 @@ export function makeRoundId(roomId: string, roundNumber: number): string {
  * Persist the current round number for a given room in game_sessions.
  * Uses upsert on room_id and tolerates missing column/table gracefully.
  */
-export async function setCurrentRoundInSession(roomId: string, roundNumber: number): Promise<void> {
+export async function setCurrentRoundInSession(roomId: string, roundNumber: number, seed?: string): Promise<void> {
   try {
+    // Ensure a non-null seed to satisfy schema (seed TEXT NOT NULL).
+    // If a deterministic seed isn't provided by caller, derive a stable fallback from roomId.
+    const payload = {
+      room_id: roomId,
+      current_round_number: roundNumber,
+      seed: (seed ?? roomId),
+    } as any;
+
     const { error } = await supabase
       .from('game_sessions' as any)
-      .upsert({ room_id: roomId, current_round_number: roundNumber } as any, { onConflict: 'room_id' } as any);
+      .upsert(payload, { onConflict: 'room_id' } as any);
 
     if (error) {
       // 42703 = undefined column, 42P01 = undefined table

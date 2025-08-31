@@ -25,6 +25,7 @@ import RequireAuthSession from './components/RequireAuthSession';
 import GameRoomPage from "./pages/GameRoomPage";
 import FriendsPage from '@/pages/FriendsPage';
 import LobbyPage from '@/pages/LobbyPage';
+import AdminGameConfigPage from '@/pages/admin/AdminGameConfigPage';
 import AuthPage from "./pages/AuthPage";
 
 
@@ -181,6 +182,9 @@ const App = () => {
                         <Route path="/compete/async/game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
                         <Route path="/compete/async/game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />
                         <Route path="/compete/async/game/room/:roomId/final" element={<FinalResultsPage />} />
+                        
+                        {/* Admin routes */}
+                        <Route path="/admin" element={<AdminGameConfigPage />} />
                       </Route>
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>

@@ -4,9 +4,12 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from
 import { TooltipProvider } from "./src/components/ui/tooltip";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "./src/contexts/AuthContext";
+import { GameProvider } from "./src/contexts/GameContext";
 import { supabase } from "./src/integrations/supabase/client";
 import { Toaster } from "./src/components/ui/toaster";
 import DevToastProbe from "./src/components/DevToastProbe";
+import RequireAuthSession from "./src/components/RequireAuthSession";
+import AdminGameConfigPage from "./src/pages/admin/AdminGameConfigPage";
 
 import TestLayout from "./src/layouts/TestLayout";
 import TestHomePage from "./pages/test/TestHomePage";
@@ -20,6 +23,7 @@ import TestRoomPage from "./pages/test/TestRoomPage";
 import TestFriendsPage from "./pages/test/TestFriendsPage";
 import TestAuthPage from "./pages/test/TestAuthPage";
 import LandingPage from './src/pages/LandingPage';
+import HomePage from './src/pages/HomePage';
 import RoundResultsPage from './src/pages/RoundResultsPage';
 import GameRoundPage from './src/pages/GameRoundPage';
 import InviteListener from "./src/components/InviteListener";
@@ -91,11 +95,16 @@ const App = () => {
               <BrowserRouter>
                 <AuthRedirectHandler />
                 <ModeClassWatcher />
-                <InviteListener />
-                {(import.meta as any)?.env?.DEV && <DevToastProbe />}
-                <Routes>
-                  <Route path="/home" element={<LandingPage />} />
-                  <Route path="/" element={<Navigate to="/home" replace />} />
+                <GameProvider>
+                  <InviteListener />
+                  {(import.meta as any)?.env?.DEV && <DevToastProbe />}
+                  <Routes>
+                  <Route path="/home" element={<HomePage />} />
+                  <Route path="/" element={<LandingPage />} />
+                  {/* Admin */}
+                  <Route path="/admin" element={<RequireAuthSession />}>
+                    <Route index element={<AdminGameConfigPage />} />
+                  </Route>
                   {/* Top-level game routes (no '/test' prefix) */}
                   <Route path="/solo/game/room/:roomId/round/:roundNumber" element={<SoloGameRoundPage />} />
                   <Route path="/solo/game/room/:roomId/round/:roundNumber/results" element={<SoloRoundResultsPage />} />
@@ -140,8 +149,9 @@ const App = () => {
                   </Route>
                   <Route path="/room/:roomCode" element={<Room />} />
                   <Route path="*" element={<Navigate to="/home" replace />} />
-                </Routes>
-                <Toaster />
+                  </Routes>
+                  <Toaster />
+                </GameProvider>
               </BrowserRouter>
             </TooltipProvider>
           </AuthProvider>

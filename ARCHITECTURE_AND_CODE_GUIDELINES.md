@@ -228,7 +228,7 @@
     - Binds Level Up slider bounds: parses `level` from the URL (`/level/:level/...`), computes constraints via `getLevelUpConstraints(level)`, and passes `{ minYear, maxYear }` to `GameLayout1`.
     - Renders `LevelUpIntro` via a React portal to `document.body` with `z-[60]`, above `PreparationOverlay` (`z-[50]`). The overlay blocks interactions underneath (no leaks).
     - Computes live Level Up intro metrics: `currentOverallNetPct = average(roundResults[].accuracy)` and `bestRoundNetPct = max(roundResults[].accuracy)`, both clamped to `0..100`, and passes them to `LevelUpIntro` for progress display.
-    - The server-authoritative round timer runs under the overlay; the overlay does not pause the timer on Level Up routes.
+    - The intro overlay auto-shows at the start of each round on `/level/...` routes and gates the timer until Start is pressed. It is also embedded inside `PreparationOverlay` during preparation and can be reopened in-game via the HUD Level button.
   - `src/pages/RoundResultsPage.tsx`
     - Above the standard results layout, renders `LevelRoundProgressCard` on Level Up routes.
     - Computes net percent with `computeRoundNetPercent(timeAcc, locAcc, accDebtTotal)` using:
@@ -239,7 +239,7 @@
     - Renders `LevelResultBanner` and two `LevelRequirementCard`s above the final score when on `/level/` routes.
     - Pass criteria surfaced in UI:
       - Overall net accuracy ≥ 50% (average of per-round net percents)
-      - Any round ≥ 70% net
+      - Best time or location accuracy ≥ 70% after penalties (at least one round achieves this on either axis)
     - Existing pass logic and DB updates (games/profiles) remain in this page; UI is additive.
 
 #### Final Results — Level Up UI updates (2025-09-02)
@@ -263,7 +263,7 @@
   - Net XP: `finalXP - totalXpDebt`, where `totalXpDebt` is the sum of hint `xpDebt` across the game rounds.
 - __Pass criteria__
   - Overall net accuracy ≥ 50%.
-  - Any round net accuracy ≥ 70%.
+  - Best time or location accuracy ≥ 70% after penalties.
 - __Persistence on pass__ (non-guest users only)
   - Reads current `games.level` for the finished `gameId` (defaults to `1` if missing) and updates to `currentLevel + 1`.
   - Updates `profiles.level_up_best_level` if the new level exceeds the previous best.
@@ -272,16 +272,17 @@
   - UI components (`LevelResultBanner`, `LevelRequirementCard`) reflect the same criteria; logic runs once per game after submission guard (`submittedGameIdRef`).
   - Guests are skipped for persistence.
 
-#### Level Up — Update 2025-09-01 (Intro Modal Manual Open + HUD button)
+#### Level Up — Update 2025-09-01 (Revised 2025-09-03): Gated Start + HUD reopen
 
-- __Manual intro__: The Level Up intro modal no longer auto-shows at the start of Round 1. Players can open it on demand.
-- __HUD button__: `src/components/navigation/GameOverlayHUD.tsx` renders a top-right Level button when provided `levelLabel` and `onOpenLevelIntro` props. Label format: `Level {n}`.
+- __Intro auto-show__: The Level Up intro modal auto-shows at the start of each round on `/level/...` routes.
+- __Gated Start__: The round timer is gated behind the intro's Start button. Until Start is pressed, the server timer is not started and the UI timer remains paused.
+- __HUD button__: `src/components/navigation/GameOverlayHUD.tsx` renders a top-right Level button when provided `levelLabel` and `onOpenLevelIntro` props. Label format: `Level {n}`. Players can close the intro without starting (timer remains paused) and reopen it via this HUD button to press Start later.
 - __Prop wiring__:
   - `src/components/layouts/GameLayout1.tsx` accepts optional `levelLabel?` and `onOpenLevelIntro?` and forwards them to `GameOverlayHUD` unchanged.
   - `src/pages/GameRoundPage.tsx` supplies `levelLabel = \`Level ${level}\`` (only on `/level/...` routes) and `onOpenLevelIntro = () => setShowIntro(true)`.
 - __Intro close__: `LevelUpIntro.tsx` now supports an optional `onClose` prop alongside `onStart`. Closing the intro does not navigate or mutate round results; it simply hides the overlay.
 - __Overlay & stacking__: The intro is rendered via portal (`document.body`) in a container `fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm`. This sits above `PreparationOverlay` (`z-[50]`) and prevents interaction leaks.
-- __Timer behavior__: The server-authoritative timer continues while the intro is open on Level Up routes. Pre-hydration, `GameRoundPage` seeds `remainingTime` from `roundTimerSec` for correct initial display; once hydrated, server values are authoritative.
+- __Timer behavior__: The server-authoritative timer does not start until Start is clicked on the intro. Pre-hydration, `GameRoundPage` seeds `remainingTime` from `roundTimerSec` for correct initial display; once hydrated, server values are authoritative after Start. The local UI timer remains paused while the intro is visible or before Start.
 - __Timer defaults__: `src/lib/levelUpConfig.ts` sets Level 1 `timerSec = 300` (5 minutes). Higher levels derive from the same helper and are applied via `startLevelUpGame()` which calls `handleSetRoundTimerSec(timerSec)`.
 
 - __Theming__: `src/index.css` remaps Tailwind `*-orange-*` utilities to `hsl(var(--secondary))` inside `.mode-levelup`. Level Up sets `--secondary` to pink; components can keep `bg-orange-500` etc. and will appear pink in Level Up mode.
@@ -303,7 +304,8 @@
 - __UI/validation__: No UI structure or validation logic was modified beyond using the effective bounds; modal overlays and z-index remain unchanged.
 
 - __QA checklist__:
-  - Intro overlay appears only on Level Up Round 1, pauses timer, and uses pink accents.
+  - Preparation overlay and embedded Level Up intro display together during preparation before each round loads; no sessionStorage-based auto-start.
+  - Intro overlay appears at the start of each Level Up round, pauses timer, and uses pink accents.
   - Round Results shows the per-round progress card with correct net percent (including hint penalties).
   - Final Results shows pass/fail banner and both requirement cards with accurate values.
   - Pink theming is consistent across the three pages.
@@ -338,10 +340,10 @@
 - **Game page integration**: `src/pages/GameRoundPage.tsx`
   - Uses the canonical builder: `const timerId = buildTimerId(gameId, currentRoundIndex)`.
   - Replaces local elapsed-time hydration with `useServerCountdown`.
-  - Passes `durationSec = roundTimerSec` and `autoStart = timerEnabled && (!showIntro || isLevelUpRoute)`.
+  - Passes `durationSec = roundTimerSec` and `autoStart = timerEnabled && roundStarted` (where `roundStarted` is set when the Level Up intro Start button is pressed).
   - Mirrors hook state into existing props without UI changes:
     - `remainingTime ← remainingSec`
-    - `isTimerActive ← !expired`
+    - `isTimerActive ← roundStarted && !expired`
   - Pre-hydration sync: before the server timer reports ready, set local `remainingTime = roundTimerSec` so the initial display reflects the level’s duration. Once hydrated (`ready === true`), do not override the server value, even if the Level Up intro overlay is visible.
   - On expiry, calls the existing `handleTimeComplete()` which routes to results and records a zero/partial score per prior behavior.
   - Level Up safety: on `/level/...` routes, enforce `timerEnabled = true` on mount to cover refresh/direct navigation into a game round.
@@ -448,6 +450,11 @@
   - File: `src/components/game/PreparationOverlay.tsx`
   - On `/level/...` routes, `PreparationOverlay` now embeds `LevelUpIntro` with `embedded` mode and constraints from `getLevelUpConstraints(level)`.
   - `LevelUpIntro` in embedded mode renders without its standalone panel and uses unified translucent cards to match the overlay panel.
+
+  - __Embedded Start actions (non-starting)__
+    - `LevelUpIntro.tsx` now supports `showActionsInEmbedded` to optionally render footer actions (Start/Close) even when `embedded`.
+    - `PreparationOverlay.tsx` passes `showActionsInEmbedded` and `isLoading={isActive}` so the Start button is visible during preparation but disabled while loading. The `onStart` handler is intentionally a no-op here.
+    - Actual round start remains gated by the modal intro in `src/pages/GameRoundPage.tsx`, which sets `roundStarted` and begins the server timer. The embedded actions are for preview/consistency only and do not start gameplay from the preparation step.
 
 - __Section titles added__
   - File: `src/components/levelup/LevelUpIntro.tsx`

@@ -163,15 +163,21 @@ const FinalResultsPage = () => {
 
       // Compute net final XP and net final accuracy using debts
       const netFinalXP = Math.max(0, Math.round(finalXP - totalXpDebt));
-      const perRoundNetPercents: number[] = images.map((img, idx) => {
+      const perRoundDerived = images.map((img, idx) => {
         const result = roundResults[idx];
-        if (!img || !result) return 0;
+        if (!img || !result) return { netPercent: 0, timeNet: 0, locNet: 0 };
         const timeAcc = calculateTimeAccuracy(result.guessYear || 0, img.year || 0);
         const locAcc = calculateLocationAccuracy(result.distanceKm || 0);
         const rid = roomId ? makeRoundId(roomId, idx + 1) : (gameId ? makeRoundId(gameId, idx + 1) : '');
         const accDebt = rid ? (perRoundAccDebt[rid] || 0) : 0;
-        return computeRoundNetPercent(timeAcc, locAcc, accDebt);
+        const netPercent = computeRoundNetPercent(timeAcc, locAcc, accDebt);
+        const timeNet = Math.max(0, Math.round(timeAcc - accDebt));
+        const locNet = Math.max(0, Math.round(locAcc - accDebt));
+        return { netPercent, timeNet, locNet };
       });
+      const perRoundNetPercents = perRoundDerived.map(d => d.netPercent);
+      const perRoundBestAxisNet = perRoundDerived.map(d => Math.max(d.timeNet, d.locNet));
+      const bestAxisNetAfterPenalties = perRoundBestAxisNet.length > 0 ? Math.max(...perRoundBestAxisNet) : 0;
       const finalPercentNet = averagePercent(perRoundNetPercents);
 
       // Do not update provisional again here; refreshGlobalMetrics after persistence will sync UI
@@ -210,10 +216,10 @@ const FinalResultsPage = () => {
             if (import.meta.env.DEV) console.log('[LevelUp] Guest user; skipping Level Up progress updates.');
           } else {
             const overallPass = finalPercentNet >= 50;
-            const roundPass = perRoundNetPercents.some((p) => p >= 70);
-            const passed = overallPass && roundPass;
+            const axisPass = bestAxisNetAfterPenalties >= 70; // Best time or location accuracy (after penalties) ≥ 70%
+            const passed = overallPass && axisPass;
             if (import.meta.env.DEV) {
-              console.log('[LevelUp] overallPass:', overallPass, 'roundPass:', roundPass, 'passed:', passed);
+              console.log('[LevelUp] overallPass:', overallPass, 'axisPass:', axisPass, 'passed:', passed);
             }
 
             if (passed) {
@@ -415,7 +421,7 @@ const FinalResultsPage = () => {
   const handleContinueNextLevel = async () => {
     try {
       resetGame();
-      const nextLevel = (typeof currentLevel === 'number' ? currentLevel + 1 : 2);
+      const nextLevel = (typeof currentLevelFromPath === 'number' ? currentLevelFromPath + 1 : 2);
       await startLevelUpGame(nextLevel);
     } catch (error) {
       console.error('Error in handleContinueNextLevel:', error);
@@ -512,24 +518,29 @@ const FinalResultsPage = () => {
   }, 0);
 
   // Compute net values using aggregated debts (from DB)
-  const perRoundNetPercents: number[] = images.map((img, idx) => {
+  const perRoundDerived = images.map((img, idx) => {
     const result = roundResults[idx];
-    if (!img || !result) return 0;
+    if (!img || !result) return { netPercent: 0, timeNet: 0, locNet: 0 };
     const timeAcc = calculateTimeAccuracy(result.guessYear || 0, img.year || 0);
     const locAcc = calculateLocationAccuracy(result.distanceKm || 0);
     const rid = roomId ? makeRoundId(roomId, idx + 1) : (gameId ? makeRoundId(gameId, idx + 1) : '');
     const accDebt = rid ? (accDebtByRound[rid] || 0) : 0;
-    return computeRoundNetPercent(timeAcc, locAcc, accDebt);
+    const netPercent = computeRoundNetPercent(timeAcc, locAcc, accDebt);
+    const timeNet = Math.max(0, Math.round(timeAcc - accDebt));
+    const locNet = Math.max(0, Math.round(locAcc - accDebt));
+    return { netPercent, timeNet, locNet };
   });
+  const perRoundNetPercents: number[] = perRoundDerived.map(d => d.netPercent);
   const finalPercentNet = averagePercent(perRoundNetPercents);
+  const perRoundBestAxisNet: number[] = perRoundDerived.map(d => Math.max(d.timeNet, d.locNet));
+  const bestAxisNetAfterPenalties = perRoundBestAxisNet.length > 0 ? Math.max(...perRoundBestAxisNet) : 0;
   const netFinalXP = Math.max(0, Math.round(finalXP - (totalXpDebtState || 0)));
   const totalScore = formatInteger(netFinalXP);
   const totalPercentage = formatInteger(finalPercentNet);
   const isLevelUp = location.pathname.includes('/level/');
   const overallPass = finalPercentNet >= 50;
-  const bestRoundNet = perRoundNetPercents.length > 0 ? Math.max(...perRoundNetPercents) : 0;
-  const roundPass = perRoundNetPercents.some((p) => p >= 70);
-  const passed = overallPass && roundPass;
+  const axisPass = bestAxisNetAfterPenalties >= 70; // Best time or location accuracy (after penalties) ≥ 70%
+  const passed = overallPass && axisPass;
   const totalWhenAccuracy = totalWhenXP > 0 ? (totalWhenXP / (roundResults.length * 100)) * 100 : 0;
   const totalWhereAccuracy = totalWhereXP > 0 ? (totalWhereXP / (roundResults.length * 100)) * 100 : 0;
   const totalHintsUsed = roundResults.reduce((sum, r) => sum + (r.hintsUsed || 0), 0);
@@ -577,17 +588,17 @@ const FinalResultsPage = () => {
         <div className="max-w-4xl mx-auto w-full">
           {isLevelUp && (
             <div className="space-y-3 mb-6">
-              <LevelResultBanner passed={passed} unlockedLevel={passed ? ((typeof currentLevel === 'number' ? currentLevel + 1 : 2)) : undefined} />
+              <LevelResultBanner passed={passed} unlockedLevel={passed ? ((typeof currentLevelFromPath === 'number' ? currentLevelFromPath + 1 : 2)) : undefined} />
               <LevelRequirementCard
-                title="Overall net accuracy ≥ 50%"
-                met={passed}
-                currentLabel={`Current: ${formatInteger(finalPercentNet)}%`}
+                title="Overall net accuracy"
+                met={overallPass}
+                currentLabel={`= ${formatInteger(finalPercentNet)}%`}
                 targetLabel="Target: ≥ 50%"
               />
               <LevelRequirementCard
-                title="Any round ≥ 70% net"
-                met={passed}
-                currentLabel={`Best round: ${formatInteger(bestRoundNet)}%`}
+                title="Best Time or Location accuracy"
+                met={axisPass}
+                currentLabel={`= ${formatInteger(bestAxisNetAfterPenalties)}%`}
                 targetLabel="Target: ≥ 70%"
               />
             </div>
@@ -703,7 +714,7 @@ const FinalResultsPage = () => {
           {isLevelUp && passed ? (
             <Button onClick={handleContinueNextLevel} className="flex-1 rounded-md bg-orange-500 text-white hover:bg-orange-600 gap-2 py-6 text-base" size="lg">
               <RefreshCw className="h-5 w-5" />
-              {`Continue to Level ${typeof currentLevel === 'number' ? currentLevel + 1 : 2}`}
+              {`Continue to Level ${typeof currentLevelFromPath === 'number' ? currentLevelFromPath + 1 : 2}`}
             </Button>
           ) : (
             <Button onClick={handlePlayAgain} className="flex-1 rounded-md bg-orange-500 text-white hover:bg-orange-600 gap-2 py-6 text-base" size="lg">

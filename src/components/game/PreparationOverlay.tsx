@@ -20,6 +20,7 @@ export default function PreparationOverlay() {
     timerEnabled,
     preparedImages,
     preparedLoadedIndices,
+    roomId,
   } = useGame();
 
   const navigate = useNavigate();
@@ -234,10 +235,14 @@ export default function PreparationOverlay() {
         {levelUpConstraints && (
           <div className="mt-4">
             <LevelUpIntro
-              onStart={() => { /* no-op inside preparation overlay */ }}
+              onStart={() => {
+                // No-op here: rounds are explicitly started in-game via the LevelUpIntro overlay
+              }}
               constraints={levelUpConstraints}
               level={levelUpLevel ?? undefined}
               embedded
+              showActionsInEmbedded
+              isLoading={isActive}
             />
           </div>
         )}

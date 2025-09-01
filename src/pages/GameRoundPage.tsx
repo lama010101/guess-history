@@ -135,6 +135,7 @@ const GameRoundPage = () => {
     return c;
   }, [isLevelUpRoute, levelUpLevel]);
   const [showIntro, setShowIntro] = useState<boolean>(false);
+  const [roundStarted, setRoundStarted] = useState<boolean>(!isLevelUpRoute);
 
   // Level Up guarantee: timer must be enabled even on refresh/navigation directly into Level Up routes
   useEffect(() => {
@@ -146,26 +147,29 @@ const GameRoundPage = () => {
     }
   }, [isLevelUpRoute, timerEnabled, setTimerEnabled]);
 
-  // Level Up intro auto-show disabled; it can be opened on demand from the HUD button
+  // For Level Up: auto-show intro at the start of each round and gate timer start until Start is pressed
   useEffect(() => {
-    if (import.meta.env.DEV) {
-      try {
-        console.debug('[GameRoundPage] intro:auto disabled');
-      } catch {}
-    }
-  }, [isLevelUpRoute, roundNumber, roundResults]);
-
-  // If intro is visible, pause the round timer; resume when dismissed (if timers are enabled)
-  useEffect(() => {
-    if (showIntro && !isLevelUpRoute) {
+    if (isLevelUpRoute) {
+      setShowIntro(true);
+      setRoundStarted(false);
       setIsTimerActive(false);
-    } else if (timerEnabled) {
+      if (import.meta.env.DEV) {
+        try { console.debug('[GameRoundPage] Level Up gating: show intro & pause timer', { roundNumber }); } catch {}
+      }
+    }
+  }, [isLevelUpRoute, roundNumber]);
+
+  // If intro is visible, always pause the round timer. Resume only if timers are enabled and the round has started.
+  useEffect(() => {
+    if (showIntro) {
+      setIsTimerActive(false);
+    } else if (timerEnabled && roundStarted) {
       setIsTimerActive(true);
     }
     if (import.meta.env.DEV) {
-      try { console.debug('[GameRoundPage] intro:toggle', { showIntro, timerEnabled, isLevelUpRoute }); } catch {}
+      try { console.debug('[GameRoundPage] intro:toggle', { showIntro, timerEnabled, isLevelUpRoute, roundStarted }); } catch {}
     }
-  }, [showIntro, timerEnabled, isLevelUpRoute]);
+  }, [showIntro, timerEnabled, isLevelUpRoute, roundStarted]);
 
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -189,10 +193,9 @@ const GameRoundPage = () => {
   }, [gameId, currentRoundIndex]);
 
   const autoStart = useMemo(() => {
-    // Level Up auto-starts even under the intro overlay
-    const allowIntroStart = isLevelUpRoute;
-    return !!(timerEnabled && (allowIntroStart || !showIntro) && timerId && user);
-  }, [timerEnabled, showIntro, timerId, user, isLevelUpRoute]);
+    // Start server timer only after the round is explicitly started
+    return !!(timerEnabled && roundStarted && timerId && user);
+  }, [timerEnabled, roundStarted, timerId, user]);
   useEffect(() => {
     if (import.meta.env.DEV) {
       try { console.debug('[GameRoundPage] timer:config', { timerId, roundTimerSec, timerEnabled, showIntro, autoStart, hasUser: !!user, authLoading }); } catch {}
@@ -235,25 +238,25 @@ const GameRoundPage = () => {
       setIsTimerActive(false);
       return;
     }
-    // Keep local state in sync with server countdown
+    // Keep local state in sync with server countdown, but only run when round has started
     if (timerReady) {
       if (import.meta.env.DEV) {
-        try { console.debug('[GameRoundPage] timer:sync', { remainingSec, timerExpired }); } catch {}
+        try { console.debug('[GameRoundPage] timer:sync', { remainingSec, timerExpired, roundStarted }); } catch {}
       }
       setRemainingTime(remainingSec);
-      setIsTimerActive(!timerExpired);
+      setIsTimerActive(roundStarted && !timerExpired);
     }
-  }, [timerEnabled, timerReady, remainingSec, timerExpired]);
+  }, [timerEnabled, timerReady, remainingSec, timerExpired, roundStarted]);
 
-  // Fallback: on intro dismissal, force a refetch to hydrate/start the server timer
+  // After explicit Start, force a refetch to hydrate/start the server timer
   useEffect(() => {
-    if (timerEnabled && !showIntro && timerId && user) {
+    if (timerEnabled && roundStarted && timerId && user) {
       if (import.meta.env.DEV) {
-        try { console.debug('[GameRoundPage] timer:refetch after intro dismissal', { timerId, hasUser: !!user }); } catch {}
+        try { console.debug('[GameRoundPage] timer:refetch after start', { timerId, hasUser: !!user }); } catch {}
       }
       refetch();
     }
-  }, [showIntro, timerEnabled, timerId, refetch, user]);
+  }, [roundStarted, timerEnabled, timerId, refetch, user]);
 
   // Persist the current round number to game_sessions so reconnect can restore it
   useEffect(() => {
@@ -651,7 +654,7 @@ const GameRoundPage = () => {
       {isLevelUpRoute && showIntro && createPortal(
         <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <LevelUpIntro
-            onStart={() => setShowIntro(false)}
+            onStart={() => { setRoundStarted(true); setShowIntro(false); }}
             onClose={() => setShowIntro(false)}
             level={levelUpLevel ?? undefined}
             constraints={levelUpConstraints ?? undefined}

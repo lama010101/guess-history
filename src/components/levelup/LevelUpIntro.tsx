@@ -18,6 +18,8 @@ interface LevelUpIntroProps {
   bestRoundNetPct?: number; // 0..100
   // When true, render without standalone panel styling to embed in a parent modal
   embedded?: boolean;
+  // When true, still render footer actions even if embedded
+  showActionsInEmbedded?: boolean;
 }
 
 const LevelUpIntro: React.FC<LevelUpIntroProps> = ({ 
@@ -29,6 +31,7 @@ const LevelUpIntro: React.FC<LevelUpIntroProps> = ({
   currentOverallNetPct,
   bestRoundNetPct,
   embedded = false,
+  showActionsInEmbedded = false,
 }) => {
   useEffect(() => {
     if ((import.meta as any)?.env?.DEV) {
@@ -186,22 +189,40 @@ const LevelUpIntro: React.FC<LevelUpIntroProps> = ({
       </div>
 
       {/* Footer actions */}
-      <div className="mt-5">
-        {onClose && (
+      {(!embedded || showActionsInEmbedded) && (
+        <div className="mt-5 space-y-2">
+          {/* Explicit Start button required to launch the round */}
           <Button
             onClick={() => {
               if ((import.meta as any)?.env?.DEV) {
-                try { console.log('[LevelUp][Intro] close'); } catch {}
+                try { console.log('[LevelUp][Intro] start'); } catch {}
               }
-              onClose();
+              onStart();
             }}
             className="w-full px-6 py-2 rounded-lg bg-pink-500 text-white hover:bg-pink-600 transition-colors"
             disabled={isLoading}
           >
-            Close
+            Start
           </Button>
-        )}
-      </div>
+
+          {/* Close only dismisses the intro without starting the round */}
+          {onClose && (
+            <Button
+              onClick={() => {
+                if ((import.meta as any)?.env?.DEV) {
+                  try { console.log('[LevelUp][Intro] close'); } catch {}
+                }
+                onClose();
+              }}
+              className="w-full px-6 py-2 rounded-lg bg-pink-500/20 text-white hover:bg-pink-500/30 transition-colors border border-pink-500/40"
+              disabled={isLoading}
+              variant="ghost"
+            >
+              Close
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

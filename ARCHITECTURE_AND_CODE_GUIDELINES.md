@@ -430,6 +430,25 @@
     - Fullscreen exit: same pink palette; pulse ring color updated to pink (`rgba(236,72,153,0.35)`).
   - Rationale: Improves visual consistency with Level Up’s `--secondary` pink.
 
+### UI Consistency Updates — Embedded Level Up Intro + Modal Backgrounds (2025-09-01)
+
+- __Embedded Level Up Intro__
+  - File: `src/components/game/PreparationOverlay.tsx`
+  - On `/level/...` routes, `PreparationOverlay` now embeds `LevelUpIntro` with `embedded` mode and constraints from `getLevelUpConstraints(level)`.
+  - `LevelUpIntro` in embedded mode renders without its standalone panel and uses unified translucent cards to match the overlay panel.
+
+- __Section titles added__
+  - File: `src/components/levelup/LevelUpIntro.tsx`
+  - Added `Requirements` and `Parameters` headings above the respective cards to match the UX spec/screenshot.
+
+- __Unified modal backgrounds__
+  - File: `src/components/game/ConfirmNavigationDialog.tsx`
+  - `DialogContent` now uses the same translucent panel: `rounded-xl border border-white/10 bg-white/90 dark:bg-zinc-900/90` and adds small gap between footer buttons for consistency.
+
+- __Notes__
+  - Cancel in `PreparationOverlay` continues to route to `/home`.
+  - Segmented progress bars in `PreparationOverlay` use `bg-history-primary` for filled segments (brand primary color).
+
 ### Config-Driven Hints (Costs & Accuracy Penalties) (2025-08-31)
 
 - __Source of truth__

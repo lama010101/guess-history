@@ -135,7 +135,7 @@ const SubmitGuessButton: React.FC<SubmitGuessButtonProps> = ({
           </>
         )}
         <span className="relative z-10 flex items-center">
-          <span>{isSubmitting ? 'Submitting...' : 'Submit Guess'}</span>
+          <span>{isSubmitting ? 'Submitting...' : 'Make Guess'}</span>
           <ChevronRight className="ml-2 h-5 w-5" />
         </span>
       </Button>

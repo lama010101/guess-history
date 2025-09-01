@@ -2,7 +2,9 @@ import React, { useMemo, useCallback, useEffect, useRef, useState } from 'react'
 import { useGame } from '@/contexts/GameContext';
 import { Button } from '@/components/ui/button';
 import { Loader2, TriangleAlert } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import LevelUpIntro from '@/components/levelup/LevelUpIntro';
+import { getLevelUpConstraints } from '@/lib/levelUpConfig';
 
 const activeStatuses = new Set(['selecting', 'fetching', 'preloading']);
 
@@ -21,9 +23,24 @@ export default function PreparationOverlay() {
   } = useGame();
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const isActive = activeStatuses.has(prepStatus as any);
   const isError = prepStatus === 'error';
+
+  // Detect Level Up context from the current route
+  const isLevelUpRoute = useMemo(() => location.pathname.includes('/level/'), [location.pathname]);
+  const levelUpLevel = useMemo(() => {
+    if (!isLevelUpRoute) return null;
+    const match = location.pathname.match(/^\/level(?:\/(\d+))?/);
+    const lvl = match && match[1] ? parseInt(match[1], 10) : 1;
+    return isNaN(lvl) ? 1 : Math.max(1, Math.min(100, lvl));
+  }, [location.pathname, isLevelUpRoute]);
+  const levelUpConstraints = useMemo(() => {
+    if (!isLevelUpRoute) return null;
+    const lvl = levelUpLevel ?? 1;
+    return getLevelUpConstraints(lvl);
+  }, [isLevelUpRoute, levelUpLevel]);
 
   // Determine the target subtext based on status (no delay here)
   const targetSubtext = useMemo(() => {
@@ -212,6 +229,18 @@ export default function PreparationOverlay() {
             <p className="text-sm text-red-600 dark:text-red-400 break-words">{prepError}</p>
           )}
         </div>
+
+        {/* Level Up intro details (embedded) */}
+        {levelUpConstraints && (
+          <div className="mt-4">
+            <LevelUpIntro
+              onStart={() => { /* no-op inside preparation overlay */ }}
+              constraints={levelUpConstraints}
+              level={levelUpLevel ?? undefined}
+              embedded
+            />
+          </div>
+        )}
 
         {/* Actions */}
         <div className="mt-5 flex justify-end gap-3">

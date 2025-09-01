@@ -16,6 +16,8 @@ interface LevelUpIntroProps {
   // Live performance metrics (derived from actual round results)
   currentOverallNetPct?: number; // 0..100
   bestRoundNetPct?: number; // 0..100
+  // When true, render without standalone panel styling to embed in a parent modal
+  embedded?: boolean;
 }
 
 const LevelUpIntro: React.FC<LevelUpIntroProps> = ({ 
@@ -26,6 +28,7 @@ const LevelUpIntro: React.FC<LevelUpIntroProps> = ({
   level: levelProp,
   currentOverallNetPct,
   bestRoundNetPct,
+  embedded = false,
 }) => {
   useEffect(() => {
     if ((import.meta as any)?.env?.DEV) {
@@ -37,7 +40,11 @@ const LevelUpIntro: React.FC<LevelUpIntroProps> = ({
 
   if (!constraints) {
     return (
-      <div className="w-full max-w-md bg-[#111] text-white rounded-2xl shadow-2xl p-6 border border-[#2a2a2a]">
+      <div className={
+        embedded
+          ? 'w-full'
+          : 'w-full max-w-md bg-[#111] text-white rounded-2xl shadow-2xl p-6 border border-[#2a2a2a]'
+      }>
         <div className="flex items-center justify-center h-40">
           <div className="animate-pulse text-gray-400">Loading level data...</div>
         </div>
@@ -63,7 +70,13 @@ const LevelUpIntro: React.FC<LevelUpIntroProps> = ({
   };
 
   return (
-    <div className="w-full max-w-md bg-[#111] text-white rounded-2xl shadow-2xl p-5 border border-pink-500/40">
+    <div
+      className={
+        embedded
+          ? 'w-full'
+          : 'w-full max-w-md bg-[#111] text-white rounded-2xl shadow-2xl p-5 border border-pink-500/40'
+      }
+    >
       {/* Header */}
       <div className="flex items-center justify-center gap-2 text-pink-300 text-center">
         <Sparkles className="h-5 w-5" />
@@ -71,11 +84,20 @@ const LevelUpIntro: React.FC<LevelUpIntroProps> = ({
       </div>
 
       <p className="mt-2 text-[13px] text-gray-200 text-center">
-        Advance to the next level by meeting accuracy requirements
+        Advance to the next level by meeting both requirements
       </p>
 
+      {/* Requirements title */}
+      <h3 className="mt-4 text-pink-400 font-bold text-xl">Requirements</h3>
+
       {/* Requirement: Overall net accuracy */}
-      <div className="mt-4 rounded-xl bg-[#1b1b1b] border border-[#2a2a2a] p-4">
+      <div
+        className={
+          embedded
+            ? 'mt-4 rounded-xl bg-white/70 dark:bg-zinc-900/70 border border-white/10 p-4'
+            : 'mt-4 rounded-xl bg-[#1b1b1b] border border-[#2a2a2a] p-4'
+        }
+      >
         <div className="flex items-start gap-3">
           <Target className="h-5 w-5 text-pink-400 mt-0.5" />
           <div className="flex-1">
@@ -103,7 +125,13 @@ const LevelUpIntro: React.FC<LevelUpIntroProps> = ({
       </div>
 
       {/* Requirement: Any round threshold */}
-      <div className="mt-3 rounded-xl bg-[#1b1b1b] border border-[#2a2a2a] p-4">
+      <div
+        className={
+          embedded
+            ? 'mt-3 rounded-xl bg-white/70 dark:bg-zinc-900/70 border border-white/10 p-4'
+            : 'mt-3 rounded-xl bg-[#1b1b1b] border border-[#2a2a2a] p-4'
+        }
+      >
         <div className="flex items-start gap-3">
           <Award className="h-5 w-5 text-pink-400 mt-0.5" />
           <div className="flex-1">
@@ -122,8 +150,17 @@ const LevelUpIntro: React.FC<LevelUpIntroProps> = ({
         </div>
       </div>
 
+      {/* Parameters title */}
+      <h3 className="mt-5 text-pink-400 font-bold text-xl">Parameters</h3>
+
       {/* Timer card */}
-      <div className="mt-3 rounded-xl bg-[#1b1b1b] border border-[#2a2a2a] p-4">
+      <div
+        className={
+          embedded
+            ? 'mt-3 rounded-xl bg-white/70 dark:bg-zinc-900/70 border border-white/10 p-4'
+            : 'mt-3 rounded-xl bg-[#1b1b1b] border border-[#2a2a2a] p-4'
+        }
+      >
         <div className="flex items-center gap-3">
           <Clock className="h-5 w-5 text-pink-400" />
           <div className="font-semibold text-[15px]">
@@ -133,7 +170,13 @@ const LevelUpIntro: React.FC<LevelUpIntroProps> = ({
       </div>
 
       {/* Year range card */}
-      <div className="mt-3 rounded-xl bg-[#1b1b1b] border border-[#2a2a2a] p-4">
+      <div
+        className={
+          embedded
+            ? 'mt-3 rounded-xl bg-white/70 dark:bg-zinc-900/70 border border-white/10 p-4'
+            : 'mt-3 rounded-xl bg-[#1b1b1b] border border-[#2a2a2a] p-4'
+        }
+      >
         <div className="flex items-center gap-3">
           <Calendar className="h-5 w-5 text-pink-400" />
           <div className="font-semibold text-[15px]">

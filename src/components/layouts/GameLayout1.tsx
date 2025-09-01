@@ -551,7 +551,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                 disabled={!isSubmitEnabled}
                 className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-[#444444] cursor-not-allowed'} w-full max-w-md flex items-center justify-center text-base font-semibold h-12 px-6 !text-white shadow-lg rounded-md disabled:opacity-100 disabled:!text-white`}
               >
-                <Send className="h-5 w-5 mr-2" /> Submit Guess
+                <Send className="h-5 w-5 mr-2" /> Make Guess
               </Button>
               {!isSubmitEnabled && (
                 <div className="absolute inset-0" onClick={handleDisabledSubmitClick} aria-hidden="true" />
@@ -582,7 +582,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                 disabled={!isSubmitEnabled}
                 className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-[#444444] cursor-not-allowed'} h-12 w-full rounded-md !text-white text-base font-semibold flex items-center justify-center disabled:opacity-100 disabled:!text-white`}
               >
-                <Send className="h-5 w-5 mr-2" /> Submit Guess
+                <Send className="h-5 w-5 mr-2" /> Make Guess
               </Button>
               {!isSubmitEnabled && (
                 <div className="absolute inset-0" onClick={handleDisabledSubmitClick} aria-hidden="true" />
@@ -618,7 +618,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             disabled={!isSubmitEnabled}
             className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-[#444444] cursor-not-allowed'} h-12 w-full rounded-md !text-white text-base font-semibold flex items-center justify-center disabled:opacity-100 disabled:!text-white`}
           >
-            <Send className="h-5 w-5 mr-2" /> Submit Guess
+            <Send className="h-5 w-5 mr-2" /> Make Guess
           </Button>
           {!isSubmitEnabled && (
             <div className="absolute inset-0" onClick={handleDisabledSubmitClick} aria-hidden="true" />

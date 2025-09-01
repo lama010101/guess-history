@@ -23,18 +23,18 @@ export function ConfirmNavigationDialog({
   onClose,
   onConfirm,
   title = "Leave Game?",
-  description = "Are you sure you want to leave the game?Your progress may be lost.",
+  description = "Are you sure? Your progress will be lost.",
   confirmText = "Leave",
   cancelText = "Cancel",
 }: ConfirmNavigationDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] rounded-xl border border-white/10 bg-white/90 dark:bg-zinc-900/90">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <DialogFooter className="mt-4">
+        <DialogFooter className="mt-4 gap-2">
           <Button variant="outline" onClick={onClose}>
             {cancelText}
           </Button>

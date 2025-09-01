@@ -8,7 +8,7 @@ import { ROUNDS_PER_GAME } from '@/utils/gameCalculations';
 import { Hint } from '@/hooks/useHintV2';
 import { RoundResult, GuessCoordinates } from '@/types';
 import { useGamePreparation, PrepStatus, PreparedImage } from '@/hooks/useGamePreparation';
-import { getLevelConstraints } from '@/lib/levelUpConfig';
+import { getLevelUpConstraints } from '@/lib/levelUpConfig';
 import { awardRoundAchievements, awardGameAchievements } from '@/utils/achievements';
 import { setCurrentRoundInSession } from '@/utils/roomState';
 
@@ -679,7 +679,10 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     setRoundResults([]);
 
     // Compute constraints and apply timer (no UI change)
-    const { minYear, maxYear, timerSeconds } = getLevelConstraints(level);
+    const c = getLevelUpConstraints(level);
+    const minYear = c.levelYearRange.start;
+    const maxYear = c.levelYearRange.end;
+    const timerSeconds = c.timerSec;
     setTimerEnabled(true);
     handleSetRoundTimerSec(timerSeconds);
 

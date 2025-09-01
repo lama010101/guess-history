@@ -246,13 +246,13 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
               <span className="sr-only">Close</span>
             </Button>
           </div>
-          <p className="text-gray-400 italic text-center text-sm mt-1 mb-2">
-  Using a hint will reduce your score.<br />
-  Hints are AI-generated and could contain errors.
-</p>
+          <p className="text-gray-400 italic text-center text-sm mt-1 mb-0">
+            Using a hint will reduce your score.<br />
+            Hints are AI-generated and could contain errors.
+          </p>
         </DialogHeader>
 
-        <div className="p-4 pt-2">
+        <div className="p-4 pt-0">
           {/* Summary pills */}
           <div className="mt-2 rounded-lg border border-gray-800 bg-[#202020] p-3">
             <div className="flex justify-around text-sm">

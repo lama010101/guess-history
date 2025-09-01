@@ -641,8 +641,8 @@ const GameRoundPage = () => {
         accDebt={accDebt}
         onPurchaseHint={purchaseHint}
         isHintLoading={isHintLoading}
-        minYear={levelUpConstraints?.minYear}
-        maxYear={levelUpConstraints?.maxYear}
+        minYear={levelUpConstraints?.levelYearRange.start}
+        maxYear={levelUpConstraints?.levelYearRange.end}
         levelLabel={isLevelUpRoute ? `Level ${levelUpLevel ?? 1}` : undefined}
         onOpenLevelIntro={() => setShowIntro(true)}
       />
@@ -655,6 +655,17 @@ const GameRoundPage = () => {
             onClose={() => setShowIntro(false)}
             level={levelUpLevel ?? undefined}
             constraints={levelUpConstraints ?? undefined}
+            currentOverallNetPct={(() => {
+              if (!roundResults || roundResults.length === 0) return undefined;
+              const sum = roundResults.reduce((s, r) => s + (Number.isFinite(r.accuracy as number) ? (r.accuracy as number) : 0), 0);
+              return Math.max(0, Math.min(100, Math.round(sum / roundResults.length)));
+            })()}
+            bestRoundNetPct={(() => {
+              if (!roundResults || roundResults.length === 0) return undefined;
+              return Math.max(
+                ...roundResults.map(r => (Number.isFinite(r.accuracy as number) ? (r.accuracy as number) : 0))
+              );
+            })()}
           />
         </div>,
         document.body

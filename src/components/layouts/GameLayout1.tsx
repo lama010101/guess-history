@@ -1,19 +1,16 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import FullscreenZoomableImage from './FullscreenZoomableImage';
 import ImmersiveCylViewer from '@/components/ImmersiveCylViewer';
-import HomeMap from '../HomeMap';
 import GlobalSettingsModal from '@/components/settings/GlobalSettingsModal'; // Import the global settings modal
 import HintModalV2New from '@/components/HintModalV2New';
 
 import GameOverlayHUD from '@/components/navigation/GameOverlayHUD';
 import YearSelector from '@/components/game/YearSelector';
 import LocationSelector from '@/components/game/LocationSelector';
-import TimerDisplay from '@/components/game/TimerDisplay';
 import LazyImage from '@/components/ui/LazyImage';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Calendar, MapPin, Settings as SettingsIcon, Send, HelpCircle } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 // Helper function to format time as MM:SS
@@ -190,15 +187,12 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
     if (ys.length === 0) return 2026;
     return Math.max(...ys);
   }, [game?.images]);
-  // Effective bounds: override only in Level Up mode when provided
-  const effectiveMinYear = useMemo(
-    () => (gameMode === 'levelup' && typeof minYear === 'number' ? minYear : dynamicMinYear),
-    [gameMode, minYear, dynamicMinYear]
-  );
-  const effectiveMaxYear = useMemo(
-    () => (gameMode === 'levelup' && typeof maxYear === 'number' ? maxYear : dynamicMaxYear),
-    [gameMode, maxYear, dynamicMaxYear]
-  );
+  // Effective bounds: use Level Up overrides when provided, otherwise fall back to dynamic dataset bounds
+  const effectiveMinYear = typeof minYear === 'number' ? minYear : dynamicMinYear;
+  const effectiveMaxYear = typeof maxYear === 'number' ? maxYear : dynamicMaxYear;
+
+  // Log the year range constraints for debugging
+  
   // Log when Level Up overrides affect the bounds
   const prevBoundsRef = useRef<{ min: number; max: number } | null>(null);
   useEffect(() => {
@@ -429,13 +423,21 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                 </div>
               </div>
               <div className="flex-1 flex items-center justify-center">
-                <YearSelector 
-                  selectedYear={yearInteracted ? selectedYear : null}
-                  onChange={(y) => { onYearChange(y); setYearInteracted(true); setYearInput(String(y)); }}
-                  onFirstInteract={() => setYearInteracted(true)}
-                  minYear={effectiveMinYear}
-                  maxYear={effectiveMaxYear}
-                />
+                <div className="w-full max-w-2xl mx-auto">
+                  <YearSelector 
+                    selectedYear={yearInteracted ? selectedYear : null}
+                    onChange={(y) => { 
+                      // Clamp the year within the allowed range
+                      const clampedYear = Math.min(Math.max(y, effectiveMinYear), effectiveMaxYear);
+                      onYearChange(clampedYear); 
+                      setYearInteracted(true); 
+                      setYearInput(String(clampedYear));
+                    }}
+                    onFirstInteract={() => setYearInteracted(true)}
+                    minYear={effectiveMinYear}
+                    maxYear={effectiveMaxYear}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -1,85 +1,159 @@
 // Utility to compute per-level constraints for Level Up mode
 // Pure logic only. Used by GameContext.startLevelUpGame and admin wiring.
 
+/**
+ * Complete set of constraints for a Level Up level
+ */
 export interface LevelConstraints {
-  minYear: number;
-  maxYear: number;
-  timerSeconds: number;
+  // Gameplay constraints
+  timerSec: number;
+  levelYearRange: {
+    start: number;
+    end: number;
+  };
+  
+  // Accuracy requirements
+  requiredOverallAccuracy: number;
+  requiredRoundAccuracy: number;
+  requiredQualifyingRounds: number;
+  
+  // Metadata
+  level: number;
 }
 
-// Public shape for admin tuneables
+/**
+ * Admin-tunable parameters for Level Up mode
+ */
 export interface LevelUpTuneables {
-  fixedMaxYear: number;        // hard ceiling for year slider upper bound
-  startMinYearL1: number;      // min year at level 1
-  startMinYearL100: number;    // min year at level 100 (older)
-  startTimerSec: number;       // seconds at level 1
-  endTimerSec: number;         // seconds at level 100
-  logging?: boolean;           // enables dev logging in this module
+  // Game settings
+  ROUNDS_PER_GAME: number;       // Default: 5
+  
+  // Timer settings (in seconds)
+  TIMER_MAX_SEC: number;         // Level 1 timer (e.g., 300)
+  TIMER_MIN_SEC: number;         // Level 100 timer (e.g., 5)
+  
+  // Year range settings
+  YEAR_END_FIXED: number;        // Fixed upper bound (2025)
+  YEAR_START_L1: number;         // Level 1 start year (e.g., 1975)
+  YEAR_START_L100_OVERRIDE: number | null; // Optional override for L100 start year
+  
+  // Accuracy requirements (percentages)
+  OVERALL_ACC_L1: number;        // Overall accuracy required at level 1 (e.g., 50)
+  OVERALL_ACC_L100: number;      // Overall accuracy required at level 100 (e.g., 100)
+  ROUND_ACC_L1: number;          // Round accuracy required at level 1 (e.g., 70)
+  ROUND_ACC_L100: number;        // Round accuracy required at level 100 (e.g., 100)
+  
+  // Development
+  logging?: boolean;             // Enable debug logging
 }
 
-// Defaults per spec (admin can override later via persistence layer)
+// Default configuration (matches spec)
 export const defaultLevelUpTuneables: LevelUpTuneables = {
-  fixedMaxYear: 2026,
-  startMinYearL1: 1925,
-  startMinYearL100: 1826,
-  startTimerSec: 300,
-  endTimerSec: 30,
+  ROUNDS_PER_GAME: 5,
+  TIMER_MAX_SEC: 300,    // 5 minutes
+  TIMER_MIN_SEC: 5,      // 5 seconds
+  YEAR_END_FIXED: 2025,
+  YEAR_START_L1: 1975,
+  YEAR_START_L100_OVERRIDE: null, // Will use DB's oldest year if null
+  OVERALL_ACC_L1: 50,
+  OVERALL_ACC_L100: 100,
+  ROUND_ACC_L1: 70,
+  ROUND_ACC_L100: 100,
   logging: false,
 };
 
-function clamp(n: number, min: number, max: number) {
+// Linear interpolation helper
+function lerp(start: number, end: number, t: number): number {
+  return start + (end - start) * t;
+}
+
+// Clamp a value between min and max
+function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
 }
 
-// Optional dev guard
+// Development logging
 const isDev = (import.meta as any)?.env?.DEV === true;
 function log(enabled: boolean | undefined, ...args: any[]) {
   if (enabled && isDev) console.log('[LevelUp][Config]', ...args);
 }
 
-// Helper: compute oldest event year from a collection (pure, no IO)
+/**
+ * Computes the oldest event year from a collection of years
+ * @param years Array of years to check
+ * @returns Oldest year or null if no valid years found
+ */
 export function getOldestEventYear(years: number[]): number | null {
   if (!Array.isArray(years) || years.length === 0) return null;
-  return years.reduce((min, y) => (Number.isFinite(y) && y < min ? y : min), Number.POSITIVE_INFINITY);
+  return years.reduce((min, y) => 
+    Number.isFinite(y) && y < min ? Math.floor(y) : min, 
+    Number.POSITIVE_INFINITY
+  );
 }
 
-// Factory to build a constraints getter bound to tuneables and dataset bound (oldestYear)
-export function makeGetLevelUpConstraints(tune: Partial<LevelUpTuneables> = {}, oldestYear?: number) {
+/**
+ * Factory function to create a constraints getter with bound tuneables and dataset bounds
+ */
+export function makeGetLevelUpConstraints(
+  tune: Partial<LevelUpTuneables> = {}, 
+  oldestYearInDb?: number
+) {
   const t: LevelUpTuneables = { ...defaultLevelUpTuneables, ...tune };
-  const hasOldest = Number.isFinite(oldestYear);
+  
+  // Determine the oldest year to use (admin override or from DB)
+  const effectiveOldestYear = t.YEAR_START_L100_OVERRIDE !== null 
+    ? Math.min(t.YEAR_START_L100_OVERRIDE, t.YEAR_END_FIXED - 1)
+    : oldestYearInDb;
+  
+  // If we have a valid oldest year, ensure it's not newer than our L1 start
+  const oldestValidYear = effectiveOldestYear && Number.isFinite(effectiveOldestYear)
+    ? Math.min(effectiveOldestYear, t.YEAR_START_L1 - 1)
+    : t.YEAR_START_L1 - 1;
 
-  return function get(level: number): LevelConstraints {
+  return function getLevelUpConstraints(level: number): LevelConstraints {
     const lvl = clamp(Math.round(level), 1, 100);
-    const tau = (lvl - 1) / 99; // t in [0,1]
-
-    // Interpolate min year towards older bound
-    const minYearFloat = t.startMinYearL1 + (t.startMinYearL100 - t.startMinYearL1) * tau;
-    let minYear = Math.round(minYearFloat);
-
-    // Respect dataset lower bound if provided
-    if (hasOldest && typeof oldestYear === 'number') {
-      minYear = Math.max(minYear, oldestYear as number);
-    }
-
-    // Upper bound is fixed but never below minYear
-    const maxYear = Math.max(minYear, t.fixedMaxYear);
-
-    // Interpolate timer
-    const timerSeconds = Math.round(t.startTimerSec + (t.endTimerSec - t.startTimerSec) * tau);
-
-    log(t.logging, { lvl, tau, minYear, maxYear, timerSeconds });
-    return { minYear, maxYear, timerSeconds };
+    const progress = (lvl - 1) / 99; // 0 at level 1, 1 at level 100
+    
+    // Calculate year range
+    const yearStart = Math.round(
+      lerp(t.YEAR_START_L1, oldestValidYear, progress)
+    );
+    
+    // Calculate timer (decreases from max to min)
+    const timerSec = Math.round(
+      lerp(t.TIMER_MAX_SEC, t.TIMER_MIN_SEC, progress)
+    );
+    
+    // Calculate accuracy requirements
+    const requiredOverallAccuracy = Math.round(
+      lerp(t.OVERALL_ACC_L1, t.OVERALL_ACC_L100, progress)
+    );
+    
+    const requiredRoundAccuracy = Math.round(
+      lerp(t.ROUND_ACC_L1, t.ROUND_ACC_L100, progress)
+    );
+    
+    // Qualifying rounds increase with level (ceil to ensure at least 1)
+    const requiredQualifyingRounds = Math.max(1, Math.ceil(
+      lerp(1, t.ROUNDS_PER_GAME, progress)
+    ));
+    
+    const constraints = {
+      level: lvl,
+      timerSec,
+      levelYearRange: {
+        start: yearStart,
+        end: t.YEAR_END_FIXED
+      },
+      requiredOverallAccuracy,
+      requiredRoundAccuracy,
+      requiredQualifyingRounds,
+    };
+    
+    log(t.logging, `[LevelUp][Start] constraints`, constraints);
+    return constraints;
   };
 }
 
-// Back-compat: thin wrapper using defaults with optional opt overrides
-export function getLevelConstraints(
-  level: number,
-  opts?: Partial<LevelUpTuneables>
-): LevelConstraints {
-  const getter = makeGetLevelUpConstraints(opts);
-  return getter(level);
-}
-
-// Alias maintained for clarity in callers/docs
-export const getLevelUpConstraints = getLevelConstraints;
+// Backward compatibility alias
+export const getLevelUpConstraints = makeGetLevelUpConstraints();

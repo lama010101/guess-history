@@ -188,9 +188,9 @@
 
 - __Start flow__
   - Function: `src/contexts/GameContext.tsx` → `startLevelUpGame(level, settings?)`.
-  - Constraints: derives `{ minYear, maxYear, timerSeconds }` via `getLevelUpConstraints(level)` and applies them:
-    - `setTimerEnabled(true)` and `handleSetRoundTimerSec(timerSeconds)` (syncs both context and settings store to avoid stale 60s default).
-  - Image selection: calls `useGamePreparation.prepare({ userId, roomId?, count: ROUNDS_PER_GAME, seed?, minYear, maxYear })`.
+  - Constraints: derives `{ levelYearRange: { start, end }, timerSec }` via `getLevelUpConstraints(level)` and applies them:
+    - `setTimerEnabled(true)` and `handleSetRoundTimerSec(timerSec)` (syncs both context and settings store to avoid stale 60s default).
+  - Image selection: calls `useGamePreparation.prepare({ userId, roomId?, count: ROUNDS_PER_GAME, seed?, minYear: levelYearRange.start, maxYear: levelYearRange.end })`.
   - Multiplayer gating: when `settings.roomId` is provided without `settings.seed`, preparation is gated (no error); when both are provided, deterministic images are selected and persisted server-side.
   - Membership persistence: on multiplayer starts, calls `ensureSessionMembership(roomId, userId)` and `repairMissingRoomId(roomId)` to satisfy RLS and backfill `round_results.room_id`.
   - Navigation: after preparation, navigates to `/level/game/room/${roomId}/round/1`.
@@ -227,6 +227,7 @@
     - Detects Level Up via the `/level/` prefix and applies `body.mode-levelup` (safety in-page in addition to global watcher).
     - Binds Level Up slider bounds: parses `level` from the URL (`/level/:level/...`), computes constraints via `getLevelUpConstraints(level)`, and passes `{ minYear, maxYear }` to `GameLayout1`.
     - Renders `LevelUpIntro` via a React portal to `document.body` with `z-[60]`, above `PreparationOverlay` (`z-[50]`). The overlay blocks interactions underneath (no leaks).
+    - Computes live Level Up intro metrics: `currentOverallNetPct = average(roundResults[].accuracy)` and `bestRoundNetPct = max(roundResults[].accuracy)`, both clamped to `0..100`, and passes them to `LevelUpIntro` for progress display.
     - The server-authoritative round timer runs under the overlay; the overlay does not pause the timer on Level Up routes.
   - `src/pages/RoundResultsPage.tsx`
     - Above the standard results layout, renders `LevelRoundProgressCard` on Level Up routes.
@@ -241,6 +242,24 @@
       - Any round ≥ 70% net
     - Existing pass logic and DB updates (games/profiles) remain in this page; UI is additive.
 
+#### Level Up — Pass/Fail Evaluation and Persistence (2025-09-01)
+
+- __Source__: `src/pages/FinalResultsPage.tsx`
+- __Computation__
+  - Per round: `timeAcc = calculateTimeAccuracy(guessYear, actualYear)`, `locAcc = calculateLocationAccuracy(distanceKm)`, `net = computeRoundNetPercent(timeAcc, locAcc, accDebt)` where `accDebt` aggregates from `public.round_hints` per round via `round_id` (room-first strategy using `makeRoundId(roomId, idx+1)`, else falls back to `gameId`).
+  - Final net accuracy: `averagePercent(perRoundNetPercents)`.
+  - Net XP: `finalXP - totalXpDebt`, where `totalXpDebt` is the sum of hint `xpDebt` across the game rounds.
+- __Pass criteria__
+  - Overall net accuracy ≥ 50%.
+  - Any round net accuracy ≥ 70%.
+- __Persistence on pass__ (non-guest users only)
+  - Reads current `games.level` for the finished `gameId` (defaults to `1` if missing) and updates to `currentLevel + 1`.
+  - Updates `profiles.level_up_best_level` if the new level exceeds the previous best.
+  - Operations are guarded with dev logs (only in `import.meta.env.DEV`) and try/catch blocks; warnings are printed on failures but do not block the results UI.
+- __Notes__
+  - UI components (`LevelResultBanner`, `LevelRequirementCard`) reflect the same criteria; logic runs once per game after submission guard (`submittedGameIdRef`).
+  - Guests are skipped for persistence.
+
 #### Level Up — Update 2025-09-01 (Intro Modal Manual Open + HUD button)
 
 - __Manual intro__: The Level Up intro modal no longer auto-shows at the start of Round 1. Players can open it on demand.
@@ -251,15 +270,15 @@
 - __Intro close__: `LevelUpIntro.tsx` now supports an optional `onClose` prop alongside `onStart`. Closing the intro does not navigate or mutate round results; it simply hides the overlay.
 - __Overlay & stacking__: The intro is rendered via portal (`document.body`) in a container `fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm`. This sits above `PreparationOverlay` (`z-[50]`) and prevents interaction leaks.
 - __Timer behavior__: The server-authoritative timer continues while the intro is open on Level Up routes. Pre-hydration, `GameRoundPage` seeds `remainingTime` from `roundTimerSec` for correct initial display; once hydrated, server values are authoritative.
-- __Timer defaults__: `src/lib/levelUpConfig.ts` sets Level 1 `timerSeconds = 300` (5 minutes). Higher levels derive from the same helper and are applied via `startLevelUpGame()` which calls `handleSetRoundTimerSec(timerSeconds)`.
+- __Timer defaults__: `src/lib/levelUpConfig.ts` sets Level 1 `timerSec = 300` (5 minutes). Higher levels derive from the same helper and are applied via `startLevelUpGame()` which calls `handleSetRoundTimerSec(timerSec)`.
 
 - __Theming__: `src/index.css` remaps Tailwind `*-orange-*` utilities to `hsl(var(--secondary))` inside `.mode-levelup`. Level Up sets `--secondary` to pink; components can keep `bg-orange-500` etc. and will appear pink in Level Up mode.
 
 #### Level Up — Year Slider Bounds Binding (2025-08-31)
 
-- __Source of constraints__: `src/lib/levelUpConfig.ts` → `getLevelUpConstraints(level)` returns `{ minYear, maxYear, timerSeconds }`.
+- __Source of constraints__: `src/lib/levelUpConfig.ts` → `getLevelUpConstraints(level)` returns `LevelConstraints` including `levelYearRange.start`/`end` and `timerSec`.
 - __Propagation__:
-  - `src/pages/GameRoundPage.tsx` computes constraints based on `level` parsed from `/level/:level/...` and passes `minYear`/`maxYear` to `GameLayout1`.
+  - `src/pages/GameRoundPage.tsx` computes constraints based on `level` parsed from `/level/:level/...` and passes `minYear = levelUpConstraints.levelYearRange.start` and `maxYear = levelUpConstraints.levelYearRange.end` to `GameLayout1`.
   - `src/components/layouts/GameLayout1.tsx` accepts optional `minYear?`/`maxYear?` props and derives effective bounds:
     - `effectiveMinYear = (gameMode === 'levelup' && minYear != null) ? minYear : dynamicMinYear`.
     - `effectiveMaxYear = (gameMode === 'levelup' && maxYear != null) ? maxYear : dynamicMaxYear`.
@@ -391,6 +410,25 @@
     - Segmented control top margin: `mt-4` (was `mt-3`).
     - Hint list top margin: `mt-4` (was `mt-3`).
   - No behavioral changes; only spacing.
+
+### UI Consistency Updates — Level Up Modal + Fullscreen Buttons (2025-09-02)
+
+- __Level Up Intro alignment__
+  - File: `src/components/levelup/LevelUpIntro.tsx`
+  - Title and subtitle are center-aligned. Header container uses `justify-center` and text uses `text-center`.
+
+- __When? card label cleanup__
+  - File: `src/components/layouts/GameLayout1.tsx`
+  - Removed the extra level range label under the year selector to reduce clutter.
+
+- __Fullscreen buttons theming__
+  - Files:
+    - `src/components/navigation/GameOverlayHUD.tsx` (enter fullscreen)
+    - `src/components/layouts/FullscreenZoomableImage.tsx` (exit fullscreen)
+  - Buttons use pink backgrounds in Level Up context to match theming:
+    - HUD button: `bg-pink-500/80 hover:bg-pink-600/90` with white icon.
+    - Fullscreen exit: same pink palette; pulse ring color updated to pink (`rgba(236,72,153,0.35)`).
+  - Rationale: Improves visual consistency with Level Up’s `--secondary` pink.
 
 ### Config-Driven Hints (Costs & Accuracy Penalties) (2025-08-31)
 

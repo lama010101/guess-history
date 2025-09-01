@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, Home as HomeIcon, X } from 'lucide-react';
+import { Loader2, Home as HomeIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import SettingsTab, { SettingsTabHandle } from '@/components/profile/SettingsTab';
 import { fetchUserSettings, UserSettings } from '@/utils/profile/profileService';
@@ -113,14 +113,6 @@ const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClo
           <DialogHeader className="p-4 border-b border-border">
             <div className="relative flex items-center justify-center w-full">
               <DialogTitle className="text-2xl font-bold">Settings</DialogTitle>
-              <button
-                onClick={onClose}
-                className="absolute right-2 top-1 inline-flex items-center justify-center rounded-full w-9 h-9 text-foreground hover:bg-black/5 dark:hover:bg-white/10"
-                aria-label="Close settings"
-                title="Close"
-              >
-                <X className="h-5 w-5" />
-              </button>
             </div>
           </DialogHeader>
 

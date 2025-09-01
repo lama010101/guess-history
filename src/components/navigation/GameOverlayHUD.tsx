@@ -161,7 +161,7 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
               size="icon"
               variant="outline"
               onClick={onFullscreen}
-              className="h-11 w-11 bg-orange-500/70 hover:bg-orange-500/90 text-white rounded-full border-none"
+              className="h-11 w-11 bg-pink-500/80 hover:bg-pink-600/90 text-white rounded-full border-none"
               aria-label="Fullscreen"
             >
               <Maximize className="h-5 w-5" />

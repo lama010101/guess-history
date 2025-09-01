@@ -11,6 +11,9 @@ export interface UserProfile {
   email?: string;
   created_at: string;
   updated_at?: string;
+  // Level Up & auth flags (optional fields present in DB)
+  level_up_best_level?: number;
+  is_guest?: boolean;
 }
 
 export interface Avatar {

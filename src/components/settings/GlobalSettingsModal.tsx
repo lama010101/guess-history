@@ -108,15 +108,15 @@ const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClo
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[640px] h-screen p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[640px] h-screen max-h-[100dvh] p-0 overflow-hidden">
         <div className="flex flex-col h-full">
-          <DialogHeader className="p-4 border-b border-border">
+          <DialogHeader className="sticky top-0 z-10 p-3 sm:p-4 border-b border-border bg-background">
             <div className="relative flex items-center justify-center w-full">
               <DialogTitle className="text-2xl font-bold">Settings</DialogTitle>
             </div>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4">
             {isLoading ? (
               <div className="flex justify-center items-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -141,7 +141,7 @@ const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClo
             )}
           </div>
 
-          <div className="p-4 border-t border-border flex items-center justify-between">
+          <div className="sticky bottom-0 z-10 p-3 sm:p-4 border-t border-border bg-background flex items-center justify-between">
             <div className="flex items-center gap-2">
               {onNavigateHome && (
                 <Button onClick={onNavigateHome} className="bg-white text-black hover:bg-gray-100">

@@ -242,6 +242,18 @@
       - Any round ≥ 70% net
     - Existing pass logic and DB updates (games/profiles) remain in this page; UI is additive.
 
+#### Final Results — Level Up UI updates (2025-09-02)
+
+- **Banner copy** (`src/components/levelup/LevelResultBanner.tsx`):
+  - When passed, headline shows: `You Passed! Level {n} Unlocked`, where `{n}` is the next level derived from the current route (e.g., `/level/3/...` → `Level 4`).
+  - Visuals: banner colors turn green on pass and red on fail.
+- **Requirement cards** (`src/components/levelup/LevelRequirementCard.tsx`):
+  - Card background and icon color are green when the overall level is passed; red when failed. The two cards reflect the same overall pass/fail state per spec.
+- **Footer actions** (`src/pages/FinalResultsPage.tsx`):
+  - On pass (Level Up only): the primary button reads `Continue to Level {n}` and calls `startLevelUpGame(n)`.
+  - Otherwise: retains `Play Again` behavior.
+  - The `Home` button becomes icon-only (house icon) with the same border radius as the primary button for consistency across modes.
+
 #### Level Up — Pass/Fail Evaluation and Persistence (2025-09-01)
 
 - __Source__: `src/pages/FinalResultsPage.tsx`

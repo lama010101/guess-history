@@ -703,7 +703,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
           onMouseDown={(e) => { e.stopPropagation(); }}
           onTouchStart={(e) => { e.stopPropagation(); }}
           onTouchEnd={(e) => { e.stopPropagation(); }}
-          className="inline-flex items-center justify-center rounded-full bg-pink-500/80 text-white w-[60px] h-[60px] shadow-lg hover:bg-pink-600/90 active:bg-pink-600/90"
+          className="inline-flex items-center justify-center rounded-full bg-orange-600/80 text-white w-[60px] h-[60px] shadow-lg hover:bg-orange-700/90 active:bg-orange-700/90"
           style={{ animation: 'attentionPulse 10s ease-in-out infinite' }}
           aria-label="Exit fullscreen"
           title="Exit fullscreen"

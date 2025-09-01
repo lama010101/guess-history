@@ -80,7 +80,7 @@ const LevelUpIntro: React.FC<LevelUpIntroProps> = ({
       {/* Header */}
       <div className="flex items-center justify-center gap-2 text-pink-300 text-center">
         <Sparkles className="h-5 w-5" />
-        <h2 className="text-lg font-bold text-center">Level Up Mode • Level {displayLevel}</h2>
+        <h2 className="text-lg font-bold text-center">Level {displayLevel}</h2>
       </div>
 
       <p className="mt-2 text-[13px] text-gray-200 text-center">

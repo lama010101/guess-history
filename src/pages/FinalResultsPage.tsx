@@ -65,6 +65,11 @@ const FinalResultsPage = () => {
   const [accDebtByRound, setAccDebtByRound] = React.useState<Record<string, number>>({});
   const [earnedBadges, setEarnedBadges] = React.useState<EarnedBadgeType[]>([]);
   const [activeBadge, setActiveBadge] = React.useState<EarnedBadgeType | null>(null);
+  const currentLevelFromPath = React.useMemo(() => {
+    if (!location.pathname.startsWith('/level')) return null;
+    const match = location.pathname.match(/^\/level(?:\/(\d+))?/);
+    return match && match[1] ? parseInt(match[1], 10) : 1;
+  }, [location.pathname]);
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -74,6 +79,8 @@ const FinalResultsPage = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // currentLevelFromPath is used for UI text (banner and Continue button)
 
   useEffect(() => {
     const updateMetricsAndFetchGlobal = async () => {
@@ -405,6 +412,17 @@ const FinalResultsPage = () => {
     navigate("/home");
   };
 
+  const handleContinueNextLevel = async () => {
+    try {
+      resetGame();
+      const nextLevel = (typeof currentLevel === 'number' ? currentLevel + 1 : 2);
+      await startLevelUpGame(nextLevel);
+    } catch (error) {
+      console.error('Error in handleContinueNextLevel:', error);
+      navigate('/home');
+    }
+  };
+
   // Share game results via Web Share API with clipboard fallback
   const handleShare = async () => {
     const shareText = `I scored ${totalScore} XP (${totalPercentage}% accuracy) in Guess History! Can you beat my score?`;
@@ -559,16 +577,16 @@ const FinalResultsPage = () => {
         <div className="max-w-4xl mx-auto w-full">
           {isLevelUp && (
             <div className="space-y-3 mb-6">
-              <LevelResultBanner passed={passed} />
+              <LevelResultBanner passed={passed} unlockedLevel={passed ? ((typeof currentLevel === 'number' ? currentLevel + 1 : 2)) : undefined} />
               <LevelRequirementCard
                 title="Overall net accuracy ≥ 50%"
-                met={overallPass}
+                met={passed}
                 currentLabel={`Current: ${formatInteger(finalPercentNet)}%`}
                 targetLabel="Target: ≥ 50%"
               />
               <LevelRequirementCard
                 title="Any round ≥ 70% net"
-                met={roundPass}
+                met={passed}
                 currentLabel={`Best round: ${formatInteger(bestRoundNet)}%`}
                 targetLabel="Target: ≥ 70%"
               />
@@ -677,14 +695,22 @@ const FinalResultsPage = () => {
           <Button
             onClick={handleHome}
             variant="outline"
-            className="rounded-full px-6 py-6 text-lg font-semibold bg-white text-black hover:bg-gray-100"
+            aria-label="Home"
+            className="rounded-md p-6 bg-white text-black hover:bg-gray-100"
           >
-            <Home className="h-5 w-5 mr-2" /> Home
+            <Home className="h-5 w-5" />
           </Button>
-          <Button onClick={handlePlayAgain} className="flex-1 bg-orange-500 text-white hover:bg-orange-600 gap-2 py-6 text-base" size="lg">
-            <RefreshCw className="h-5 w-5" />
-            Play Again
-          </Button>
+          {isLevelUp && passed ? (
+            <Button onClick={handleContinueNextLevel} className="flex-1 rounded-md bg-orange-500 text-white hover:bg-orange-600 gap-2 py-6 text-base" size="lg">
+              <RefreshCw className="h-5 w-5" />
+              {`Continue to Level ${typeof currentLevel === 'number' ? currentLevel + 1 : 2}`}
+            </Button>
+          ) : (
+            <Button onClick={handlePlayAgain} className="flex-1 rounded-md bg-orange-500 text-white hover:bg-orange-600 gap-2 py-6 text-base" size="lg">
+              <RefreshCw className="h-5 w-5" />
+              Play Again
+            </Button>
+          )}
         </div>
       </footer>
     </div>

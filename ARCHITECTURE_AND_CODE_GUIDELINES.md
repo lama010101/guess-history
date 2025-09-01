@@ -188,8 +188,8 @@
 
 - __Start flow__
   - Function: `src/contexts/GameContext.tsx` → `startLevelUpGame(level, settings?)`.
-  - Constraints: derives `{ minYear, maxYear, timerSeconds }` via `getLevelConstraints(level)` and applies them:
-    - `setTimerEnabled(true)` and `setRoundTimerSec(timerSeconds)`.
+  - Constraints: derives `{ minYear, maxYear, timerSeconds }` via `getLevelUpConstraints(level)` and applies them:
+    - `setTimerEnabled(true)` and `handleSetRoundTimerSec(timerSeconds)` (syncs both context and settings store to avoid stale 60s default).
   - Image selection: calls `useGamePreparation.prepare({ userId, roomId?, count: ROUNDS_PER_GAME, seed?, minYear, maxYear })`.
   - Multiplayer gating: when `settings.roomId` is provided without `settings.seed`, preparation is gated (no error); when both are provided, deterministic images are selected and persisted server-side.
   - Membership persistence: on multiplayer starts, calls `ensureSessionMembership(roomId, userId)` and `repairMissingRoomId(roomId)` to satisfy RLS and backfill `round_results.room_id`.
@@ -217,7 +217,7 @@
 ### Level Up Mode — UI Components and Integration (2025-08-28)
 
 - __Components (source of truth)__: `src/components/levelup/`
-  - `LevelUpIntro.tsx` — Intro card rendered before Round 1 explaining requirements with a Start button.
+  - `LevelUpIntro.tsx` — Intro card explaining requirements with Start and Close actions.
   - `LevelRoundProgressCard.tsx` — Per-round progress display showing if the round met ≥ 70% net.
   - `LevelResultBanner.tsx` — Final pass/fail banner for the Level Up session.
   - `LevelRequirementCard.tsx` — Requirement summary cards showing current vs. target.
@@ -225,8 +225,9 @@
 - __Integration points__:
   - `src/pages/GameRoundPage.tsx`
     - Detects Level Up via the `/level/` prefix and applies `body.mode-levelup` (safety in-page in addition to global watcher).
-    - Shows `LevelUpIntro` as an overlay only on Round 1 before any result exists for round index 0.
-    - While the intro is visible, the round timer is paused; it resumes when Start is pressed.
+    - Binds Level Up slider bounds: parses `level` from the URL (`/level/:level/...`), computes constraints via `getLevelUpConstraints(level)`, and passes `{ minYear, maxYear }` to `GameLayout1`.
+    - Renders `LevelUpIntro` via a React portal to `document.body` with `z-[60]`, above `PreparationOverlay` (`z-[50]`). The overlay blocks interactions underneath (no leaks).
+    - The server-authoritative round timer runs under the overlay; the overlay does not pause the timer on Level Up routes.
   - `src/pages/RoundResultsPage.tsx`
     - Above the standard results layout, renders `LevelRoundProgressCard` on Level Up routes.
     - Computes net percent with `computeRoundNetPercent(timeAcc, locAcc, accDebtTotal)` using:
@@ -240,7 +241,35 @@
       - Any round ≥ 70% net
     - Existing pass logic and DB updates (games/profiles) remain in this page; UI is additive.
 
+#### Level Up — Update 2025-09-01 (Intro Modal Manual Open + HUD button)
+
+- __Manual intro__: The Level Up intro modal no longer auto-shows at the start of Round 1. Players can open it on demand.
+- __HUD button__: `src/components/navigation/GameOverlayHUD.tsx` renders a top-right Level button when provided `levelLabel` and `onOpenLevelIntro` props. Label format: `Level {n}`.
+- __Prop wiring__:
+  - `src/components/layouts/GameLayout1.tsx` accepts optional `levelLabel?` and `onOpenLevelIntro?` and forwards them to `GameOverlayHUD` unchanged.
+  - `src/pages/GameRoundPage.tsx` supplies `levelLabel = \`Level ${level}\`` (only on `/level/...` routes) and `onOpenLevelIntro = () => setShowIntro(true)`.
+- __Intro close__: `LevelUpIntro.tsx` now supports an optional `onClose` prop alongside `onStart`. Closing the intro does not navigate or mutate round results; it simply hides the overlay.
+- __Overlay & stacking__: The intro is rendered via portal (`document.body`) in a container `fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm`. This sits above `PreparationOverlay` (`z-[50]`) and prevents interaction leaks.
+- __Timer behavior__: The server-authoritative timer continues while the intro is open on Level Up routes. Pre-hydration, `GameRoundPage` seeds `remainingTime` from `roundTimerSec` for correct initial display; once hydrated, server values are authoritative.
+- __Timer defaults__: `src/lib/levelUpConfig.ts` sets Level 1 `timerSeconds = 300` (5 minutes). Higher levels derive from the same helper and are applied via `startLevelUpGame()` which calls `handleSetRoundTimerSec(timerSeconds)`.
+
 - __Theming__: `src/index.css` remaps Tailwind `*-orange-*` utilities to `hsl(var(--secondary))` inside `.mode-levelup`. Level Up sets `--secondary` to pink; components can keep `bg-orange-500` etc. and will appear pink in Level Up mode.
+
+#### Level Up — Year Slider Bounds Binding (2025-08-31)
+
+- __Source of constraints__: `src/lib/levelUpConfig.ts` → `getLevelUpConstraints(level)` returns `{ minYear, maxYear, timerSeconds }`.
+- __Propagation__:
+  - `src/pages/GameRoundPage.tsx` computes constraints based on `level` parsed from `/level/:level/...` and passes `minYear`/`maxYear` to `GameLayout1`.
+  - `src/components/layouts/GameLayout1.tsx` accepts optional `minYear?`/`maxYear?` props and derives effective bounds:
+    - `effectiveMinYear = (gameMode === 'levelup' && minYear != null) ? minYear : dynamicMinYear`.
+    - `effectiveMaxYear = (gameMode === 'levelup' && maxYear != null) ? maxYear : dynamicMaxYear`.
+  - These effective bounds are used for:
+    - Validating the year input field.
+    - Clamping on blur/enter.
+    - Passing into `YearSelector` as `minYear`/`maxYear`.
+- __Defaults__: When not in Level Up mode, or when overrides are absent, `GameLayout1` falls back to dynamic bounds computed from prepared image years.
+- __Logging__: When overrides apply and change the bounds, the layout logs `[LevelUp][Slider] Applying Level Up bounds override` with `{ from: { min, max }, to: { min, max } }`. Constraint computation in `GameRoundPage` logs `[LevelUp][Slider] constraints:compute` in development.
+- __UI/validation__: No UI structure or validation logic was modified beyond using the effective bounds; modal overlays and z-index remain unchanged.
 
 - __QA checklist__:
   - Intro overlay appears only on Level Up Round 1, pauses timer, and uses pink accents.
@@ -270,7 +299,7 @@
 
 - Rationale: Shared, reusable hooks avoid duplication across Solo/Compete variants and keep layout components UI-focused. Pages own timer behavior based on mode flags.
 
-#### Server-Authoritative Round Timer Integration (2025-08-28)
+#### Server-Authoritative Round Timer Integration (2025-08-28, updated 2025-09-01)
 
 - **Hook**: `hooks/useServerCountdown.ts`
 - **Timer record API**: `src/lib/timers.ts` (`startTimer`, `getTimer`)
@@ -278,11 +307,13 @@
 - **Game page integration**: `src/pages/GameRoundPage.tsx`
   - Uses the canonical builder: `const timerId = buildTimerId(gameId, currentRoundIndex)`.
   - Replaces local elapsed-time hydration with `useServerCountdown`.
-  - Passes `durationSec = roundTimerSec` and `autoStart = timerEnabled && !showIntro`.
+  - Passes `durationSec = roundTimerSec` and `autoStart = timerEnabled && (!showIntro || isLevelUpRoute)`.
   - Mirrors hook state into existing props without UI changes:
     - `remainingTime ← remainingSec`
     - `isTimerActive ← !expired`
+  - Pre-hydration sync: before the server timer reports ready, set local `remainingTime = roundTimerSec` so the initial display reflects the level’s duration. Once hydrated (`ready === true`), do not override the server value, even if the Level Up intro overlay is visible.
   - On expiry, calls the existing `handleTimeComplete()` which routes to results and records a zero/partial score per prior behavior.
+  - Level Up safety: on `/level/...` routes, enforce `timerEnabled = true` on mount to cover refresh/direct navigation into a game round.
 - **Unit test & script**
   - Test: `tests/unit/timerId.test.ts` validates happy/error paths of `buildTimerId()`.
   - Script: `npm run test:unit` executes the test via `tsx`.
@@ -376,17 +407,38 @@
 - __Typing__
   - Hints are accessed via a simple record on `GameConfig`. Keep Typescript types aligned with `gameConfig.ts`; defaults remain typed in `constants/hints.ts`.
 
-- __Testing__
+  - __Testing__
   - After updating game config, reopen the Hint modal or start a new round to see updated values. Verify Round Results reflect correct hint debts.
+
+### Round Hints Table — Canonical Columns (2025-08-31)
+
+- __Table__: `public.round_hints`
+- __Use these columns__:
+  - `xpDebt` (int) — XP debt applied for the purchased hint
+  - `accDebt` (int) — accuracy penalty percent applied for the purchased hint
+  - `label` (text) — human-readable label for the hint
+  - `hint_type` (text) — category/type key for the hint
+  - Also used in queries: `hint_id`, `purchased_at`, `round_id`, `user_id`
+- __Deprecated__: `cost_xp`, `cost_accuracy` — do not reference these in new code.
+- __Types__: Generated Supabase types may not include `round_hints` yet. Query by string table name and use a narrow select. It’s acceptable to cast the result to a local type or use `@ts-expect-error` on the `.from('round_hints')` call until types are regenerated.
+- __Query patterns__:
+  - Per-round debts (see `src/pages/RoundResultsPage.tsx`):
+    - `select('hint_id, xpDebt, accDebt, label, hint_type, purchased_at, round_id')`
+    - `eq('user_id', user.id)` and `eq('round_id', makeRoundId(roomId, roundNumber))`
+  - Game-final aggregation (see `src/pages/FinalResultsPage.tsx`):
+    - `select('round_id, xpDebt, accDebt')` filtered by `user_id` and a list of `round_id`s; sum per round.
+- __Scoring__: Round score subtracts total `xpDebt`; net percent calculations subtract total `accDebt`. Defaults come from `config.hints` with fallbacks in `constants/hints.ts`.
 
 #### Perfect! Labels and Final Results Badge Popup (2025-08-30)
 
 - __Perfect! labels__
-  - `src/components/layouts/ResultsLayout2.tsx`: “Where” card shows green “Perfect!” when `distanceKm === 0` (already showed for time when `yearDifference === 0`).
-  - `src/components/RoundResultCard.tsx`: In the details section, “WHEN” shows “Perfect!” when `Math.abs(guessYear - image.year) === 0`; “WHERE” shows “Perfect!” when `result.distanceKm === 0`. Keeps “No guess” text when appropriate.
+- `src/components/layouts/ResultsLayout2.tsx`: “Where” card shows green “Perfect!” when `distanceKm === 0` (already showed for time when `yearDifference === 0`).
+- `src/components/RoundResultCard.tsx`: In the details section, “WHEN” shows “Perfect!” when `Math.abs(guessYear - image.year) === 0`; “WHERE” shows “Perfect!” when `result.distanceKm === 0`. Keeps “No guess” text when appropriate.
 - __Final Results badge popup__
-  - `src/pages/FinalResultsPage.tsx` awards game-level achievements on load via `awardGameAchievements({ userId, contextId, actualYears, results })` with `contextId = roomId || gameId`.
-  - Then evaluates and awards badges with `checkAndAwardBadges(userId, userMetrics)` and displays the first earned badge using `BadgeEarnedPopup`.
+- `src/pages/FinalResultsPage.tsx` awards game-level achievements on load via `awardGameAchievements({ userId, contextId, actualYears, results })` with `contextId = roomId || gameId`.
+- Then evaluates and awards badges with `checkAndAwardBadges(userId, userMetrics)` and displays the first earned badge using `BadgeEarnedPopup`.
+- Guarded by `awardsSubmittedRef` to dedupe per session. Badge queue handled via `earnedBadges[]` + `activeBadge`.
+- User metrics for evaluation include: `games_played`, `perfect_rounds`, `perfect_games`, `time_accuracy`, `location_accuracy`, `overall_accuracy`, `xp_total`, `year_bullseye`, `location_bullseye` (see `src/utils/badges/types.ts`).
   - Guarded by `awardsSubmittedRef` to dedupe per session. Badge queue handled via `earnedBadges[]` + `activeBadge`.
   - User metrics for evaluation include: `games_played`, `perfect_rounds`, `perfect_games`, `time_accuracy`, `location_accuracy`, `overall_accuracy`, `xp_total`, `year_bullseye`, `location_bullseye` (see `src/utils/badges/types.ts`).
 

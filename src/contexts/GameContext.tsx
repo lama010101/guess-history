@@ -681,7 +681,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     // Compute constraints and apply timer (no UI change)
     const { minYear, maxYear, timerSeconds } = getLevelConstraints(level);
     setTimerEnabled(true);
-    setRoundTimerSec(timerSeconds);
+    handleSetRoundTimerSec(timerSeconds);
 
     try {
       // Multiplayer gating: require seed when a roomId is specified
@@ -750,7 +750,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
       setIsLoading(false);
     }
-  }, [clearSavedGameState, setRoundTimerSec, setTimerEnabled, navigate, prepare, ensureSessionMembership, repairMissingRoomId]);
+  }, [clearSavedGameState, handleSetRoundTimerSec, setTimerEnabled, navigate, prepare, ensureSessionMembership, repairMissingRoomId]);
 
   // Helper to process raw DB images into GameImage objects
   const processRawImages = useCallback(async (selectedImages: any[]): Promise<GameImage[]> => {

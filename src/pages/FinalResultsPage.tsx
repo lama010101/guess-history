@@ -130,17 +130,17 @@ const FinalResultsPage = () => {
           // @ts-expect-error round_hints table is not in generated types yet
           const { data: rawRows, error } = await supabase
             .from('round_hints')
-            .select('round_id, cost_xp, cost_accuracy')
+            .select('round_id, xpDebt, accDebt')
             .eq('user_id', user.id)
             .in('round_id', roundIds);
           if (error) {
             console.warn('[FinalResults] hint debts query error', error);
           } else if (Array.isArray(rawRows) && rawRows.length) {
-            const rows = (rawRows as unknown) as Array<{ round_id: string; cost_xp: number | null; cost_accuracy: number | null }>;
+            const rows = (rawRows as unknown) as Array<{ round_id: string; xpDebt: number | null; accDebt: number | null }>;
             for (const r of rows) {
               const rid = r.round_id;
-              const xd = Number(r.cost_xp) || 0;
-              const ad = Number(r.cost_accuracy) || 0;
+              const xd = Number(r.xpDebt) || 0;
+              const ad = Number(r.accDebt) || 0;
               totalXpDebt += xd;
               perRoundAccDebt[rid] = (perRoundAccDebt[rid] || 0) + ad;
             }

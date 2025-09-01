@@ -49,6 +49,12 @@ export interface GameLayout1Props {
   accDebt: number;
   onPurchaseHint: (hintId: string) => Promise<void>;
   isHintLoading: boolean;
+  // Optional overrides for Level Up mode only
+  minYear?: number;
+  maxYear?: number;
+  // Level Up HUD button
+  levelLabel?: string;
+  onOpenLevelIntro?: () => void;
 }
 
 const GameLayout1: React.FC<GameLayout1Props> = ({
@@ -74,6 +80,10 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   accDebt,
   onPurchaseHint,
   isHintLoading,
+  minYear,
+  maxYear,
+  levelLabel,
+  onOpenLevelIntro,
 }) => {
   const [isImageFullScreen, setIsImageFullScreen] = useState(true);
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
@@ -177,10 +187,39 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   }, [game?.images]);
   const dynamicMaxYear = useMemo(() => {
     const ys = (game?.images || []).map(img => img.year).filter(y => typeof y === 'number' && !isNaN(y));
-    if (ys.length === 0) return 2025;
+    if (ys.length === 0) return 2026;
     return Math.max(...ys);
   }, [game?.images]);
-  const isYearValid = !isNaN(parsedYear) && parsedYear >= dynamicMinYear && parsedYear <= dynamicMaxYear;
+  // Effective bounds: override only in Level Up mode when provided
+  const effectiveMinYear = useMemo(
+    () => (gameMode === 'levelup' && typeof minYear === 'number' ? minYear : dynamicMinYear),
+    [gameMode, minYear, dynamicMinYear]
+  );
+  const effectiveMaxYear = useMemo(
+    () => (gameMode === 'levelup' && typeof maxYear === 'number' ? maxYear : dynamicMaxYear),
+    [gameMode, maxYear, dynamicMaxYear]
+  );
+  // Log when Level Up overrides affect the bounds
+  const prevBoundsRef = useRef<{ min: number; max: number } | null>(null);
+  useEffect(() => {
+    const prev = prevBoundsRef.current;
+    const curr = { min: effectiveMinYear, max: effectiveMaxYear };
+    const isOverrideActive = gameMode === 'levelup' && typeof minYear === 'number' && typeof maxYear === 'number';
+    if (isOverrideActive) {
+      if (!prev || prev.min !== curr.min || prev.max !== curr.max) {
+        if (import.meta.env.DEV) {
+          try {
+            console.log('[LevelUp][Slider] Applying Level Up bounds override', {
+              from: { min: dynamicMinYear, max: dynamicMaxYear },
+              to: curr,
+            });
+          } catch {}
+        }
+      }
+    }
+    prevBoundsRef.current = curr;
+  }, [effectiveMinYear, effectiveMaxYear, gameMode, minYear, maxYear, dynamicMinYear, dynamicMaxYear]);
+  const isYearValid = !isNaN(parsedYear) && parsedYear >= effectiveMinYear && parsedYear <= effectiveMaxYear;
   const isYearSelected = isYearValid; // only valid numeric year counts as selected
   const isSubmitEnabled = !!currentGuess && isYearSelected;
 
@@ -297,6 +336,8 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             roundTimerSec={roundTimerSec}
             xpDebt={xpDebt}
             accDebt={accDebt}
+            levelLabel={levelLabel}
+            onOpenLevelIntro={onOpenLevelIntro}
           />
         </div>
       </div>
@@ -352,7 +393,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                     onBlur={() => {
                       const parsed = parseInt(yearInput, 10);
                       if (!isNaN(parsed)) {
-                        const clamped = Math.max(dynamicMinYear, Math.min(dynamicMaxYear, parsed));
+                        const clamped = Math.max(effectiveMinYear, Math.min(effectiveMaxYear, parsed));
                         if (clamped !== selectedYear) onYearChange(clamped);
                         setYearInput(String(clamped));
                       } else {
@@ -392,8 +433,8 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                   selectedYear={yearInteracted ? selectedYear : null}
                   onChange={(y) => { onYearChange(y); setYearInteracted(true); setYearInput(String(y)); }}
                   onFirstInteract={() => setYearInteracted(true)}
-                  minYear={dynamicMinYear}
-                  maxYear={dynamicMaxYear}
+                  minYear={effectiveMinYear}
+                  maxYear={effectiveMaxYear}
                 />
               </div>
             </CardContent>

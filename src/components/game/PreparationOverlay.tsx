@@ -147,7 +147,7 @@ export default function PreparationOverlay() {
         className="relative z-10 w-[min(92vw,520px)] rounded-xl border border-white/10 bg-white/90 p-5 shadow-xl dark:bg-zinc-900/90"
       >
         {/* Header */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-center gap-3">
           {isError ? (
             <TriangleAlert className="h-6 w-6 text-red-500" />
           ) : (

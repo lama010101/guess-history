@@ -1,11 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { v4 as uuidv4 } from 'uuid';
 import { GameImage } from '@/contexts/GameContext';
 import { useLogs } from '@/contexts/LogContext';
 import { HINT_COSTS, HINT_DEPENDENCIES, HINT_TYPE_NAMES } from '@/constants/hints';
 import { supabase } from '@/integrations/supabase/client';
-import type { Database } from '@/integrations/supabase/types';
 import { makeRoundId } from '@/utils/roomState';
 import { useGameConfig } from '@/config/gameConfig';
 import { acquireChannel } from '../../integrations/supabase/realtime';

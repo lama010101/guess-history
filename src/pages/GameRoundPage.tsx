@@ -1,4 +1,5 @@
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import GameLayout1 from "@/components/layouts/GameLayout1";
 import { Loader, MapPin } from "lucide-react";
@@ -30,6 +31,7 @@ import {
 } from '@/utils/gameCalculations';
 import { useServerCountdown } from '@/hooks/useServerCountdown';
 import { buildTimerId } from '@/lib/timerId';
+import { getLevelUpConstraints } from '@/lib/levelUpConfig';
 
 // Rename component
 const GameRoundPage = () => {
@@ -103,6 +105,7 @@ const GameRoundPage = () => {
     isLoading: isContextLoading,
     roundTimerSec,
     timerEnabled,
+    setTimerEnabled,
     setGameId,
     gameId,
     handleTimeUp,
@@ -114,30 +117,55 @@ const GameRoundPage = () => {
   const roundNumber = parseInt(roundNumberStr || '1', 10);
   const currentRoundIndex = roundNumber - 1;
   const isLevelUpRoute = useMemo(() => location.pathname.includes('/level/'), [location.pathname]);
+  // Parse level from route start: "/level" or "/level/:level"
+  const levelUpLevel = useMemo(() => {
+    if (!isLevelUpRoute) return null;
+    const match = location.pathname.match(/^\/level(?:\/(\d+))?/);
+    const lvl = match && match[1] ? parseInt(match[1], 10) : 1;
+    return isNaN(lvl) ? 1 : Math.max(1, Math.min(100, lvl));
+  }, [location.pathname, isLevelUpRoute]);
+  // Compute Level Up slider constraints when applicable
+  const levelUpConstraints = useMemo(() => {
+    if (!isLevelUpRoute) return null;
+    const lvl = levelUpLevel ?? 1;
+    const c = getLevelUpConstraints(lvl);
+    if (import.meta.env.DEV) {
+      try { console.log('[LevelUp][Slider] constraints:compute', { level: lvl, ...c }); } catch {}
+    }
+    return c;
+  }, [isLevelUpRoute, levelUpLevel]);
   const [showIntro, setShowIntro] = useState<boolean>(false);
 
-  // Show Level Up intro only for round 1 on Level Up routes, and before any result is recorded for round 0
+  // Level Up guarantee: timer must be enabled even on refresh/navigation directly into Level Up routes
   useEffect(() => {
-    const hasResultForFirstRound = !!roundResults.find(r => r.roundIndex === 0);
-    setShowIntro(isLevelUpRoute && roundNumber === 1 && !hasResultForFirstRound);
+    if (isLevelUpRoute && !timerEnabled) {
+      setTimerEnabled(true);
+      if (import.meta.env.DEV) {
+        try { console.debug('[GameRoundPage] Enforcing timerEnabled=true for Level Up route'); } catch {}
+      }
+    }
+  }, [isLevelUpRoute, timerEnabled, setTimerEnabled]);
+
+  // Level Up intro auto-show disabled; it can be opened on demand from the HUD button
+  useEffect(() => {
     if (import.meta.env.DEV) {
       try {
-        console.debug('[GameRoundPage] intro:derive', { isLevelUpRoute, roundNumber, hasResultForFirstRound, showIntro: isLevelUpRoute && roundNumber === 1 && !hasResultForFirstRound });
+        console.debug('[GameRoundPage] intro:auto disabled');
       } catch {}
     }
   }, [isLevelUpRoute, roundNumber, roundResults]);
 
   // If intro is visible, pause the round timer; resume when dismissed (if timers are enabled)
   useEffect(() => {
-    if (showIntro) {
+    if (showIntro && !isLevelUpRoute) {
       setIsTimerActive(false);
     } else if (timerEnabled) {
       setIsTimerActive(true);
     }
     if (import.meta.env.DEV) {
-      try { console.debug('[GameRoundPage] intro:toggle', { showIntro, timerEnabled }); } catch {}
+      try { console.debug('[GameRoundPage] intro:toggle', { showIntro, timerEnabled, isLevelUpRoute }); } catch {}
     }
-  }, [showIntro, timerEnabled]);
+  }, [showIntro, timerEnabled, isLevelUpRoute]);
 
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -160,7 +188,11 @@ const GameRoundPage = () => {
     }
   }, [gameId, currentRoundIndex]);
 
-  const autoStart = useMemo(() => !!(timerEnabled && !showIntro && timerId && user), [timerEnabled, showIntro, timerId, user]);
+  const autoStart = useMemo(() => {
+    // Level Up auto-starts even under the intro overlay
+    const allowIntroStart = isLevelUpRoute;
+    return !!(timerEnabled && (allowIntroStart || !showIntro) && timerId && user);
+  }, [timerEnabled, showIntro, timerId, user, isLevelUpRoute]);
   useEffect(() => {
     if (import.meta.env.DEV) {
       try { console.debug('[GameRoundPage] timer:config', { timerId, roundTimerSec, timerEnabled, showIntro, autoStart, hasUser: !!user, authLoading }); } catch {}
@@ -176,6 +208,19 @@ const GameRoundPage = () => {
       handleTimeComplete();
     },
   });
+
+  // When duration changes from Level Up constraints, reflect it in the local UI state
+  // only before the server timer hydrates. Once hydrated, server values take over
+  // even if the Level Up intro is visible (timer runs under the overlay).
+  useEffect(() => {
+    if (!timerEnabled) {
+      setRemainingTime(0);
+      return;
+    }
+    if (!timerReady) {
+      setRemainingTime(roundTimerSec);
+    }
+  }, [roundTimerSec, timerEnabled, timerReady]);
 
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -596,13 +641,23 @@ const GameRoundPage = () => {
         accDebt={accDebt}
         onPurchaseHint={purchaseHint}
         isHintLoading={isHintLoading}
+        minYear={levelUpConstraints?.minYear}
+        maxYear={levelUpConstraints?.maxYear}
+        levelLabel={isLevelUpRoute ? `Level ${levelUpLevel ?? 1}` : undefined}
+        onOpenLevelIntro={() => setShowIntro(true)}
       />
 
       {/* Level Up Intro overlay BEFORE starting Round 1 (Level Up only) */}
-      {isLevelUpRoute && showIntro && (
+      {isLevelUpRoute && showIntro && createPortal(
         <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <LevelUpIntro onStart={() => setShowIntro(false)} />
-        </div>
+          <LevelUpIntro
+            onStart={() => setShowIntro(false)}
+            onClose={() => setShowIntro(false)}
+            level={levelUpLevel ?? undefined}
+            constraints={levelUpConstraints ?? undefined}
+          />
+        </div>,
+        document.body
       )}
 
       {/* Confirmation Dialog */}

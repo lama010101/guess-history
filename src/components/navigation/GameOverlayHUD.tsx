@@ -27,6 +27,9 @@ interface GameOverlayHUDProps {
   xpDebt?: number;
   accDebt?: number;
   roundTimerSec?: number;
+  // Level Up: optional button to open intro modal
+  levelLabel?: string;
+  onOpenLevelIntro?: () => void;
 }
 
 const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
@@ -50,7 +53,9 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
   timerEnabled = true,
   xpDebt = 0,
   accDebt = 0,
-  roundTimerSec = 0
+  roundTimerSec = 0,
+  levelLabel,
+  onOpenLevelIntro,
 }) => {
   // Show hint counter as X/Y where Y is the total allowed hints
   const isHintDisabled = hintsUsed >= hintsAllowed;
@@ -106,6 +111,20 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
           </div>
           
 
+        </div>
+
+        {/* Right side - Level Up Button (optional) */}
+        <div className="pointer-events-auto ml-auto">
+          {levelLabel && onOpenLevelIntro && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="bg-white/80 text-black hover:bg-white/90 border-none"
+              onClick={onOpenLevelIntro}
+            >
+              {levelLabel}
+            </Button>
+          )}
         </div>
       </div>
 

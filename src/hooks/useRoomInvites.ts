@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
-import { acquireChannel } from "../../integrations/supabase/realtime";
+import { acquireChannel } from "@/integrations/supabase/realtime";
 
 export type RoomInvite = Database["public"]["Tables"]["room_invites"]["Row"];
 export type Invite = RoomInvite & { inviter_display_name?: string };

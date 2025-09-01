@@ -1,14 +1,14 @@
 const fs = require('fs');
 const path = require('path');
 
-const heroDir = path.join(__dirname, '../public/images/hero');
+const heroDir = path.join(__dirname, '../src/assets/hero');
 const outputPath = path.join(__dirname, '../src/data/heroImages.json');
 
 const allowedExt = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg'];
 
 try {
   const files = fs.readdirSync(heroDir)
-    .filter((file) => allowedExt.includes(path.extname(file).toLowerCase()))
+    .filter((file) => allowedExt.includes(path.extname(file).toLowerCase()) && !file.startsWith('.'))
     .map((file) => `/images/hero/${encodeURIComponent(file)}`);
 
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });

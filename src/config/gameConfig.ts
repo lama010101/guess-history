@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { acquireChannel } from '../../integrations/supabase/realtime';
 import { HINT_COSTS } from '@/constants/hints';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { defaultLevelUpTuneables } from '@/lib/levelUpConfig';
 
 // Zod schema: start with hints; allow unknown sections via passthrough so we can grow safely
 export const HintCostSchema = z.object({
@@ -10,9 +11,20 @@ export const HintCostSchema = z.object({
   acc: z.number().int().min(0),
 });
 
+// Level Up tuneables schema (admin-configurable)
+export const LevelUpSchema = z.object({
+  fixedMaxYear: z.number().int(),
+  startMinYearL1: z.number().int(),
+  startMinYearL100: z.number().int(),
+  startTimerSec: z.number().int().min(1),
+  endTimerSec: z.number().int().min(1),
+  logging: z.boolean().optional().default(false),
+});
+
 export const GameConfigSchema = z
   .object({
     hints: z.record(HintCostSchema).default({}),
+    levelUp: LevelUpSchema.default(defaultLevelUpTuneables as any),
   })
   .passthrough();
 
@@ -21,6 +33,7 @@ export type GameConfig = z.infer<typeof GameConfigSchema>;
 // Defaults sourced from existing constants
 const defaultConfig: GameConfig = {
   hints: HINT_COSTS,
+  levelUp: defaultLevelUpTuneables as any,
 };
 
 function deepMerge<T>(base: T, override: any): T {
@@ -40,7 +53,8 @@ function deepMerge<T>(base: T, override: any): T {
 }
 
 export async function getGameConfig(): Promise<GameConfig> {
-  const { data, error } = await supabase
+  const sb: any = supabase;
+  const { data, error } = await sb
     .from('game_config' as any)
     .select('config')
     .eq('id', 'global')

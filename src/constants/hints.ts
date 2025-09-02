@@ -109,7 +109,7 @@ export const HINT_TYPE_DESCRIPTIONS: Record<string, string> = {
   '1_when_century': 'eg: 20th',
   
   // Level 2 (remote)
-  '2_where_landmark': 'More than 100km (60 miles) away',
+  '2_where_landmark': 'More than 100km (60 mi) away',
   '2_where_landmark_km': 'Distance in km or miles',
   '2_when_event': 'More than 10 years off',
   '2_when_event_years': 'Number of years off',
@@ -119,7 +119,7 @@ export const HINT_TYPE_DESCRIPTIONS: Record<string, string> = {
   '3_when_decade': 'eg: 1930s',
   
   // Level 4 (nearby)
-  '4_where_landmark': 'Less than 100km (60 miles) away',
+  '4_where_landmark': 'Less than 100km (60 mi) away',
   '4_where_landmark_km': 'Distance in km or miles',
   '4_when_event': 'Less than 10 years off',
   '4_when_event_years': 'Number of years',

@@ -458,6 +458,29 @@
 
 - __Fullscreen buttons theming__
   - Files:
+    - ...
+
+### Modal Styling Conventions (2025-09-03)
+
+- __Overlay layering__
+  - File: `src/components/ui/dialog.tsx`
+  - Change: `DialogOverlay` uses `z-40`. Navbar (`src/components/navigation/MainNavbar.tsx`) uses `z-50` to remain above the blurry background. `DialogContent` remains above overlay.
+
+- __Settings modal__
+  - File: `src/components/settings/GlobalSettingsModal.tsx`
+  - Backgrounds: use `bg-black/85` with subtle blur for both main content and sticky footer.
+  - Close button: primary color background `bg-primary hover:bg-primary/90` with `text-primary-foreground`.
+
+- __Hints modal__
+  - File: `src/components/HintModalV2New.tsx`
+  - Height: full viewport `h-[100vh]` to occupy the entire screen.
+  - Background: `bg-black/85` for consistent dark modal visuals.
+  - Close button: primary color background `bg-primary hover:bg-primary/90` with `text-primary-foreground`.
+
+- __Guidance for new modals__
+  - Prefer `bg-black/85` for modal surfaces on dark theme for readability and consistency.
+  - Use primary-colored close buttons to keep affordances consistent across modals.
+  - Maintain navbar visibility above overlays by keeping overlay z-index at `z-40` and content above.
     - `src/components/navigation/GameOverlayHUD.tsx` (enter fullscreen)
     - `src/components/layouts/FullscreenZoomableImage.tsx` (exit fullscreen)
   - Buttons use pink backgrounds in Level Up context to match theming:

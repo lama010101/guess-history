@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, Home as HomeIcon } from 'lucide-react';
+import { Loader2, Home as HomeIcon, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import SettingsTab, { SettingsTabHandle } from '@/components/profile/SettingsTab';
 import { fetchUserSettings, UserSettings } from '@/utils/profile/profileService';
@@ -108,15 +108,20 @@ const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClo
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[640px] h-screen max-h-[100dvh] p-0 overflow-hidden">
+      <DialogContent data-hide-close className="sm:max-w-[640px] max-h-[85vh] p-0 overflow-hidden bg-black/85 backdrop-blur-md border border-white/10 shadow-2xl sm:rounded-2xl">
         <div className="flex flex-col h-full">
-          <DialogHeader className="sticky top-0 z-10 p-3 sm:p-4 border-b border-border bg-background">
-            <div className="relative flex items-center justify-center w-full">
-              <DialogTitle className="text-2xl font-bold">Settings</DialogTitle>
-            </div>
-          </DialogHeader>
-
           <div className="flex-1 overflow-y-auto p-3 sm:p-4">
+            {/* Inline Title + Close */}
+            <div className="relative mb-3 sm:mb-4">
+              <h2 className="text-2xl font-bold text-center">Settings</h2>
+              <button
+                aria-label="Close"
+                onClick={onClose}
+                className="absolute right-0 top-1.5 grid place-items-center h-9 w-9 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground border-0"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
             {isLoading ? (
               <div className="flex justify-center items-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -141,7 +146,7 @@ const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClo
             )}
           </div>
 
-          <div className="sticky bottom-0 z-10 p-3 sm:p-4 border-t border-border bg-background flex items-center justify-between">
+          <div className="sticky bottom-0 z-10 p-3 sm:p-4 border-t border-white/10 bg-black/85 backdrop-blur-md flex items-center justify-between">
             <div className="flex items-center gap-2">
               {onNavigateHome && (
                 <Button onClick={onNavigateHome} className="bg-white text-black hover:bg-gray-100">

@@ -232,27 +232,23 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="left-0 top-0 translate-x-0 translate-y-0 max-w-none h-screen w-screen bg-black text-white overflow-y-auto p-0 border-0">
-        <DialogHeader className="sticky top-0 z-10 pt-4 pb-0 px-4 border-b border-gray-800 bg-black">
-          <div className="relative flex items-center justify-center w-full">
-            <DialogTitle className="text-2xl font-bold text-white">HINTS</DialogTitle>
-            <Button 
-              variant="default" 
-              size="icon" 
-              onClick={() => onOpenChange(false)}
-              className="absolute right-0 rounded-full h-[2.67rem] w-[2.67rem] bg-orange-600 hover:bg-orange-700 text-white"
-            >
-              <X className="h-[2.66rem] w-[2.66rem]" />
-              <span className="sr-only">Close</span>
-            </Button>
-          </div>
-          <p className="text-gray-400 italic text-center text-sm mt-0 mb-0 leading-tight">
-            Using a hint will reduce your score.<br />
-            Hints are AI-generated and could contain errors.
+      <DialogContent data-hide-close className="sm:max-w-[640px] h-[100vh] text-white overflow-y-auto p-4 bg-black/85 border border-white/10 shadow-2xl sm:rounded-2xl">
+        {/* Inline Title + Info + Close */}
+        <div className="relative mb-3 sm:mb-4">
+          <h2 className="text-2xl font-bold text-center">HINTS</h2>
+          <p className="text-gray-300 italic text-center text-sm mt-1 leading-tight">
+            Using a hint will reduce your score. Hints are AI-generated and could contain errors.
           </p>
-        </DialogHeader>
+          <button
+            aria-label="Close"
+            onClick={() => onOpenChange(false)}
+            className="absolute right-0 top-0 grid place-items-center h-9 w-9 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground border-0"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
-        <div className="p-4 pt-0">
+        <div className="p-0">
           {/* Summary pills */}
           <div className="mt-2 rounded-lg border border-gray-800 bg-[#202020] p-3">
             <div className="flex justify-around text-sm">
@@ -304,7 +300,7 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
       </DialogContent>
       {/* Locked info popup retained for future use but not shown automatically */}
       <Dialog open={false} onOpenChange={setLockedInfoOpen}>
-        <DialogContent className="max-w-sm bg-[#202020] text-white">
+        <DialogContent className="max-w-sm bg-black/30 backdrop-blur-md border border-white/10 shadow-xl text-white">
           <DialogHeader>
             <DialogTitle>Hint Locked</DialogTitle>
           </DialogHeader>

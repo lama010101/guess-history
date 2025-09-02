@@ -137,6 +137,8 @@ const GameRoundPage = () => {
   }, [isLevelUpRoute, levelUpLevel]);
   const [showIntro, setShowIntro] = useState<boolean>(false);
   const [roundStarted, setRoundStarted] = useState<boolean>(!isLevelUpRoute);
+  // Track how the Level Up intro was opened: automatically (round 1) or manually from HUD
+  const [introSource, setIntroSource] = useState<'auto' | 'hub'>('auto');
 
   // Level Up guarantee: timer must be enabled even on refresh/navigation directly into Level Up routes
   useEffect(() => {
@@ -148,15 +150,19 @@ const GameRoundPage = () => {
     }
   }, [isLevelUpRoute, timerEnabled, setTimerEnabled]);
 
-  // For Level Up: auto-show intro at the start of each round and gate timer start until Start is pressed
+  // For Level Up: auto-show intro ONLY at round 1 and gate timer start until Start is pressed
   useEffect(() => {
-    if (isLevelUpRoute) {
+    if (isLevelUpRoute && roundNumber === 1) {
+      setIntroSource('auto');
       setShowIntro(true);
       setRoundStarted(false);
       setIsTimerActive(false);
       if (import.meta.env.DEV) {
-        try { console.debug('[GameRoundPage] Level Up gating: show intro & pause timer', { roundNumber }); } catch {}
+        try { console.debug('[GameRoundPage] Level Up gating: auto intro (round 1) & pause timer', { roundNumber }); } catch {}
       }
+    } else if (isLevelUpRoute) {
+      // No auto modal beyond round 1; ensure round is considered started
+      setRoundStarted(true);
     }
   }, [isLevelUpRoute, roundNumber]);
 
@@ -697,7 +703,7 @@ const GameRoundPage = () => {
         minYear={levelUpConstraints?.levelYearRange.start}
         maxYear={levelUpConstraints?.levelYearRange.end}
         levelLabel={isLevelUpRoute ? `Level ${levelUpLevel ?? 1}` : undefined}
-        onOpenLevelIntro={() => setShowIntro(true)}
+        onOpenLevelIntro={() => { setIntroSource('hub'); setShowIntro(true); }}
       />
 
       {/* Level Up Intro overlay BEFORE starting Round 1 (Level Up only) */}
@@ -719,6 +725,8 @@ const GameRoundPage = () => {
                 ...roundResults.map(r => (Number.isFinite(r.accuracy as number) ? (r.accuracy as number) : 0))
               );
             })()}
+            showStart={introSource === 'auto'}
+            showClose={introSource === 'hub'}
           />
         </div>,
         document.body

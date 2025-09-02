@@ -20,6 +20,9 @@ interface LevelUpIntroProps {
   embedded?: boolean;
   // When true, still render footer actions even if embedded
   showActionsInEmbedded?: boolean;
+  // Control which actions to show
+  showStart?: boolean;
+  showClose?: boolean;
 }
 
 const LevelUpIntro: React.FC<LevelUpIntroProps> = ({ 
@@ -32,6 +35,8 @@ const LevelUpIntro: React.FC<LevelUpIntroProps> = ({
   bestRoundNetPct,
   embedded = false,
   showActionsInEmbedded = false,
+  showStart = true,
+  showClose = true,
 }) => {
   useEffect(() => {
     if ((import.meta as any)?.env?.DEV) {
@@ -46,7 +51,7 @@ const LevelUpIntro: React.FC<LevelUpIntroProps> = ({
       <div className={
         embedded
           ? 'w-full'
-          : 'w-full max-w-md bg-[#111] text-white rounded-2xl shadow-2xl p-6 border border-[#2a2a2a]'
+          : 'w-full max-w-md text-white rounded-2xl shadow-2xl p-6 border border-white/10 bg-black/30 backdrop-blur-md'
       }>
         <div className="flex items-center justify-center h-40">
           <div className="animate-pulse text-gray-400">Loading level data...</div>
@@ -77,7 +82,7 @@ const LevelUpIntro: React.FC<LevelUpIntroProps> = ({
       className={
         embedded
           ? 'w-full'
-          : 'w-full max-w-md bg-[#111] text-white rounded-2xl shadow-2xl p-5 border border-pink-500/40'
+          : 'w-full max-w-md text-white rounded-2xl shadow-2xl p-5 border border-white/10 bg-black/30 backdrop-blur-md'
       }
     >
       {/* Header */}
@@ -192,21 +197,23 @@ const LevelUpIntro: React.FC<LevelUpIntroProps> = ({
       {(!embedded || showActionsInEmbedded) && (
         <div className="mt-5 space-y-2">
           {/* Explicit Start button required to launch the round */}
-          <Button
-            onClick={() => {
-              if ((import.meta as any)?.env?.DEV) {
-                try { console.log('[LevelUp][Intro] start'); } catch {}
-              }
-              onStart();
-            }}
-            className="w-full px-6 py-2 rounded-lg bg-pink-500 text-white hover:bg-pink-600 transition-colors"
-            disabled={isLoading}
-          >
-            Start
-          </Button>
+          {showStart && (
+            <Button
+              onClick={() => {
+                if ((import.meta as any)?.env?.DEV) {
+                  try { console.log('[LevelUp][Intro] start'); } catch {}
+                }
+                onStart();
+              }}
+              className="w-full px-6 py-2 rounded-lg bg-pink-500 text-white hover:bg-pink-600 transition-colors"
+              disabled={isLoading}
+            >
+              Start
+            </Button>
+          )}
 
           {/* Close only dismisses the intro without starting the round */}
-          {onClose && (
+          {onClose && showClose && (
             <Button
               onClick={() => {
                 if ((import.meta as any)?.env?.DEV) {

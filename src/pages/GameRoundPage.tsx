@@ -32,6 +32,7 @@ import {
 import { useServerCountdown } from '@/hooks/useServerCountdown';
 import { buildTimerId } from '@/lib/timerId';
 import { getLevelUpConstraints } from '@/lib/levelUpConfig';
+import { supabase } from '@/integrations/supabase/client';
 
 // Rename component
 const GameRoundPage = () => {
@@ -289,6 +290,55 @@ const GameRoundPage = () => {
       }
     })();
   }, [roomId, roundNumber, modeBasePath, navigate, redirectedRef]);
+
+  // Route guard: if a result already exists for this user+room/game+round, redirect to results to prevent re-entry
+  const submittedRedirectRef = useMemo(() => ({ done: false }), []);
+  useEffect(() => {
+    (async () => {
+      try {
+        if (submittedRedirectRef.done) return;
+        if (!user || !user.id) return;
+        if (isNaN(currentRoundIndex)) return;
+
+        let found = false;
+        // Prefer room-scoped uniqueness
+        if (roomId) {
+          const { data, error } = await (supabase as any)
+            .from('round_results')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('room_id', roomId)
+            .eq('round_index', currentRoundIndex)
+            .maybeSingle();
+          if (!error && data) found = true;
+        }
+
+        // Fallback for legacy schema without room_id
+        if (!found && gameId) {
+          const { data, error } = await (supabase as any)
+            .from('round_results')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('game_id', gameId)
+            .eq('round_index', currentRoundIndex)
+            .maybeSingle();
+          if (!error && data) found = true;
+        }
+
+        if (found) {
+          submittedRedirectRef.done = true;
+          if (import.meta.env.DEV) {
+            try { console.debug('[GameRoundPage] Guard: existing result found; redirecting to results', { roundNumber, roomId, gameId }); } catch {}
+          }
+          navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
+        } else if (import.meta.env.DEV) {
+          try { console.debug('[GameRoundPage] Guard: no existing result; allow entry', { roundNumber, roomId, gameId }); } catch {}
+        }
+      } catch (e) {
+        try { console.warn('[GameRoundPage] Guard check failed (proceeding without redirect):', e); } catch {}
+      }
+    })();
+  }, [user, roomId, gameId, currentRoundIndex, navigate, roundNumber, modeBasePath, submittedRedirectRef]);
 
   // Persist URL-derived round to the backend session so refresh lands on same round
   

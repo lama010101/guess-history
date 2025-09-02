@@ -237,7 +237,7 @@ const HomePage = () => {
   return (
     <div style={homePageStyle}>
       {showGuestBadge && <GuestBadge username={profile?.display_name || 'Guest'} />}
-      <div className="absolute inset-0 z-[100] w-full h-full overflow-y-auto p-4 md:p-8 box-border bg-black/85 flex items-start justify-center min-h-screen">
+      <div className="absolute inset-0 z-[100] w-full h-full overflow-y-auto p-4 md:p-8 box-border bg-black/80 flex items-start justify-center min-h-screen">
         {isLoaded ? (
           <div className="w-full max-w-6xl mx-auto flex flex-col items-center">
             <Logo className="mt-20 mb-0 md:mt-0 md:mb-0 justify-center"/>

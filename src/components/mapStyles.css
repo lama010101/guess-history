@@ -104,18 +104,18 @@ body:has(.leaflet-fullscreen-on) > :not(.leaflet-container) {
 }
 
 .leaflet-control-fullscreen a {
-  background-color: hsl(var(--primary)) !important;
-  color: hsl(var(--primary-foreground)) !important;
+  background-color: hsl(var(--secondary) / 0.7) !important;
+  color: hsl(var(--secondary-foreground)) !important;
   border-radius: 0.5rem !important;
   padding: 0.5rem !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  transition: opacity 0.2s !important;
+  transition: background-color 0.2s ease !important;
 }
 
 .leaflet-control-fullscreen a:hover {
-  opacity: 0.9 !important;
+  background-color: hsl(var(--secondary) / 0.8) !important;
 }
 
 /* Custom marker styling */

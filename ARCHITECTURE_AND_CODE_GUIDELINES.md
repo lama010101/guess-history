@@ -347,15 +347,36 @@
   - Pre-hydration sync: before the server timer reports ready, set local `remainingTime = roundTimerSec` so the initial display reflects the level’s duration. Once hydrated (`ready === true`), do not override the server value, even if the Level Up intro overlay is visible.
   - On expiry, calls the existing `handleTimeComplete()` which routes to results and records a zero/partial score per prior behavior.
   - Level Up safety: on `/level/...` routes, enforce `timerEnabled = true` on mount to cover refresh/direct navigation into a game round.
-- **Unit test & script**
+  - **Unit test & script**
   - Test: `tests/unit/timerId.test.ts` validates happy/error paths of `buildTimerId()`.
   - Script: `npm run test:unit` executes the test via `tsx`.
-- **Image hydration**: `hydrateRoomImages(roomId)` is invoked on mount when `images.length === 0`; dev-only logs added to trace hydration and round image selection.
+  - **Image hydration**: `hydrateRoomImages(roomId)` is invoked on mount when `images.length === 0`; dev-only logs added to trace hydration and round image selection.
+
+#### Round Re-entry Guard (2025-09-01)
+
+- **File**: `src/pages/GameRoundPage.tsx`
+- **Purpose**: Prevent users from re-entering a round’s guess UI after submitting.
+- **Behavior**:
+  - On mount, queries `public.round_results` for the current user and round.
+  - Prefers multiplayer uniqueness `(room_id, user_id, round_index)`; falls back to legacy `(user_id, game_id, round_index)`.
+  - When a row is found, redirects to `.../round/:roundNumber/results` and logs a concise dev message.
+  - Degrades gracefully if schema columns are missing (guarded by try/catch and RLS-safe selects).
+- **Related**: Session round redirects still apply — URL round is reconciled against `game_sessions.current_round_number` via `getCurrentRoundFromSession(roomId)` to prevent navigating to future rounds.
+- **Notes**:
+  - Queries are typed loosely (`(supabase as any)`) in this guard to avoid deep generic instantiation issues in chained calls.
+  - All debug logs are gated behind `import.meta.env.DEV`.
+
+#### Timer ID Policy (2025-08-28, updated 2025-09-01)
+
+- **Canonical ID format**: `gh:{gameId}:{roundIndex}` (0-based `roundIndex`).
+- **Usage**: Use `buildTimerId(gameId, roundIndex)` from `src/lib/timerId.ts` to generate IDs.
+- **Avoid legacy IDs**: Do not use room-based IDs; prefer the canonical format for new code.
 
 #### Round Timer UI Contract (2025-08-30)
 
 - **GameOverlayHUD → TimerDisplay**
   - File: `src/components/navigation/GameOverlayHUD.tsx`
+{{ ... }}
   - Passes `roundTimerSec` as the total round duration and enables `externalTimer` on `TimerDisplay` to prevent an internal countdown. Never pass remaining time as the duration.
 - **TimerDisplay behavior**
   - File: `src/components/game/TimerDisplay.tsx`

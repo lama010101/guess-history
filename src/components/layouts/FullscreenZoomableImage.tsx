@@ -695,7 +695,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
           }}
         />
       </div>
-      {/* Close Fullscreen button (bottom-center, pink background) */}
+      {/* Close Fullscreen button (bottom-center, themed by --secondary to follow mode highlight) */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000]">
         <button
           onClick={onExit}
@@ -703,7 +703,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
           onMouseDown={(e) => { e.stopPropagation(); }}
           onTouchStart={(e) => { e.stopPropagation(); }}
           onTouchEnd={(e) => { e.stopPropagation(); }}
-          className="inline-flex items-center justify-center rounded-full bg-orange-600/80 text-white w-[60px] h-[60px] shadow-lg hover:bg-orange-700/90 active:bg-orange-700/90"
+          className="inline-flex items-center justify-center rounded-full bg-secondary/70 hover:bg-secondary/80 text-secondary-foreground w-[60px] h-[60px] shadow-lg active:brightness-[.95]"
           style={{ animation: 'attentionPulse 10s ease-in-out infinite' }}
           aria-label="Exit fullscreen"
           title="Exit fullscreen"
@@ -713,9 +713,9 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
         <style>{`
           @keyframes attentionPulse {
             0%, 80%, 100% { transform: scale(1); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.30), 0 4px 6px -4px rgba(0,0,0,0.30); }
-            84% { transform: scale(1.14); box-shadow: 0 25px 35px -5px rgba(0,0,0,0.45), 0 12px 16px -4px rgba(0,0,0,0.45), 0 0 0 6px rgba(236,72,153,0.35); }
+            84% { transform: scale(1.28); box-shadow: 0 35px 45px -5px rgba(0,0,0,0.45), 0 16px 20px -4px rgba(0,0,0,0.45), 0 0 0 12px hsla(var(--secondary), 0.35); }
             88% { transform: scale(1);   box-shadow: 0 10px 15px -3px rgba(0,0,0,0.30), 0 4px 6px -4px rgba(0,0,0,0.30); }
-            92% { transform: scale(1.14); box-shadow: 0 25px 35px -5px rgba(0,0,0,0.45), 0 12px 16px -4px rgba(0,0,0,0.45), 0 0 0 6px rgba(236,72,153,0.35); }
+            92% { transform: scale(1.28); box-shadow: 0 35px 45px -5px rgba(0,0,0,0.45), 0 16px 20px -4px rgba(0,0,0,0.45), 0 0 0 12px hsla(var(--secondary), 0.35); }
             96% { transform: scale(1);   box-shadow: 0 10px 15px -3px rgba(0,0,0,0.30), 0 4px 6px -4px rgba(0,0,0,0.30); }
           }
         `}</style>

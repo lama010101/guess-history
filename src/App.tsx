@@ -171,6 +171,11 @@ const App = () => {
                         <Route path="/solo/game/room/:roomId/final" element={<FinalResultsPage />} />
 
                         {/* Level Up game routes */}
+                        {/* New pattern including the explicit level segment */}
+                        <Route path="/level/:level/game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
+                        <Route path="/level/:level/game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />
+                        <Route path="/level/:level/game/room/:roomId/final" element={<FinalResultsPage />} />
+                        {/* Legacy pattern (without level) kept for backward compatibility */}
                         <Route path="/level/game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
                         <Route path="/level/game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />
                         <Route path="/level/game/room/:roomId/final" element={<FinalResultsPage />} />

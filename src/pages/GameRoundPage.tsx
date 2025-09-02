@@ -708,7 +708,7 @@ const GameRoundPage = () => {
 
       {/* Level Up Intro overlay BEFORE starting Round 1 (Level Up only) */}
       {isLevelUpRoute && showIntro && createPortal(
-        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[11000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <LevelUpIntro
             onStart={() => { setRoundStarted(true); setShowIntro(false); }}
             onClose={() => setShowIntro(false)}

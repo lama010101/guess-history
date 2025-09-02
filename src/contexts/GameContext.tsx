@@ -746,7 +746,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       setIsLoading(false);
       setTimeout(() => {
         // Level Up has its own distinct route prefix
-        navigate(`/level/game/room/${newRoomId}/round/1`);
+        navigate(`/level/${level}/game/room/${newRoomId}/round/1`);
       }, 100);
     } catch (err) {
       console.error('[GameContext] Error in startLevelUpGame:', err);

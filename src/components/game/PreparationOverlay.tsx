@@ -2,9 +2,8 @@ import React, { useMemo, useCallback, useEffect, useRef, useState } from 'react'
 import { useGame } from '@/contexts/GameContext';
 import { Button } from '@/components/ui/button';
 import { Loader2, TriangleAlert } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import LevelUpIntro from '@/components/levelup/LevelUpIntro';
-import { getLevelUpConstraints } from '@/lib/levelUpConfig';
+import { useNavigate } from 'react-router-dom';
+// Removed embedded LevelUpIntro to avoid duplicate overlay; see GameRoundPage for Level Up intro
 
 const activeStatuses = new Set(['selecting', 'fetching', 'preloading']);
 
@@ -24,24 +23,11 @@ export default function PreparationOverlay() {
   } = useGame();
 
   const navigate = useNavigate();
-  const location = useLocation();
 
   const isActive = activeStatuses.has(prepStatus as any);
   const isError = prepStatus === 'error';
 
-  // Detect Level Up context from the current route
-  const isLevelUpRoute = useMemo(() => location.pathname.includes('/level/'), [location.pathname]);
-  const levelUpLevel = useMemo(() => {
-    if (!isLevelUpRoute) return null;
-    const match = location.pathname.match(/^\/level(?:\/(\d+))?/);
-    const lvl = match && match[1] ? parseInt(match[1], 10) : 1;
-    return isNaN(lvl) ? 1 : Math.max(1, Math.min(100, lvl));
-  }, [location.pathname, isLevelUpRoute]);
-  const levelUpConstraints = useMemo(() => {
-    if (!isLevelUpRoute) return null;
-    const lvl = levelUpLevel ?? 1;
-    return getLevelUpConstraints(lvl);
-  }, [isLevelUpRoute, levelUpLevel]);
+  // Level Up intro is handled in GameRoundPage; no embedded intro here
 
   // Determine the target subtext based on status (no delay here)
   const targetSubtext = useMemo(() => {
@@ -231,21 +217,7 @@ export default function PreparationOverlay() {
           )}
         </div>
 
-        {/* Level Up intro details (embedded) */}
-        {levelUpConstraints && (
-          <div className="mt-4">
-            <LevelUpIntro
-              onStart={() => {
-                // No-op here: rounds are explicitly started in-game via the LevelUpIntro overlay
-              }}
-              constraints={levelUpConstraints}
-              level={levelUpLevel ?? undefined}
-              embedded
-              showActionsInEmbedded
-              isLoading={isActive}
-            />
-          </div>
-        )}
+        {/* Level Up intro removed here to prevent duplication; shown in GameRoundPage when appropriate */}
 
         {/* Actions */}
         <div className="mt-5 flex justify-end gap-3">

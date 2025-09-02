@@ -233,24 +233,24 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent data-hide-close className="sm:max-w-[640px] h-[100vh] text-white overflow-y-auto p-4 bg-black/85 border border-white/10 shadow-2xl sm:rounded-2xl">
-        {/* Inline Title + Info + Close */}
-        <div className="relative mb-3 sm:mb-4">
-          <h2 className="text-2xl font-bold text-center">HINTS</h2>
-          <p className="text-gray-300 italic text-center text-sm mt-1 leading-tight">
-            Using a hint will reduce your score. Hints are AI-generated and could contain errors.
-          </p>
-          <button
-            aria-label="Close"
-            onClick={() => onOpenChange(false)}
-            className="absolute right-0 top-0 grid place-items-center h-9 w-9 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground border-0"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
 
         <div className="p-0">
-          {/* Summary pills */}
+          {/* Accuracy section: moved header (title, info, close) into this section as a separate container */}
           <div className="mt-2 rounded-lg border border-gray-800 bg-[#202020] p-3">
+            <div className="relative mb-2">
+              <h2 className="text-2xl font-bold text-center">HINTS</h2>
+              <p className="text-gray-300 italic text-center text-sm mt-1 leading-tight">
+                Using a hint will reduce your score. Hints are AI-generated and could contain errors.
+              </p>
+              <button
+                aria-label="Close"
+                onClick={() => onOpenChange(false)}
+                className="absolute right-0 top-0 grid place-items-center h-9 w-9 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground border-0"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            {/* Summary pills */}
             <div className="flex justify-around text-sm">
               <div className="text-center">
                 <p className="text-white">Accuracy Penalty</p>

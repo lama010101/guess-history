@@ -95,10 +95,14 @@
       - `/solo/game/room/:roomId/round/:roundNumber`
       - `/solo/game/room/:roomId/round/:roundNumber/results`
       - Final navigation: after the last round, the app navigates to `/home` (no dedicated Solo `/final` route at this time)
-    - Level Up:
-      - `/level/game/room/:roomId/round/:roundNumber`
-      - `/level/game/room/:roomId/round/:roundNumber/results`
-      - `/level/game/room/:roomId/final`
+    - Level Up (new primary pattern with explicit level segment):
+      - `/level/:level/game/room/:roomId/round/:roundNumber`
+      - `/level/:level/game/room/:roomId/round/:roundNumber/results`
+      - `/level/:level/game/room/:roomId/final`
+      - Legacy (supported for backward compatibility):
+        - `/level/game/room/:roomId/round/:roundNumber`
+        - `/level/game/room/:roomId/round/:roundNumber/results`
+        - `/level/game/room/:roomId/final`
     - Compete (variants):
       - Sync:
         - `/compete/sync/game/room/:roomId/round/:roundNumber`
@@ -193,7 +197,8 @@
   - Image selection: calls `useGamePreparation.prepare({ userId, roomId?, count: ROUNDS_PER_GAME, seed?, minYear: levelYearRange.start, maxYear: levelYearRange.end })`.
   - Multiplayer gating: when `settings.roomId` is provided without `settings.seed`, preparation is gated (no error); when both are provided, deterministic images are selected and persisted server-side.
   - Membership persistence: on multiplayer starts, calls `ensureSessionMembership(roomId, userId)` and `repairMissingRoomId(roomId)` to satisfy RLS and backfill `round_results.room_id`.
-  - Navigation: after preparation, navigates to `/level/game/room/${roomId}/round/1`.
+  - Navigation: after preparation, navigates to `/level/${level}/game/room/${roomId}/round/1`.
+    - The router accepts both the new pattern with `:level` and the legacy pattern without it; internal navigation uses the former so the level is preserved across reloads.
 
 - __Theming__
   - `App.tsx` `ModeClassWatcher` toggles the `mode-levelup` body class for Level Up routes.
@@ -226,9 +231,9 @@
   - `src/pages/GameRoundPage.tsx`
     - Detects Level Up via the `/level/` prefix and applies `body.mode-levelup` (safety in-page in addition to global watcher).
     - Binds Level Up slider bounds: parses `level` from the URL (`/level/:level/...`), computes constraints via `getLevelUpConstraints(level)`, and passes `{ minYear, maxYear }` to `GameLayout1`.
-    - Renders `LevelUpIntro` via a React portal to `document.body` with `z-[60]`, above `PreparationOverlay` (`z-[50]`). The overlay blocks interactions underneath (no leaks).
+    - Renders `LevelUpIntro` via a React portal to `document.body` with `z-[11000]`, above `PreparationOverlay` (`z-[50]`) and fullscreen image containers. The overlay blocks interactions underneath (no leaks).
     - Computes live Level Up intro metrics: `currentOverallNetPct = average(roundResults[].accuracy)` and `bestRoundNetPct = max(roundResults[].accuracy)`, both clamped to `0..100`, and passes them to `LevelUpIntro` for progress display.
-    - The intro overlay auto-shows at the start of each round on `/level/...` routes and gates the timer until Start is pressed. It is also embedded inside `PreparationOverlay` during preparation and can be reopened in-game via the HUD Level button.
+    - The intro overlay auto-shows at the start of each round on `/level/...` routes and gates the timer until Start is pressed. There is no embedded Level Up intro inside `PreparationOverlay` (to avoid duplicate UI); players can reopen the intro in-game via the HUD Level button.
   - `src/pages/RoundResultsPage.tsx`
     - Above the standard results layout, renders `LevelRoundProgressCard` on Level Up routes.
     - Computes net percent with `computeRoundNetPercent(timeAcc, locAcc, accDebtTotal)` using:
@@ -281,7 +286,7 @@
   - `src/components/layouts/GameLayout1.tsx` accepts optional `levelLabel?` and `onOpenLevelIntro?` and forwards them to `GameOverlayHUD` unchanged.
   - `src/pages/GameRoundPage.tsx` supplies `levelLabel = \`Level ${level}\`` (only on `/level/...` routes) and `onOpenLevelIntro = () => setShowIntro(true)`.
 - __Intro close__: `LevelUpIntro.tsx` now supports an optional `onClose` prop alongside `onStart`. Closing the intro does not navigate or mutate round results; it simply hides the overlay.
-- __Overlay & stacking__: The intro is rendered via portal (`document.body`) in a container `fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm`. This sits above `PreparationOverlay` (`z-[50]`) and prevents interaction leaks.
+- __Overlay & stacking__: The intro is rendered via portal (`document.body`) in a container `fixed inset-0 z-[11000] bg-black/70 backdrop-blur-sm`. This sits above `PreparationOverlay` (`z-[50]`) and any fullscreen image layers and prevents interaction leaks.
 - __Timer behavior__: The server-authoritative timer does not start until Start is clicked on the intro. Pre-hydration, `GameRoundPage` seeds `remainingTime` from `roundTimerSec` for correct initial display; once hydrated, server values are authoritative after Start. The local UI timer remains paused while the intro is visible or before Start.
 - __Timer defaults__: `src/lib/levelUpConfig.ts` sets Level 1 `timerSec = 300` (5 minutes). Higher levels derive from the same helper and are applied via `startLevelUpGame()` which calls `handleSetRoundTimerSec(timerSec)`.
 
@@ -476,6 +481,7 @@
   - Height: full viewport `h-[100vh]` to occupy the entire screen.
   - Background: `bg-black/85` for consistent dark modal visuals.
   - Close button: primary color background `bg-primary hover:bg-primary/90` with `text-primary-foreground`.
+  - Header relocation: Title ("HINTS"), info text, and the close button are not in the modal header anymore. They now render inside the Accuracy section's container at the top of the modal body to improve layout and usability.
 
 - __Guidance for new modals__
   - Prefer `bg-black/85` for modal surfaces on dark theme for readability and consistency.

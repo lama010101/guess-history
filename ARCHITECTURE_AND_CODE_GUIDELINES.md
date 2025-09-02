@@ -259,7 +259,7 @@
   - Otherwise: retains `Play Again` behavior.
   - The `Home` button becomes icon-only (house icon) with the same border radius as the primary button for consistency across modes.
 
-#### Level Up — Pass/Fail Evaluation and Persistence (2025-09-01)
+#### Level Up — Pass/Fail Evaluation and Persistence (2025-09-01, updated 2025-09-04)
 
 - __Source__: `src/pages/FinalResultsPage.tsx`
 - __Computation__
@@ -267,14 +267,16 @@
   - Final net accuracy: `averagePercent(perRoundNetPercents)`.
   - Net XP: `finalXP - totalXpDebt`, where `totalXpDebt` is the sum of hint `xpDebt` across the game rounds.
 - __Pass criteria__
-  - Overall net accuracy ≥ 50%.
-  - Best time or location accuracy ≥ 70% after penalties.
+  - Targets are computed per level via `getLevelUpConstraints(level)` (see `src/lib/levelUpConfig.ts`).
+  - Overall net accuracy ≥ `requiredOverallAccuracy`.
+  - Best time or location accuracy ≥ `requiredRoundAccuracy` after penalties.
+  - Defaults at L1 remain 50% overall and 70% best-axis; these scale toward 100% by L100 as defined by tuneables.
 - __Persistence on pass__ (non-guest users only)
   - Reads current `games.level` for the finished `gameId` (defaults to `1` if missing) and updates to `currentLevel + 1`.
   - Updates `profiles.level_up_best_level` if the new level exceeds the previous best.
   - Operations are guarded with dev logs (only in `import.meta.env.DEV`) and try/catch blocks; warnings are printed on failures but do not block the results UI.
 - __Notes__
-  - UI components (`LevelResultBanner`, `LevelRequirementCard`) reflect the same criteria; logic runs once per game after submission guard (`submittedGameIdRef`).
+  - UI components (`LevelResultBanner`, `LevelRequirementCard`) and the pass/fail logic both read the same dynamic thresholds. The `LevelRequirementCard` target labels display `> {requiredOverallAccuracy}%` and `> {requiredRoundAccuracy}%` for clarity. Logic runs once per game after submission guard (`submittedGameIdRef`).
   - Guests are skipped for persistence.
 
 #### Level Up — Update 2025-09-01 (Revised 2025-09-03): Gated Start + HUD reopen
@@ -450,6 +452,14 @@
     - Segmented control top margin: `mt-4` (was `mt-3`).
     - Hint list top margin: `mt-4` (was `mt-3`).
   - No behavioral changes; only spacing.
+
+#### Settings Modal — Leave Game Confirmation Visibility (2025-09-04)
+
+- __Problem__: The Leave/Exit Game confirmation dialog could appear behind the settings modal due to overlay stacking, making the confirm button effectively inaccessible.
+- __Fix__: Close the settings modal before triggering the navigation confirmation.
+  - Location: `src/components/settings/GlobalSettingsModal.tsx` bottom sticky action bar.
+  - Behavior: The "Exit Game" button handler calls `onClose()` first, then defers invoking `onNavigateHome()` to the next tick (`setTimeout(..., 0)`) so the confirmation dialog opens on top.
+  - Rationale: Ensures clear visual stacking and prevents focus/interaction traps across modals.
 
 ### UI Consistency Updates — Level Up Modal + Fullscreen Buttons (2025-09-02)
 
@@ -2389,6 +2399,46 @@ Notes: UI changes are limited to the Home page and the shared `Logo` component p
 Notes
 - Assets referenced are in `public/icons/` and can be used directly with absolute paths (e.g., `/icons/logo.webp`).
 - Ensure mobile and desktop views are tested for scroll-snap centering and unified button sizing.
+
+### Profile — LevelProgressCard (2025-09-03)
+
+- Component: `src/components/profile/LevelProgressCard.tsx`
+- Purpose: Shows current level, total XP, overall accuracy, and best axis accuracy with progress bars toward the next level’s requirements.
+- Integration: Rendered in `src/components/layouts/ProfileLayout1.tsx` inside the Stats tab, above `StatsTab`.
+
+- Props
+  - `profile: UserProfile | null`
+  - `stats: UserStats`
+  - `isLoading?: boolean`
+
+- Data sources
+  - Current level from `profile.level_up_best_level` (defaults to 1, clamped to 1..100).
+  - Stats from `UserStats`: `avg_accuracy`, `time_accuracy`, `location_accuracy`, `total_xp`.
+  - Constraints for the next level via `getLevelUpConstraints(nextLevel)` from `src/lib/levelUpConfig.ts`.
+
+- Computation
+  - `currentLevel = clamp(Number(profile?.level_up_best_level || 1), 1, 100)`.
+  - `nextLevel = min(100, currentLevel + 1)`.
+  - Accuracy inputs (clamped 0..100):
+    - `overallAcc = stats.avg_accuracy`
+    - `timeAcc = stats.time_accuracy`
+    - `locAcc = stats.location_accuracy`
+    - `bestAxis = max(timeAcc, locAcc)` with label "Time" or "Location".
+  - Constraints:
+    - `requiredOverallAccuracy`, `requiredRoundAccuracy`, `levelYearRange.start/end`, `timerSec` from `getLevelUpConstraints(nextLevel)`.
+  - Progress percents (0..100, rounded):
+    - `overallProgressPct = (overallAcc / requiredOverallAccuracy) * 100` (guarded for zero).
+    - `roundProgressPct = (bestAxis.value / requiredRoundAccuracy) * 100` (guarded for zero).
+
+- Display
+  - Header shows "Level Up Progress" with "Next: Level {nextLevel}".
+  - Summary cards: `Level {currentLevel}`, `Total XP` (formatted via `formatInteger`), `Overall Accuracy`, `Best Axis`.
+  - Progress bars: Overall vs `requiredOverallAccuracy` and Best Axis vs `requiredRoundAccuracy` using `Progress` UI.
+  - Footer note shows next level year range and timer seconds from constraints.
+
+- Notes
+  - This card is display-only. It reflects `levelUpConfig` requirements for the next level and does not change gameplay.
+  - Pass/fail criteria for Level Up sessions are documented under Final Results sections; this card mirrors the requirement thresholds for user awareness.
 
 ## Server-Authoritative Countdown Timer (2025-08-28)
 

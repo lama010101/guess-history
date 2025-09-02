@@ -25,6 +25,7 @@ import {
 import { makeRoundId } from "@/utils/roomState";
 import LevelResultBanner from '@/components/levelup/LevelResultBanner';
 import LevelRequirementCard from '@/components/levelup/LevelRequirementCard';
+import { getLevelUpConstraints } from '@/lib/levelUpConfig';
 
 const FinalResultsPage = () => {
   const navigate = useNavigate();
@@ -538,8 +539,16 @@ const FinalResultsPage = () => {
   const totalScore = formatInteger(netFinalXP);
   const totalPercentage = formatInteger(finalPercentNet);
   const isLevelUp = location.pathname.includes('/level/');
-  const overallPass = finalPercentNet >= 50;
-  const axisPass = bestAxisNetAfterPenalties >= 70; // Best time or location accuracy (after penalties) ≥ 70%
+  // Compute dynamic targets for current level when in Level Up mode
+  const levelConstraints = React.useMemo(() => {
+    if (!isLevelUp) return null;
+    const lvl = typeof currentLevelFromPath === 'number' ? currentLevelFromPath : 1;
+    return getLevelUpConstraints(lvl);
+  }, [isLevelUp, currentLevelFromPath]);
+  const overallTarget = levelConstraints?.requiredOverallAccuracy ?? 50;
+  const axisTarget = levelConstraints?.requiredRoundAccuracy ?? 70;
+  const overallPass = finalPercentNet >= overallTarget;
+  const axisPass = bestAxisNetAfterPenalties >= axisTarget; // Best time or location accuracy (after penalties)
   const passed = overallPass && axisPass;
   const totalWhenAccuracy = totalWhenXP > 0 ? (totalWhenXP / (roundResults.length * 100)) * 100 : 0;
   const totalWhereAccuracy = totalWhereXP > 0 ? (totalWhereXP / (roundResults.length * 100)) * 100 : 0;
@@ -592,14 +601,16 @@ const FinalResultsPage = () => {
               <LevelRequirementCard
                 title="Overall net accuracy"
                 met={overallPass}
-                currentLabel={`= ${formatInteger(finalPercentNet)}%`}
-                targetLabel="Target: ≥ 50%"
+                valuePercent={finalPercentNet}
+                targetLabel={`Target > ${overallTarget}%`}
+                icon={<Target className="h-5 w-5" />}
               />
               <LevelRequirementCard
-                title="Best Time or Location accuracy"
+                title="Best accuracy"
                 met={axisPass}
-                currentLabel={`= ${formatInteger(bestAxisNetAfterPenalties)}%`}
-                targetLabel="Target: ≥ 70%"
+                valuePercent={bestAxisNetAfterPenalties}
+                targetLabel={`Target > ${axisTarget}%`}
+                icon={<Zap className="h-5 w-5" />}
               />
             </div>
           )}

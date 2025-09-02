@@ -32,6 +32,7 @@ import BadgesTab from '@/components/profile/BadgesTab';
 import AvatarsTab from '@/components/profile/AvatarsTab';
 import SettingsTab from '@/components/profile/SettingsTab';
 import AccountManagement from '@/components/profile/AccountManagement';
+import LevelProgressCard from '@/components/profile/LevelProgressCard';
 
 const ProfileLayout1 = () => {
   const [avatar, setAvatar] = useState<Avatar | null>(null);
@@ -169,6 +170,11 @@ const ProfileLayout1 = () => {
           </div>
           
           <TabsContent value="stats">
+            <LevelProgressCard
+              profile={profile}
+              stats={stats || getDefaultStats()}
+              isLoading={statsLoading}
+            />
             <StatsTab 
               stats={stats || getDefaultStats()} 
               isLoading={statsLoading}

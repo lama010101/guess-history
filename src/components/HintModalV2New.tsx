@@ -242,6 +242,9 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
               <p className="text-gray-300 italic text-center text-sm mt-1 leading-tight">
                 Using a hint will reduce your score. Hints are AI-generated and could contain errors.
               </p>
+              {/* requested: two empty lines after the info text */}
+              <br />
+              <br />
               <button
                 aria-label="Close"
                 onClick={() => onOpenChange(false)}

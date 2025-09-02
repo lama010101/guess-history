@@ -149,7 +149,12 @@ const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClo
           <div className="sticky bottom-0 z-10 p-3 sm:p-4 border-t border-white/10 bg-black/85 backdrop-blur-md flex items-center justify-between">
             <div className="flex items-center gap-2">
               {onNavigateHome && (
-                <Button onClick={onNavigateHome} className="bg-white text-black hover:bg-gray-100">
+                <Button onClick={() => { 
+                  // Close the settings modal first so the confirm dialog isn't obscured by this dialog's overlay
+                  onClose();
+                  // Defer navigation confirmation to the next tick to allow modal close animation/state to apply
+                  setTimeout(() => { onNavigateHome(); }, 0);
+                }} className="bg-white text-black hover:bg-gray-100">
                   <HomeIcon className="h-4 w-4 mr-2" />
                   Exit Game
                 </Button>

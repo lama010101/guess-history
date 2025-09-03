@@ -270,7 +270,7 @@ const HomePage = () => {
                         className="mr-3 data-[state=checked]:bg-gray-600 h-4 w-8"
                       />
                       <Label htmlFor="solo-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm text-white">
-                        <span>Round Timer</span>
+                        <span>  Round Timer</span>
                       </Label>
                     </div>
                     {isSoloTimerEnabled && (

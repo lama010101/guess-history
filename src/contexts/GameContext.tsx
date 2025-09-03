@@ -639,8 +639,32 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             firebase_url: img.firebase_url,
             confidence: img.confidence,
           }));
+          // Persist solo selection to game_sessions for stable hydration on refresh
+          try {
+            const imageIds = mappedImages.map((i) => i.id);
+            await supabase
+              .from('game_sessions' as any)
+              .upsert(
+                { room_id: newRoomId, seed: newRoomId, image_ids: imageIds, started_at: new Date().toISOString() },
+                { onConflict: 'room_id' }
+              );
+          } catch (e) {
+            console.warn('[GameContext] solo fallback persist to game_sessions failed', e);
+          }
           setImages(mappedImages);
         } else {
+          // Persist solo (prepared) selection to game_sessions for stable hydration on refresh
+          try {
+            const imageIds = preparedImages.map((i) => i.id);
+            await supabase
+              .from('game_sessions' as any)
+              .upsert(
+                { room_id: newRoomId, seed: newRoomId, image_ids: imageIds, started_at: new Date().toISOString() },
+                { onConflict: 'room_id' }
+              );
+          } catch (e) {
+            console.warn('[GameContext] solo prepared persist to game_sessions failed', e);
+          }
           setImages(preparedImages);
         }
       }
@@ -740,6 +764,18 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         confidence: img.confidence,
       }));
 
+      // Persist Level Up selection to game_sessions for stable hydration (even in solo Level Up)
+      try {
+        const imageIds = preparedImages.map((i) => i.id);
+        await supabase
+          .from('game_sessions' as any)
+          .upsert(
+            { room_id: newRoomId, seed: (settings?.seed ?? newRoomId) as any, image_ids: imageIds, started_at: new Date().toISOString() },
+            { onConflict: 'room_id' }
+          );
+      } catch (e) {
+        console.warn('[GameContext] levelup persist to game_sessions failed', e);
+      }
       setImages(preparedImages);
       devLog('[GameContext] LevelUp prepared images (first 5 IDs)', preparedImages.slice(0, 5).map(i => i.id));
 

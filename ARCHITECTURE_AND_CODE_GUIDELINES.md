@@ -207,6 +207,7 @@
 - __Persistence & peers__
   - Round results persist to `public.round_results` with 0-based `round_index` (UI uses 1-based routing). See “Round Indexing Consistency (0-based).”
   - Multiplayer peer visibility relies on `public.session_players` upsert. See “Multiplayer Membership Persistence (session_players).”
+  - Room-scoped image order persistence (Solo & Level Up): when a Solo or Level Up game starts, the selected image IDs are upserted into `public.game_sessions` under the generated `room_id` with a deterministic `seed`. On refresh, `hydrateRoomImages(roomId)` reads these `image_ids` to restore the exact same order, ensuring round 1 image does not change on reload.
 
 #### Level Up — Canonical Route Detection & "Play Again" Navigation (2025-08-28, updated)
 

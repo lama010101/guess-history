@@ -1,14 +1,35 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { NavProfile } from "@/components/NavProfile";
 import { useGame } from "@/contexts/GameContext";
 import { Badge } from "@/components/ui/badge";
-import { Target, Zap } from "lucide-react";
+import { Target, Zap, Medal } from "lucide-react";
 import InvitesBell from "@/components/navigation/InvitesBell";
+import { useAuth } from "@/contexts/AuthContext";
+import { fetchUserProfile, UserProfile } from "@/utils/profile/profileService";
 
 const TestLayout = () => {
   const location = useLocation();
   const { totalGameAccuracy, totalGameXP, globalAccuracy, globalXP } = useGame();
+  const { user } = useAuth();
+  const [currentLevel, setCurrentLevel] = useState<number | null>(null);
+  
+  useEffect(() => {
+    const loadLevel = async () => {
+      if (!user) {
+        setCurrentLevel(null);
+        return;
+      }
+      try {
+        const profile: UserProfile | null = await fetchUserProfile(user.id);
+        const level = Math.max(1, Math.min(100, Number(profile?.level_up_best_level || 1)));
+        setCurrentLevel(level);
+      } catch {
+        setCurrentLevel(null);
+      }
+    };
+    loadLevel();
+  }, [user]);
   
   // Determine if we're in game context (active game or round results, but NOT final-results)
   const isGameContext = location.pathname.includes('/game') || 
@@ -35,6 +56,12 @@ const TestLayout = () => {
                     <Zap className="h-4 w-4" />
                     <span>{Math.round(globalXP)}</span>
                   </Badge>
+                  {currentLevel !== null && (
+                    <Badge className="flex items-center gap-1 text-sm" aria-label={`Level ${currentLevel}`}>
+                      <Medal className="h-4 w-4" />
+                      <span>Lv {currentLevel}</span>
+                    </Badge>
+                  )}
                 </div>
 
                 {/* Right: Invites + Profile */}
@@ -56,6 +83,12 @@ const TestLayout = () => {
                     <Zap className="h-4 w-4" />
                     <span>{Math.round(globalXP)}</span>
                   </Badge>
+                  {currentLevel !== null && (
+                    <Badge className="flex items-center gap-1 text-sm" aria-label={`Level ${currentLevel}`}>
+                      <Medal className="h-4 w-4" />
+                      <span>Lv {currentLevel}</span>
+                    </Badge>
+                  )}
                 </div>
                 
                 <div className="flex items-center gap-2">

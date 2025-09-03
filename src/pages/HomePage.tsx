@@ -239,9 +239,10 @@ const HomePage = () => {
     <div style={homePageStyle}>
       {showGuestBadge && <GuestBadge username={profile?.display_name || 'Guest'} />}
       <div className="absolute inset-0 z-[100] w-full h-full overflow-y-auto p-4 md:p-8 box-border bg-black/80 flex items-start justify-center min-h-screen">
+        
         {isLoaded ? (
           <div className="w-full max-w-6xl mx-auto flex flex-col items-center">
-            <Logo className="mt-20 mb-0 md:mt-0 md:mb-0 justify-center"/>
+            <Logo className="mt-28 md:mt-12 mb-0 md:mb-0 justify-center"/>
             <div className="-mx-0 md:mx-0 md:-mt-0 w-screen md:w-auto flex flex-row items-start gap-[2rem] md:gap-[3rem] overflow-x-auto md:overflow-visible snap-x snap-mandatory md:snap-none no-scrollbar px-0 md:px-2 touch-pan-x overscroll-x-contain pl-0 md:pl-0">
               {/* Mobile left spacer to center first card */}
               <div className="shrink-0 w-[calc((100vw-13.5rem)/2)] md:hidden" aria-hidden="true" />

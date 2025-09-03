@@ -128,8 +128,8 @@ const LandingPage: React.FC = () => {
 
         {/* Hero content */}
         <main className="relative z-20 flex flex-col items-center justify-center text-center text-white px-4 h-full">
-          <div className="mb-6 -mt-20">
-            <Logo className="h-24 md:h-32" />
+          <div className="mb-5 -mt-0">
+            <Logo className="h-100 md:h-54" />
           </div>
           <h1
             className="text-4xl md:text-6xl font-extrabold leading-tight max-w-3xl"

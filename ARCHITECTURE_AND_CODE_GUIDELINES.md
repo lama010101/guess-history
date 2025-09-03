@@ -2488,6 +2488,18 @@ Notes
   - This card is display-only. It reflects `levelUpConfig` requirements for the next level and does not change gameplay.
   - Pass/fail criteria for Level Up sessions are documented under Final Results sections; this card mirrors the requirement thresholds for user awareness.
 
+### Navbar — Level Badge (2025-09-06)
+
+- Component: `src/components/navigation/MainNavbar.tsx`
+- Purpose: Show the user's current Level next to Global Accuracy and XP.
+- Data source: `profiles.level_up_best_level` fetched via `fetchUserProfile(user.id)`.
+- Behavior:
+  - On mount and on `avatarUpdated`/`usernameUpdated` events, the navbar fetches the profile and sets:
+    - `avatarUrl ← profile.avatar_image_url || profile.avatar_url`
+    - `currentLevel ← clamp(Number(profile.level_up_best_level || 1), 1, 100)`
+  - Renders a level badge (Medal icon) as `Lv {currentLevel}` to the left group beside Accuracy and XP.
+  - No navigation is attached to the Level badge; XP badge continues to navigate to `/leaderboard` on click.
+
 ## Server-Authoritative Countdown Timer (2025-08-28)
 
 - Overview

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import LazyImage from '@/components/ui/LazyImage';
 import { Button } from "@/components/ui/button";
-import { Menu, Award, Target } from "lucide-react";
+import { Menu, Award, Target, Medal } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '@/contexts/GameContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,6 +27,7 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [currentLevel, setCurrentLevel] = useState<number | null>(null);
   
   // Fetch global metrics when component mounts and periodically refresh
   useEffect(() => {
@@ -51,12 +52,17 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
           // Check both avatar_image_url and avatar_url fields
           setAvatarUrl(profile?.avatar_image_url || profile?.avatar_url || null);
           console.log('NavBar: Avatar URL set to:', profile?.avatar_image_url || profile?.avatar_url);
+          // Set current level from profile (fallback to 1)
+          const level = Math.max(1, Math.min(100, Number(profile?.level_up_best_level || 1)));
+          setCurrentLevel(level);
         } catch (error) {
           console.error('Error fetching user profile for navbar:', error);
           setAvatarUrl(null);
+          setCurrentLevel(null);
         }
       } else {
         setAvatarUrl(null);
+        setCurrentLevel(null);
       }
     };
 
@@ -69,6 +75,8 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
       if (user) {
         fetchUserProfile(user.id).then((profile) => {
           setAvatarUrl(profile?.avatar_image_url || profile?.avatar_url || null);
+          const level = Math.max(1, Math.min(100, Number(profile?.level_up_best_level || 1)));
+          setCurrentLevel(level);
         });
       }
     };
@@ -107,6 +115,15 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
               <Award className="h-4 w-4" />
               <span>{formatInteger(globalXP || 0)}</span>
             </Badge>
+            {currentLevel !== null && (
+              <Badge 
+                className="flex items-center gap-1 text-sm"
+                aria-label={`Level ${currentLevel}`}
+              >
+                <Medal className="h-4 w-4" />
+                <span>Lv {currentLevel}</span>
+              </Badge>
+            )}
           </div>
 
           {/* Avatar/Menu button on the right */}

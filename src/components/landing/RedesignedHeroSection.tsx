@@ -106,7 +106,7 @@ const RedesignedHeroSection = ({ onAuthModalOpen }: RedesignedHeroSectionProps) 
             
             <Button 
               size="lg" 
-              className="bg-orange-500 hover:bg-orange-600 text-white px-12 py-3 text-lg font-semibold rounded-full shadow-xl transition-all duration-200 animate-scale-in hover:scale-105"
+              className="bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] text-black hover:opacity-90 px-12 py-3 text-lg font-semibold rounded-full shadow-xl transition-all duration-200 animate-scale-in hover:scale-105"
               onClick={handleStartGuessing}
               style={{ animationDelay: '0.4s' }}
             >

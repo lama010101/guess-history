@@ -66,7 +66,7 @@ const HomePage = () => {
   const [pendingMode, setPendingMode] = useState<string | null>(null);
   const [showLoadingPopup, setShowLoadingPopup] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [showComingSoon, setShowComingSoon] = useState(false);
+  const [showCompeteSoon, setShowCompeteSoon] = useState(false);
   devLog('[HomePage] Render', { isLoaded, user, isGuest });
   // Timer states
   const [isSoloTimerEnabled, setIsSoloTimerEnabled] = useState(false);
@@ -312,63 +312,15 @@ const HomePage = () => {
                   LEVEL UP
                 </div>
               </div>
-              {/* Collaborate Card (formerly Friends card visuals, now shows Coming Soon) */}
+              {/* Collaborate Card hidden per request */}
+              {/* Compete Card (purple) — shows Coming Soon modal */}
               <div
-                className={`relative flex flex-col items-center justify-center gap-0 py-2 md:py-2 shrink-0 snap-center ${(!user || isGuest) ? '' : 'cursor-pointer'}`}
-                onClick={() => {
-                  devLog('[HomePage] Collaborate card clicked. isGuest:', isGuest);
-                  if (user && !isGuest) {
-                    setShowComingSoon(true);
-                  } else {
-                    // Guests will be prompted to sign in via AuthModal; do not set pendingMode
-                    setPendingMode(null);
-                    setShowAuthModal(true);
-                  }
-                }}
-              >
-                {(!user || isGuest) && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black/80 rounded-xl z-[100]">
-                    <div className="text-center p-4">
-                      <img src="/icons/lock.webp" alt="Locked" className="h-20 w-20 mx-auto mb-3" />
-                      <p className="text-black dark:text-white text-sm">COLLABORATE</p>
-                      <Button
-                        className="mt-3 bg-white hover:bg-gray-100 text-black text-sm"
-                        onClick={() => { setPendingMode(null); setShowAuthModal(true); }}
-                      >
-                        Sign In
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-cyan-300 via-sky-400 to-sky-600">
-                  <img src="/icons/collaborate.webp" alt="Collaborate" className="w-36 h-36 object-contain" />
-                </div>
-                <div className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1">
-                  COLLABORATE
-                </div>
-              </div>
-              {/* Compete Card (purple) — starts Friends mode; guest overlay with sign-in */}
-              <div
-                className={`relative flex flex-col items-center justify-center gap-0 py-2 md:py-2 shrink-0 snap-center ${(!user || isGuest) ? 'opacity-60' : 'cursor-pointer'}`}
+                className="relative flex flex-col items-center justify-center gap-0 py-2 md:py-2 shrink-0 snap-center cursor-pointer"
                 onClick={() => {
                   devLog('[HomePage] Compete card clicked. isGuest:', isGuest);
-                  if (!isGuest) handleStartGame('friends');
+                  setShowCompeteSoon(true);
                 }}
               >
-                {(!user || isGuest) && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black/80 rounded-xl z-[100]">
-                    <div className="text-center p-4">
-                      <img src="/icons/lock.webp" alt="Locked" className="h-20 w-20 mx-auto mb-3" />
-                      <p className="text-black dark:text-white text-sm">COMPETE</p>
-                      <Button
-                        className="mt-3 bg-white hover:bg-gray-100 text-black text-sm"
-                        onClick={() => handleStartGame('friends')}
-                      >
-                        Sign In
-                      </Button>
-                    </div>
-                  </div>
-                )}
                 <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-purple-300 via-violet-500 to-purple-700">
                   <img src="/icons/compete.webp" alt="Compete" className="w-36 h-36 object-contain" />
                 </div>
@@ -414,16 +366,22 @@ const HomePage = () => {
         onAuthSuccess={handleAuthSuccess}
         onGuestContinue={handleGuestContinue}
       />
-      {/* Simple Coming Soon modal */}
-      {showComingSoon && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70">
-          <div className="bg-white dark:bg-[#222] text-black dark:text-white rounded-xl p-6 w-[90%] max-w-sm shadow-xl border border-gray-200 dark:border-gray-700">
+      {/* Compete Coming Soon modal with backdrop redirect */}
+      {showCompeteSoon && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70"
+          onClick={() => { setShowCompeteSoon(false); navigate('/compete'); }}
+        >
+          <div
+            className="bg-white dark:bg-[#222] text-black dark:text-white rounded-xl p-6 w-[90%] max-w-sm shadow-xl border border-gray-200 dark:border-gray-700"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-xl font-bold mb-2 text-center">COMING SOON</h3>
             <p className="text-sm text-center text-gray-700 dark:text-gray-300 mb-4">
-              Collaborate mode is under construction. Stay tuned!
+              Compete mode is coming soon. Click outside this popup to proceed to the Compete page.
             </p>
             <div className="flex justify-center">
-              <Button className="bg-black text-white hover:bg-black/90" onClick={() => setShowComingSoon(false)}>
+              <Button className="bg-black text-white hover:bg-black/90" onClick={() => setShowCompeteSoon(false)}>
                 Close
               </Button>
             </div>

@@ -31,7 +31,7 @@ const StickyCTAButton = ({ onClick }: StickyCTAButtonProps) => {
       <div className="hidden lg:block fixed bottom-8 right-8 z-50">
         <Button
           onClick={onClick}
-          className="bg-orange-500 hover:bg-orange-600 text-white w-16 h-16 rounded-full shadow-2xl hover:shadow-orange-500/25 transition-all duration-300 hover:scale-110"
+          className="bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] text-black hover:opacity-90 w-16 h-16 rounded-full shadow-2xl transition-all duration-300 hover:scale-110"
           size="lg"
         >
           <span className="text-2xl">🎯</span>
@@ -42,7 +42,7 @@ const StickyCTAButton = ({ onClick }: StickyCTAButtonProps) => {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 p-4 bg-gradient-to-t from-black to-transparent">
         <Button
           onClick={onClick}
-          className="w-full bg-orange-500 hover:bg-orange-600 text-white py-4 text-lg font-bold rounded-full shadow-2xl hover:shadow-orange-500/25 transition-all duration-200"
+          className="w-full bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] text-black hover:opacity-90 py-4 text-lg font-bold rounded-full shadow-2xl transition-all duration-200"
         >
           🎮 Start Playing
         </Button>

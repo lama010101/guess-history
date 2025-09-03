@@ -150,6 +150,28 @@
   - Use versioned `CACHE_NAME` (e.g., `gh-static-v2`). Bump when changing cached files to force client update.
   - Avoid precaching absolute URLs to prevent cross-origin/port pinning issues.
 
+#### UI Gradient Standard (2025-09-06)
+
+- Purpose: unify primary CTA/button visuals with the Hints button gradient.
+- Canonical Tailwind class (inline arbitrary value):
+  - Buttons: `bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] text-black hover:opacity-90`
+  - Text gradient (for words like HISTORY): `text-transparent bg-clip-text bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)]`
+- Applied in:
+  - `src/components/layouts/GameLayout1.tsx` — Hints button (source gradient reference)
+  - `src/components/pwa/InstallPrompt.tsx` — Install button
+  - `src/components/landing/RedesignedHeroSection.tsx` — "Start Playing" CTA
+  - `src/components/landing/StickyCTAButton.tsx` — floating/sticky CTA
+  - `src/components/landing/RedesignedNavbar.tsx` — gradient text for "HISTORY"
+- Guidance:
+  - Reuse the exact gradient string for visual consistency.
+  - Prefer text color `text-black` over white for legibility on this light gradient.
+
+#### PWA Install Prompt Asset Path (2025-09-06)
+
+- The PWA install card logo should load from the manifest icon path for reliability.
+  - `src/components/pwa/InstallPrompt.tsx` uses `src="/icons/logo.webp"` (previously `/images/logo.png`, which did not exist).
+  - Manifest icons (source of truth): `public/manifest.webmanifest` → `/icons/logo.webp` (192 and 512, any + maskable).
+
 ### Mode-based Theming (Solo, Compete, Collaborate, Level Up)
 
 - **Goal**: Solo keeps original orange accents. Compete shows purple. Collaborate shows turquoise. Level up shows pink.

@@ -97,12 +97,12 @@ export default function InstallPrompt({ auto, onClose }: Props) {
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-[9999]">
       <div className="max-w-sm w-[calc(100vw-2rem)] md:w-80 rounded-xl shadow-lg bg-zinc-900/95 backdrop-blur text-white border border-zinc-800 p-4">
         <div className="flex items-start gap-3">
-          <img src="/images/logo.png" alt="Guess History" className="w-10 h-10 rounded-md object-contain" />
+          <img src="/icons/logo.webp" alt="Guess History" className="w-10 h-10 rounded-md object-contain" />
           <div className="min-w-0 flex-1">
             <div className="text-base font-semibold">Install Guess History</div>
             <div className="text-sm text-zinc-300">Get faster access and full-screen play.</div>
             <div className="mt-3 flex gap-2">
-              <button onClick={handleInstall} className="px-3 py-2 rounded-md bg-sky-500 hover:bg-sky-600 text-white">Install</button>
+              <button onClick={handleInstall} className="px-3 py-2 rounded-md bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] text-black hover:opacity-90">Install</button>
               <button onClick={handleNotNow} className="px-3 py-2 rounded-md bg-transparent border border-zinc-700 hover:bg-zinc-800">Not now</button>
             </div>
           </div>

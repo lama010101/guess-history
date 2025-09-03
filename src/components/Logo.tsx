@@ -12,7 +12,7 @@ const Logo = ({
       <img
         src="/icons/logo.webp"
         alt="GUESS-HISTORY logo"
-        className="h-56 md:h-80 w-auto"
+        className="h-40 md:h-40 w-auto"
         loading="eager"
         decoding="async"
       />

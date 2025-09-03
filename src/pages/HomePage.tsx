@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from "@/components/ui/button";
 import Logo from '@/components/Logo';
+import { useSettingsStore } from '@/lib/useSettingsStore';
 
 // Dev logging guard
 const isDev = (import.meta as any)?.env?.DEV === true;
@@ -69,7 +70,7 @@ const HomePage = () => {
   devLog('[HomePage] Render', { isLoaded, user, isGuest });
   // Timer states
   const [isSoloTimerEnabled, setIsSoloTimerEnabled] = useState(false);
-  const [practiceTimerSeconds, setPracticeTimerSeconds] = useState(300); // 5 minutes
+  const { timerSeconds, setTimerSeconds } = useSettingsStore();
   const navigate = useNavigate();
   const gameContext = useGame();
   const { startGame, isLoading, startLevelUpGame } = gameContext || {};
@@ -190,7 +191,7 @@ const HomePage = () => {
         const gameSettings = mode === 'classic'
           ? {
               timerEnabled: isSoloTimerEnabled,
-              timerSeconds: isSoloTimerEnabled ? practiceTimerSeconds : 0,
+              timerSeconds: isSoloTimerEnabled ? timerSeconds : 0,
               hintsPerGame: 5, // TODO: Make hints configurable
             }
           : {};
@@ -208,7 +209,7 @@ const HomePage = () => {
         setShowLoadingPopup(false);
       }
     }
-  }, [user, gameContext, startGame, startLevelUpGame, isLoading, navigate, toast, setPendingMode, setShowAuthModal, isSoloTimerEnabled, practiceTimerSeconds, isGuest]);
+  }, [user, gameContext, startGame, startLevelUpGame, isLoading, navigate, toast, setPendingMode, setShowAuthModal, isSoloTimerEnabled, timerSeconds, isGuest]);
 
   useEffect(() => {
     if (user && pendingMode && gameContext && startGame) {
@@ -274,18 +275,18 @@ const HomePage = () => {
                     </div>
                     {isSoloTimerEnabled && (
                       <span className="text-sm font-bold text-orange-500">
-                        {formatTime(practiceTimerSeconds)}
+                        {formatTime(timerSeconds)}
                       </span>
                     )}
                   </div>
                   {isSoloTimerEnabled && (
                     <div className="relative mb-2">
                       <Slider
-                        value={[practiceTimerSeconds]}
+                        value={[timerSeconds]}
                         min={minTimerValue}
                         max={maxTimerValue}
                         step={stepSize}
-                        onValueChange={(value) => setPracticeTimerSeconds(value[0])}
+                        onValueChange={(value) => setTimerSeconds(value[0])}
                         className="w-full"
                       />
                       <div className="flex justify-between text-xs text-gray-300 mt-1">

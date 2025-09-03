@@ -37,6 +37,10 @@ import LeaderboardPage from "./src/pages/LeaderboardPage";
 import ProfilePage from "./src/pages/ProfilePage";
 import SettingsPage from "./src/pages/SettingsPage";
 import PlayWithFriends from "./src/pages/PlayWithFriends";
+import TimerMainPage from "./src/timer/pages/MainPage";
+import TimerRunPage from "./src/timer/pages/RunPage";
+import TimerNextPage from "./src/timer/pages/NextPage";
+import TimerDonePage from "./src/timer/pages/DonePage";
 
 // Handler for auth redirects
 const AuthRedirectHandler = () => {
@@ -105,6 +109,11 @@ const App = () => {
                   <Route path="/admin" element={<RequireAuthSession />}>
                     <Route index element={<AdminGameConfigPage />} />
                   </Route>
+                  {/* Timer (public) */}
+                  <Route path="/timer" element={<TimerMainPage />} />
+                  <Route path="/timer/run" element={<TimerRunPage />} />
+                  <Route path="/timer/next" element={<TimerNextPage />} />
+                  <Route path="/timer/done" element={<TimerDonePage />} />
                   {/* Top-level game routes (no '/test' prefix) */}
                   <Route path="/solo/game/room/:roomId/round/:roundNumber" element={<SoloGameRoundPage />} />
                   <Route path="/solo/game/room/:roomId/round/:roundNumber/results" element={<SoloRoundResultsPage />} />

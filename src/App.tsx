@@ -33,6 +33,10 @@ import LandingPage from "./pages/LandingPage";
 import RoundResultsPage from "./pages/RoundResultsPage";
 import Compete from "./pages/PlayWithFriends";
 import Room from "./pages/Room";
+import TimerMainPage from "./timer/pages/MainPage";
+import TimerRunPage from "./timer/pages/RunPage";
+import TimerNextPage from "./timer/pages/NextPage";
+import TimerDonePage from "./timer/pages/DonePage";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
 
 // Enhanced AuthRedirectHandler with better session handling
@@ -194,6 +198,12 @@ const App = () => {
                         
                         {/* Admin routes */}
                         <Route path="/admin" element={<AdminGameConfigPage />} />
+                        
+                        {/* Timer routes */}
+                        <Route path="/timer" element={<TimerMainPage />} />
+                        <Route path="/timer/run" element={<TimerRunPage />} />
+                        <Route path="/timer/next" element={<TimerNextPage />} />
+                        <Route path="/timer/done" element={<TimerDonePage />} />
                       </Route>
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>

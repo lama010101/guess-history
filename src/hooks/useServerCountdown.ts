@@ -29,6 +29,28 @@ export function useServerCountdown(opts: UseServerCountdownOptions): UseServerCo
     } catch {}
   }
 
+  // Helper: normalize Supabase error objects for consistent logging
+  const toErrorInfo = (e: any) => {
+    try {
+      if (!e) return { message: 'unknown error' };
+      const { status, code, message, details, hint } = e as any;
+      return { status, code, message, details, hint };
+    } catch {
+      return { message: String(e ?? 'unknown') };
+    }
+  };
+
+  // Helper: expose last hydration snapshot for quick inspection
+  const setWindowDebug = (payload: Record<string, any>) => {
+    try {
+      (window as any).__gh_timer_debug = {
+        ...(window as any).__gh_timer_debug,
+        ...payload,
+        ts: new Date().toISOString(),
+      };
+    } catch {}
+  };
+
   const [ready, setReady] = useState(false);
   const [expired, setExpired] = useState(false);
   const [remainingMs, setRemainingMs] = useState(0);
@@ -42,6 +64,7 @@ export function useServerCountdown(opts: UseServerCountdownOptions): UseServerCo
       if (import.meta.env.DEV) {
         try { console.debug('[useServerCountdown] No timerId, skipping server interaction'); } catch {}
       }
+      setWindowDebug({ phase: 'no-timer-id', reason: 'empty timerId' });
     }
   }, [timerId]);
 
@@ -96,25 +119,42 @@ export function useServerCountdown(opts: UseServerCountdownOptions): UseServerCo
       setExpired(false);
       setRemainingMs(0);
       clearTick();
+      setWindowDebug({ phase: 'hydrate-skip', reason: 'no-timer-id' });
       return null;
     }
 
     if (import.meta.env.DEV) {
       try { console.debug('[useServerCountdown] hydrate:start', { timerId, autoStart, durationSec }); } catch {}
     }
+    setWindowDebug({ phase: 'hydrate:start', timerId, autoStart, durationSec });
     setReady(false);
     setExpired(false);
     expiredCalledRef.current = false;
 
-    let row = await getTimer(timerId);
-    if (import.meta.env.DEV) {
-      try { console.debug('[useServerCountdown] hydrate:getTimer', { found: !!row }); } catch {}
+    let row: TimerRecord | null = null;
+    try {
+      row = await getTimer(timerId);
+      if (import.meta.env.DEV) {
+        try { console.debug('[useServerCountdown] hydrate:getTimer', { found: !!row }); } catch {}
+      }
+      setWindowDebug({ phase: 'hydrate:getTimer', found: !!row });
+    } catch (e) {
+      try { console.error('[useServerCountdown] hydrate:getTimer error', e, toErrorInfo(e)); } catch {}
+      setWindowDebug({ phase: 'hydrate:getTimer:error', error: toErrorInfo(e) });
+      throw e; // preserve original behavior
     }
     if (!row && autoStart) {
       if (!durationSec || durationSec <= 0) throw new Error('durationSec required to autoStart');
-      row = await startTimer(timerId, durationSec);
-      if (import.meta.env.DEV) {
-        try { console.debug('[useServerCountdown] hydrate:startTimer', { started: !!row, durationSec }); } catch {}
+      try {
+        row = await startTimer(timerId, durationSec);
+        if (import.meta.env.DEV) {
+          try { console.debug('[useServerCountdown] hydrate:startTimer', { started: !!row, durationSec }); } catch {}
+        }
+        setWindowDebug({ phase: 'hydrate:startTimer', started: !!row, durationSec });
+      } catch (e) {
+        try { console.error('[useServerCountdown] hydrate:startTimer error', e, { timerId, durationSec }, toErrorInfo(e)); } catch {}
+        setWindowDebug({ phase: 'hydrate:startTimer:error', error: toErrorInfo(e), timerId, durationSec });
+        throw e; // preserve original behavior
       }
     }
 
@@ -139,6 +179,13 @@ export function useServerCountdown(opts: UseServerCountdownOptions): UseServerCo
           });
         } catch {}
       }
+      setWindowDebug({
+        phase: 'hydrate:row',
+        offsetMs: offsetMsRef.current,
+        endAt: endAtRef.current,
+        remainMs: remain,
+        remainSec: Math.ceil(remain / 1000),
+      });
       startTick();
       return row;
     } else {
@@ -150,8 +197,16 @@ export function useServerCountdown(opts: UseServerCountdownOptions): UseServerCo
       setReady(true);
       clearTick();
       if (import.meta.env.DEV) {
-        try { console.debug('[useServerCountdown] hydrate:none', { reason: !autoStart ? 'no-timer-no-autostart' : 'unknown' }); } catch {}
+        try {
+          console.debug('[useServerCountdown] hydrate:none', {
+            reason: !autoStart ? 'no-timer-no-autostart' : 'unknown',
+            timerId,
+            autoStart,
+            durationSec,
+          });
+        } catch {}
       }
+      setWindowDebug({ phase: 'hydrate:none', reason: !autoStart ? 'no-autostart' : 'unknown', timerId, autoStart, durationSec });
       return null;
     }
   }, [timerId, autoStart, durationSec]);

@@ -337,6 +337,16 @@
   - Solo (`solo`):
     - Unchanged unless a page explicitly opts into timers.
 
+#### Solo Mode — Timer bound to Home settings (2025-09-05)
+
+- Source: `src/pages/HomePage.tsx`
+- Behavior:
+  - Reads and writes the global timer setting via `useSettingsStore()` (`timerSeconds`, `setTimerSeconds`). The Home Solo timer slider is bound to this store; no visual changes.
+  - When starting Solo (`handleStartGame('classic')`), passes timer settings into `GameContext.startGame(settings)`:
+    - `{ timerEnabled: isSoloTimerEnabled, timerSeconds: isSoloTimerEnabled ? timerSeconds : 0 }`.
+  - `GameContext` applies `timerSeconds` to `roundTimerSec`; `GameRoundPage` uses the unified countdown to honor this duration and handle expiry/multi-tab sync.
+- Notes: No UI changes were introduced. This ensures Solo uses the same Home > Timer setting consistently.
+
 - Rationale: Shared, reusable hooks avoid duplication across Solo/Compete variants and keep layout components UI-focused. Pages own timer behavior based on mode flags.
 
 #### Server-Authoritative Round Timer Integration (2025-08-28, updated 2025-09-01)
@@ -1320,18 +1330,33 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - `src/utils/imageHistory.ts`: seeded RNG + `seededShuffle` over the canonical set of playable images; persists image order per room/seed to Supabase so reconnects see the same sequence.
   - `src/hooks/useGamePreparation.ts`: fetches metadata and preloads images using the provided `seed` and `roomId`, reporting progress.
 
-- **Timer initialization**
-  - `src/contexts/GameContext.tsx`: stores `roundTimerSec` and `timerEnabled` set from server values; `startGame` accepts these and the seed.
-  - `src/pages/GameRoundPage.tsx`: computes countdown based on shared `startedAt` and `durationSec` to align all clients; on timeout, auto-submission behavior is consistent.
+- **Local Game Timer (independent of server timers)**
 
-- **Recovery / refresh**
-  - If a client reconnects or refreshes, it can recompute the same seed from `roomId` + persisted `startedAt`, and load the persisted image order from Supabase.
-  - Timer resumes from the authoritative `startedAt` and `durationSec` so the remaining time matches other clients.
+- A dedicated hook `src/gameTimer/useGameLocalCountdown.ts` mirrors the `/timer` page behavior:
+  - Persists a session per `timerId` in `localStorage`.
+  - Synchronizes across tabs via `storage` events.
+  - Ensures `onExpire` runs once using an `:ended` sentinel key.
+  - Hydrates an existing session if present; otherwise, creates a new one when `autoStart` is true and `durationSec > 0`.
 
-## Lobby Progress Protocol
+- Game integration in `src/pages/GameRoundPage.tsx`:
+  - Builds `timerId` preferring `roomId` for stability across refreshes: `gh:{roomId}:{roundIndex}` (falls back to `gameId` when `roomId` is absent). This makes Solo and Level Up timers resume correctly after refresh and across tabs.
+  - Passes `durationSec` from `GameContext.roundTimerSec` (sourced from global settings or Level Up config).
+  - `autoStart` gating is `timerEnabled && roundStarted && timerId`.
+  - UI pre-hydration sets `remainingTime = roundTimerSec` until the countdown hydrates, then syncs to `remainingSec`.
+
+- Timer ID construction utility: `src/lib/timerId.ts` (`buildTimerId(baseId, roundIndex)`). The `baseId` used by the page is `roomId || gameId`.
+
+- Notes:
+  - Solo mode uses global timer settings via `useSettingsStore` (see HomePage wiring). On first page load in a new game, the session is created with that configured duration.
+  - Multi-tab synchronization and resume behavior match the `/timer` feature.
+
+- **Change**: The `timerId` construction in `GameRoundPage` now prefers `roomId` for Solo timer persistence, mirroring the behavior of `useGameLocalCountdown`. This ensures consistent timer behavior across refreshes and tabs.
+
+- **Reference**: The `useGameLocalCountdown` hook provides a local countdown solution that persists across tabs and refreshes, independent of server timers. Its behavior is mirrored in the `GameRoundPage` integration.
 
 - **Client → Server message**: `progress`
   - Shape: `{ type: 'progress'; roundNumber: number; substep?: string }`
+{{ ... }}
   - Usage: Sent opportunistically to reflect a player’s in-round state transitions, e.g., `substep` in `['pre','thinking','guessing','hint','submitted']`.
   - Security: Server ignores messages from non-joined connections.
 
@@ -2488,13 +2513,78 @@ Notes
     - `20250828112930_round_timers_01_table.sql`
     - `20250828112931_round_timers_02_policies.sql`
     - `20250828112932_round_timers_03_trigger.sql`
-    - `20250828112933_round_timers_04_rpcs.sql`
-    - `20250828112934_round_timers_05_grants.sql`
+  - `20250828112933_round_timers_04_rpcs.sql`
+  - `20250828112934_round_timers_05_grants.sql`
   - Apply with: `SUPABASE_DB_URL=... npx tsx scripts/apply-migrations.ts`
 
-## E2E Testing (Playwright) — 2025-08-30
+## Timer (Local Persistent) — 2025-09-03
 
-- __Setup__
+- __Routes__ (public, no auth): defined in `App.tsx`
+  - `/timer` → input page
+  - `/timer/run` → first countdown
+  - `/timer/next` → second countdown
+  - `/timer/done` → completion
+
+- __Files__ (source of truth under `src/timer/`)
+  - `config/timerConfig.ts` — constants (`STORAGE_KEY`, `MAX_SECONDS`, `DRIFT_WARN_SECONDS`) and types (`TimerSessionV1`, phases `run|next`).
+  - `utils/time.ts` — `parseInputToMs()` (seconds or `mm:ss`) and `formatMs()` → `mm:ss`.
+  - `utils/storage.ts` — `loadSession`, `saveSession`, `clearSession`, `createSession` using `localStorage[TIMER_CONFIG.STORAGE_KEY]` with runtime validation.
+  - `hooks/useCountdown.ts` — headless countdown; computes `remainingMs` from `Date.now() - startAt`, 200ms tick, drift warning, `onFinished`.
+  - `pages/MainPage.tsx` — timer input; validates, saves session with `phase='run'`, navigates to `/timer/run`.
+  - `pages/RunPage.tsx` — runs first countdown, manual Next/Reset; auto → `/timer/next` when finished.
+  - `pages/NextPage.tsx` — second countdown; auto → `/timer/done` when finished.
+  - `pages/DonePage.tsx` — simple completion screen with Restart to `/timer`.
+
+- __Behavior__
+  - Input accepts integers (seconds) or `mm:ss`. Range: `1s..24h`.
+  - Persistence via `localStorage`; session has `{ phase, durationMs, startAt, createdAt, version }`.
+  - Countdown is derived from `now - startAt` to avoid drift; progress is `remainingMs / durationMs`.
+  - Multi-tab sync: pages listen to `storage` events keyed by `TIMER_CONFIG.STORAGE_KEY`.
+  - Auto-navigation at zero: `/timer/run` → `/timer/next` → `/timer/done`.
+  - Manual actions: Next (on Run) advances immediately; Reset clears session and returns to `/timer`.
+
+- __QA checklist__
+  - Enter `90` and `01:30` → both parse to 90s; errors shown on invalid inputs.
+  - Start on `/timer` → `/timer/run`; refresh mid-countdown → time continues correctly.
+  - On finish, route auto-advances to `/timer/next`, then to `/timer/done`.
+  - Next button on `/timer/run` immediately goes to `/timer/next` and re-seeds `startAt`.
+  - Reset at any step clears session and returns to `/timer`.
+  - Two tabs stay consistent (storage events cause re-read).
+
+## Game Page — Local Independent Timer (2025-09-05)
+
+- __Purpose__
+  - Provide a game-page countdown that mirrors the `/timer` feature’s behavior (persistence, multi-tab sync, single on-expire), while being fully independent of the server-authoritative timer and the unified countdown hook.
+
+- __Hook__
+  - `src/gameTimer/useGameLocalCountdown.ts`
+    - Headless hook that uses `src/timer/hooks/useCountdown.ts` for ticking and expiry detection.
+    - Persists a timer session in `localStorage`, scoped per `timerId` (same shape as `/timer` session: `TimerSessionV1` from `src/timer/config/timerConfig.ts`).
+    - Listens to `storage` events for the timer’s key to synchronize across tabs.
+    - Uses an "ended" sentinel key to guarantee `onExpire` fires exactly once globally (dedupes across tabs/windows and refreshes).
+    - Exposes explicit `start()` and `reset()` helpers; accepts `autoStart`, `durationSec`, `timerId`, and `onExpire`.
+
+- __Integration__
+  - `src/pages/GameRoundPage.tsx`
+    - Replaces `useUnifiedCountdown` usage with `useGameLocalCountdown` for round play.
+    - Gating simplified: local start does not depend on `user`; server refetch/hydration code paths are removed.
+    - On expiry, calls the existing `handleTimeComplete()` to route to results. No UI changes were introduced.
+    - UI contract remains the same: the page mirrors the hook state into existing props consumed by `GameLayout1`/`TimerDisplay` (external timer mode). `roundTimerSec` continues to represent the total duration; the display decrements based on the provided remaining time.
+
+- __Behavioral Notes__
+  - Timer resumes after refresh via persisted `{ startAt, durationMs }`.
+  - Independent per `timerId`; multiple game timers can co-exist without interfering with the `/timer` routes or the server timer.
+  - Multi-tab consistency is achieved through `storage` events; whichever tab starts/resets updates the others.
+
+- __QA checklist__
+  - Start a round, refresh mid-countdown: remaining time continues correctly.
+  - Open a second tab on the same round: both tabs stay in sync (start/reset/expiry).
+  - On expiry, `handleTimeComplete()` runs once (no duplicate navigations across tabs).
+  - Switching between modes or navigating away does not leak countdown intervals (hook cleans up on unmount).
+
+## E2E Testing (Playwright) — 2025-08-30
+ 
+ - __Setup__
   - Dev dependency: `@playwright/test` in `package.json`.
   - Config: `playwright.config.ts` starts Vite dev server on `http://localhost:5173` and runs tests in Chromium/Firefox/WebKit.
 - __Commands__

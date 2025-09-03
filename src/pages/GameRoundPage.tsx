@@ -29,7 +29,7 @@ import {
   calculateLocationXP, 
   ROUNDS_PER_GAME 
 } from '@/utils/gameCalculations';
-import { useServerCountdown } from '@/hooks/useServerCountdown';
+import { useGameLocalCountdown } from '@/gameTimer/useGameLocalCountdown';
 import { buildTimerId } from '@/lib/timerId';
 import { getLevelUpConstraints } from '@/lib/levelUpConfig';
 import { supabase } from '@/integrations/supabase/client';
@@ -190,31 +190,67 @@ const GameRoundPage = () => {
 
   // Server-authoritative countdown integration
   const timerId = useMemo(() => {
-    // Canonical: gh:{gameId}:{roundIndex}
+    // Prefer roomId for stability across refresh: gh:{roomId}:{roundIndex}; fallback to gameId
     try {
-      if (!gameId || isNaN(currentRoundIndex)) return '';
-      return buildTimerId(gameId, currentRoundIndex);
+      const baseId = roomId || gameId;
+      if (!baseId || isNaN(currentRoundIndex)) return '';
+      return buildTimerId(baseId, currentRoundIndex);
     } catch {
       return '';
     }
-  }, [gameId, currentRoundIndex]);
+  }, [roomId, gameId, currentRoundIndex]);
 
   const autoStart = useMemo(() => {
-    // Start server timer only after the round is explicitly started
-    return !!(timerEnabled && roundStarted && timerId && user);
-  }, [timerEnabled, roundStarted, timerId, user]);
+    // Start local game timer only after the round is explicitly started
+    return !!(timerEnabled && roundStarted && timerId);
+  }, [timerEnabled, roundStarted, timerId]);
   useEffect(() => {
     if (import.meta.env.DEV) {
-      try { console.debug('[GameRoundPage] timer:config', { timerId, roundTimerSec, timerEnabled, showIntro, autoStart, hasUser: !!user, authLoading }); } catch {}
+      try { console.debug('[GameRoundPage] timer:config', { timerId, roundTimerSec, timerEnabled, showIntro, autoStart }); } catch {}
     }
-  }, [timerId, roundTimerSec, timerEnabled, showIntro, autoStart, user, authLoading]);
+  }, [timerId, roundTimerSec, timerEnabled, showIntro, autoStart]);
 
-  const { ready: timerReady, expired: timerExpired, remainingSec, refetch } = useServerCountdown({
+  // Detailed gating breakdown for autoStart
+  const autoStartMissing = useMemo(() => {
+    const missing: string[] = [];
+    if (!timerEnabled) missing.push('timerEnabled=false');
+    if (!roundStarted) missing.push('roundStarted=false');
+    if (!timerId) missing.push('timerId=empty');
+    return missing;
+  }, [timerEnabled, roundStarted, timerId]);
+
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      try {
+        if (!autoStart) {
+          console.debug('[GameRoundPage] timer:autoStart:gating:false', {
+            timerEnabled,
+            roundStarted,
+            hasTimerId: !!timerId,
+            missing: autoStartMissing,
+          });
+        } else {
+          console.debug('[GameRoundPage] timer:autoStart:gating:true');
+        }
+      } catch {}
+    }
+    try {
+      (window as any).__gh_timer_gate = {
+        timerEnabled,
+        roundStarted,
+        timerId,
+        missing: autoStartMissing,
+        ts: new Date().toISOString(),
+      };
+    } catch {}
+  }, [autoStart, timerEnabled, roundStarted, timerId, autoStartMissing]);
+
+  const { ready: timerReady, expired: timerExpired, remainingSec } = useGameLocalCountdown({
     timerId,
     durationSec: roundTimerSec,
     autoStart,
     onExpire: () => {
-      if (import.meta.env.DEV) console.debug('[GameRoundPage] Server timer expired');
+      if (import.meta.env.DEV) console.debug('[GameRoundPage] Timer expired');
       handleTimeComplete();
     },
   });
@@ -255,15 +291,7 @@ const GameRoundPage = () => {
     }
   }, [timerEnabled, timerReady, remainingSec, timerExpired, roundStarted]);
 
-  // After explicit Start, force a refetch to hydrate/start the server timer
-  useEffect(() => {
-    if (timerEnabled && roundStarted && timerId && user) {
-      if (import.meta.env.DEV) {
-        try { console.debug('[GameRoundPage] timer:refetch after start', { timerId, hasUser: !!user }); } catch {}
-      }
-      refetch();
-    }
-  }, [roundStarted, timerEnabled, timerId, refetch, user]);
+  // Local timer does not require refetch/hydration
 
   // Persist the current round number to game_sessions so reconnect can restore it
   useEffect(() => {

@@ -36,11 +36,29 @@ export async function startTimer(timerId: string, durationSec: number): Promise<
     p_duration_sec: durationSec,
   });
   if (error) {
-    log('startTimer error', error);
+    // Supabase error shape often contains details/status/code
+    const e: any = error;
+    log('startTimer error', {
+      status: e?.status,
+      code: e?.code,
+      message: e?.message,
+      details: e?.details,
+      hint: e?.hint,
+      timerId,
+      durationSec,
+    });
     throw error;
   }
-  const parsed = TimerRows.safeParse(data);
+  const rows = Array.isArray(data) ? data : (data ? [data] : []);
+  const parsed = TimerRows.safeParse(rows);
   if (!parsed.success || parsed.data.length === 0) {
+    try {
+      console.error('[timers] start_timer invalid rows', {
+        raw: data,
+        rowsType: Array.isArray(data) ? 'array' : typeof data,
+        zodIssues: !parsed.success ? parsed.error.flatten() : undefined,
+      });
+    } catch {}
     throw new Error('start_timer returned invalid rows');
   }
   const row = parsed.data[0];
@@ -52,16 +70,31 @@ export async function getTimer(timerId: string): Promise<TimerRecord | null> {
   log('getTimer →', { timerId });
   const { data, error } = await rpc('get_timer', { p_timer_id: timerId });
   if (error) {
-    log('getTimer error', error);
+    const e: any = error;
+    log('getTimer error', {
+      status: e?.status,
+      code: e?.code,
+      message: e?.message,
+      details: e?.details,
+      hint: e?.hint,
+      timerId,
+    });
     throw error;
   }
-  const rows = Array.isArray(data) ? data : [];
+  const rows = Array.isArray(data) ? data : (data ? [data] : []);
   if (rows.length === 0) {
     log('getTimer ←', null);
     return null;
   }
   const parsed = TimerRows.safeParse(rows);
   if (!parsed.success || parsed.data.length === 0) {
+    try {
+      console.error('[timers] get_timer invalid rows', {
+        raw: data,
+        rowsType: Array.isArray(data) ? 'array' : typeof data,
+        zodIssues: parsed.error.flatten(),
+      });
+    } catch {}
     throw new Error('get_timer returned invalid rows');
   }
   const row = parsed.data[0];

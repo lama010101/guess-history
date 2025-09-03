@@ -46,6 +46,6 @@ describe('ResultsHeader', () => {
       />
     );
     
-    expect(screen.getByText('Finish Game')).toBeInTheDocument();
+    expect(screen.getByText('Final Results')).toBeInTheDocument();
   });
 }); 

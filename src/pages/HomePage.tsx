@@ -242,7 +242,7 @@ const HomePage = () => {
         
         {isLoaded ? (
           <div className="w-full max-w-6xl mx-auto flex flex-col items-center">
-            <Logo className="mt-28 md:mt-12 mb-0 md:mb-0 justify-center"/>
+            <Logo className="mt-28 md:mt-30 mb-14 md:mb-14 justify-center [&_img]:h-20 md:[&_img]:h-20"/>
             <div className="-mx-0 md:mx-0 md:-mt-0 w-screen md:w-auto flex flex-row items-start gap-[2rem] md:gap-[3rem] overflow-x-auto md:overflow-visible snap-x snap-mandatory md:snap-none no-scrollbar px-0 md:px-2 touch-pan-x overscroll-x-contain pl-0 md:pl-0">
               {/* Mobile left spacer to center first card */}
               <div className="shrink-0 w-[calc((100vw-13.5rem)/2)] md:hidden" aria-hidden="true" />

@@ -94,7 +94,7 @@
     - Solo:
       - `/solo/game/room/:roomId/round/:roundNumber`
       - `/solo/game/room/:roomId/round/:roundNumber/results`
-      - Final navigation: after the last round, the app navigates to `/home` (no dedicated Solo `/final` route at this time)
+      - `/solo/game/room/:roomId/final`
     - Level Up (new primary pattern with explicit level segment):
       - `/level/:level/game/room/:roomId/round/:roundNumber`
       - `/level/:level/game/room/:roomId/round/:roundNumber/results`
@@ -115,7 +115,7 @@
   - Mode-preserving navigation rule (2025-08-28):
     - During gameplay (submit, timeout, next round, results), always derive the base mode path from the current URL by slicing everything before `'/game/'` and build navigation paths using that prefix.
     - Example: if current path starts with `/level/...`, navigate to `${modeBasePath}/game/room/${roomId}/round/${n}` and `${modeBasePath}/game/room/${roomId}/final`.
-    - Special case: Solo has no dedicated `/final`; after the last round, navigate to `/home`.
+    - Solo now follows the same pattern and uses its own `/solo/game/room/:roomId/final` route.
   - Legacy cleanup: All legacy `/test` routes have been removed. Post-auth redirects go to `/home` (hub). Gameplay uses canonical mode routes (`/solo`, `/level`, `/compete/(sync|async)`).
   - Providers: `App.tsx` wraps the entire `<Routes>` tree inside `GameProvider` (under `BrowserRouter`). This ensures `useGame()` is available to `LandingPage`, `HomePage`, and all game pages for `startGame`/`startLevelUpGame` and navigation.
   - Admin guard: The `/admin` route is nested under `RequireAuthSession` so only users with an active Supabase session (registered or guest) can access `AdminGameConfigPage`. Signed-out users are redirected to `/`.
@@ -339,6 +339,36 @@
   - Round Results shows the per-round progress card with correct net percent (including hint penalties).
   - Final Results shows pass/fail banner and both requirement cards with accurate values.
   - Pink theming is consistent across the three pages.
+
+#### Solo Mode — Global Year Slider Bounds (2025-09-07)
+
+- __Goal__: For Solo gameplay, the year slider spans from the global oldest event year in the database to the current year, rather than being constrained by the round’s prepared image set.
+
+- __Implementation__
+  - Fetch and cache global minimum year
+    - File: `src/pages/GameRoundPage.tsx`
+    - On mount, a `useEffect` queries Supabase `images.year` for the oldest non-null row via ascending order + `limit(1)`. The result is stored in a session-scoped cache `__globalMinYearCache` and reflected into state `globalMinYear`.
+    - Fallback when unavailable: `1850`.
+  - Compute Solo slider bounds
+    - File: `src/pages/GameRoundPage.tsx`
+    - `currentYear = new Date().getFullYear()`.
+    - For Solo routes: `minYearProp = globalMinYear` (once loaded); `maxYearProp = currentYear`. Until loaded, omit these props so the layout temporarily uses dynamic dataset bounds.
+    - Pass these as `minYear`/`maxYear` to `GameLayout1`.
+  - Apply year bounds in layout
+    - File: `src/components/layouts/GameLayout1.tsx`
+    - Effective bounds: `effectiveMinYear = typeof minYear === 'number' ? minYear : dynamicMinYear`, `effectiveMaxYear = typeof maxYear === 'number' ? maxYear : dynamicMaxYear`.
+    - Used for input validation/clamping and forwarded to `YearSelector`.
+
+- __Notes__
+  - Level Up unaffected: Level Up continues to pass bounds from `getLevelUpConstraints(level)`; Solo global bounds do not change Level Up behavior.
+  - Caching: `__globalMinYearCache` avoids repeated DB queries within a session.
+  - Graceful loading: If the global minimum is pending/unavailable, `GameLayout1` uses dynamic bounds from prepared images; once loaded, subsequent rounds/pages get the Solo global range.
+  - Year selection is nullable until first interaction; `GameLayout1` and `YearSelector` handle `selectedYear: number | null` consistently.
+
+- __QA checklist__:
+  - Solo routes show the slider spanning from the oldest database year to the current calendar year once loaded.
+  - When the global min is pending/fails, slider uses dynamic dataset bounds and updates once the global bound is available.
+  - Level Up routes continue to honor level-specific bounds.
 
 ### Game Modes and Timers (Hooks)
 

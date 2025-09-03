@@ -34,6 +34,9 @@ import { buildTimerId } from '@/lib/timerId';
 import { getLevelUpConstraints } from '@/lib/levelUpConfig';
 import { supabase } from '@/integrations/supabase/client';
 
+// Cache the global minimum year to avoid repeated queries in a session
+let __globalMinYearCache: number | null = null;
+
 // Rename component
 const GameRoundPage = () => {
   // --- Hint system V2 ---
@@ -187,6 +190,9 @@ const GameRoundPage = () => {
   const [isTimerActive, setIsTimerActive] = useState<boolean>(timerEnabled);
   const [hasTimedOut, setHasTimedOut] = useState<boolean>(false);
   const [hasGuessedLocation, setHasGuessedLocation] = useState<boolean>(false);
+  // Global year bounds for Solo mode (min from DB, max = current year)
+  const [globalMinYear, setGlobalMinYear] = useState<number | null>(null);
+  const currentYear = useMemo(() => new Date().getFullYear(), []);
 
   // Server-authoritative countdown integration
   const timerId = useMemo(() => {
@@ -392,6 +398,34 @@ const GameRoundPage = () => {
       console.debug('[GameRoundPage] imageForRound', { roundNumber, hasImage: !!imageForRound });
     }
   }, [roundNumber, imageForRound]);
+
+  // Fetch global minimum event year once and cache it for the session
+  useEffect(() => {
+    let isMounted = true;
+    const load = async () => {
+      try {
+        if (__globalMinYearCache !== null) {
+          if (isMounted) setGlobalMinYear(__globalMinYearCache);
+          return;
+        }
+        const { data, error } = await (supabase as any)
+          .from('images')
+          .select('year')
+          .not('year', 'is', null)
+          .order('year', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        const min = (!error && data && typeof data.year === 'number') ? data.year : 1850;
+        __globalMinYearCache = min;
+        if (isMounted) setGlobalMinYear(min);
+      } catch (e) {
+        try { console.warn('[GameRoundPage] Failed to fetch global min year; using defaults', e); } catch {}
+      }
+    };
+    // Always fetch once; reused for Solo mode range
+    load();
+    return () => { isMounted = false; };
+  }, []);
 
   // V2 hint system - track purchased hints for this image
   const { purchasedHints, purchasedHintIds, xpDebt, accDebt, purchaseHint, availableHints, isHintLoading } = useHintV2(imageForRound, { roomId: roomId!, roundNumber });
@@ -694,6 +728,14 @@ const GameRoundPage = () => {
     );
   }
 
+  // Decide slider bounds props: Level Up uses level constraints; Solo uses global DB -> current year when available
+  const minYearProp = isLevelUpRoute
+    ? levelUpConstraints?.levelYearRange.start
+    : (typeof globalMinYear === 'number' ? globalMinYear : undefined);
+  const maxYearProp = isLevelUpRoute
+    ? levelUpConstraints?.levelYearRange.end
+    : (typeof globalMinYear === 'number' ? currentYear : undefined);
+
   // Render the layout and the separate submit button
   return (
     // Use relative positioning to allow absolute positioning for the button
@@ -728,8 +770,8 @@ const GameRoundPage = () => {
         accDebt={accDebt}
         onPurchaseHint={purchaseHint}
         isHintLoading={isHintLoading}
-        minYear={levelUpConstraints?.levelYearRange.start}
-        maxYear={levelUpConstraints?.levelYearRange.end}
+        minYear={minYearProp}
+        maxYear={maxYearProp}
         levelLabel={isLevelUpRoute ? `Level ${levelUpLevel ?? 1}` : undefined}
         onOpenLevelIntro={() => { setIntroSource('hub'); setShowIntro(true); }}
       />

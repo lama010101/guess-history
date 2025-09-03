@@ -32,6 +32,7 @@ import SoloGameRoundPage from './src/pages/solo/SoloGameRoundPage';
 import SoloRoundResultsPage from './src/pages/solo/SoloRoundResultsPage';
 import CompeteGameRoundPage from './src/pages/compete/CompeteGameRoundPage';
 import CompeteRoundResultsPage from './src/pages/compete/CompeteRoundResultsPage';
+import FinalResultsPage from './src/pages/FinalResultsPage';
 import FriendsPage from "./src/pages/FriendsPage";
 import LeaderboardPage from "./src/pages/LeaderboardPage";
 import ProfilePage from "./src/pages/ProfilePage";
@@ -117,6 +118,7 @@ const App = () => {
                   {/* Top-level game routes (no '/test' prefix) */}
                   <Route path="/solo/game/room/:roomId/round/:roundNumber" element={<SoloGameRoundPage />} />
                   <Route path="/solo/game/room/:roomId/round/:roundNumber/results" element={<SoloRoundResultsPage />} />
+                  <Route path="/solo/game/room/:roomId/final" element={<FinalResultsPage />} />
                   {/* Level Up routes (reuse Solo pages for now, distinct '/level' prefix) */}
                   <Route path="/level/game/room/:roomId/round/:roundNumber" element={<SoloGameRoundPage />} />
                   <Route path="/level/game/room/:roomId/round/:roundNumber/results" element={<SoloRoundResultsPage />} />

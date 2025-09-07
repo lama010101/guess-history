@@ -323,8 +323,11 @@ const GameRoundPage = () => {
     // When images are present or even if not, we can still navigate to the stored round number
     (async () => {
       const persistedRound = await getCurrentRoundFromSession(roomId);
-      if (!persistedRound || isNaN(persistedRound)) return;
-      if (persistedRound !== roundNumber) {
+      if (persistedRound == null || isNaN(persistedRound)) return;
+      // Forward-only: only redirect if the persisted round is AHEAD of the URL round.
+      // This avoids racing against setCurrentRoundInSession when advancing to the next round,
+      // which previously caused a bounce back to the prior round.
+      if (persistedRound > roundNumber) {
         redirectedRef.done = true;
         navigate(`${modeBasePath}/game/room/${roomId}/round/${persistedRound}`);
       }

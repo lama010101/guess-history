@@ -436,6 +436,17 @@
   - Queries are typed loosely (`(supabase as any)`) in this guard to avoid deep generic instantiation issues in chained calls.
   - All debug logs are gated behind `import.meta.env.DEV`.
 
+#### Persisted Round Redirect — Forward-Only (2025-09-06)
+
+- **File**: `src/pages/GameRoundPage.tsx`
+- **Change**: The hydration effect that reconciles the URL round with the persisted round (`getCurrentRoundFromSession(roomId)`) now performs a forward-only redirect.
+  - Previous behavior: Redirected whenever `persistedRound !== roundNumber`, which could race when navigating to the next round — if the backend still held the previous round, the page would bounce back to the prior round/results.
+  - New behavior: Redirect only when `persistedRound > roundNumber`.
+    - Rationale: This prevents bouncing back to the previous round if persistence lags slightly during a next-round navigation. It still allows recovery when a user reloads on an older URL while the session has progressed.
+  - Code snippet (logic):
+    - `if (persistedRound > roundNumber) navigate(.../round/persistedRound)`
+
+
 #### Timer ID Policy (2025-08-28, updated 2025-09-01)
 
 - **Canonical ID format**: `gh:{gameId}:{roundIndex}` (0-based `roundIndex`).

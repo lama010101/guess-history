@@ -72,6 +72,14 @@ const FinalResultsPage = () => {
     return match && match[1] ? parseInt(match[1], 10) : 1;
   }, [location.pathname]);
 
+  // Compute Level Up route and constraints early to keep hooks order stable across renders
+  const isLevelUp = location.pathname.includes('/level/');
+  const levelConstraints = React.useMemo(() => {
+    if (!isLevelUp) return null;
+    const lvl = typeof currentLevelFromPath === 'number' ? currentLevelFromPath : 1;
+    return getLevelUpConstraints(lvl);
+  }, [isLevelUp, currentLevelFromPath]);
+
   React.useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
@@ -538,13 +546,7 @@ const FinalResultsPage = () => {
   const netFinalXP = Math.max(0, Math.round(finalXP - (totalXpDebtState || 0)));
   const totalScore = formatInteger(netFinalXP);
   const totalPercentage = formatInteger(finalPercentNet);
-  const isLevelUp = location.pathname.includes('/level/');
-  // Compute dynamic targets for current level when in Level Up mode
-  const levelConstraints = React.useMemo(() => {
-    if (!isLevelUp) return null;
-    const lvl = typeof currentLevelFromPath === 'number' ? currentLevelFromPath : 1;
-    return getLevelUpConstraints(lvl);
-  }, [isLevelUp, currentLevelFromPath]);
+  // Compute dynamic targets for current level when in Level Up mode (constraints computed above)
   const overallTarget = levelConstraints?.requiredOverallAccuracy ?? 50;
   const axisTarget = levelConstraints?.requiredRoundAccuracy ?? 70;
   const overallPass = finalPercentNet >= overallTarget;

@@ -101,28 +101,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   const { user } = useAuth();
   const [earnedBadge, setEarnedBadge] = useState<BadgeType | null>(null);
   const [isSourceModalOpen, setSourceModalOpen] = useState(false);
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-        <div className="flex flex-col items-center justify-center h-screen">
-          <div className="text-red-500 text-lg mb-4">{error}</div>
-          <Button onClick={() => window.location.reload()}>Try Again</Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading || !result) {
-    return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-        <div className="flex items-center justify-center h-screen">
-          <div className="text-lg">Calculating results...</div>
-        </div>
-      </div>
-    );
-  }
-
+  // Hooks must be called unconditionally before any early returns
   const handleBadgePopupClose = () => {
     setEarnedBadge(null);
   };
@@ -133,33 +112,33 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
     }
   }, [result]);
 
-  const xpDebt = result.hintDebts?.reduce((sum, d) => sum + d.xpDebt, 0) ?? 0;
-  const accDebt = result.hintDebts?.reduce((sum, d) => sum + d.accDebt, 0) ?? 0;
+  const xpDebt = result?.hintDebts?.reduce((sum, d) => sum + d.xpDebt, 0) ?? 0;
+  const accDebt = result?.hintDebts?.reduce((sum, d) => sum + d.accDebt, 0) ?? 0;
 
   // `xpTotal` provided in `result` is already **after** hint debt has been deducted.
   // Therefore, do NOT subtract `xpDebt` again here, otherwise we double-count
   // the deduction and show an incorrect (often zero) score.
-  const netXP = Math.max(0, result.xpTotal);
-  const netAccuracy = Math.max(0, (result.locationAccuracy + result.timeAccuracy) / 2 - accDebt);
+  const netXP = Math.max(0, result?.xpTotal ?? 0);
+  const netAccuracy = Math.max(0, (((result?.locationAccuracy ?? 0) + (result?.timeAccuracy ?? 0)) / 2) - accDebt);
 
-  const xpDebtWhen = result.hintDebts?.filter(d => d.hint_type === 'when').reduce((sum, d) => sum + d.xpDebt, 0) ?? 0;
-  const accDebtWhen = result.hintDebts?.filter(d => d.hint_type === 'when').reduce((sum, d) => sum + d.accDebt, 0) ?? 0;
-  const netXpWhen = Math.max(0, result.xpWhen - xpDebtWhen);
-  const netTimeAccuracy = Math.max(0, result.timeAccuracy - accDebtWhen);
+  const xpDebtWhen = result?.hintDebts?.filter(d => d.hint_type === 'when').reduce((sum, d) => sum + d.xpDebt, 0) ?? 0;
+  const accDebtWhen = result?.hintDebts?.filter(d => d.hint_type === 'when').reduce((sum, d) => sum + d.accDebt, 0) ?? 0;
+  const netXpWhen = Math.max(0, (result?.xpWhen ?? 0) - xpDebtWhen);
+  const netTimeAccuracy = Math.max(0, (result?.timeAccuracy ?? 0) - accDebtWhen);
 
-  const xpDebtWhere = result.hintDebts?.filter(d => d.hint_type === 'where').reduce((sum, d) => sum + d.xpDebt, 0) ?? 0;
-  const netXpWhere = Math.max(0, result.xpWhere - xpDebtWhere);
-  const accDebtWhere = result.hintDebts?.filter(d => d.hint_type === 'where').reduce((sum, d) => sum + d.accDebt, 0) ?? 0;
-  const netLocationAccuracy = Math.max(0, result.locationAccuracy - accDebtWhere);
+  const xpDebtWhere = result?.hintDebts?.filter(d => d.hint_type === 'where').reduce((sum, d) => sum + d.xpDebt, 0) ?? 0;
+  const netXpWhere = Math.max(0, (result?.xpWhere ?? 0) - xpDebtWhere);
+  const accDebtWhere = result?.hintDebts?.filter(d => d.hint_type === 'where').reduce((sum, d) => sum + d.accDebt, 0) ?? 0;
+  const netLocationAccuracy = Math.max(0, (result?.locationAccuracy ?? 0) - accDebtWhere);
 
-  const correctLat = result.eventLat;
-  const correctLng = result.eventLng;
-  const userLat = result.guessLat;
-  const userLng = result.guessLng;
+  const correctLat = result?.eventLat ?? 0;
+  const correctLng = result?.eventLng ?? 0;
+  const userLat = result?.guessLat ?? null;
+  const userLng = result?.guessLng ?? null;
 
   const hasUserGuess = userLat !== null && userLng !== null;
   const correctPosition: L.LatLngTuple = [correctLat, correctLng];
-  const userPosition: L.LatLngTuple | null = hasUserGuess ? [userLat, userLng] as L.LatLngTuple : null;
+  const userPosition: L.LatLngTuple | null = hasUserGuess ? [userLat as number, userLng as number] as L.LatLngTuple : null;
 
   const peerPositions: L.LatLngTuple[] = useMemo(() =>
     (peers || [])
@@ -183,6 +162,28 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   const mapCenter = bounds ? bounds.getCenter() : correctPosition;
 
   const userIcon = useMemo(() => createUserIcon(avatarUrl), [avatarUrl]);
+
+  // Early returns after all hooks above
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+        <div className="flex flex-col items-center justify-center h-screen">
+          <div className="text-red-500 text-lg mb-4">{error}</div>
+          <Button onClick={() => window.location.reload()}>Try Again</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading || !result) {
+    return (
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-lg">Calculating results...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-[#000000] text-gray-900 dark:text-gray-100 pb-20">
@@ -401,7 +402,6 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   {/* Show peers' guesses */}
                   {peers && peers.length > 0 && (
                     <>
-                      {console.log('ResultsLayout2: Rendering peers:', peers.map(p => ({ userId: p.userId, displayName: p.displayName, guessLat: p.guessLat, guessLng: p.guessLng })))}
                       {peers.map((p) => (
                         p.guessLat !== null && p.guessLng !== null ? (
                           <React.Fragment key={p.userId}>
@@ -416,9 +416,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                             </Marker>
                             <Polyline positions={[[p.guessLat, p.guessLng], [result.eventLat, result.eventLng]]} color="#6EE7B7" opacity={0.7} dashArray="4,8" />
                           </React.Fragment>
-                        ) : (
-                          console.log('ResultsLayout2: Peer has null coordinates:', { userId: p.userId, displayName: p.displayName, guessLat: p.guessLat, guessLng: p.guessLng })
-                        )
+                        ) : null
                       ))}
                     </>
                   )}

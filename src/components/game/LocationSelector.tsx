@@ -46,7 +46,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
         />
       </div>
 
-      <div className="w-full rounded-lg overflow-hidden mb-4 h-[320px] sm:h-[360px] md:flex-1 md:min-h-[300px]">
+      <div className="w-full rounded-lg overflow-hidden mb-4 h-[320px] sm:h-[360px] lg:flex-1 lg:min-h-[300px]">
         <HomeMap 
           onLocationSelect={onLocationSelect}
           onCoordinatesSelect={onCoordinatesSelect}

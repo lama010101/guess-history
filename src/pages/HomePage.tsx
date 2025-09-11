@@ -139,7 +139,7 @@ const HomePage = () => {
 
     if (mode === 'friends') {
       // Route to the unified Play with Friends flow which uses PartyKit lobby at /room/:roomCode
-      // We deliberately avoid the old /test/lobby/:roomId route.
+      // We deliberately avoid the old legacy lobby route.
       devLog('[HomePage] Play Friends clicked. Redirecting to /compete');
       setShowLoadingPopup(false);
       navigate('/compete');
@@ -159,7 +159,8 @@ const HomePage = () => {
         return;
       }
       try {
-        await startLevelUpGame?.(1);
+        const bestLevel = Math.max(1, Number((profile as any)?.level_up_best_level || 1));
+        await startLevelUpGame?.(bestLevel);
       } catch (e) {
         console.error('Error starting Level Up game:', e);
         toast({
@@ -304,7 +305,12 @@ const HomePage = () => {
                   className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-pink-300 via-fuchsia-400 to-purple-600 cursor-pointer"
                   onClick={() => handleStartGame('levelup')}
                 >
-                  <img src="/icons/level.webp" alt="Level Up" className="w-36 h-36 object-contain" />
+                  <div className="relative w-full h-full flex items-center justify-center">
+                    <img src="/icons/level.webp" alt="Level Up" className="w-36 h-36 object-contain" />
+                    <div className="absolute top-2 right-2 bg-black/60 text-white text-xs font-bold px-2 py-1 rounded">
+                      Lv {Math.max(1, Number((profile as any)?.level_up_best_level || 1))}
+                    </div>
+                  </div>
                 </div>
                 <div
                   className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1 cursor-pointer"

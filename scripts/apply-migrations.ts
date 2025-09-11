@@ -178,9 +178,21 @@ async function applyMigrations() {
     // 1. Get and sort migration files
     log(`🔍 Reading migrations from: ${MIGRATIONS_DIR}`);
     const allFiles = await fs.readdir(MIGRATIONS_DIR);
-    const migrationFiles = allFiles
+    let migrationFiles = allFiles
       .filter(file => file.endsWith('.sql') && !SKIP_FILES.has(file))
       .sort();
+
+    // Optional: run only a specific migration by filename
+    const only = process.env.MIGRATION_ONLY?.trim();
+    if (only) {
+      const filtered = migrationFiles.filter(f => f === only);
+      if (filtered.length === 0) {
+        log(`⚠️ MIGRATION_ONLY=${only} not found or skipped.`);
+        return;
+      }
+      migrationFiles = filtered;
+      log(`MIGRATION_ONLY active. Will apply: ${migrationFiles[0]}`);
+    }
 
     if (migrationFiles.length === 0) {
       log('✅ No new migrations to apply.');

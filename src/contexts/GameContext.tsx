@@ -590,6 +590,13 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         } catch {}
 
         setImages(preparedImages);
+        // Mark these images as played for the current user to avoid repeats in future games
+        try {
+          const playedIds = preparedImages.map((i) => i.id);
+          await recordPlayedImages(user?.id ?? null, playedIds);
+        } catch (e) {
+          console.warn('[GameContext] Failed to record played images (multiplayer)', e);
+        }
       } else {
         try {
           const prep = await prepare({
@@ -652,6 +659,13 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             console.warn('[GameContext] solo fallback persist to game_sessions failed', e);
           }
           setImages(mappedImages);
+          // Record played images to prevent repeats next games
+          try {
+            const playedIds = mappedImages.map((i) => i.id);
+            await recordPlayedImages(user?.id ?? null, playedIds);
+          } catch (e) {
+            console.warn('[GameContext] Failed to record played images (solo fallback)', e);
+          }
         } else {
           // Persist solo (prepared) selection to game_sessions for stable hydration on refresh
           try {
@@ -666,6 +680,13 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             console.warn('[GameContext] solo prepared persist to game_sessions failed', e);
           }
           setImages(preparedImages);
+          // Record played images to prevent repeats next games
+          try {
+            const playedIds = preparedImages.map((i) => i.id);
+            await recordPlayedImages(user?.id ?? null, playedIds);
+          } catch (e) {
+            console.warn('[GameContext] Failed to record played images (solo prepared)', e);
+          }
         }
       }
       devLog("Prepared and preloaded 5 images stored in context:", preparedImages);
@@ -777,6 +798,14 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         console.warn('[GameContext] levelup persist to game_sessions failed', e);
       }
       setImages(preparedImages);
+      // Record played images so Level Up also avoids repeats on future games
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const playedIds = preparedImages.map((i) => i.id);
+        await recordPlayedImages(user?.id ?? null, playedIds);
+      } catch (e) {
+        console.warn('[GameContext] Failed to record played images (level up)', e);
+      }
       devLog('[GameContext] LevelUp prepared images (first 5 IDs)', preparedImages.slice(0, 5).map(i => i.id));
 
       setIsLoading(false);
@@ -907,6 +936,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       console.warn('[GameContext] URL roomId bootstrap failed', e);
     }
   }, [roomId, ensureSessionMembership, repairMissingRoomId, gameId]);
+
+  
 
   const recordRoundResult = useCallback(async (resultData: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'>, currentRoundIndex: number) => {
     if (!gameId) {

@@ -42,9 +42,8 @@ const GameRoomPage = () => {
   const startGame = async () => {
     try {
       if (!gameId) throw new Error('Missing game ID');
-      // Update navigation to use dynamic routes if multiplayer uses the same flow
-      // If multiplayer is different, keep this or adjust as needed.
-      navigate(`/test/game?mode=multi&id=${gameId}`); // Keep /test for now
+      // Redirect to Compete hub (room/game flow is handled by modern pages)
+      navigate(`/compete`);
     } catch (error) { /* ... */ }
   };
   

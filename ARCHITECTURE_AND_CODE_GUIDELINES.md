@@ -1,3 +1,35 @@
+### Global Metrics — Per-Mode Aggregates (2025-09-09)
+
+- Purpose: Record users' global stats per mode in addition to the overall totals.
+- Schema: `public.user_metrics` now has per-mode columns for modes `solo`, `level`, `compete`, and `collaborate`:
+  - `xp_total_<mode>` numeric NOT NULL DEFAULT 0
+  - `games_played_<mode>` integer NOT NULL DEFAULT 0
+  - `overall_accuracy_<mode>` numeric NOT NULL DEFAULT 0 (0..100; enforced via CHECK constraints)
+- Client update:
+  - `src/utils/profile/profileService.ts` → `updateUserMetrics(userId, metrics, gameId, mode)` now accepts an optional `mode` parameter:
+    - Mode detection is performed by `src/pages/FinalResultsPage.tsx` based on the current route prefix and passed to `updateUserMetrics`.
+    - On first game for a user, the per-mode fields are initialized; otherwise they are updated with weighted averages and totals.
+  - Overall totals (`xp_total`, `games_played`, `overall_accuracy`) continue to be updated as before.
+- Migration: `supabase/migrations/20250909_add_user_metrics_per_mode.sql` adds the new columns and accuracy constraints.
+- Display: The navbar continues to display overall XP/Accuracy; per-mode displays are reserved for future UI work.
+
+### Navbar — Click to Home (2025-09-09)
+
+- Component: `src/components/navigation/MainNavbar.tsx`
+- Behavior:
+  - Clicking the navbar background redirects to `/home`.
+  - Interactive elements stop propagation to preserve their own actions:
+    - XP badge navigates to `/leaderboard`.
+    - Avatar button opens the menu.
+  - The navbar listens for `window` events `avatarUpdated`, `usernameUpdated`, and `profileUpdated` to refresh avatar and level badge.
+
+### Home — Level Up Card Level Badge & Start Level (2025-09-09)
+
+- Component: `src/pages/HomePage.tsx`
+- Behavior:
+  - The Level Up card shows a small badge in the top-right corner of the image with the current level: `Lv {profile.level_up_best_level || 1}`.
+  - Starting Level Up uses `startLevelUpGame(bestLevel)` where `bestLevel` is `profiles.level_up_best_level` (defaults to 1 for new users).
+  - `profiles.level_up_best_level` is updated on passing a level in `src/pages/FinalResultsPage.tsx` and a `profileUpdated` event is dispatched for immediate UI refresh in the navbar and profile page.
 # Guess History Multiplayer Architecture
 
 ## Canonical Architecture Overview (2025-08-17)
@@ -84,11 +116,10 @@
       - Server→Client: `chat { from, message, timestamp }`
     - Persistence: The PartyKit lobby best-effort persists messages to `public.room_chat` via service role; delivery to clients is realtime broadcast.
 
-  - **Environment**: `.env.example` defines `VITE_PARTYKIT_HOST` (default `localhost:1999`).
-- **Routing (frontend)**: `App.tsx`
-  - `/` → `LandingPage`
+   - **Environment**: `.env.example` defines `VITE_PARTYKIT_HOST` (default `localhost:1999`).
+ - **Routing (frontend)**: `App.tsx`
+  - `/` → redirects to `/home`
   - `/home` → `HomePage` (hub). All post-authentication redirects land here. The hub shows the four play cards (Solo, Level Up, Collaborate, Compete) and launches mode-specific routes.
-  - `/play` → Friends lobby entry route
   - `/room/:roomCode` → `src/pages/Room.tsx` (primary multiplayer lobby route used by invite acceptance)
   - Mode-prefixed game routes (Solo, Level Up, and Compete). Note: `/solo` is reserved exclusively for Solo gameplay; the hub is at `/home`:
     - Solo:
@@ -116,8 +147,8 @@
     - During gameplay (submit, timeout, next round, results), always derive the base mode path from the current URL by slicing everything before `'/game/'` and build navigation paths using that prefix.
     - Example: if current path starts with `/level/...`, navigate to `${modeBasePath}/game/room/${roomId}/round/${n}` and `${modeBasePath}/game/room/${roomId}/final`.
     - Solo now follows the same pattern and uses its own `/solo/game/room/:roomId/final` route.
-  - Legacy cleanup: All legacy `/test` routes have been removed. Post-auth redirects go to `/home` (hub). Gameplay uses canonical mode routes (`/solo`, `/level`, `/compete/(sync|async)`).
-  - Providers: `App.tsx` wraps the entire `<Routes>` tree inside `GameProvider` (under `BrowserRouter`). This ensures `useGame()` is available to `LandingPage`, `HomePage`, and all game pages for `startGame`/`startLevelUpGame` and navigation.
+  - Legacy cleanup: All legacy `/test` routes have been removed. Post-auth redirects go to `/home` (hub). Gameplay uses canonical mode routes (`/solo`, `/level`, `/compete/(sync|async)`). OTP email links redirect to `/home` by default (configurable via `VITE_AUTH_EMAIL_REDIRECT_TO`). Legacy components removed: `src/pages/LandingPage.tsx`, `src/components/layouts/HomeLayout1.tsx`.
+  - Providers: `App.tsx` wraps the entire `<Routes>` tree inside `GameProvider` (under `BrowserRouter`). This ensures `useGame()` is available to `HomePage` and all game pages for `startGame`/`startLevelUpGame` and navigation.
   - Admin guard: The `/admin` route is nested under `RequireAuthSession` so only users with an active Supabase session (registered or guest) can access `AdminGameConfigPage`. Signed-out users are redirected to `/`.
 - **WebSocket endpoint**: `ws(s)://<resolved-host>/parties/lobby/:roomCode` (via `partyUrl('lobby', roomCode)`).
 
@@ -2674,3 +2705,33 @@ Notes
   - Prefer accessible roles/text (e.g., headings, buttons). Avoid adding bespoke data attributes unless stability becomes an issue.
 - __CI notes__
   - Retries enabled on CI; server is reused locally for speed.
+
+### Image No-Repeat — played_images tracking (2025-09-08)
+
+- __Goal__
+  - Prevent users from seeing the same images across different games on the same account.
+
+- __Storage__
+  - Table: `public.played_images (user_id uuid, image_id uuid, played_at timestamptz default now(), primary key (user_id, image_id))`
+  - Policies: select/insert own rows for `authenticated` users.
+  - Migration source: `supabase/migrations/20250817_create_game_prep_rpc.sql`
+
+- __Selection RPC__
+  - `public.create_game_session_and_pick_images(p_count, p_user_id?, p_room_id?, p_seed?, p_min_year?, p_max_year?)`
+    - Excludes images already present in `played_images` for `p_user_id`.
+    - Solo/Level Up: called from `src/hooks/useGamePreparation.ts` with `p_user_id = user.id` (or `NULL` for guests), year bounds as provided.
+
+- __Recording points__ (so subsequent games exclude these images)
+  - File: `src/contexts/GameContext.tsx`
+    - `startGame(...)`
+      - Multiplayer deterministic path → after `setImages(preparedImages)` call: `recordPlayedImages(user?.id ?? null, preparedImages.map(i => i.id))`.
+      - Solo path (RPC prepared) → after `setImages(preparedImages)` call: `recordPlayedImages(...)`.
+      - Solo fallback (`getNewImages`) → after `setImages(mappedImages)` call: `recordPlayedImages(...)`.
+    - `startLevelUpGame(level, ...)`
+      - After `setImages(preparedImages)` call: `recordPlayedImages(...)`.
+
+- __Guest behavior__
+  - Guests without a Supabase user id use a small local history in `localStorage` (see `src/utils/imageHistory.ts`) to reduce repeats. Authenticated (registered or anonymous) users persist to `played_images` and are excluded server-side by the RPC.
+
+- __Notes__
+  - If the database has fewer than `p_count` eligible images after exclusions and filters (e.g., year bounds), the RPC may return fewer rows; the client guards for this and surfaces an error when insufficient images are available.

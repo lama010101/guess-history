@@ -41,7 +41,7 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ roomId, jwt 
   };
 
   const [copied, setCopied] = useState(false);
-  const inviteLink = `${window.location.origin}/test/lobby/${roomId}`;
+  const inviteLink = `${window.location.origin}/room/${roomId}`;
   const copyLink = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(inviteLink);

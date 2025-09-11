@@ -67,7 +67,7 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
       // Fallback or error if the prop isn't provided, though it should be.
       console.warn('onOpenSettingsModal not provided to GameOverlayHUD');
       // Optionally navigate to a dedicated settings page as a fallback:
-      // navigate('/test/settings'); 
+      // navigate('/solo/settings'); 
     }
   };
 

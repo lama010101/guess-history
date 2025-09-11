@@ -56,15 +56,38 @@ export default function PreparationOverlay() {
     return () => window.clearTimeout(timeout);
   }, [targetSubtext]);
 
+  // Helper to check if a given thumbnail index has loaded
+  const hasLoaded = useCallback(
+    (collection: Set<number> | number[] | undefined, index: number): boolean => {
+      if (!collection) return false;
+      return collection instanceof Set
+        ? collection.has(index)
+        : Array.isArray(collection)
+        ? (collection as number[]).includes(index)
+        : false;
+    },
+    []
+  );
+
   const { loaded = 0, total = 0 } = prepProgress || { loaded: 0, total: 0 };
+  // Fallback count for generic ratio-based progress and for hold-visible behavior
   const filledSegments = useMemo(() => {
     const segments = 5;
+    // Prefer explicit thumbnail load state when available so each segment maps to a loaded thumbnail
+    if (preparedLoadedIndices && preparedImages) {
+      let count = 0;
+      for (let i = 0; i < segments; i++) {
+        if (hasLoaded(preparedLoadedIndices as any, i)) count++;
+      }
+      return count;
+    }
+    // Fallback to generic progress ratio
     if (total > 0) {
       const ratio = Math.max(0, Math.min(1, loaded / total));
       return Math.round(ratio * segments);
     }
     return 0;
-  }, [loaded, total]);
+  }, [preparedLoadedIndices, preparedImages, hasLoaded, loaded, total]);
 
   const liveAnnouncement = useMemo(() => {
     if (isError) return `Preparation failed. ${prepError ?? ''}`.trim();
@@ -106,17 +129,7 @@ export default function PreparationOverlay() {
     };
   }, []);
 
-  const hasLoaded = useCallback(
-    (collection: Set<number> | number[] | undefined, index: number): boolean => {
-      if (!collection) return false;
-      return collection instanceof Set
-        ? collection.has(index)
-        : Array.isArray(collection)
-        ? (collection as number[]).includes(index)
-        : false;
-    },
-    []
-  );
+  
 
   const handleRetry = useCallback(() => {
     // Re-run start flow with current settings; omit roomId to create a new session
@@ -174,7 +187,9 @@ export default function PreparationOverlay() {
                   key={i}
                   className={
                     'h-2 flex-1 rounded-sm transition-colors duration-300 ' +
-                    (i < filledSegments ? 'bg-history-primary' : 'bg-zinc-300 dark:bg-zinc-700')
+                    ((preparedLoadedIndices && preparedImages)
+                      ? (hasLoaded(preparedLoadedIndices as any, i) ? 'bg-orange-500' : 'bg-zinc-300 dark:bg-zinc-700')
+                      : (i < filledSegments ? 'bg-orange-500' : 'bg-zinc-300 dark:bg-zinc-700'))
                   }
                 />
               ))}

@@ -57,7 +57,7 @@ const FriendsPage = () => {
         <AlertCircle className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
         <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
         <p className="mb-6">Please log in or create an account to view this page.</p>
-        <Button onClick={() => navigate('/test/auth')}>Login / Register</Button>
+        <Button onClick={() => navigate('/solo/auth')}>Login / Register</Button>
       </div>
     );
   }
@@ -356,8 +356,8 @@ const FriendsPage = () => {
 
       if (gameError) throw gameError;
       
-      // Navigate to the room page with invitation params
-      navigate(`/test/room?id=${game.id}&invite=${friend.id}`);
+      // Navigate to Compete hub for invitations (room flow handled elsewhere)
+      navigate(`/compete`);
       
     } catch (error) {
       console.error('Error creating game:', error);
@@ -590,7 +590,7 @@ const FriendsPage = () => {
                   </Avatar>
                   <div>
                     <h3 className="text-lg font-semibold">{profileName}</h3>
-                    {selectedUserForProfile.email && <p className="text-sm text-muted-foreground">{selectedUserForProfile.email}</p>}
+                    {/* Email field removed (not available on Friend/User union) */}
                     {/* TODO: Add more profile details here, e.g., XP, games played, etc. */}
                   </div>
                 </div>

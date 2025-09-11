@@ -69,7 +69,7 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
     fetchUserAvatar();
   }, [user]);
 
-  // Listen for avatarUpdated and usernameUpdated events to refresh profile data
+  // Listen for avatarUpdated, usernameUpdated, and profileUpdated events to refresh profile data
   useEffect(() => {
     const handler = () => {
       if (user) {
@@ -82,9 +82,11 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
     };
     window.addEventListener('avatarUpdated', handler);
     window.addEventListener('usernameUpdated', handler);
+    window.addEventListener('profileUpdated', handler);
     return () => {
       window.removeEventListener('avatarUpdated', handler);
       window.removeEventListener('usernameUpdated', handler);
+      window.removeEventListener('profileUpdated', handler);
     };
   }, [user]);
 
@@ -93,6 +95,10 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
       className={`sticky top-0 z-50 transition-colors duration-300 ${
         isScrolled ? 'bg-black/90 backdrop-blur' : 'bg-black/0 backdrop-blur-none'
       }`}
+      onClick={() => navigate('/home')}
+      role="button"
+      aria-label="Go to Home"
+      tabIndex={0}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
@@ -102,6 +108,7 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
               variant="accuracy" 
               className="flex items-center gap-1 text-sm"
               aria-label={`Global Accuracy: ${Math.round(globalAccuracy || 0)}%`}
+              onClick={(e) => { e.stopPropagation(); navigate('/home'); }}
             >
               <Target className="h-4 w-4" />
               <span>{Math.round(globalAccuracy || 0)}%</span>
@@ -109,7 +116,7 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
             <Badge 
               variant="xp" 
               className="flex items-center gap-1 text-sm cursor-pointer"
-              onClick={() => navigate('/leaderboard')}
+              onClick={(e) => { e.stopPropagation(); navigate('/leaderboard'); }}
               aria-label={`Global XP: ${formatInteger(globalXP || 0)}`}
             >
               <Award className="h-4 w-4" />
@@ -131,7 +138,7 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
             <Button 
               variant="ghost" 
               size="icon"
-              onClick={onMenuClick}
+              onClick={(e) => { e.stopPropagation(); onMenuClick?.(); }}
               className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white p-0 overflow-hidden rounded-full"
             >
               {avatarUrl ? (

@@ -142,9 +142,9 @@ const FinalResultsPage = () => {
         const gameRoundIds = !roomId && gameId ? images.map((_, idx) => makeRoundId(gameId, idx + 1)) : [];
         const roundIds = roomRoundIds.length > 0 ? roomRoundIds : gameRoundIds;
         try {
-          // round_hints is not part of generated Database types; use expect-error and cast result shape
-          // @ts-expect-error round_hints table is not in generated types yet
-          const { data: rawRows, error } = await supabase
+          // round_hints is not part of generated Database types; use a loosely-typed client
+          const sb: any = supabase;
+          const { data: rawRows, error } = await sb
             .from('round_hints')
             .select('round_id, xpDebt, accDebt')
             .eq('user_id', user.id)
@@ -211,7 +211,8 @@ const FinalResultsPage = () => {
           }
 
           // Fetch profile to check guest and current best level
-          const { data: profile, error: profileErr } = await supabase
+          const sb: any = supabase;
+          const { data: profile, error: profileErr } = await sb
             .from('profiles')
             .select('is_guest, level_up_best_level')
             .eq('id', user.id)
@@ -235,7 +236,8 @@ const FinalResultsPage = () => {
               // Determine current game level from games table (default 1 if missing)
               let currentLevel = 1;
               try {
-                const { data: gameRow, error: gameErr } = await supabase
+                const sb2: any = supabase;
+                const { data: gameRow, error: gameErr } = await sb2
                   .from('games')
                   .select('level')
                   .eq('id', gameId)
@@ -253,7 +255,8 @@ const FinalResultsPage = () => {
 
               // Update games.level
               try {
-                const { error: gameUpdateErr } = await supabase
+                const sb3: any = supabase;
+                const { error: gameUpdateErr } = await sb3
                   .from('games')
                   .update({ level: newLevel })
                   .eq('id', gameId);
@@ -270,7 +273,8 @@ const FinalResultsPage = () => {
               const bestLevel = typeof profile?.level_up_best_level === 'number' ? profile.level_up_best_level : 0;
               if (newLevel > bestLevel) {
                 try {
-                  const { error: profileUpdateErr } = await supabase
+                  const sb4: any = supabase;
+                  const { error: profileUpdateErr } = await sb4
                     .from('profiles')
                     .update({ level_up_best_level: newLevel })
                     .eq('id', user.id);
@@ -279,6 +283,10 @@ const FinalResultsPage = () => {
                   } else if (import.meta.env.DEV) {
                     console.log('[LevelUp] profiles.level_up_best_level updated to', newLevel);
                   }
+                  try {
+                    // Notify listeners (e.g., MainNavbar) that profile changed
+                    window.dispatchEvent(new Event('profileUpdated'));
+                  } catch {}
                 } catch (e) {
                   console.warn('[LevelUp] exception updating profiles.level_up_best_level', e);
                 }
@@ -310,7 +318,12 @@ const FinalResultsPage = () => {
       };
 
       try {
-        const success = await updateUserMetrics(user.id, metricsUpdate, gameId);
+        const path = location.pathname || '';
+        const mode: 'solo' | 'level' | 'compete' | 'collaborate' =
+          path.includes('/level/') ? 'level' :
+          path.includes('/compete/') ? 'compete' :
+          path.includes('/collaborate/') ? 'collaborate' : 'solo';
+        const success = await updateUserMetrics(user.id, metricsUpdate, gameId, mode);
         if (success) {
           await refreshGlobalMetrics();
         }

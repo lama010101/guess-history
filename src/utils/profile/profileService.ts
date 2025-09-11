@@ -87,8 +87,9 @@ export async function fetchUserProfile(userId: string): Promise<UserProfile | nu
   if (!userId) return null;
 
   try {
-    // First get the profile
-    const { data, error } = await supabase
+    // First get the profile (using loose typing to avoid generated type drift)
+    const sb: any = supabase;
+    const { data, error } = await sb
       .from('profiles')
       .select('*')
       .eq('id', userId)
@@ -105,22 +106,22 @@ export async function fetchUserProfile(userId: string): Promise<UserProfile | nu
     }
     
     // If profile has avatar_id but no avatar_image_url, fetch it from avatars table
-    if (data.avatar_id && !data.avatar_image_url) {
+    if ((data as any).avatar_id && !(data as any).avatar_image_url) {
       try {
-        const { data: avatarData, error: avatarError } = await supabase
+        const { data: avatarData, error: avatarError } = await sb
           .from('avatars')
           .select('firebase_url')
-          .eq('id', data.avatar_id)
+          .eq('id', (data as any).avatar_id)
           .maybeSingle();
           
         if (!avatarError && avatarData) {
           // Update the profile with the firebase_url
-          data.avatar_image_url = avatarData.firebase_url;
+          (data as any).avatar_image_url = (avatarData as any).firebase_url;
           
           // Also update it in the database for future queries
-          await supabase
+          await sb
             .from('profiles')
-            .update({ avatar_image_url: avatarData.firebase_url })
+            .update({ avatar_image_url: (avatarData as any).firebase_url })
             .eq('id', userId);
         }
       } catch (avatarErr) {
@@ -179,12 +180,13 @@ export async function findMatchingAvatar(displayName: string | undefined, isGues
 // Updates the user profile with a newly selected avatar
 export async function updateUserAvatar(userId: string, avatarId: string, customImageUrl: string | null = null): Promise<boolean> {
   try {
+    const sb: any = supabase;
     let imageUrl = customImageUrl;
     let avatarName: string | undefined;
     
     // If no custom image URL provided, fetch from avatars table
     if (!customImageUrl) {
-      const { data: avatarData, error: avatarError } = await supabase
+      const { data: avatarData, error: avatarError } = await sb
         .from('avatars')
         .select('*')
         .eq('id', avatarId)
@@ -195,14 +197,14 @@ export async function updateUserAvatar(userId: string, avatarId: string, customI
         return false;
       }
       
-      imageUrl = avatarData.firebase_url;
+      imageUrl = (avatarData as any).firebase_url;
         // Build unique avatar name
-        const baseName = `${avatarData.first_name} ${avatarData.last_name}`.trim();
+        const baseName = `${(avatarData as any).first_name} ${(avatarData as any).last_name}`.trim();
         let uniqueName = baseName;
         for (let attempt = 0; attempt < 10; attempt++) {
           const suffix = Math.floor(1000 + Math.random() * 9000);
           const candidate = `${baseName} #${suffix}`;
-          const { data: exists } = await supabase
+          const { data: exists } = await sb
             .from('profiles')
             .select('id')
             .eq('avatar_name', candidate)
@@ -217,7 +219,7 @@ export async function updateUserAvatar(userId: string, avatarId: string, customI
     
     // Update the user profile with the new avatar fields
     // Important: Update both display_name and avatar_name to the new avatar name
-    const { error } = await supabase
+    const { error } = await sb
       .from('profiles')
       .update({ 
         avatar_image_url: imageUrl,
@@ -245,9 +247,10 @@ export async function updateUserAvatar(userId: string, avatarId: string, customI
 export async function createUserProfileIfNotExists(userId: string, displayName: string): Promise<boolean> {
   try {
     console.log(`Checking if profile exists for user ${userId}`);
+    const sb: any = supabase;
     
     // Check if profile exists
-    const { data: existingProfile, error: fetchError } = await supabase
+    const { data: existingProfile, error: fetchError } = await sb
       .from('profiles')
       .select('*')
       .eq('id', userId)
@@ -267,7 +270,7 @@ export async function createUserProfileIfNotExists(userId: string, displayName: 
     
     // --- Avatar assignment logic (fixed 2025-07-19) ---
     // Fetch all ready avatars (id, firebase_url, first_name, last_name)
-    const { data: avatarsList, error: avatarErr } = await supabase
+    const { data: avatarsList, error: avatarErr } = await sb
       .from('avatars')
       .select('id, firebase_url, first_name, last_name')
       .eq('ready', true);
@@ -297,7 +300,7 @@ export async function createUserProfileIfNotExists(userId: string, displayName: 
         const suffix = Math.floor(1000 + Math.random() * 9000);
         const candidate = `${baseName} #${suffix}`;
         // Check uniqueness in profiles
-        const { data: existing } = await supabase
+        const { data: existing } = await sb
           .from('profiles')
           .select('id')
           .eq('avatar_name', candidate)
@@ -308,8 +311,8 @@ export async function createUserProfileIfNotExists(userId: string, displayName: 
         }
       }
 
-      avatarImageUrl = avatar.firebase_url;
-      avatarId = avatar.id;
+      avatarImageUrl = (avatar as any).firebase_url;
+      avatarId = (avatar as any).id;
     }
 
     // Fallback avatar if query failed
@@ -343,13 +346,13 @@ export async function createUserProfileIfNotExists(userId: string, displayName: 
     let dbError;
     if (existingProfile) {
       // Update existing profile missing avatar
-      const { error: updErr } = await supabase
+      const { error: updErr } = await sb
         .from('profiles')
         .update(profileData)
         .eq('id', userId);
       dbError = updErr;
     } else {
-      const { error: insErr } = await supabase
+      const { error: insErr } = await sb
         .from('profiles')
         .insert(profileData);
       dbError = insErr;
@@ -378,7 +381,8 @@ export async function createUserProfileIfNotExists(userId: string, displayName: 
 // Fetch avatar by id
 export async function fetchAvatarById(avatarId: string): Promise<Avatar | null> {
   try {
-    const { data, error } = await supabase
+    const sb: any = supabase;
+    const { data, error } = await sb
       .from('avatars')
       .select('*')
       .eq('id', avatarId)
@@ -390,8 +394,8 @@ export async function fetchAvatarById(avatarId: string): Promise<Avatar | null> 
     // Add helper fields for UI compatibility
     return {
       ...data,
-      name: `${data.first_name} ${data.last_name}`,
-      image_url: data.firebase_url,
+      name: `${(data as any).first_name} ${(data as any).last_name}`,
+      image_url: (data as any).firebase_url,
     } as Avatar;
   } catch (error) {
     console.error('Error in fetchAvatarById:', error);
@@ -402,7 +406,8 @@ export async function fetchAvatarById(avatarId: string): Promise<Avatar | null> 
 // Fetch available avatars
 export async function fetchAvatars(onlyReady: boolean = true): Promise<Avatar[]> {
   try {
-    const query = supabase
+    const sb: any = supabase;
+    const query = sb
       .from('avatars')
       .select('*')
       .order('created_at');
@@ -415,8 +420,8 @@ export async function fetchAvatars(onlyReady: boolean = true): Promise<Avatar[]>
     }
 
     // Map DB fields into Avatar helper fields expected by UI (name & image_url)
-    return (data as Avatar[]).map((a) => ({
-      ...a,
+    return (data as any[]).map((a: any) => ({
+      ...(a as any),
       name: `${a.first_name} ${a.last_name}`,
       image_url: a.firebase_url,
     }));
@@ -429,7 +434,8 @@ export async function fetchAvatars(onlyReady: boolean = true): Promise<Avatar[]>
 // Fetch user stats
 export async function fetchUserStats(userId: string): Promise<UserStats | null> {
   try {
-    const { data, error } = await supabase
+    const sb: any = supabase;
+    const { data, error } = await sb
       .from('user_metrics')
       .select('*')
       .eq('user_id', userId)
@@ -478,11 +484,13 @@ export const updateUserMetrics = async (
     yearBullseye?: boolean;
     locationBullseye?: boolean;
   },
-  gameId?: string // Optional gameId for tracking
+  gameId?: string, // Optional gameId for tracking
+  mode: 'solo' | 'level' | 'compete' | 'collaborate' = 'solo'
 ): Promise<boolean> => {
   console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] updateUserMetrics START called with:`, {
     userId,
     gameMetrics,
+    mode,
     timestamp: new Date().toISOString()
   });
 
@@ -516,32 +524,23 @@ export const updateUserMetrics = async (
     isPerfectGame: gameMetrics.isPerfectGame,
     locationAccuracy: validatedLocationAccuracy,
     timeAccuracy: validatedTimeAccuracy,
+    mode,
   });
 
   try {
-    type UserMetricsUpsert = {
-      user_id: string;
-      xp_total: number;
-      overall_accuracy: number;
-      games_played: number;
-      updated_at: string;
-      best_accuracy?: number;
-      perfect_games?: number;
-      // global_rank is typically calculated by a separate process or view, not set here
-      time_accuracy?: number;
-      location_accuracy?: number;
-      challenge_accuracy?: number; // Assuming this might be used later
-      year_bullseye?: number;
-      location_bullseye?: number;
-    };
+    // Use a locally cast client to avoid typed table drift
+    const sb: any = supabase;
+    // Use a flexible object for dynamic per-mode keys
+    let metricsToUpsert: any;
 
-    let metricsToUpsert: UserMetricsUpsert;
-
-    const { data: existingData, error: fetchError } = await supabase
+    const { data: existingData, error: fetchError } = await sb
       .from('user_metrics')
       .select('*')
       .eq('user_id', userId)
       .single();
+
+    // Normalize mode key for dynamic column names
+    const modeKey = (mode || 'solo') as 'solo' | 'level' | 'compete' | 'collaborate';
 
     if (fetchError && fetchError.code === 'PGRST116') {
       // New user: No existing record found
@@ -560,6 +559,10 @@ export const updateUserMetrics = async (
         year_bullseye: gameMetrics.yearBullseye ? 1 : 0,
         location_bullseye: gameMetrics.locationBullseye ? 1 : 0,
       };
+      // Initialize per-mode aggregates for the current mode
+      metricsToUpsert[`xp_total_${modeKey}`] = validatedGameXP;
+      metricsToUpsert[`games_played_${modeKey}`] = 1;
+      metricsToUpsert[`overall_accuracy_${modeKey}`] = validatedGameAccuracy;
       console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] Prepared new user metrics:`, metricsToUpsert);
     } else if (fetchError) {
       // An error occurred fetching existing metrics (not 'PGRST116')
@@ -580,6 +583,11 @@ export const updateUserMetrics = async (
       const currentYearBullseyes = Math.max(0, Number(existingMetrics.year_bullseye) || 0);
       const currentLocBullseyes = Math.max(0, Number(existingMetrics.location_bullseye) || 0);
 
+      // Per-mode current aggregates (fall back to 0 if missing columns)
+      const currentModeGames = Math.max(0, Number((existingMetrics as any)[`games_played_${modeKey}`]) || 0);
+      const currentModeXPTotal = Math.max(0, Number((existingMetrics as any)[`xp_total_${modeKey}`]) || 0);
+      const currentModeOverallAcc = Math.max(0, Math.min(Number((existingMetrics as any)[`overall_accuracy_${modeKey}`]) || 0, 100));
+
       const newGamesPlayed = currentGames + 1;
       const newXPTotal = currentXPTotal + validatedGameXP;
       
@@ -595,6 +603,11 @@ export const updateUserMetrics = async (
       const newYearBullseyes = currentYearBullseyes + (gameMetrics.yearBullseye ? 1 : 0);
       const newLocBullseyes = currentLocBullseyes + (gameMetrics.locationBullseye ? 1 : 0);
 
+      // Per-mode aggregates
+      const newModeGamesPlayed = currentModeGames + 1;
+      const newModeXPTotal = currentModeXPTotal + validatedGameXP;
+      const newModeOverallAcc = parseFloat(((currentModeOverallAcc * currentModeGames + validatedGameAccuracy) / newModeGamesPlayed).toFixed(2));
+
       metricsToUpsert = {
         user_id: userId,
         xp_total: newXPTotal,
@@ -609,6 +622,10 @@ export const updateUserMetrics = async (
         year_bullseye: newYearBullseyes,
         location_bullseye: newLocBullseyes,
       };
+      // Write the per-mode aggregates for the current mode
+      metricsToUpsert[`xp_total_${modeKey}`] = newModeXPTotal;
+      metricsToUpsert[`games_played_${modeKey}`] = newModeGamesPlayed;
+      metricsToUpsert[`overall_accuracy_${modeKey}`] = newModeOverallAcc;
       console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] Prepared updated metrics for user ${userId}:`, metricsToUpsert);
       
       // Sanity checks
@@ -622,7 +639,7 @@ export const updateUserMetrics = async (
 
     // Perform the upsert operation
     console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] Attempting to upsert metrics for user ${userId}:`, metricsToUpsert);
-    const { error: upsertError } = await supabase
+    const { error: upsertError } = await sb
       .from('user_metrics')
       .upsert(metricsToUpsert, { onConflict: 'user_id' });
 
@@ -634,7 +651,7 @@ export const updateUserMetrics = async (
     console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] Successfully upserted metrics for user ${userId}.`);
 
     // Optional: Verify update by fetching (can be removed in production for performance if logs are sufficient)
-    const { data: verifyData, error: verifyError } = await supabase
+    const { data: verifyData, error: verifyError } = await sb
       .from('user_metrics')
       .select('xp_total, overall_accuracy, games_played')
       .eq('user_id', userId)

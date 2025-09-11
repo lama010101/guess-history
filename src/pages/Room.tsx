@@ -225,7 +225,7 @@ const Room: React.FC = () => {
               break;
             case 'full':
               setStatus('full');
-              // Redirect to /compete per spec
+              // Redirect to /compete
               setTimeout(() => navigate('/compete', { replace: true }), 300);
               break;
             case 'chat':

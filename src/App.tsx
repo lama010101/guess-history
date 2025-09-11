@@ -12,7 +12,7 @@ import { AuthRedirectWrapper } from "@/components/AuthRedirectWrapper";
 import PreparationOverlay from "@/components/game/PreparationOverlay";
 import InviteListener from "@/components/InviteListener";
 
-import TestLayout from "./layouts/TestLayout";
+import MainLayout from "./layouts/MainLayout";
 import HomePage from "./pages/HomePage";
 import GameRoundPage from "./pages/GameRoundPage";
 import FinalResultsPage from "./pages/FinalResultsPage";
@@ -29,7 +29,6 @@ import AdminGameConfigPage from '@/pages/admin/AdminGameConfigPage';
 import AuthPage from "./pages/AuthPage";
 
 
-import LandingPage from "./pages/LandingPage";
 import RoundResultsPage from "./pages/RoundResultsPage";
 import Compete from "./pages/PlayWithFriends";
 import Room from "./pages/Room";
@@ -142,25 +141,25 @@ const App = () => {
                     {/* Headless listener: ensures realtime invite subscription is always active */}
                     <InviteListener />
                     <Routes>
-                      <Route path="/" element={<LandingPage />} />
+                      <Route path="/" element={<Navigate to="/home" replace />} />
                       {/* Require an active session (registered or anonymous) for all routes except landing */}
                       <Route element={<RequireAuthSession />}>
                         {/* Hub (Home) layout and index */}
-                        <Route path="/home" element={<TestLayout />}>
+                        <Route path="/home" element={<MainLayout />}>
                           <Route index element={<HomePage />} />
                         </Route>
                         <Route path="/compete" element={<Compete />} />
                         <Route path="/room/:roomCode" element={<Room />} />
-                        <Route path="/leaderboard" element={<TestLayout />}>
+                        <Route path="/leaderboard" element={<MainLayout />}>
                           <Route index element={<LeaderboardPage />} />
                         </Route>
-                        <Route path="/profile" element={<TestLayout />}>
+                        <Route path="/profile" element={<MainLayout />}>
                           <Route index element={<ProfilePage />} />
                         </Route>
-                        <Route path="/friends" element={<TestLayout />}>
+                        <Route path="/friends" element={<MainLayout />}>
                           <Route index element={<FriendsPage />} />
                         </Route>
-                        <Route path="/solo" element={<TestLayout />}>
+                        <Route path="/solo" element={<MainLayout />}>
                           <Route path="auth" element={<AuthPage />} />
                           <Route path="settings" element={<SettingsPage />} />
                           <Route element={<ProtectedRoute />}>

@@ -6,7 +6,7 @@ const ProfilePage = () => {
   const { user } = useAuth();
   // If no user is found (not even a guest), redirect to auth page
   if (!user) {
-    return <Navigate to="/test/auth" />;
+    return <Navigate to="/solo/auth" />;
   }
   // Both authenticated users and guests can view the profile
   return <ProfileLayout1 />;

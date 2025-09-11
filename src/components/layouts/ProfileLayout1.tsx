@@ -107,6 +107,17 @@ const ProfileLayout1 = () => {
     };
     fetchProfileData();
   }, [user, isGuest]);
+
+  // Refresh profile/stats when profileUpdated is dispatched (e.g., after Level Up best level changes)
+  useEffect(() => {
+    const onProfileUpdated = () => {
+      if (user) {
+        refreshData();
+      }
+    };
+    window.addEventListener('profileUpdated', onProfileUpdated);
+    return () => window.removeEventListener('profileUpdated', onProfileUpdated);
+  }, [user]);
   
   const getDefaultStats = (): UserStats => ({
     games_played: 0, avg_accuracy: 0, best_accuracy: 0, perfect_scores: 0,

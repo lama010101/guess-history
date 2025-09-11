@@ -11,7 +11,7 @@ const ProtectedRoute = () => {
 
   if (isGuest) {
     // Redirect guest users to the home page
-    return <Navigate to="/test" replace />;
+    return <Navigate to="/home" replace />;
   }
 
   // If the user is authenticated and not a guest, render the child routes

@@ -117,14 +117,14 @@ const HomeLayout1 = () => {
           console.log("Created game rounds successfully");
         }
         
-        navigate(`/test/game?mode=${mode}&id=${game.id}`);
+        navigate(`/solo`);
       } catch (dbError) {
         // If we fail to create the game in the database, create a temporary game ID
         // This ensures the user can still play even if DB connection fails
         console.error("Failed to create game in database, creating temporary game:", dbError);
         const tempGameId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
         console.log("Created temporary game ID:", tempGameId);
-        navigate(`/test/game?mode=${mode}&id=${tempGameId}`);
+        navigate(`/solo`);
       }
     } catch (err: any) {
       console.error('Error starting game:', err);

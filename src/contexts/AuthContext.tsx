@@ -120,9 +120,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
     } else {
+      const redirectTo = (import.meta as any)?.env?.VITE_AUTH_EMAIL_REDIRECT_TO as string | undefined;
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: `${window.location.origin}/test` },
+        options: { emailRedirectTo: redirectTo ?? `${window.location.origin}/home` },
       });
       if (error) throw error;
     }

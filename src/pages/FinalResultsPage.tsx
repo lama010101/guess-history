@@ -27,6 +27,7 @@ import { makeRoundId } from "@/utils/roomState";
 import LevelResultBanner from '@/components/levelup/LevelResultBanner';
 import LevelRequirementCard from '@/components/levelup/LevelRequirementCard';
 import { getLevelUpConstraints } from '@/lib/levelUpConfig';
+import FinalScoreboard from '@/components/scoreboard/FinalScoreboard';
 
 const FinalResultsPage = () => {
   const distanceUnit = useSettingsStore(s => s.distanceUnit);
@@ -78,6 +79,7 @@ const FinalResultsPage = () => {
 
   // Compute Level Up route and constraints early to keep hooks order stable across renders
   const isLevelUp = location.pathname.includes('/level/');
+  const isSyncCompeteRoute = React.useMemo(() => location.pathname.startsWith('/compete/sync/'), [location.pathname]);
   const levelConstraints = React.useMemo(() => {
     if (!isLevelUp) return null;
     const lvl = typeof currentLevelFromPath === 'number' ? currentLevelFromPath : 1;
@@ -699,6 +701,13 @@ const FinalResultsPage = () => {
                     Share Results
                   </Button>
                 </div>
+
+                {/* SYNC Compete: show final leaderboard for all participants */}
+                {isSyncCompeteRoute && roomId ? (
+                  <div className="mt-6">
+                    <FinalScoreboard roomId={roomId} />
+                  </div>
+                ) : null}
               </div>
 
               {/* GAME SUMMARY removed per new design; metrics are now in the final score card */}

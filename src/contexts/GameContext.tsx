@@ -110,10 +110,10 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
   const [hintsAllowed, setHintsAllowed] = useState<number>(3); // Default 3 hints per game
   
-  // Get timer setting from settings store (defaults to 60 seconds)
+  // Timer defaults come from settings store (enabled by default)
   const { timerSeconds, setTimerSeconds } = useSettingsStore();
   const [roundTimerSec, setRoundTimerSec] = useState<number>(timerSeconds || 60);
-  const [timerEnabled, setTimerEnabled] = useState<boolean>(true); // Default to timer enabled - MUST be true for timer to work
+  const [timerEnabled, setTimerEnabled] = useState<boolean>(true);
 
   // Keep roundTimerSec in sync with timerSeconds from settings store
   useEffect(() => {
@@ -514,7 +514,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     setImages([]); // Clear previous images
     setRoundResults([]); // Clear previous results
     
-    // Apply game settings provided by the caller (no forced defaults)
+    // Apply game settings as provided
     applyGameSettings(settings);
     
     try {
@@ -727,7 +727,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     setImages([]);
     setRoundResults([]);
 
-    // Compute constraints and apply timer (no UI change)
+    // Compute constraints and apply timer (Level Up has its own defaults)
     const c = getLevelUpConstraints(level);
     const minYear = c.levelYearRange.start;
     const maxYear = c.levelYearRange.end;

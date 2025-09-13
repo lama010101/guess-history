@@ -66,7 +66,7 @@ const HomePage = () => {
   const [pendingMode, setPendingMode] = useState<string | null>(null);
   const [showLoadingPopup, setShowLoadingPopup] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [showCompeteSoon, setShowCompeteSoon] = useState(false);
+  // Removed Coming Soon popup for Compete
   devLog('[HomePage] Render', { isLoaded, user, isGuest });
   // Timer states
   const [isSoloTimerEnabled, setIsSoloTimerEnabled] = useState(false);
@@ -331,13 +331,12 @@ const HomePage = () => {
                   LEVEL UP
                 </div>
               </div>
-              {/* Collaborate Card hidden per request */}
-              {/* Compete Card (purple) — shows Coming Soon modal */}
+              {/* Compete Card (purple) */}
               <div
                 className="relative flex flex-col items-center justify-center gap-0 py-2 md:py-2 shrink-0 snap-center cursor-pointer"
                 onClick={() => {
                   devLog('[HomePage] Compete card clicked. isGuest:', isGuest);
-                  setShowCompeteSoon(true);
+                  navigate('/compete');
                 }}
               >
                 <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-purple-300 via-violet-500 to-purple-700">
@@ -385,28 +384,7 @@ const HomePage = () => {
         onAuthSuccess={handleAuthSuccess}
         onGuestContinue={handleGuestContinue}
       />
-      {/* Compete Coming Soon modal with backdrop redirect */}
-      {showCompeteSoon && (
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70"
-          onClick={() => { setShowCompeteSoon(false); navigate('/compete'); }}
-        >
-          <div
-            className="bg-white dark:bg-[#222] text-black dark:text-white rounded-xl p-6 w-[90%] max-w-sm shadow-xl border border-gray-200 dark:border-gray-700"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-xl font-bold mb-2 text-center">COMING SOON</h3>
-            <p className="text-sm text-center text-gray-700 dark:text-gray-300 mb-4">
-              Compete mode is coming soon. Click outside this popup to proceed to the Compete page.
-            </p>
-            <div className="flex justify-center">
-              <Button className="bg-black text-white hover:bg-black/90" onClick={() => setShowCompeteSoon(false)}>
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Coming Soon modal removed */}
     </div>
   );
 };

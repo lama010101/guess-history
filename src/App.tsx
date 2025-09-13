@@ -148,8 +148,12 @@ const App = () => {
                         <Route path="/home" element={<MainLayout />}>
                           <Route index element={<HomePage />} />
                         </Route>
-                        <Route path="/compete" element={<Compete />} />
-                        <Route path="/room/:roomCode" element={<Room />} />
+                        <Route path="/compete" element={<MainLayout />}>
+                          <Route index element={<Compete />} />
+                        </Route>
+                        <Route path="/room/:roomCode" element={<MainLayout />}>
+                          <Route index element={<Room />} />
+                        </Route>
                         <Route path="/leaderboard" element={<MainLayout />}>
                           <Route index element={<LeaderboardPage />} />
                         </Route>

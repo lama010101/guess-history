@@ -30,6 +30,7 @@ import {
   computeRoundNetPercent
 } from '@/utils/gameCalculations';
 import LevelRoundProgressCard from '@/components/levelup/LevelRoundProgressCard';
+import RoundScoreboard from '@/components/scoreboard/RoundScoreboard';
 // Timer integration removed to prevent flickering of Next Round button
 
 // Removed imports for utils/resultsFetching as we use context now
@@ -174,10 +175,10 @@ const RoundResultsPage = () => {
     const roundSessionId = makeRoundId(roomId as string, roundNumber);
     console.log('Query Params:', { userId: user.id, roundSessionId });
 
-    try {
-      // Query for round_hints (not in generated Database types yet)
-      // @ts-expect-error round_hints is not in generated types; safe to query by name
-      const { data, error } = await supabase
+      try {
+      // Query for round_hints (not in generated Database types yet) using a loosely-typed client
+      const sb: any = supabase;
+      const { data, error } = await sb
         .from('round_hints')
         .select('hint_id, xpDebt, accDebt, label, hint_type, purchased_at, round_id')
         .eq('user_id', user.id)
@@ -398,6 +399,7 @@ const RoundResultsPage = () => {
 
   // --- Level Up per-round net percent (for progress card) ---
   const isLevelUpRoute = useMemo(() => location.pathname.includes('/level/'), [location.pathname]);
+  const isSyncCompeteRoute = useMemo(() => location.pathname.startsWith('/compete/sync/'), [location.pathname]);
   const roundNetPercent = useMemo(() => {
     if (!contextResult || !currentImage) return 0;
     const actualYear = currentImage.year || 1900;
@@ -541,7 +543,7 @@ const RoundResultsPage = () => {
               variant="outline"
               size="sm"
               onClick={() => setShowRatingModal(true)}
-              className="px-2 py-1 h-auto text-xs rounded-md bg-[#444444] text-white hover:bg-[#444444] border border-[#444444] dark:bg-[#444444] dark:text-white dark:hover:bg-[#444444]"
+              className="px-2 py-1 h-auto text-xs rounded-md bg-[#444444] text-white hover:bg[#444444] border border-[#444444] dark:bg-[#444444] dark:text-white dark:hover:bg-[#444444]"
               aria-label="Rate Image"
               title="Rate this image"
             >
@@ -551,6 +553,12 @@ const RoundResultsPage = () => {
           ) : null
         }
       />
+      {/* SYNC Compete: Round leaderboard */}
+      {isSyncCompeteRoute && roomId ? (
+        <div className="px-4 pt-2">
+          <RoundScoreboard roomId={roomId} roundNumber={roundNumber} />
+        </div>
+      ) : null}
       <ConfirmNavigationDialog
         isOpen={showConfirmDialog}
         onClose={() => setShowConfirmDialog(false)}

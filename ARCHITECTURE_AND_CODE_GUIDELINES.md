@@ -265,6 +265,45 @@
   - Collaborate: `/collaborate/...` → turquoise.
   - Verify buttons, sliders, rings, gradients, SVGs.
 
+### Compete Mode — SYNC/ASYNC Variants and Leaderboards (2025-09-13)
+
+- __Top Navbar on /compete__
+  - Routing: `/compete` is now nested under `MainLayout` in `src/App.tsx`, so the standard top navbar (`StatsDisplay` left, `NavProfile` right) appears on the Compete landing page.
+  - File change: `src/App.tsx` wraps the route as:
+    - `<Route path="/compete" element={<MainLayout />}><Route index element={<Compete />} /></Route>`
+
+- __Mobile layout: Join then Host__
+  - Page: `src/pages/PlayWithFriends.tsx`.
+  - Behavior: On mobile (md-), the page shows two stacked cards in this order: `Join Game` then `Host Game`. On md+ the cards render side-by-side.
+  - Implementation: Removed the mobile tab toggle; both cards are always visible. No functional changes to the join/create handlers.
+
+- __Variants: SYNC and ASYNC__
+  - Lobby: `src/pages/Room.tsx` contains a UI toggle (`mode` state) to select between `'sync'` and `'async'`. The server emits a `start` event; the client starts the game with `startGame({ roomId, seed, timerSeconds, timerEnabled, competeVariant: mode })`.
+  - Routing (already present):
+    - SYNC: `/compete/sync/game/room/:roomId/...`
+    - ASYNC: `/compete/async/game/room/:roomId/...`
+  - Deterministic images: selection seeded by `uuidv5(roomCode:startedAt)` on server `start`; shared among all players (see `GameContext.startGame` and `utils/imageHistory.ts`).
+
+- __Leaderboards in SYNC only__
+  - Round leaderboard component: `src/components/scoreboard/RoundScoreboard.tsx`
+    - Data source: Supabase RPC `public.get_round_scoreboard(p_room_id text, p_round_number int)`
+    - Displays: player name, round `score`, `accuracy`, and `-XP` (penalty). Highlights current user.
+    - Rendered from `src/pages/RoundResultsPage.tsx` only when the URL starts with `/compete/sync/` and `roomId` is present.
+  - Final leaderboard component: `src/components/scoreboard/FinalScoreboard.tsx`
+    - Data source: Supabase RPC `public.get_final_scoreboard(p_room_id text)`
+    - Displays: `Net XP`, `Total XP`, `-XP`, and `Net Avg Accuracy` sorted by net XP.
+    - Rendered from `src/pages/FinalResultsPage.tsx` under the final score card when on `/compete/sync/...` and `roomId` exists.
+  - Schema & security: See migration `supabase/migrations/20250819_update_round_results_and_scoreboard_rpcs.sql` which:
+    - Ensures `round_results` has the necessary columns and policies.
+    - Adds both RPCs with SECURITY DEFINER; access is granted to `authenticated` and gated by `session_players` membership.
+
+__QA checklist__
+- /compete shows the top navbar.
+- On mobile, Join card is above Host card; both visible without toggles.
+- In a SYNC room, after each round, the round leaderboard renders on the Results page.
+- On the Final Results page for SYNC rooms, the final leaderboard renders below the final score card.
+- ASYNC rooms do not render leaderboards; existing behavior is unchanged.
+
 ### Level Up Mode — Routing, Start Logic, and Integration (2025-08-27, updated)
 
 - __Routing__

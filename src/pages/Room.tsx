@@ -6,11 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { X, Home, Copy, Users, ArrowLeft, Zap, Share2, Search, UserPlus, UserMinus, ExternalLink } from 'lucide-react';
+import { X, Copy, Users, Zap, Share2, Search, UserPlus, UserMinus, ExternalLink, ChevronDown, ChevronUp, Clock, MessageSquare } from 'lucide-react';
 import { partyUrl, LobbyServerMessage, LobbyClientMessage } from '@/lib/partyClient';
 import { useGame } from '@/contexts/GameContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { NavMenu } from '@/components/NavMenu';
 import { v5 as uuidv5 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -55,6 +54,9 @@ const Room: React.FC = () => {
   const [players, setPlayers] = useState<string[]>([]);
   const [roster, setRoster] = useState<RosterEntry[]>([]);
   const [chat, setChat] = useState<ChatItem[]>([]);
+  const [chatCollapsed, setChatCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem(`room:${roomCode}:chatCollapsed`) === '1'; } catch { return false; }
+  });
   const [input, setInput] = useState('');
   const [status, setStatus] = useState<'connecting' | 'open' | 'closed' | 'full'>('connecting');
   const [ownReady, setOwnReady] = useState(false);
@@ -112,6 +114,20 @@ const Room: React.FC = () => {
   }, [user?.id]);
 
   useEffect(() => { modeRef.current = mode; }, [mode]);
+  // Enforce timer enabled whenever switching to SYNC mode
+  useEffect(() => {
+    if (mode === 'sync' && !timerEnabledRef.current) {
+      setTimerEnabled(true);
+    }
+  }, [mode, setTimerEnabled]);
+
+  // Persist chat collapsed state per room
+  useEffect(() => {
+    try { localStorage.setItem(`room:${roomCode}:chatCollapsed`, chatCollapsed ? '1' : '0'); } catch {}
+  }, [chatCollapsed, roomCode]);
+  useEffect(() => {
+    try { setChatCollapsed(localStorage.getItem(`room:${roomCode}:chatCollapsed`) === '1'); } catch {}
+  }, [roomCode]);
 
   const cleanupSocket = () => {
     try {
@@ -212,8 +228,13 @@ const Room: React.FC = () => {
                   break;
                 }
               }
-              if (typeof data.timerEnabled === 'boolean' && data.timerEnabled !== timerEnabledRef.current) {
-                setTimerEnabled(data.timerEnabled);
+              if (typeof data.timerEnabled === 'boolean') {
+                // In SYNC mode, timer must always be enabled
+                if (modeRef.current === 'sync') {
+                  if (!timerEnabledRef.current) setTimerEnabled(true);
+                } else if (data.timerEnabled !== timerEnabledRef.current) {
+                  setTimerEnabled(data.timerEnabled);
+                }
               }
               if (typeof data.timerSeconds === 'number') {
                 // Clamp to UI range and step to prevent oscillation if server holds a wider range
@@ -489,6 +510,12 @@ const Room: React.FC = () => {
     if (!term) return friendsList;
     return friendsList.filter(f => (f.display_name || '').toLowerCase().includes(term));
   }, [friendsList, searchTerm]);
+  const extendedRoster = useMemo(() => {
+    const invitedExtras = invites
+      .filter((inv) => !roster.some((r) => (r.name || '').trim().toLowerCase() === (inv.display_name || '').trim().toLowerCase()))
+      .map((inv) => ({ id: `invite:${inv.id}`, name: inv.display_name, ready: false, host: false, _inviteId: inv.id } as any));
+    return [...roster, ...invitedExtras];
+  }, [invites, roster]);
 
   // Host sends current settings to server whenever they change (debounced by ref to avoid spam)
   useEffect(() => {
@@ -584,45 +611,10 @@ const Room: React.FC = () => {
   return (
     <div className="min-h-screen w-full bg-history-light dark:bg-black text-white">
       <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6 pb-24">
-        {/* Top bar */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1">
-            <Button
-              onClick={() => navigate(-1)}
-              variant="ghost"
-              className="px-2 text-neutral-300 hover:text-white"
-              aria-label="Back"
-              type="button"
-            >
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              Back
-            </Button>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              size="icon"
-              onClick={() => navigate('/home')}
-              className="h-9 w-9 rounded-full border-none text-black bg-[linear-gradient(90deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] hover:opacity-90"
-              aria-label="Go to Home"
-              type="button"
-            >
-              <Home className="h-4 w-4" />
-            </Button>
-            <NavMenu />
-            <Button
-              size="icon"
-              onClick={() => navigate('/compete')}
-              className="h-9 w-9 rounded-full bg-neutral-800 hover:bg-neutral-700"
-              aria-label="Leave lobby"
-              type="button"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+        {/* Top bar removed — MainLayout renders the standard navbar */}
 
         {/* Mode toggle */}
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-2">
           <div className="p-1 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 inline-flex items-center">
             <button
               type="button"
@@ -636,8 +628,14 @@ const Room: React.FC = () => {
               className={`px-5 py-1.5 rounded-full text-sm font-semibold ${mode === 'async' ? 'bg-black text-white' : 'text-black/70'}`}
               onClick={() => setMode('async')}
             >
-              ASYNC
+              <span className="inline-flex items-center gap-1"><Clock className="h-4 w-4" />ASYNC</span>
             </button>
+          </div>
+          <div className="text-xs text-neutral-300 text-center max-w-xl px-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 justify-center">
+              <div className="inline-flex items-center gap-1"><Zap className="h-3 w-3 text-emerald-300" /><span>Sync: everyone plays the same round at the same time; host sets the timer.</span></div>
+              <div className="inline-flex items-center gap-1"><Clock className="h-3 w-3 text-cyan-300" /><span>Async: play at your own pace; timer is optional.</span></div>
+            </div>
           </div>
         </div>
 
@@ -645,28 +643,31 @@ const Room: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left column */}
           <div className="space-y-6">
-            {/* Timer (Home page style) */}
+            {/* Timer (SYNC: always enabled; ASYNC: host can toggle) */}
             <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/50">
               <div className="flex items-center justify-center mb-2">
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="room-timer-toggle"
-                    checked={!!timerEnabled}
-                    onCheckedChange={(checked) => setTimerEnabled(!!checked)}
-                    disabled={!isHost}
+                    checked={mode === 'sync' ? true : !!timerEnabled}
+                    onCheckedChange={(checked) => {
+                      if (mode === 'sync') return; // cannot disable in SYNC
+                      setTimerEnabled(!!checked);
+                    }}
+                    disabled={!isHost || mode === 'sync'}
                     className="mr-3 data-[state=checked]:bg-gray-600 h-4 w-8"
                   />
                   <Label htmlFor="room-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm text-white">
                     <span>Round Timer</span>
                   </Label>
                 </div>
-                {timerEnabled && (
+                {(mode === 'sync' || timerEnabled) && (
                   <span className="text-sm font-bold text-orange-500 ml-4">
                     {formatTime(Number(roundTimerSec || 0))}
                   </span>
                 )}
               </div>
-              {timerEnabled && (
+              {(mode === 'sync' || timerEnabled) && (
                 <div className="relative mb-1 px-1">
                   <div className="pt-2">
                     <Slider
@@ -715,50 +716,7 @@ const Room: React.FC = () => {
               )}
             </div>
 
-            {/* Chat Panel */}
-            <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/50">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="font-semibold">Chat</h2>
-                <div className="text-xs text-neutral-400">{chat.length} message{chat.length === 1 ? '' : 's'}</div>
-              </div>
-              <div
-                ref={chatListRef}
-                className="h-64 overflow-y-auto rounded-lg bg-neutral-950/40 border border-neutral-800 px-3 py-2 divide-y divide-neutral-800/60"
-                aria-label="Chat messages"
-              >
-                {chat.length === 0 ? (
-                  <div className="text-sm text-neutral-400 py-2">No messages yet…</div>
-                ) : (
-                  chat.map((c) => (
-                    <div key={c.id} className="py-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium truncate max-w-[60%]">{c.from}</span>
-                        <span className="text-[10px] text-neutral-400">{formatChatTime(c.timestamp)}</span>
-                      </div>
-                      <div className="text-sm text-neutral-200 break-words whitespace-pre-wrap mt-0.5">{c.message}</div>
-                    </div>
-                  ))
-                )}
-              </div>
-              <div className="mt-3 flex items-center gap-2">
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      sendChat();
-                    }
-                  }}
-                  placeholder={status === 'open' ? 'Type a message…' : 'Connecting…'}
-                  className="bg-neutral-950 border-neutral-700 text-white"
-                  aria-label="Type a chat message"
-                />
-                <Button onClick={sendChat} disabled={!input.trim() || status !== 'open'} className="bg-neutral-800 hover:bg-neutral-700">
-                  Send
-                </Button>
-              </div>
-            </div>
+            {/* Chat moved below Players in right column */}
           </div>
 
           {/* Right column */}
@@ -821,14 +779,9 @@ const Room: React.FC = () => {
                 <h2 className="font-semibold">Players ({roster.length || players.length})</h2>
                 <div className="text-xs text-neutral-400">Room {roomCode} · Status: {status}</div>
               </div>
-              {(() => {
-                const invitedExtras = invites
-                  .filter((inv) => !roster.some((r) => (r.name || '').trim().toLowerCase() === (inv.display_name || '').trim().toLowerCase()))
-                  .map((inv) => ({ id: `invite:${inv.id}`, name: inv.display_name, ready: false, host: false, _inviteId: inv.id } as any));
-                const display = [...roster, ...invitedExtras];
-                return display.length > 0 ? (
+              {extendedRoster.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {display.map((r: any, i: number) => {
+                    {extendedRoster.map((r: any, i: number) => {
                       const isYou = r.id === ownId;
                       return (
                         <div key={`${r.name}-${i}`} className="rounded-lg bg-neutral-800/60 border border-neutral-700 px-3 py-3">
@@ -876,10 +829,68 @@ const Room: React.FC = () => {
                   </div>
                 ) : (
                   <div className="text-sm text-neutral-500">Waiting for players...</div>
-                );
-              })()}
+                )}
               {roster.length === 1 && (
                 <div className="mt-3 text-xs text-neutral-400">Share the invite link to bring friends into this room.</div>
+              )}
+            </div>
+            {/* Chat Panel (now always visible below Players) */}
+            <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/50">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-neutral-300" />
+                  <h2 className="font-semibold">Chat</h2>
+                  <div className="text-xs text-neutral-400">{chat.length} message{chat.length === 1 ? '' : 's'}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setChatCollapsed(v => !v)}
+                  className="text-neutral-300 hover:text-white"
+                  aria-label={chatCollapsed ? 'Expand chat' : 'Collapse chat'}
+                >
+                  {chatCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                </button>
+              </div>
+              {!chatCollapsed && (
+              <div
+                ref={chatListRef}
+                className="h-64 overflow-y-auto rounded-lg bg-neutral-950/40 border border-neutral-800 px-3 py-2 divide-y divide-neutral-800/60"
+                aria-label="Chat messages"
+              >
+                {chat.length === 0 ? (
+                  <div className="text-sm text-neutral-400 py-2">No messages yet…</div>
+                ) : (
+                  chat.map((c) => (
+                    <div key={c.id} className="py-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium truncate max-w-[60%]">{c.from}</span>
+                        <span className="text-[10px] text-neutral-400">{formatChatTime(c.timestamp)}</span>
+                      </div>
+                      <div className="text-sm text-neutral-200 break-words whitespace-pre-wrap mt-0.5">{c.message}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+              )}
+              {!chatCollapsed && (
+                <div className="mt-3 flex items-center gap-2">
+                  <Input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendChat();
+                      }
+                    }}
+                    placeholder={status === 'open' ? 'Type a message…' : 'Connecting…'}
+                    className="bg-neutral-950 border-neutral-700 text-white"
+                    aria-label="Type a chat message"
+                  />
+                  <Button onClick={sendChat} disabled={!input.trim() || status !== 'open'} className="bg-neutral-800 hover:bg-neutral-700">
+                    Send
+                  </Button>
+                </div>
               )}
             </div>
           </div>

@@ -719,6 +719,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   // Start a Level Up game for a given level (1..100) using year constraints and timer from levelUpConfig
   const startLevelUpGame = useCallback(async (level: number, settings?: { roomId?: string; seed?: string }) => {
     devLog(`[GameContext] Starting Level Up game for level ${level}...`);
+    // Apply Level Up theming immediately so preparation overlay uses pink accents
+    try { document.body.classList.add('mode-levelup'); } catch {}
     clearSavedGameState();
     setIsLoading(true);
     setError(null);

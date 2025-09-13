@@ -237,41 +237,9 @@ const FinalResultsPage = () => {
             }
 
             if (passed) {
-              // Determine current game level from games table (default 1 if missing)
-              let currentLevel = 1;
-              try {
-                const sb2: any = supabase;
-                const { data: gameRow, error: gameErr } = await sb2
-                  .from('games')
-                  .select('level')
-                  .eq('id', gameId)
-                  .maybeSingle();
-                if (gameErr) {
-                  console.warn('[LevelUp] games level fetch error', gameErr);
-                } else if (gameRow && typeof gameRow.level === 'number') {
-                  currentLevel = gameRow.level;
-                }
-              } catch (e) {
-                console.warn('[LevelUp] exception fetching game level', e);
-              }
-
+              // Use the current level from the URL path as the source of truth
+              const currentLevel = (typeof currentLevelFromPath === 'number' ? currentLevelFromPath : 1);
               const newLevel = currentLevel + 1;
-
-              // Update games.level
-              try {
-                const sb3: any = supabase;
-                const { error: gameUpdateErr } = await sb3
-                  .from('games')
-                  .update({ level: newLevel })
-                  .eq('id', gameId);
-                if (gameUpdateErr) {
-                  console.warn('[LevelUp] update games.level error', gameUpdateErr);
-                } else if (import.meta.env.DEV) {
-                  console.log('[LevelUp] games.level updated to', newLevel);
-                }
-              } catch (e) {
-                console.warn('[LevelUp] exception updating games.level', e);
-              }
 
               // Update profiles.level_up_best_level if improved
               const bestLevel = typeof profile?.level_up_best_level === 'number' ? profile.level_up_best_level : 0;
@@ -288,7 +256,7 @@ const FinalResultsPage = () => {
                     console.log('[LevelUp] profiles.level_up_best_level updated to', newLevel);
                   }
                   try {
-                    // Notify listeners (e.g., MainNavbar) that profile changed
+                    // Notify listeners (e.g., MainNavbar/HomePage) that profile changed
                     window.dispatchEvent(new Event('profileUpdated'));
                   } catch {}
                 } catch (e) {

@@ -351,7 +351,7 @@
   - Auto-advance: In addition to the button, a guarded `useEffect` auto-starts the next level after a short delay when pass criteria are met. This calls `resetGame()` and `startLevelUpGame(currentLevel+1)`.
   - Resilient guard (2025-09-11): Both the auto-advance effect and the footer “Continue to Level {n}” button call a shared `startNextLevel()` helper which uses an in-flight ref guard (`isContinuingRef`). The guard prevents duplicate starts while a start is in progress and is always released in `finally` so a failed auto-advance does not leave the button unresponsive. Legacy `autoAdvanceStartedRef` was removed.
 
-#### Level Up — Pass/Fail Evaluation and Persistence (2025-09-01, updated 2025-09-04)
+#### Level Up — Pass/Fail Evaluation and Persistence (2025-09-01, updated 2025-09-13)
 
 - __Source__: `src/pages/FinalResultsPage.tsx`
 - __Computation__
@@ -364,9 +364,10 @@
   - Best time or location accuracy ≥ `requiredRoundAccuracy` after penalties.
   - Defaults at L1 remain 50% overall and 70% best-axis; these scale toward 100% by L100 as defined by tuneables.
 - __Persistence on pass__ (non-guest users only)
-  - Reads current `games.level` for the finished `gameId` (defaults to `1` if missing) and updates to `currentLevel + 1`.
-  - Updates `profiles.level_up_best_level` if the new level exceeds the previous best.
-  - Operations are guarded with dev logs (only in `import.meta.env.DEV`) and try/catch blocks; warnings are printed on failures but do not block the results UI.
+  - Derives the current level from the URL via `currentLevelFromPath` on `src/pages/FinalResultsPage.tsx`.
+  - Computes `newLevel = currentLevel + 1` and updates `profiles.level_up_best_level` if the new level exceeds the previous best.
+  - Emits `window.dispatchEvent(new Event('profileUpdated'))` on success so `HomePage` (and navbar) refresh the Level badge immediately.
+  - There is no dependency on `games.level` for progression anymore.
 - __Notes__
   - UI components (`LevelResultBanner`, `LevelRequirementCard`) and the pass/fail logic both read the same dynamic thresholds. The `LevelRequirementCard` target labels display `> {requiredOverallAccuracy}%` and `> {requiredRoundAccuracy}%` for clarity. Logic runs once per game after submission guard (`submittedGameIdRef`).
   - Guests are skipped for persistence.

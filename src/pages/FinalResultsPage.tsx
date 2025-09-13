@@ -48,6 +48,8 @@ const FinalResultsPage = () => {
   const submittedGameIdRef = useRef<string | null>(null);
   const provisionalAppliedRef = useRef<boolean>(false);
   const awardsSubmittedRef = useRef<boolean>(false);
+  // In-flight guard for starting the next level; resets on failure so user can retry
+  const isContinuingRef = useRef<boolean>(false);
   
   // Apply Level Up theming via body class when under /level/ routes
   useEffect(() => {
@@ -440,11 +442,25 @@ const FinalResultsPage = () => {
     navigate("/home");
   };
 
-  const handleContinueNextLevel = async () => {
+  // Shared helper to start the next Level Up game. Uses an in-flight guard and resets on failure.
+  const startNextLevel = React.useCallback(async () => {
+    if (isContinuingRef.current) return;
+    isContinuingRef.current = true;
     try {
       resetGame();
       const nextLevel = (typeof currentLevelFromPath === 'number' ? currentLevelFromPath + 1 : 2);
       await startLevelUpGame(nextLevel);
+    } catch (e) {
+      console.warn('[LevelUp] startNextLevel failed', e);
+    } finally {
+      // Always release the guard so user can retry via the button if something failed
+      isContinuingRef.current = false;
+    }
+  }, [currentLevelFromPath, resetGame, startLevelUpGame]);
+
+  const handleContinueNextLevel = async () => {
+    try {
+      await startNextLevel();
     } catch (error) {
       console.error('Error in handleContinueNextLevel:', error);
       navigate('/home');
@@ -484,43 +500,11 @@ const FinalResultsPage = () => {
     }
   };
 
-  if (isContextLoading) {
-    return (
-      <div className="min-h-screen bg-history-light dark:bg-history-dark p-8 flex items-center justify-center">
-        <div className="text-center">
-          <Loader className="h-12 w-12 animate-spin text-history-primary mx-auto mb-4" />
-          <p className="text-lg">Loading final results...</p>
-        </div>
-      </div>
-    );
-  }
+  // Note: Do not early-return before all hooks above have run; render guards are handled below in JSX
 
-  if (contextError) {
-    return (
-      <div className="min-h-screen bg-history-light dark:bg-history-dark p-8 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-500 text-5xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold mb-4">Error Loading Results</h2>
-          <p className="mb-6">{contextError}</p>
-          <Button onClick={() => navigate("/")} className="bg-history-primary hover:bg-history-primary/90 text-white">Return to Home</Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!images || images.length === 0) {
-    return (
-      <div className="min-h-screen bg-history-light dark:bg-history-dark p-8 flex items-center justify-center">
-        <div className="text-center">
-          <p className="mb-4">No game data found for this session.</p>
-          <Button onClick={handlePlayAgain}>Start New Game</Button>
-        </div>
-      </div>
-    );
-  }
-
+  const safeImages = Array.isArray(images) ? images : [];
   const roundScores = roundResults.map((result, index) => {
-    const img = images[index];
+    const img = safeImages[index];
     if (!result || !img) return { roundXP: 0, roundPercent: 0 };
     const locationXP = calculateLocationAccuracy(result.distanceKm || 0);
     const timeXP = calculateTimeAccuracy(result.guessYear || 0, img.year || 0);
@@ -532,7 +516,7 @@ const FinalResultsPage = () => {
   const { finalXP, finalPercent } = calculateFinalScore(roundScores);
   
   const totalWhenXP = roundResults.reduce((sum, result, index) => {
-    const img = images[index];
+    const img = safeImages[index];
     return sum + (result && img ? calculateTimeAccuracy(result.guessYear || 0, img.year || 0) : 0);
   }, 0);
   const totalWhereXP = roundResults.reduce((sum, result) => {
@@ -540,7 +524,7 @@ const FinalResultsPage = () => {
   }, 0);
 
   // Compute net values using aggregated debts (from DB)
-  const perRoundDerived = images.map((img, idx) => {
+  const perRoundDerived = safeImages.map((img, idx) => {
     const result = roundResults[idx];
     if (!img || !result) return { netPercent: 0, timeNet: 0, locNet: 0 };
     const timeAcc = calculateTimeAccuracy(result.guessYear || 0, img.year || 0);
@@ -574,7 +558,7 @@ const FinalResultsPage = () => {
     let kmSum = 0;
     let count = 0;
     roundResults.forEach((r, idx) => {
-      const img = images[idx];
+      const img = safeImages[idx];
       if (!r || !img) return;
       if (typeof r.guessYear === 'number' && typeof img.year === 'number') {
         yearDiffSum += Math.abs(r.guessYear - img.year);
@@ -587,6 +571,16 @@ const FinalResultsPage = () => {
       avgKmAway: count ? Math.round((kmSum / count) * 10) / 10 : 0,
     };
   })();
+
+  // Auto-advance to next Level Up game when pass criteria are met
+  useEffect(() => {
+    if (!isLevelUp) return;
+    if (!passed) return;
+    const t = setTimeout(() => {
+      startNextLevel();
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [isLevelUp, passed, startNextLevel]);
 
   return (
     <div className="min-h-screen bg-history-light dark:bg-history-dark flex flex-col">
@@ -608,148 +602,175 @@ const FinalResultsPage = () => {
         </div>
       </nav>
 
-      <main className="flex-grow p-4 sm:p-6 md:p-8 pb-36">
-        <div className="max-w-4xl mx-auto w-full">
-          {isLevelUp && (
-            <div className="space-y-3 mb-6">
-              <LevelResultBanner passed={passed} unlockedLevel={passed ? ((typeof currentLevelFromPath === 'number' ? currentLevelFromPath + 1 : 2)) : undefined} />
-              <LevelRequirementCard
-                title="Overall net accuracy"
-                met={overallPass}
-                valuePercent={finalPercentNet}
-                targetLabel={`Target > ${overallTarget}%`}
-                icon={<Target className="h-5 w-5" />}
-              />
-              <LevelRequirementCard
-                title="Best accuracy"
-                met={axisPass}
-                valuePercent={bestAxisNetAfterPenalties}
-                targetLabel={`Target > ${axisTarget}%`}
-                icon={<Zap className="h-5 w-5" />}
-              />
-            </div>
-          )}
-          <div className="max-w-md mx-auto bg-[#333333] rounded-lg p-6 text-white mb-8 sm:mb-12">
-            <h1 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4 text-center">FINAL SCORE</h1>
-            <div className="flex justify-center items-center gap-4 mt-2">
-              <Badge variant="accuracy" className="text-lg flex items-center gap-1" aria-label={`Accuracy: ${totalPercentage}%`}>
-                <Target className="h-4 w-4" />
-                <span>{totalPercentage}%</span>
-              </Badge>
-              <Badge variant="xp" className="text-lg flex items-center gap-1" aria-label={`XP: ${totalScore}`}>
-                <Zap className="h-4 w-4" />
-                <span>{totalScore}</span>
-              </Badge>
-            </div>
-
-            {/* Accuracy progress bars */}
-            <div className="mt-4 space-y-3" role="group" aria-label="Accuracy breakdown">
-              <div>
-                <div className="text-sm text-gray-300 mb-1 flex items-center justify-between">
-                  <span>Time Accuracy</span>
-                  <span>{formatInteger(totalWhenAccuracy)}%</span>
-                </div>
-                <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-orange-500"
-                    style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhenAccuracy)))}%` }}
-                    aria-label={`Time accuracy ${formatInteger(totalWhenAccuracy)}%`}
+      {isContextLoading ? (
+        <div className="min-h-[60vh] flex items-center justify-center p-8">
+          <div className="text-center">
+            <Loader className="h-12 w-12 animate-spin text-history-primary mx-auto mb-4" />
+            <p className="text-lg">Loading final results...</p>
+          </div>
+        </div>
+      ) : contextError ? (
+        <div className="min-h-[60vh] flex items-center justify-center p-8">
+          <div className="text-center">
+            <div className="text-red-500 text-5xl mb-4">⚠️</div>
+            <h2 className="text-2xl font-bold mb-4">Error Loading Results</h2>
+            <p className="mb-6">{contextError}</p>
+            <Button onClick={() => navigate("/")} className="bg-history-primary hover:bg-history-primary/90 text-white">Return to Home</Button>
+          </div>
+        </div>
+      ) : (!images || images.length === 0) ? (
+        <div className="min-h-[60vh] flex items-center justify-center p-8">
+          <div className="text-center">
+            <p className="mb-4">No game data found for this session.</p>
+            <Button onClick={handlePlayAgain}>Start New Game</Button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <main className="flex-grow p-4 sm:p-6 md:p-8 pb-36">
+            <div className="max-w-4xl mx-auto w-full">
+              {isLevelUp && (
+                <div className="space-y-3 mb-6">
+                  <LevelResultBanner passed={passed} unlockedLevel={passed ? ((typeof currentLevelFromPath === 'number' ? currentLevelFromPath + 1 : 2)) : undefined} />
+                  <LevelRequirementCard
+                    title="Overall net accuracy"
+                    met={overallPass}
+                    valuePercent={finalPercentNet}
+                    targetLabel={`Target > ${overallTarget}%`}
+                    icon={<Target className="h-5 w-5" />}
+                  />
+                  <LevelRequirementCard
+                    title="Best accuracy"
+                    met={axisPass}
+                    valuePercent={bestAxisNetAfterPenalties}
+                    targetLabel={`Target > ${axisTarget}%`}
+                    icon={<Zap className="h-5 w-5" />}
                   />
                 </div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-300 mb-1 flex items-center justify-between">
-                  <span>Location Accuracy</span>
-                  <span>{formatInteger(totalWhereAccuracy)}%</span>
+              )}
+              <div className="max-w-md mx-auto bg-[#333333] rounded-lg p-6 text-white mb-8 sm:mb-12">
+                <h1 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4 text-center">FINAL SCORE</h1>
+                <div className="flex justify-center items-center gap-4 mt-2">
+                  <Badge variant="accuracy" className="text-lg flex items-center gap-1" aria-label={`Accuracy: ${totalPercentage}%`}>
+                    <Target className="h-4 w-4" />
+                    <span>{totalPercentage}%</span>
+                  </Badge>
+                  <Badge variant="xp" className="text-lg flex items-center gap-1" aria-label={`XP: ${totalScore}`}>
+                    <Zap className="h-4 w-4" />
+                    <span>{totalScore}</span>
+                  </Badge>
                 </div>
-                <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-orange-500"
-                    style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhereAccuracy)))}%` }}
-                    aria-label={`Location accuracy ${formatInteger(totalWhereAccuracy)}%`}
-                  />
-                </div>
-              </div>
-            </div>
 
-            {/* Detailed metrics */}
-            <div className="mt-6 grid grid-cols-2 gap-3 text-sm">
-              <div className="bg-[#2b2b2b] rounded-md p-3">
-                <div className="text-gray-300">Avg Years Off</div>
-                <div className="font-semibold">{formatInteger(avgYearsOff)}</div>
-              </div>
-              <div className="bg-[#2b2b2b] rounded-md p-3">
-                <div className="text-gray-300">Avg Km Away</div>
-                <div className="font-semibold">{avgKmAway}</div>
-              </div>
-              <div className="bg-[#2b2b2b] rounded-md p-3 col-span-2 grid grid-cols-2 gap-3">
-                <div>
-                  <div className="text-gray-300">Hints Used</div>
-                  <div className="font-semibold">{totalHintsUsed}</div>
-                </div>
-                <div>
-                  <div className="text-gray-300">Hint Penalties</div>
-                  <div className="font-semibold text-red-400">
-                    {totalAccDebtPercent > 0 && <span>-{totalAccDebtPercent}%</span>}
-                    <span className={totalAccDebtPercent > 0 ? "ml-2" : ""}>-{formatInteger(totalXpDebtState || 0)} XP</span>
+                {/* Accuracy progress bars */}
+                <div className="mt-4 space-y-3" role="group" aria-label="Accuracy breakdown">
+                  <div>
+                    <div className="text-sm text-gray-300 mb-1 flex items-center justify-between">
+                      <span>Time Accuracy</span>
+                      <span>{formatInteger(totalWhenAccuracy)}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-orange-500"
+                        style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhenAccuracy)))}%` }}
+                        aria-label={`Time accuracy ${formatInteger(totalWhenAccuracy)}%`}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-300 mb-1 flex items-center justify-between">
+                      <span>Location Accuracy</span>
+                      <span>{formatInteger(totalWhereAccuracy)}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-orange-500"
+                        style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhereAccuracy)))}%` }}
+                        aria-label={`Location accuracy ${formatInteger(totalWhereAccuracy)}%`}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Share Results button under score card */}
-            <div className="mt-6 flex justify-center">
-              <Button onClick={handleShare} className="gap-2 bg-white text-black hover:bg-gray-100">
-                <Share2 className="h-5 w-5" />
-                Share Results
-              </Button>
-            </div>
-          </div>
-
-          {/* GAME SUMMARY removed per new design; metrics are now in the final score card */}
-
-          <h2 className="text-lg font-bold text-history-primary dark:text-history-light mb-4 pl-4">BREAKDOWN</h2>
-
-          <section className="grid gap-6 mb-8">
-            {images.map((image, index) => {
-              const result = roundResults?.[index];
-              if (!result) return null;
-              return (
-                <div key={image.id} className="bg-[#333333] rounded-lg p-2">
-                  <RoundResultCard image={image} result={result} index={index} />
+                {/* Detailed metrics */}
+                <div className="mt-6 grid grid-cols-2 gap-3 text-sm">
+                  <div className="bg-[#2b2b2b] rounded-md p-3">
+                    <div className="text-gray-300">Avg Years Off</div>
+                    <div className="font-semibold">{formatInteger(avgYearsOff)}</div>
+                  </div>
+                  <div className="bg-[#2b2b2b] rounded-md p-3">
+                    <div className="text-gray-300">Avg Km Away</div>
+                    <div className="font-semibold">{avgKmAway}</div>
+                  </div>
+                  <div className="bg-[#2b2b2b] rounded-md p-3 col-span-2 grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="text-gray-300">Hints Used</div>
+                      <div className="font-semibold">{totalHintsUsed}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-300">Hint Penalties</div>
+                      <div className="font-semibold text-red-400">
+                        {totalAccDebtPercent > 0 && <span>-{totalAccDebtPercent}%</span>}
+                        <span className={totalAccDebtPercent > 0 ? "ml-2" : ""}>-{formatInteger(totalXpDebtState || 0)} XP</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              );
-            })}
-          </section>
-        </div>
-      </main>
 
-      {/* Badge unlock popup (game-level) */}
-      <BadgeEarnedPopup badge={activeBadge} onClose={handleBadgePopupClose} />
+                {/* Share Results button under score card */}
+                <div className="mt-6 flex justify-center">
+                  <Button onClick={handleShare} className="gap-2 bg-white text-black hover:bg-gray-100">
+                    <Share2 className="h-5 w-5" />
+                    Share Results
+                  </Button>
+                </div>
+              </div>
 
-      <footer className="fixed bottom-0 left-0 w-full z-50 bg-black shadow-[0_-2px_12px_rgba(0,0,0,0.5)] px-4 py-3 flex justify-center items-center border-t border-gray-800">
-        <div className="w-full max-w-md flex items-center justify-between gap-4">
-          <Button
-            onClick={handleHome}
-            variant="outline"
-            aria-label="Home"
-            className="rounded-md p-6 bg-white text-black hover:bg-gray-100"
-          >
-            <Home className="h-5 w-5" />
-          </Button>
-          {isLevelUp && passed ? (
-            <Button onClick={handleContinueNextLevel} className="flex-1 rounded-md bg-orange-500 text-white hover:bg-orange-600 gap-2 py-6 text-base" size="lg">
-              <RefreshCw className="h-5 w-5" />
-              {`Continue to Level ${typeof currentLevelFromPath === 'number' ? currentLevelFromPath + 1 : 2}`}
-            </Button>
-          ) : (
-            <Button onClick={handlePlayAgain} className="flex-1 rounded-md bg-orange-500 text-white hover:bg-orange-600 gap-2 py-6 text-base" size="lg">
-              <RefreshCw className="h-5 w-5" />
-              Play Again
-            </Button>
-          )}
-        </div>
-      </footer>
+              {/* GAME SUMMARY removed per new design; metrics are now in the final score card */}
+
+              <h2 className="text-lg font-bold text-history-primary dark:text-history-light mb-4 pl-4">BREAKDOWN</h2>
+
+              <section className="grid gap-6 mb-8">
+                {images.map((image, index) => {
+                  const result = roundResults?.[index];
+                  if (!result) return null;
+                  return (
+                    <div key={image.id} className="bg-[#333333] rounded-lg p-2">
+                      <RoundResultCard image={image} result={result} index={index} />
+                    </div>
+                  );
+                })}
+              </section>
+            </div>
+          </main>
+
+          {/* Badge unlock popup (game-level) */}
+          <BadgeEarnedPopup badge={activeBadge} onClose={handleBadgePopupClose} />
+
+          <footer className="fixed bottom-0 left-0 w-full z-50 bg-black shadow-[0_-2px_12px_rgba(0,0,0,0.5)] px-4 py-3 flex justify-center items-center border-t border-gray-800">
+            <div className="w-full max-w-md flex items-center justify-between gap-4">
+              <Button
+                onClick={handleHome}
+                variant="outline"
+                aria-label="Home"
+                className="rounded-md p-6 bg-white text-black hover:bg-gray-100"
+              >
+                <Home className="h-5 w-5" />
+              </Button>
+              {isLevelUp && passed ? (
+                <Button onClick={handleContinueNextLevel} className="flex-1 rounded-md bg-orange-500 text-white hover:bg-orange-600 gap-2 py-6 text-base" size="lg">
+                  <RefreshCw className="h-5 w-5" />
+                  {`Continue to Level ${typeof currentLevelFromPath === 'number' ? currentLevelFromPath + 1 : 2}`}
+                </Button>
+              ) : (
+                <Button onClick={handlePlayAgain} className="flex-1 rounded-md bg-orange-500 text-white hover:bg-orange-600 gap-2 py-6 text-base" size="lg">
+                  <RefreshCw className="h-5 w-5" />
+                  Play Again
+                </Button>
+              )}
+            </div>
+          </footer>
+        </>
+      )}
     </div>
   );
 };

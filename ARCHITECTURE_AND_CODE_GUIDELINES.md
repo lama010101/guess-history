@@ -30,6 +30,7 @@
   - The Level Up card shows a small badge in the top-right corner of the image with the current level: `Lv {profile.level_up_best_level || 1}`.
   - Starting Level Up uses `startLevelUpGame(bestLevel)` where `bestLevel` is `profiles.level_up_best_level` (defaults to 1 for new users).
   - `profiles.level_up_best_level` is updated on passing a level in `src/pages/FinalResultsPage.tsx` and a `profileUpdated` event is dispatched for immediate UI refresh in the navbar and profile page.
+  - Home listens for `profileUpdated` and refetches the profile to update the Level badge immediately (no manual reload required).
 # Guess History Multiplayer Architecture
 
 ## Canonical Architecture Overview (2025-08-17)
@@ -312,6 +313,8 @@
   - On pass (Level Up only): the primary button reads `Continue to Level {n}` and calls `startLevelUpGame(n)`.
   - Otherwise: retains `Play Again` behavior.
   - The `Home` button becomes icon-only (house icon) with the same border radius as the primary button for consistency across modes.
+  - Auto-advance: In addition to the button, a guarded `useEffect` auto-starts the next level after a short delay when pass criteria are met. This calls `resetGame()` and `startLevelUpGame(currentLevel+1)`.
+  - Resilient guard (2025-09-11): Both the auto-advance effect and the footer “Continue to Level {n}” button call a shared `startNextLevel()` helper which uses an in-flight ref guard (`isContinuingRef`). The guard prevents duplicate starts while a start is in progress and is always released in `finally` so a failed auto-advance does not leave the button unresponsive. Legacy `autoAdvanceStartedRef` was removed.
 
 #### Level Up — Pass/Fail Evaluation and Persistence (2025-09-01, updated 2025-09-04)
 

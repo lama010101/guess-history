@@ -111,6 +111,18 @@ const HomePage = () => {
     loadUserData();
   }, [user, isGuest]);
 
+  // Refresh profile when other parts of the app update it (e.g., Level Up best level after passing)
+  useEffect(() => {
+    const onProfileUpdated = () => {
+      if (!user) return;
+      fetchUserProfile(user.id)
+        .then(setProfile)
+        .catch((e) => console.warn('[HomePage] profile refresh failed', e));
+    };
+    window.addEventListener('profileUpdated', onProfileUpdated);
+    return () => window.removeEventListener('profileUpdated', onProfileUpdated);
+  }, [user]);
+
   const handleSettingsUpdated = () => {
     if (user) {
       fetchUserSettings(user.id).then(setUserSettings);

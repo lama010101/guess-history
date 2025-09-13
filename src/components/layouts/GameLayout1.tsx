@@ -423,7 +423,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                 </div>
               </div>
               <div className="flex-1 flex items-center justify-center">
-                <div className="w-full max-w-2xl mx-auto">
+                <div className="w-full">
                   <YearSelector 
                     selectedYear={yearInteracted ? selectedYear : null}
                     onChange={(y) => { 

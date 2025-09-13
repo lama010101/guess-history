@@ -2,8 +2,17 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://jghesmrwhegaotbztrhr.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnaGVzbXJ3aGVnYW90Ynp0cmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ0MzAwMDEsImV4cCI6MjA2MDAwNjAwMX0.C-zSGAiZAIbvKh9vNb2_s3DHogSzSKImLkRbjr_h5xI";
+// Prefer environment-driven configuration. Fall back to literals for local dev.
+const FALLBACK_URL = "https://jghesmrwhegaotbztrhr.supabase.co";
+const FALLBACK_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnaGVzbXJ3aGVnYW90Ynp0cmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ0MzAwMDEsImV4cCI6MjA2MDAwNjAwMX0.C-zSGAiZAIbvKh9vNb2_s3DHogSzSKImLkRbjr_h5xI";
+
+const SUPABASE_URL = (import.meta as any)?.env?.VITE_SUPABASE_URL || FALLBACK_URL;
+const SUPABASE_PUBLISHABLE_KEY = (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY || FALLBACK_KEY;
+
+if (((import.meta as any)?.env?.VITE_SUPABASE_URL == null || (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY == null) && (import.meta as any)?.env?.DEV) {
+  // eslint-disable-next-line no-console
+  console.warn('[Supabase] Using fallback URL/key from source. Define VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local for your project.');
+}
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";

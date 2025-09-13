@@ -125,10 +125,18 @@ async function applyMigrations() {
   log(`Connecting to the database... (${maskUrl(dbUrl)})`);
   let sql: ReturnType<typeof postgres> | null = null;
   let httpFallback: null | { url: string; key: string } = null;
+  let host: string | undefined;
+  let ip: string | undefined;
   try {
-    const { host, ip } = await preflightDns(dbUrl);
+    try {
+      const pre = await preflightDns(dbUrl);
+      host = pre.host; ip = pre.ip;
+    } catch (e) {
+      log('⚠️ DNS preflight failed; attempting direct DB connection without pre-resolved IP...');
+    }
     // retry connecting a few times in case of transient DNS/TLS hiccups
     const maxConnectAttempts = 3;
+    let connected = false;
     for (let attempt = 1; attempt <= maxConnectAttempts; attempt++) {
       try {
         if (!ip) {
@@ -148,22 +156,25 @@ async function applyMigrations() {
             username: user,
             password,
             max: 1,
-            ssl: { rejectUnauthorized: true, servername: host },
+            ssl: { rejectUnauthorized: true, servername: host! },
           } as any);
         }
         // Test a simple round-trip
         await sql`select 1 as ok`;
+        connected = true;
         break;
       } catch (e: any) {
         errorLog(`Connection attempt ${attempt}/${maxConnectAttempts} failed: ${e?.code ?? e?.message ?? e}`);
-        if (attempt === maxConnectAttempts) {
-          throw e;
+        if (attempt < maxConnectAttempts) {
+          await sleep(800 * attempt);
         }
-        await sleep(800 * attempt);
       }
     }
+    if (!connected) {
+      throw new Error('All direct DB connection attempts failed');
+    }
   } catch (e) {
-    // Hard failure: prepare HTTP fallback via Supabase Postgres API
+    // Prepare HTTP fallback via Supabase Postgres API only if direct connect truly failed
     const supabaseUrl = process.env.SUPABASE_URL?.trim();
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
     if (!supabaseUrl || !serviceKey) {

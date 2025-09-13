@@ -188,8 +188,8 @@ export default function PreparationOverlay() {
                   className={
                     'h-2 flex-1 rounded-sm transition-colors duration-300 ' +
                     ((preparedLoadedIndices && preparedImages)
-                      ? (hasLoaded(preparedLoadedIndices as any, i) ? 'bg-orange-500' : 'bg-zinc-300 dark:bg-zinc-700')
-                      : (i < filledSegments ? 'bg-orange-500' : 'bg-zinc-300 dark:bg-zinc-700'))
+                      ? (hasLoaded(preparedLoadedIndices as any, i) ? 'bg-pink-500' : 'bg-zinc-300 dark:bg-zinc-700')
+                      : (i < filledSegments ? 'bg-pink-500' : 'bg-zinc-300 dark:bg-zinc-700'))
                   }
                 />
               ))}

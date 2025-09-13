@@ -23,6 +23,41 @@
     - Avatar button opens the menu.
   - The navbar listens for `window` events `avatarUpdated`, `usernameUpdated`, and `profileUpdated` to refresh avatar and level badge.
 
+### Preparation Overlay — Cancel Behavior (2025-09-13)
+
+- Components/Files:
+  - `src/components/game/PreparationOverlay.tsx`
+  - `src/hooks/useGamePreparation.ts`
+  - `src/contexts/GameContext.tsx`
+- Behavior:
+  - Pressing `Cancel` during preparation now:
+    - Calls `abortPreparation()` to stop in-flight work.
+    - Calls `resetPreparation()` to immediately reset the state to `idle` so the overlay hides without waiting.
+    - Removes the `mode-levelup` body class as a safety measure.
+    - Redirects to `/home` via `useNavigate(..., { replace: true })`.
+  - `useGamePreparation` exposes a new `reset()` method to hard-reset local state.
+  - `GameContext` re-exports this as `resetPreparation` for consumers.
+
+### Settings — Distance Units & Map Label Language (2025-09-13)
+
+- Store: `src/lib/useSettingsStore.ts`
+  - Added fields `distanceUnit: 'km' | 'mi'` and `mapLabelLanguage: 'local' | 'en'` with setters `setDistanceUnit()` and `setMapLabelLanguage()`.
+  - `setFromUserSettings` hydrates these from Supabase `settings.value.distance_unit` and `settings.value.language`.
+  - `syncToSupabase(userId)` now persists `distance_unit` and `language` with existing settings.
+- UI: `src/components/profile/SettingsTab.tsx`
+  - Enabled a Distance Units radio group (Kilometers/Miles) bound to the store and saved via `updateUserSettings`.
+  - Added a Map Labels radio group (Local/English only). `Local` means we do not send any `Accept-Language` hint to upstream geocoding so native script is preferred; `English only` forces `Accept-Language: en`.
+- Hydration: `src/components/settings/GlobalSettingsModal.tsx` wires these fields so opening/saving settings updates the store immediately.
+- Distance formatting helper: `src/utils/format.ts`
+  - New helpers: `kmToMi(km)` and `formatDistanceFromKm(distanceKm, unit)` returning `{ value, unitLabel }` with integer rounding.
+- Consumers (runtime):
+  - `src/components/layouts/ResultsLayout2.tsx` — "Where" chip and peer popups use the unit preference.
+  - `src/components/RoundResultCard.tsx` — per-round collapsed details use the unit preference.
+  - `src/components/results/LocationAccuracyCard.tsx` — pill shows distance in preferred units.
+  - `src/lib/geo/nominatim.ts` — search suggests in English only when `language === 'en'`; otherwise omits the header/query so local/native labels come back.
+  - `src/components/HomeMap.tsx` — search and reverse geocoding honor the same `language` choice.
+
+
 ### Home — Level Up Card Level Badge & Start Level (2025-09-09)
 
 - Component: `src/pages/HomePage.tsx`

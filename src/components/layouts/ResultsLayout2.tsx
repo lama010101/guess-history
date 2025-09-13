@@ -8,7 +8,8 @@ import ResultsHeader from '@/components/results/ResultsHeader';
 import SourceModal from '@/components/modals/SourceModal';
 import HintDebtsCard from '@/components/results/HintDebtsCard';
 import { RoundResult as BaseRoundResult, XP_WHERE_MAX, XP_WHEN_MAX, HintDebt } from '@/utils/results/types';
-import { formatInteger } from '@/utils/format';
+import { formatInteger, formatDistanceFromKm } from '@/utils/format';
+import { useSettingsStore } from '@/lib/useSettingsStore';
 import { HINT_TYPE_NAMES } from '@/constants/hints';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -99,6 +100,8 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   peers = []
 }) => {
   const { user } = useAuth();
+  const distanceUnit = useSettingsStore(s => s.distanceUnit);
+  const mapLabelLanguage = useSettingsStore(s => s.mapLabelLanguage);
   const [earnedBadge, setEarnedBadge] = useState<BadgeType | null>(null);
   const [isSourceModalOpen, setSourceModalOpen] = useState(false);
   // Hooks must be called unconditionally before any early returns
@@ -343,7 +346,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                     ? 'No guess'
                     : (result.distanceKm === 0
                         ? <span className="text-green-600 dark:text-green-400 font-medium">Perfect!</span>
-                        : `${formatInteger(result.distanceKm)} km away`)}
+                        : (() => { const d = formatDistanceFromKm(result.distanceKm, distanceUnit); return `${d.value} ${d.unitLabel} away`; })())}
                 </Badge>
               </div>
               {/* badges moved below progress bar */}
@@ -360,8 +363,12 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   scrollWheelZoom={false}
                 >
                   <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    url={mapLabelLanguage === 'en' 
+                      ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+                      : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'}
+                    attribution={mapLabelLanguage === 'en'
+                      ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                      : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}
                   />
                   <ZoomControl position="topright" />
                   <FullscreenControl position="topright" />
@@ -409,7 +416,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                               <Popup>
                                 <div className="text-sm">
                                   <div className="font-semibold">{p.displayName || 'Peer'}</div>
-                                  {p.distanceKm != null && <div>{formatInteger(Math.round(p.distanceKm))} km away</div>}
+                                  {p.distanceKm != null && (() => { const d = formatDistanceFromKm(p.distanceKm, distanceUnit); return <div>{d.value} {d.unitLabel} away</div>; })()}
                                   {p.guessYear != null && <div>Year: {p.guessYear}</div>}
                                 </div>
                               </Popup>

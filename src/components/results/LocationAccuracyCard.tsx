@@ -1,6 +1,8 @@
 
 import React from 'react';
 import { MapPin } from "lucide-react";
+import { useSettingsStore } from '@/lib/useSettingsStore';
+import { formatDistanceFromKm } from '@/utils/format';
 import ComparisonMap from "@/components/map/ComparisonMap";
 
 interface LocationAccuracyCardProps {
@@ -14,6 +16,8 @@ const LocationAccuracyCard: React.FC<LocationAccuracyCardProps> = ({
   guessPosition, 
   actualPosition 
 }) => {
+  const distanceUnit = useSettingsStore(s => s.distanceUnit);
+  const d = formatDistanceFromKm(distanceKm, distanceUnit);
   return (
     <div className="bg-white dark:bg-gray-700 rounded-2xl shadow-lg overflow-hidden">
       <div className="p-4 border-b border-border flex justify-between items-center">
@@ -22,7 +26,7 @@ const LocationAccuracyCard: React.FC<LocationAccuracyCardProps> = ({
           Location Accuracy
         </h2>
         <div className="px-3 py-1 rounded-full bg-history-primary/10 text-history-primary dark:bg-history-primary/20 dark:text-history-light text-sm">
-          {Math.round(distanceKm)} km away
+          {d.value} {d.unitLabel} away
         </div>
       </div>
       

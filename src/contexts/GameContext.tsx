@@ -71,6 +71,7 @@ interface GameContextState {
   prepProgress: { loaded: number; total: number };
   prepError: string | null;
   abortPreparation: () => void;
+  resetPreparation: () => void;
   // New: expose prepared images and which indices are loaded for overlay previews
   preparedImages: PreparedImage[];
   preparedLoadedIndices: Set<number>;
@@ -151,6 +152,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   const {
     prepare,
     abort: abortPreparation,
+    reset: resetPreparation,
     status: prepStatus,
     error: prepError,
     progress: prepProgress,
@@ -1198,6 +1200,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     prepProgress,
     prepError,
     abortPreparation,
+    resetPreparation,
     preparedImages,
     preparedLoadedIndices,
   };

@@ -4,7 +4,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 
 import { Share2, Loader, Home, Target, Zap, RefreshCw } from "lucide-react";
 import { NavProfile } from "@/components/NavProfile";
-import { formatInteger } from '@/utils/format';
+import { formatInteger, kmToMi } from '@/utils/format';
+import { useSettingsStore } from '@/lib/useSettingsStore';
 import { updateUserMetrics } from '@/utils/profile/profileService';
 import { supabase } from '@/integrations/supabase/client';
 import RoundResultCard from '@/components/RoundResultCard';
@@ -28,6 +29,7 @@ import LevelRequirementCard from '@/components/levelup/LevelRequirementCard';
 import { getLevelUpConstraints } from '@/lib/levelUpConfig';
 
 const FinalResultsPage = () => {
+  const distanceUnit = useSettingsStore(s => s.distanceUnit);
   const navigate = useNavigate();
   const location = useLocation();
   const { 
@@ -553,7 +555,7 @@ const FinalResultsPage = () => {
   const totalWhereAccuracy = totalWhereXP > 0 ? (totalWhereXP / (roundResults.length * 100)) * 100 : 0;
   const totalHintsUsed = roundResults.reduce((sum, r) => sum + (r.hintsUsed || 0), 0);
   const totalAccDebtPercent = Object.values(accDebtByRound).reduce((sum, debt) => sum + debt, 0);
-  const { avgYearsOff, avgKmAway } = (() => {
+  const { avgYearsOff, avgDistanceValue, avgDistanceUnit } = (() => {
     let yearDiffSum = 0;
     let kmSum = 0;
     let count = 0;
@@ -566,9 +568,15 @@ const FinalResultsPage = () => {
       kmSum += Math.max(0, r.distanceKm || 0);
       count += 1;
     });
+    const avgKm = count ? (kmSum / count) : 0;
+    const unit = distanceUnit === 'mi' ? 'mi' : 'km';
+    const value = unit === 'mi' ? kmToMi(avgKm) : avgKm;
+    // Show 1 decimal for final score card
+    const rounded = Math.round(value * 10) / 10;
     return {
       avgYearsOff: count ? Math.round(yearDiffSum / count) : 0,
-      avgKmAway: count ? Math.round((kmSum / count) * 10) / 10 : 0,
+      avgDistanceValue: rounded,
+      avgDistanceUnit: unit as 'km' | 'mi',
     };
   })();
 
@@ -698,8 +706,8 @@ const FinalResultsPage = () => {
                     <div className="font-semibold">{formatInteger(avgYearsOff)}</div>
                   </div>
                   <div className="bg-[#2b2b2b] rounded-md p-3">
-                    <div className="text-gray-300">Avg Km Away</div>
-                    <div className="font-semibold">{avgKmAway}</div>
+                    <div className="text-gray-300">Avg {avgDistanceUnit.toUpperCase()} Away</div>
+                    <div className="font-semibold">{avgDistanceValue}</div>
                   </div>
                   <div className="bg-[#2b2b2b] rounded-md p-3 col-span-2 grid grid-cols-2 gap-3">
                     <div>

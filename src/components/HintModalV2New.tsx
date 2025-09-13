@@ -10,7 +10,9 @@ import { Badge } from '@/components/ui/badge';
 import { Clock, MapPin, X } from 'lucide-react';
 
 import { HINT_TYPE_NAMES, HINT_DEPENDENCIES, HINT_LEVEL_DESCRIPTIONS, HINT_TYPE_DESCRIPTIONS } from '@/constants/hints';
-import { formatInteger } from '@/utils/format';
+import { formatInteger, kmToMi } from '@/utils/format';
+import { useSettingsStore } from '@/lib/useSettingsStore';
+
 import { useGameConfig } from '@/config/gameConfig';
 
 interface Hint {
@@ -67,6 +69,7 @@ const HintButtonUI: React.FC<{
   const { xp: costXp, acc: penaltyAcc } = getHintCostAndPenalty(hint, hintsConfig);
   const label1 = HINT_TYPE_NAMES[hint.type] ??
     hint.type.replace(/^\d+_/, '').replace(/_/g, ' ').replace(/(when|where)/g, '').trim();
+  const distanceUnit = useSettingsStore(s => s.distanceUnit);
 
   const isPurchased = purchasedHintIds.includes(hint.id);
 
@@ -97,7 +100,12 @@ const HintButtonUI: React.FC<{
                 const isNum = /^\d+$/.test(raw);
                 const unit = isNum ? getNumericUnitFromType(hint.type) : null;
                 if (isNum && unit) {
-                  return `${formatInteger(parseInt(raw, 10))} ${unit}`;
+                  let v = parseInt(raw, 10);
+                  if (unit === 'km away' && distanceUnit === 'mi') {
+                    v = Math.round(kmToMi(v));
+                    return `${formatInteger(v)} mi away`;
+                  }
+                  return `${formatInteger(v)} ${unit}`;
                 }
                 return hint.text;
               })()}

@@ -130,7 +130,8 @@ export function useGamePreparation() {
       });
     } catch {}
 
-    const { data: rows, error: pickErr } = await supabase.rpc(
+    const sb: any = supabase;
+    const { data: rows, error: pickErr } = await sb.rpc(
       'create_game_session_and_pick_images',
       rpcArgs as any,
     );
@@ -314,9 +315,21 @@ export function useGamePreparation() {
     } catch {}
   }, []);
 
+  // Hard reset state so any consumers (e.g., global PreparationOverlay) can hide immediately
+  const reset = useCallback(() => {
+    abortRef.current = false;
+    setStatus('idle');
+    setError(null);
+    setLoaded(0);
+    setTotal(0);
+    setPrepared([]);
+    setLoadedIndices(new Set());
+  }, []);
+
   return {
     prepare,
     abort,
+    reset,
     status,
     error,
     progress: { loaded, total },

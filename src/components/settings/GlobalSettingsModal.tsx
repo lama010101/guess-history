@@ -34,6 +34,8 @@ const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClo
         sound_enabled: s?.sound_enabled,
         vibrate_enabled: s?.vibrate_enabled,
         gyroscope_enabled: s?.gyroscope_enabled,
+        distance_unit: s?.distance_unit,
+        language: s?.language,
       });
     } catch (e) {
       console.error('Failed to load settings', e);
@@ -63,6 +65,8 @@ const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClo
           sound_enabled: s?.sound_enabled,
           vibrate_enabled: s?.vibrate_enabled,
           gyroscope_enabled: s?.gyroscope_enabled,
+          distance_unit: s?.distance_unit,
+          language: s?.language,
         });
       } catch (e) {
         if (cancelled) return;
@@ -90,6 +94,8 @@ const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClo
           sound_enabled: s.sound_enabled,
           vibrate_enabled: s.vibrate_enabled,
           gyroscope_enabled: s.gyroscope_enabled,
+          distance_unit: s.distance_unit,
+          language: s.language,
         });
         toast({ title: 'Settings updated' });
       }

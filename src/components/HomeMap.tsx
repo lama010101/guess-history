@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Search, X } from 'lucide-react';
 
 import AvatarMarker from './map/AvatarMarker';
+import { useSettingsStore } from '@/lib/useSettingsStore';
 
 interface HomeMapProps {
   avatarUrl?: string;
@@ -76,6 +77,7 @@ const HomeMap: React.FC<HomeMapProps> = ({
 
   
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const mapLabelLanguage = useSettingsStore(s => s.mapLabelLanguage);
 
   // Sync external position from parent
   useEffect(() => {
@@ -115,8 +117,10 @@ const HomeMap: React.FC<HomeMapProps> = ({
     
     // Reverse geocode to get location name
     try {
+      const preferEnglish = mapLabelLanguage === 'en';
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${latlng.lat}&lon=${latlng.lng}&format=json`
+        `https://nominatim.openstreetmap.org/reverse?lat=${latlng.lat}&lon=${latlng.lng}&format=json${preferEnglish ? '&accept-language=en' : ''}`,
+        preferEnglish ? { headers: { 'Accept-Language': 'en' } } : undefined
       );
       const data = await response.json();
       
@@ -149,7 +153,8 @@ const HomeMap: React.FC<HomeMapProps> = ({
     const q = searchQuery.trim();
     if (!q) return;
     try {
-      const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5`);
+      const preferEnglish = mapLabelLanguage === 'en';
+      const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5${preferEnglish ? '&accept-language=en' : ''}`, preferEnglish ? { headers: { 'Accept-Language': 'en' } } : undefined);
       const results = await resp.json();
       setSearchResults(Array.isArray(results) ? results : []);
     } catch (e) {
@@ -255,8 +260,12 @@ const HomeMap: React.FC<HomeMapProps> = ({
           {/* Save map ref via hook component to avoid whenCreated typing issues */}
           <MapRefSaver onMap={setMapInstance} />
           <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url={mapLabelLanguage === 'en'
+              ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+              : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'}
+            attribution={mapLabelLanguage === 'en'
+              ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}
           />
           
           <MapClickHandler onMapClick={handleMapClick} />

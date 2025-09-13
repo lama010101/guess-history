@@ -13,6 +13,7 @@ export default function PreparationOverlay() {
     prepProgress,
     prepError,
     abortPreparation,
+    resetPreparation,
     startGame,
     roundTimerSec,
     hintsAllowed,
@@ -143,10 +144,13 @@ export default function PreparationOverlay() {
   }, [startGame, roundTimerSec, hintsAllowed, timerEnabled]);
 
   const handleCancel = useCallback(() => {
+    // Abort any in-flight work and immediately reset prep state so the overlay hides
     abortPreparation();
+    resetPreparation();
+    try { document.body.classList.remove('mode-levelup'); } catch {}
     // Navigate to a safe page
     navigate('/home', { replace: true });
-  }, [abortPreparation, navigate]);
+  }, [abortPreparation, resetPreparation, navigate]);
 
   const shouldShow = isError || isActive || holdVisible;
   if (!shouldShow) return null;

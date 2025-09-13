@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Badge } from "@/components/ui/badge";
 import LazyImage from '@/components/ui/LazyImage';
 import { MapPin, Calendar, Target, Zap } from "lucide-react";
-import { formatInteger } from '@/utils/format';
+import { formatInteger, formatDistanceFromKm } from '@/utils/format';
+import { useSettingsStore } from '@/lib/useSettingsStore';
 import { calculateLocationAccuracy, calculateTimeAccuracy } from "@/utils/gameCalculations";
 import { Image, RoundResult } from '../types';
 
@@ -13,6 +14,7 @@ interface RoundResultCardProps {
 }
 
 const RoundResultCard: React.FC<RoundResultCardProps> = ({ image, result, index }) => {
+  const distanceUnit = useSettingsStore(s => s.distanceUnit);
   const [isOpen, setIsOpen] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
 
@@ -70,7 +72,7 @@ const RoundResultCard: React.FC<RoundResultCardProps> = ({ image, result, index 
                   <div className="flex-1 p-3 rounded-lg bg-gray-100 dark:bg-[#2a2a2a]">
                     <h4 className="flex items-center mb-2 text-sm font-medium text-history-primary dark:text-history-light"><MapPin className="h-4 w-4 mr-1" />WHERE</h4>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">{result.distanceKm == null ? 'No guess' : (result.distanceKm === 0 ? <span className="text-green-600 dark:text-green-400 font-medium">Perfect!</span> : `${formatInteger(result.distanceKm)} km away`)}</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{result.distanceKm == null ? 'No guess' : (result.distanceKm === 0 ? <span className="text-green-600 dark:text-green-400 font-medium">Perfect!</span> : (() => { const d = formatDistanceFromKm(result.distanceKm, distanceUnit); return `${d.value} ${d.unitLabel} away`; })())}</span>
                       <div className="flex items-center gap-2">
                         <Badge variant="accuracy" className="text-xs">{formatInteger(calculateLocationAccuracy(result.distanceKm || 0))}%</Badge>
                         <Badge variant="xp" className="text-xs">{formatInteger(result.xpWhere ?? 0)} XP</Badge>

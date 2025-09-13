@@ -275,7 +275,7 @@ const HomePage = () => {
                 </div>
                 {/* Pegged Solo Timer Controls */}
                 <div className="w-[13.5rem] mt-3">
-                  <div className="flex items-center mb-2 justify-between">
+                  <div className="flex items-center mb-4 justify-between">
                     <div className="flex items-center space-x-2">
                       <Switch
                         id="solo-timer-toggle"

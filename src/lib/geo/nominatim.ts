@@ -1,4 +1,5 @@
 import { GeoHit } from './types';
+import { useSettingsStore } from '@/lib/useSettingsStore';
 
 // Token-bucket limiter: small initial burst with ~1 rps sustained
 const BUCKET_CAPACITY = 3; // allow short burst
@@ -38,21 +39,22 @@ export async function enqueueRateLimited<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 export async function fetchNominatim(query: string, signal?: AbortSignal): Promise<any[]> {
+  const langPref = useSettingsStore.getState().mapLabelLanguage; // 'en' | 'local'
   const url = new URL('https://nominatim.openstreetmap.org/search');
   url.searchParams.set('q', query);
   url.searchParams.set('format', 'jsonv2');
   url.searchParams.set('limit', '8');
   url.searchParams.set('addressdetails', '1');
-  url.searchParams.set('accept-language', 'en');
+  if (langPref === 'en') {
+    url.searchParams.set('accept-language', 'en');
+  }
 
   const resp = await enqueueRateLimited(async () => {
     const r = await fetch(url.toString(), {
       method: 'GET',
       // 'User-Agent' is a forbidden header in browsers; use query param and referrer.
       referrer: document.location.href,
-      headers: {
-        'Accept-Language': 'en',
-      },
+      headers: langPref === 'en' ? { 'Accept-Language': 'en' } : undefined,
       signal,
     });
     if (!r.ok) throw new Error(`Nominatim HTTP ${r.status}`);

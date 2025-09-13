@@ -2,7 +2,8 @@ import React from 'react';
 import { Zap } from 'lucide-react';
 import { HintDebt } from '@/utils/results/types';
 import { HINT_TYPE_NAMES } from '@/constants/hints';
-import { formatInteger } from '@/utils/format';
+import { formatInteger, kmToMi } from '@/utils/format';
+import { useSettingsStore } from '@/lib/useSettingsStore';
 
 interface HintDebtsCardProps {
   hintDebts: HintDebt[];
@@ -130,6 +131,7 @@ const looksLikeId = (s?: string): boolean => {
 };
 
 const HintDebtsCard: React.FC<HintDebtsCardProps> = ({ hintDebts, yearDifference = null, distanceKm = null }) => {
+  const distanceUnit = useSettingsStore(s => s.distanceUnit);
   if (!hintDebts || hintDebts.length === 0) {
     return null;
   }
@@ -159,10 +161,14 @@ const HintDebtsCard: React.FC<HintDebtsCardProps> = ({ hintDebts, yearDifference
                 let value: number | null = null;
                 if (labelIsNumeric) {
                   value = parseInt(raw, 10);
+                  if (unit === 'km away' && distanceUnit === 'mi' && Number.isFinite(value)) {
+                    value = Math.round(kmToMi(value) );
+                  }
                 } else if (unit === 'years off' && yearDifference != null) {
                   value = Math.abs(yearDifference);
                 } else if (unit === 'km away' && distanceKm != null) {
-                  value = Math.abs(Math.round(distanceKm));
+                  const baseKm = Math.abs(distanceKm);
+                  value = distanceUnit === 'mi' ? Math.round(kmToMi(baseKm)) : Math.round(baseKm);
                 }
                 // Build answer string: prefer a readable raw label; otherwise numeric value with units
                 let answer: string;
@@ -173,7 +179,8 @@ const HintDebtsCard: React.FC<HintDebtsCardProps> = ({ hintDebts, yearDifference
                   if (unit === 'years off') {
                     answer = `${formatInteger(value)} ${value === 1 ? 'year' : 'years'}`;
                   } else if (unit === 'km away') {
-                    answer = `${formatInteger(value)} km`;
+                    const label = distanceUnit === 'mi' ? 'mi' : 'km';
+                    answer = `${formatInteger(value)} ${label}`;
                   } else {
                     answer = `${formatInteger(value)}`;
                   }

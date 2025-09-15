@@ -41,6 +41,7 @@ export const NavProfile = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const navigate = useNavigate();
+  const [avatar, setAvatar] = useState<any>(null);
 
   // Component lifecycle handled via useEffect
 
@@ -56,40 +57,71 @@ export const NavProfile = () => {
     });
   }, [user, profile, isLoading, error]);
 
-  // Separate effect for profile fetching to avoid render-time state updates
-  useEffect(() => {
+  // Hoist profile fetching so it can be reused by event listeners
+  const fetchProfileData = useCallback(async () => {
     if (!user) {
       setProfile(null);
       return;
     }
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('avatar_image_url, avatar_url, avatar_name, display_name, avatar_id')
+        .eq('id', user.id)
+        .single();
 
-    const fetchProfileData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('username, avatar_image_url, avatar_url, avatar_name, display_name')
-          .eq('id', user.id)
-          .single();
-
-        if (error) {
-          setError(new Error(error.message));
-          setProfile(null);
-        } else {
-          setProfile(data);
-        }
-      } catch (err) {
-        console.error('NavProfile: Unexpected error:', err);
-        setError(err instanceof Error ? err : new Error(String(err)));
+      if (error) {
+        setError(new Error(error.message));
         setProfile(null);
-      } finally {
-        setIsLoading(false);
+      } else {
+        setProfile(data);
+        // If the profile references an avatar, fetch it for authoritative name/image
+        if (data?.avatar_id) {
+          const { data: avatarRow, error: avatarErr } = await supabase
+            .from('avatars')
+            .select('*')
+            .eq('id', data.avatar_id)
+            .single();
+          if (!avatarErr) {
+            setAvatar(avatarRow);
+          } else {
+            setAvatar(null);
+          }
+        } else {
+          setAvatar(null);
+        }
       }
-    };
-
-    fetchProfileData();
+    } catch (err) {
+      console.error('NavProfile: Unexpected error:', err);
+      setError(err instanceof Error ? err : new Error(String(err)));
+      setProfile(null);
+      setAvatar(null);
+    } finally {
+      setIsLoading(false);
+    }
   }, [user]);
+
+  // Fetch profile initially and when user changes
+  useEffect(() => {
+    fetchProfileData();
+  }, [fetchProfileData]);
+
+  // Listen for profile/username/avatar updates to refresh displayed name immediately
+  useEffect(() => {
+    const handler = () => {
+      fetchProfileData();
+    };
+    window.addEventListener('avatarUpdated', handler);
+    window.addEventListener('usernameUpdated', handler);
+    window.addEventListener('profileUpdated', handler);
+    return () => {
+      window.removeEventListener('avatarUpdated', handler);
+      window.removeEventListener('usernameUpdated', handler);
+      window.removeEventListener('profileUpdated', handler);
+    };
+  }, [fetchProfileData]);
 
   // Separate effect for metrics to avoid dependency cycles
   useEffect(() => {
@@ -133,19 +165,21 @@ export const NavProfile = () => {
   }
 
   const getInitial = () => {
-    const username = profile?.username;
+    const name = profile?.avatar_name || profile?.display_name || '';
     const email = user?.email;
-    if (username) return username.charAt(0).toUpperCase();
+    if (name) return name.charAt(0).toUpperCase();
     if (email) return email.charAt(0).toUpperCase();
     return isGuest ? 'G' : 'U';
   };
 
-  const avatarUrl = profile?.avatar_image_url || profile?.avatar_url || null;
+  const avatarUrl = (avatar?.firebase_url) || profile?.avatar_image_url || profile?.avatar_url || null;
   // Determine the best display name to show in the dropdown
   const userDisplayName =
+    // Prefer unique profile-side avatar_name/display_name so numeric suffixes are preserved
     profile?.avatar_name ??
     profile?.display_name ??
-    profile?.username ??
+    // Fall back to avatar record name if profile fields are missing
+    (avatar ? (avatar.first_name || avatar.last_name ? `${avatar.first_name ?? ''} ${avatar.last_name ?? ''}`.trim() : (avatar.name || avatar.display_name || null)) : null) ??
     (user?.user_metadata as any)?.full_name ??
     (!isGuest ? user?.email : 'Guest');
 

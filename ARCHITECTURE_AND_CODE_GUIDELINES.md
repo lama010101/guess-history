@@ -23,6 +23,18 @@
     - Avatar button opens the menu.
   - The navbar listens for `window` events `avatarUpdated`, `usernameUpdated`, and `profileUpdated` to refresh avatar and level badge.
 
+#### Navbar Menu — Profile/Username Sync (2025-09-15)
+
+- Component: `src/components/NavProfile.tsx`
+- Behavior:
+  - Fetches `profiles` on mount and whenever the `user` changes.
+  - Subscribes to global events `avatarUpdated`, `usernameUpdated`, and `profileUpdated` and re-fetches the profile immediately so the dropdown reflects new avatar/name without a page reload.
+  - When `profiles.avatar_id` is set, also fetches the `avatars` row and prefers its fields for display:
+    - Image prefers `avatars.firebase_url` over `profiles.avatar_image_url`/`avatar_url`.
+    - Display name prefers avatar record name (`first_name`/`last_name` or `name`) over `profiles.avatar_name`/`display_name`/`username`/email.
+  - Fallbacks: `profiles.avatar_image_url` → `profiles.avatar_url` for image; `profiles.avatar_name` → `profiles.display_name` → `profiles.username` → `user.user_metadata.full_name` → `user.email` for text.
+  - No UI changes; behavior-only update.
+
 ### Preparation Overlay — Cancel Behavior (2025-09-13)
 
 - Components/Files:
@@ -56,6 +68,13 @@
   - `src/components/results/LocationAccuracyCard.tsx` — pill shows distance in preferred units.
   - `src/lib/geo/nominatim.ts` — search suggests in English only when `language === 'en'`; otherwise omits the header/query so local/native labels come back.
   - `src/components/HomeMap.tsx` — search and reverse geocoding honor the same `language` choice.
+
+#### Update (2025-09-15): English-only Map in Color
+
+- When `mapLabelLanguage === 'en'` (English-only), the base map now uses the color Carto Voyager tiles instead of a grayscale/light theme to improve place recognition.
+  - Tile URL: `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png`
+  - Location: `src/components/HomeMap.tsx` `<TileLayer url={...} />`
+  - Non-English (`local`) continues to use the standard OpenStreetMap tiles.
 
 
 ### Home — Level Up Card Level Badge & Start Level (2025-09-09)
@@ -410,6 +429,12 @@ __QA checklist__
 - __Notes__
   - UI components (`LevelResultBanner`, `LevelRequirementCard`) and the pass/fail logic both read the same dynamic thresholds. The `LevelRequirementCard` target labels display `> {requiredOverallAccuracy}%` and `> {requiredRoundAccuracy}%` for clarity. Logic runs once per game after submission guard (`submittedGameIdRef`).
   - Guests are skipped for persistence.
+
+#### Level Up — Requirement Copy Clarification (2025-09-15)
+
+- The intro card clarifies the second requirement wording: “In at least one round, Time Accuracy or Location Accuracy must reach {requiredRoundAccuracy}% or higher after penalties.”
+  - Location: `src/components/levelup/LevelUpIntro.tsx` under the “Any round ≥ {requiredRoundAccuracy}% net” card.
+  - Logic is unchanged; the evaluation already uses the best axis after penalties (`bestAxisNetAfterPenalties`).
 
 #### Level Up — Update 2025-09-01 (Revised 2025-09-03): Gated Start + HUD reopen
 

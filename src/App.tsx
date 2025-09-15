@@ -14,6 +14,7 @@ import InviteListener from "@/components/InviteListener";
 
 import MainLayout from "./layouts/MainLayout";
 import HomePage from "./pages/HomePage";
+import LandingPage from "./pages/LandingPage";
 import GameRoundPage from "./pages/GameRoundPage";
 import FinalResultsPage from "./pages/FinalResultsPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
@@ -141,7 +142,8 @@ const App = () => {
                     {/* Headless listener: ensures realtime invite subscription is always active */}
                     <InviteListener />
                     <Routes>
-                      <Route path="/" element={<Navigate to="/home" replace />} />
+                      {/* Public landing page (prevents redirect loop when signed out) */}
+                      <Route path="/" element={<LandingPage />} />
                       {/* Require an active session (registered or anonymous) for all routes except landing */}
                       <Route element={<RequireAuthSession />}>
                         {/* Hub (Home) layout and index */}

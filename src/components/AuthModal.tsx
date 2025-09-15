@@ -132,6 +132,9 @@ export function AuthModal({
         }
       }
       
+      // Fire a global refresh for profile-dependent UI (navbar/menu)
+      try { window.dispatchEvent(new Event('profileUpdated')); } catch {}
+
       // Call the auth success callback if provided
       if (onAuthSuccess) {
         onAuthSuccess();

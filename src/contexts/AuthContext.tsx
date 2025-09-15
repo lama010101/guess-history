@@ -52,7 +52,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         createUserProfileIfNotExists(
           session.user.id,
           session.user.user_metadata?.full_name || 'User'
-        );
+        ).then((ok) => {
+          try {
+            // Notify UI (navbar/menu, home, etc.) to refetch profile immediately
+            window.dispatchEvent(new Event('profileUpdated'));
+          } catch {}
+        });
       }
       setIsLoading(false);
     });
@@ -74,7 +79,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           createUserProfileIfNotExists(
             session.user.id,
             session.user.user_metadata?.full_name || 'User'
-          );
+          ).then(() => {
+            try { window.dispatchEvent(new Event('profileUpdated')); } catch {}
+          });
         }
       })
       .catch((err) => {

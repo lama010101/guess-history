@@ -147,7 +147,7 @@ const LevelUpIntro: React.FC<LevelUpIntroProps> = ({
               Any round ≥ <span className="text-pink-300">{requiredRoundAccuracy}%</span> net
             </div>
             <div className="text-xs text-gray-300 mt-1">
-              At least one round must reach {requiredRoundAccuracy}% or higher after penalties.
+              In at least one round, Time Accuracy or Location Accuracy must reach {requiredRoundAccuracy}% or higher after penalties.
             </div>
             {typeof bestRoundNetPct === 'number' && (
               <div className="mt-2 text-xs text-gray-300">

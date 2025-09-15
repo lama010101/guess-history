@@ -852,11 +852,11 @@ const Room: React.FC = () => {
                 </button>
               </div>
               {!chatCollapsed && (
-              <div
-                ref={chatListRef}
-                className="h-64 overflow-y-auto rounded-lg bg-neutral-950/40 border border-neutral-800 px-3 py-2 divide-y divide-neutral-800/60"
-                aria-label="Chat messages"
-              >
+                <div
+                  ref={chatListRef}
+                  className="h-64 overflow-y-auto rounded-lg bg-neutral-950/40 border border-neutral-800 px-3 py-2 divide-y divide-neutral-800/60"
+                  aria-label="Chat messages"
+                >
                 {chat.length === 0 ? (
                   <div className="text-sm text-neutral-400 py-2">No messages yet…</div>
                 ) : (

@@ -171,7 +171,14 @@ const HomePage = () => {
         return;
       }
       try {
-        const bestLevel = Math.max(1, Number((profile as any)?.level_up_best_level || 1));
+        // Re-fetch profile to ensure we have the freshest unlocked level
+        const latestProfile = user ? await fetchUserProfile(user.id) : null;
+        const bestLevel = Math.max(
+          1,
+          Number(
+            (latestProfile as any)?.level_up_best_level ?? (profile as any)?.level_up_best_level ?? 1
+          )
+        );
         await startLevelUpGame?.(bestLevel);
       } catch (e) {
         console.error('Error starting Level Up game:', e);

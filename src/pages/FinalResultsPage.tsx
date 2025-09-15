@@ -550,15 +550,8 @@ const FinalResultsPage = () => {
     };
   })();
 
-  // Auto-advance to next Level Up game when pass criteria are met
-  useEffect(() => {
-    if (!isLevelUp) return;
-    if (!passed) return;
-    const t = setTimeout(() => {
-      startNextLevel();
-    }, 1200);
-    return () => clearTimeout(t);
-  }, [isLevelUp, passed, startNextLevel]);
+  // Note: Auto-advance to the next Level Up is disabled.
+  // Users must click the "Continue to Level {n}" button to proceed manually.
 
   return (
     <div className="min-h-screen bg-history-light dark:bg-history-dark flex flex-col">

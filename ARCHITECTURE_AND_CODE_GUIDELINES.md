@@ -83,6 +83,7 @@
 - Behavior:
   - The Level Up card shows a small badge in the top-right corner of the image with the current level: `Lv {profile.level_up_best_level || 1}`.
   - Starting Level Up uses `startLevelUpGame(bestLevel)` where `bestLevel` is `profiles.level_up_best_level` (defaults to 1 for new users).
+  - On click, Home re-fetches the latest profile to use the freshest `level_up_best_level` before starting, avoiding stale starts at Level 1 after a pass (2025-09-15).
   - `profiles.level_up_best_level` is updated on passing a level in `src/pages/FinalResultsPage.tsx` and a `profileUpdated` event is dispatched for immediate UI refresh in the navbar and profile page.
   - Home listens for `profileUpdated` and refetches the profile to update the Level badge immediately (no manual reload required).
 # Guess History Multiplayer Architecture

@@ -396,6 +396,21 @@ __QA checklist__
       - Best time or location accuracy ≥ 70% after penalties (at least one round achieves this on either axis)
     - Existing pass logic and DB updates (games/profiles) remain in this page; UI is additive.
 
+#### Final Results — Level Up Card Layout (2025-09-16)
+
+- Page: `src/pages/FinalResultsPage.tsx`
+- Goal: Make the Level Up final results as neat and scannable as the round score page by placing each section into a consistent dark card.
+- Styling rules (dark theme):
+  - All major sections are wrapped in `bg-[#444444] rounded-lg` with consistent padding (`p-4 sm:p-6`).
+  - Sections include:
+    - Level Up banner + requirement cards (wrapped together in one card)
+    - Final Score block
+    - Optional SYNC Compete final leaderboard (wrapped)
+    - “BREAKDOWN” header (in its own small card) and each per-round result (each round in its own card)
+  - The previous mixed backgrounds (`#333` and section-less headers) were normalized to `#444444` for visual consistency.
+  - Width alignment: removed the `max-w-md` constraint from the Final Score card so all sections align to the page container (`max-w-4xl`).
+  - Spacing: use `mb-6`/`mb-8` between stacked cards.
+
 #### Final Results — Level Up UI updates (2025-09-02)
 
 - **Banner copy** (`src/components/levelup/LevelResultBanner.tsx`):

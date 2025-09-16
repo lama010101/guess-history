@@ -600,25 +600,25 @@ const FinalResultsPage = () => {
           <main className="flex-grow p-4 sm:p-6 md:p-8 pb-36">
             <div className="max-w-4xl mx-auto w-full">
               {isLevelUp && (
-                <div className="space-y-3 mb-6">
-                  <LevelResultBanner passed={passed} unlockedLevel={passed ? ((typeof currentLevelFromPath === 'number' ? currentLevelFromPath + 1 : 2)) : undefined} />
-                  <LevelRequirementCard
-                    title="Overall net accuracy"
-                    met={overallPass}
-                    valuePercent={finalPercentNet}
-                    targetLabel={`Target > ${overallTarget}%`}
-                    icon={<Target className="h-5 w-5" />}
-                  />
-                  <LevelRequirementCard
-                    title="Best accuracy"
-                    met={axisPass}
-                    valuePercent={bestAxisNetAfterPenalties}
-                    targetLabel={`Target > ${axisTarget}%`}
-                    icon={<Zap className="h-5 w-5" />}
-                  />
+                <div className="bg-[#444444] rounded-lg p-4 sm:p-6 mb-6">
+                  <div className="space-y-3">
+                    <LevelResultBanner passed={passed} unlockedLevel={passed ? ((typeof currentLevelFromPath === 'number' ? currentLevelFromPath + 1 : 2)) : undefined} />
+                    <LevelRequirementCard
+                      title="Overall net accuracy"
+                      met={overallPass}
+                      valuePercent={finalPercentNet}
+                      targetLabel={`Target > ${overallTarget}%`}
+                    />
+                    <LevelRequirementCard
+                      title="Best accuracy"
+                      met={axisPass}
+                      valuePercent={bestAxisNetAfterPenalties}
+                      targetLabel={`Target > ${axisTarget}%`}
+                    />
+                  </div>
                 </div>
               )}
-              <div className="max-w-md mx-auto bg-[#333333] rounded-lg p-6 text-white mb-8 sm:mb-12">
+              <div className="bg-[#444444] rounded-lg p-6 text-white mb-8 sm:mb-12">
                 <h1 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4 text-center">FINAL SCORE</h1>
                 <div className="flex justify-center items-center gap-4 mt-2">
                   <Badge variant="accuracy" className="text-lg flex items-center gap-1" aria-label={`Accuracy: ${totalPercentage}%`}>
@@ -696,7 +696,7 @@ const FinalResultsPage = () => {
 
                 {/* SYNC Compete: show final leaderboard for all participants */}
                 {isSyncCompeteRoute && roomId ? (
-                  <div className="mt-6">
+                  <div className="mt-6 bg-[#444444] rounded-lg p-4">
                     <FinalScoreboard roomId={roomId} />
                   </div>
                 ) : null}
@@ -704,14 +704,16 @@ const FinalResultsPage = () => {
 
               {/* GAME SUMMARY removed per new design; metrics are now in the final score card */}
 
-              <h2 className="text-lg font-bold text-history-primary dark:text-history-light mb-4 pl-4">BREAKDOWN</h2>
+              <div className="bg-[#444444] rounded-lg p-4 mb-4">
+                <h2 className="text-lg font-bold text-history-primary dark:text-history-light">BREAKDOWN</h2>
+              </div>
 
               <section className="grid gap-6 mb-8">
                 {images.map((image, index) => {
                   const result = roundResults?.[index];
                   if (!result) return null;
                   return (
-                    <div key={image.id} className="bg-[#333333] rounded-lg p-2">
+                    <div key={image.id} className="bg-[#444444] rounded-lg p-2">
                       <RoundResultCard image={image} result={result} index={index} />
                     </div>
                   );

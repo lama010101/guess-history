@@ -25,6 +25,7 @@ const SettingsMessage = z.object({
   // Allow optional fields so host can tweak independently
   timerSeconds: z.number().int().min(5).max(600).optional(),
   timerEnabled: z.boolean().optional(),
+  mode: z.enum(["sync", "async"]).optional(),
 });
 
 const KickMessage = z.object({
@@ -59,7 +60,7 @@ interface ChatMsg {
 type RosterEntry = { id: string; name: string; ready: boolean; host: boolean };
 type RosterMsg = { type: "roster"; players: RosterEntry[] };
 type StartMsg = { type: "start"; startedAt: string; durationSec: number; timerEnabled: boolean };
-type SettingsMsg = { type: "settings"; timerSeconds?: number; timerEnabled?: boolean };
+type SettingsMsg = { type: "settings"; timerSeconds?: number; timerEnabled?: boolean; mode?: "sync" | "async" };
 type HelloMsg = { type: "hello"; you: { id: string; name: string; host: boolean } };
 type ProgressMsg = { type: "progress"; from: string; roundNumber: number; substep?: string };
 
@@ -80,6 +81,7 @@ export default class Lobby implements Party.Server {
   // Timer settings (host-controlled)
   private timerSeconds: number = 60;
   private timerEnabled: boolean = true;
+  private mode: "sync" | "async" = "sync";
   // Track live connections for administrative actions (kick)
   private conns = new Map<string, Party.Connection>();
 
@@ -309,6 +311,7 @@ export default class Lobby implements Party.Server {
               type: "settings",
               timerSeconds: this.timerSeconds,
               timerEnabled: this.timerEnabled,
+              mode: this.mode,
             } satisfies SettingsMsg)
           );
           await this.logEvent("join", { id: conn.id, name: effectiveName });
@@ -336,12 +339,18 @@ export default class Lobby implements Party.Server {
           if (typeof msg.timerEnabled === "boolean") {
             this.timerEnabled = msg.timerEnabled;
           }
+          if (msg.mode === "sync" || msg.mode === "async") {
+            this.mode = msg.mode;
+            // In sync mode, timer must be enabled; enforce here server-side
+            if (this.mode === "sync") this.timerEnabled = true;
+          }
           await this.logEvent("settings", { timerSeconds: this.timerSeconds, timerEnabled: this.timerEnabled });
           // Broadcast updated settings to all participants for real-time sync
           this.broadcast({
             type: "settings",
             timerSeconds: this.timerSeconds,
             timerEnabled: this.timerEnabled,
+            mode: this.mode,
           });
           return;
         }

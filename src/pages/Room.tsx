@@ -3,10 +3,9 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { X, Copy, Users, Zap, Share2, Search, UserPlus, UserMinus, ExternalLink, ChevronDown, ChevronUp, Clock, MessageSquare } from 'lucide-react';
+import { X, Copy, Users, RefreshCw, Share2, Search, UserPlus, UserMinus, ExternalLink, ChevronDown, ChevronUp, Clock, MessageSquare } from 'lucide-react';
 import { partyUrl, LobbyServerMessage, LobbyClientMessage } from '@/lib/partyClient';
 import { useGame } from '@/contexts/GameContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -64,6 +63,9 @@ const Room: React.FC = () => {
   const [mode, setMode] = useState<'sync' | 'async'>('sync');
   const modeRef = useRef<'sync' | 'async'>('sync');
   const [ownId, setOwnId] = useState<string>('');
+  // Local timer slider state (host-only) to avoid flicker while dragging
+  const [localTimerSec, setLocalTimerSec] = useState<number>(Number(roundTimerSec || 60));
+  const [draggingTimer, setDraggingTimer] = useState(false);
 
   // Host-only friends helpers
   type FriendEntry = { id: string; display_name: string; avatar_url?: string };
@@ -224,7 +226,8 @@ const Room: React.FC = () => {
                   typeof data.timerSeconds === 'number'
                     ? data.timerSeconds === lastSentSettingsRef.current.sec
                     : true;
-                if (echoEnabled && echoSeconds) {
+                // Only skip if mode isn't present; if mode is present we must process it
+                if (echoEnabled && echoSeconds && (data.mode === undefined)) {
                   break;
                 }
               }
@@ -241,6 +244,11 @@ const Room: React.FC = () => {
                 const uiSec = Math.max(5, Math.min(300, Math.round(Number(data.timerSeconds) / 5) * 5));
                 if (uiSec !== roundTimerSecRef.current) {
                   setRoundTimerSec(uiSec);
+                }
+              }
+              if (data.mode === 'sync' || data.mode === 'async') {
+                if (data.mode !== modeRef.current) {
+                  setMode(data.mode);
                 }
               }
               break;
@@ -340,6 +348,35 @@ const Room: React.FC = () => {
   useEffect(() => { statusRef.current = status; }, [status]);
   useEffect(() => { timerEnabledRef.current = !!timerEnabled; }, [timerEnabled]);
   useEffect(() => { roundTimerSecRef.current = Number(roundTimerSec || 0); }, [roundTimerSec]);
+  // Keep local slider value in sync when not dragging
+  useEffect(() => {
+    if (!draggingTimer) {
+      setLocalTimerSec(Number(roundTimerSec || 60));
+    }
+  }, [roundTimerSec, draggingTimer]);
+
+  // Host flag (used by multiple handlers)
+  const isHost = useMemo(() => {
+    // Determine host strictly from roster by connection id
+    return roster.some(r => r.host && r.id === ownId);
+  }, [roster, ownId]);
+
+  const commitTimerSeconds = useCallback((val: number) => {
+    const clamped = Math.max(5, Math.min(300, Math.round(Number(val) / 5) * 5));
+    setDraggingTimer(false);
+    setLocalTimerSec(clamped);
+    // This will trigger the host settings sender effect downstream
+    setRoundTimerSec(clamped);
+  }, [setRoundTimerSec]);
+
+  // Send mode change to server (host-only)
+  const sendMode = useCallback((nextMode: 'sync' | 'async') => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (!isHost) return;
+    const payload: LobbyClientMessage = { type: 'settings', mode: nextMode } as any;
+    try { ws.send(JSON.stringify(payload)); } catch {}
+  }, [isHost]);
 
   // Remove previous auto-start behavior. Start is now driven by server 'start' event.
 
@@ -362,10 +399,7 @@ const Room: React.FC = () => {
     setOwnReady(next);
   }, [ownReady]);
 
-  const isHost = useMemo(() => {
-    // Determine host strictly from roster by connection id
-    return roster.some(r => r.host && r.id === ownId);
-  }, [roster, ownId]);
+  
 
   // Host-only friends helpers
   const loadFriends = useCallback(async () => {
@@ -610,30 +644,48 @@ const Room: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full bg-history-light dark:bg-black text-white">
+      {/* Scoped styles for the round timer range input */}
+      <style>{`
+        /* Base range track */
+        #room-timer-range { -webkit-appearance: none; appearance: none; height: 6px; background: transparent; }
+        #room-timer-range:focus { outline: none; }
+        /* WebKit track */
+        #room-timer-range::-webkit-slider-runnable-track { height: 6px; background: rgba(255,255,255,0.25); border-radius: 9999px; }
+        /* WebKit thumb (3x larger, turquoise with halo) */
+        #room-timer-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 36px; height: 36px; border-radius: 50%; background: #22d3ee; border: 3px solid #22d3ee; margin-top: -15px; box-shadow: 0 0 0 12px rgba(34, 211, 238, 0.25); }
+        #room-timer-range:disabled::-webkit-slider-thumb { background: #0891b2; border-color: #0891b2; box-shadow: none; }
+        /* Firefox track */
+        #room-timer-range::-moz-range-track { height: 6px; background: rgba(255,255,255,0.25); border-radius: 9999px; }
+        /* Firefox thumb */
+        #room-timer-range::-moz-range-thumb { width: 36px; height: 36px; border-radius: 50%; background: #22d3ee; border: 3px solid #22d3ee; box-shadow: 0 0 0 12px rgba(34, 211, 238, 0.25); }
+        #room-timer-range:disabled::-moz-range-thumb { background: #0891b2; border-color: #0891b2; box-shadow: none; }
+      `}</style>
       <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6 pb-24">
         {/* Top bar removed — MainLayout renders the standard navbar */}
 
-        {/* Mode toggle */}
+        {/* Mode toggle (host-only actionable; all see updates) */}
         <div className="flex flex-col items-center gap-2">
-          <div className="p-1 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 inline-flex items-center">
+          <div className="p-1 rounded-full bg-gradient-to-r from-cyan-400 to-cyan-500 inline-flex items-center">
             <button
               type="button"
-              className={`px-5 py-1.5 rounded-full text-sm font-semibold ${mode === 'sync' ? 'bg-black text-white' : 'text-black/70'}`}
-              onClick={() => setMode('sync')}
+              disabled={!isHost}
+              className={`px-5 py-1.5 rounded-full text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${mode === 'sync' ? 'bg-black text-white' : 'text-black/70'}`}
+              onClick={() => { if (!isHost) return; setMode('sync'); sendMode('sync'); }}
             >
-              <span className="inline-flex items-center gap-1"><Zap className="h-4 w-4" />SYNC</span>
+              <span className="inline-flex items-center gap-1"><RefreshCw className="h-4 w-4" />SYNC</span>
             </button>
             <button
               type="button"
-              className={`px-5 py-1.5 rounded-full text-sm font-semibold ${mode === 'async' ? 'bg-black text-white' : 'text-black/70'}`}
-              onClick={() => setMode('async')}
+              disabled={!isHost}
+              className={`px-5 py-1.5 rounded-full text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${mode === 'async' ? 'bg-black text-white' : 'text-black/70'}`}
+              onClick={() => { if (!isHost) return; setMode('async'); sendMode('async'); }}
             >
               <span className="inline-flex items-center gap-1"><Clock className="h-4 w-4" />ASYNC</span>
             </button>
           </div>
           <div className="text-xs text-neutral-300 text-center max-w-xl px-3">
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 justify-center">
-              <div className="inline-flex items-center gap-1"><Zap className="h-3 w-3 text-emerald-300" /><span>Sync: everyone plays the same round at the same time; host sets the timer.</span></div>
+              <div className="inline-flex items-center gap-1"><RefreshCw className="h-3 w-3 text-cyan-300" /><span>Sync: everyone plays the same round at the same time; host sets the timer.</span></div>
               <div className="inline-flex items-center gap-1"><Clock className="h-3 w-3 text-cyan-300" /><span>Async: play at your own pace; timer is optional.</span></div>
             </div>
           </div>
@@ -655,28 +707,36 @@ const Room: React.FC = () => {
                       setTimerEnabled(!!checked);
                     }}
                     disabled={!isHost || mode === 'sync'}
-                    className="mr-3 data-[state=checked]:bg-gray-600 h-4 w-8"
+                    className="mr-3 data-[state=checked]:bg-cyan-500 h-4 w-8"
                   />
                   <Label htmlFor="room-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm text-white">
                     <span>Round Timer</span>
                   </Label>
                 </div>
                 {(mode === 'sync' || timerEnabled) && (
-                  <span className="text-sm font-bold text-orange-500 ml-4">
-                    {formatTime(Number(roundTimerSec || 0))}
+                  <span className="text-sm font-bold text-cyan-400 ml-4">
+                    {formatTime(Number((isHost && draggingTimer) ? localTimerSec : (roundTimerSec || 0)))}
                   </span>
                 )}
               </div>
               {(mode === 'sync' || timerEnabled) && (
                 <div className="relative mb-1 px-1">
                   <div className="pt-2">
-                    <Slider
-                      value={[Number(roundTimerSec || 60)]}
+                    <input
+                      type="range"
                       min={5}
                       max={300}
                       step={5}
-                      onValueChange={(value) => setRoundTimerSec(Number(value[0] || 60))}
-                      className="w-full"
+                      value={Number(localTimerSec || 60)}
+                      onChange={(e) => {
+                        if (!isHost) return;
+                        setLocalTimerSec(Number(e.target.value));
+                      }}
+                      onPointerDown={() => { if (isHost) setDraggingTimer(true); }}
+                      onPointerUp={(e) => { if (isHost) commitTimerSeconds(Number((e.target as HTMLInputElement).value)); }}
+                      onBlur={(e) => { if (isHost && draggingTimer) commitTimerSeconds(Number((e.target as HTMLInputElement).value)); }}
+                      id="room-timer-range"
+                      className="w-full accent-cyan-500 disabled:opacity-50"
                       disabled={!isHost}
                     />
                   </div>

@@ -227,43 +227,42 @@ const FinalResultsPage = () => {
             console.warn('[LevelUp] profile fetch error', profileErr);
           }
 
-          const isGuest = profile?.is_guest === true;
-          if (isGuest) {
-            if (import.meta.env.DEV) console.log('[LevelUp] Guest user; skipping Level Up progress updates.');
-          } else {
-            const overallPass = finalPercentNet >= 50;
-            const axisPass = bestAxisNetAfterPenalties >= 70; // Best time or location accuracy (after penalties) ≥ 70%
-            const passed = overallPass && axisPass;
-            if (import.meta.env.DEV) {
-              console.log('[LevelUp] overallPass:', overallPass, 'axisPass:', axisPass, 'passed:', passed);
-            }
+          // Determine targets for the current level using canonical constraints
+          const currentLevel = (typeof currentLevelFromPath === 'number' ? currentLevelFromPath : 1);
+          const constraints = getLevelUpConstraints(currentLevel);
+          const overallTarget = constraints?.requiredOverallAccuracy ?? 50;
+          const axisTarget = constraints?.requiredRoundAccuracy ?? 70;
 
-            if (passed) {
-              // Use the current level from the URL path as the source of truth
-              const currentLevel = (typeof currentLevelFromPath === 'number' ? currentLevelFromPath : 1);
-              const newLevel = currentLevel + 1;
+          const overallPass = finalPercentNet >= overallTarget;
+          const axisPass = bestAxisNetAfterPenalties >= axisTarget; // Best time or location accuracy (after penalties)
+          const passed = overallPass && axisPass;
+          if (import.meta.env.DEV) {
+            console.log('[LevelUp] overallPass:', overallPass, 'axisPass:', axisPass, 'passed:', passed, { overallTarget, axisTarget, currentLevel });
+          }
 
-              // Update profiles.level_up_best_level if improved
-              const bestLevel = typeof profile?.level_up_best_level === 'number' ? profile.level_up_best_level : 0;
-              if (newLevel > bestLevel) {
-                try {
-                  const sb4: any = supabase;
-                  const { error: profileUpdateErr } = await sb4
-                    .from('profiles')
-                    .update({ level_up_best_level: newLevel })
-                    .eq('id', user.id);
-                  if (profileUpdateErr) {
-                    console.warn('[LevelUp] update profiles.level_up_best_level error', profileUpdateErr);
-                  } else if (import.meta.env.DEV) {
-                    console.log('[LevelUp] profiles.level_up_best_level updated to', newLevel);
-                  }
-                  try {
-                    // Notify listeners (e.g., MainNavbar/HomePage) that profile changed
-                    window.dispatchEvent(new Event('profileUpdated'));
-                  } catch {}
-                } catch (e) {
-                  console.warn('[LevelUp] exception updating profiles.level_up_best_level', e);
+          if (passed) {
+            const newLevel = currentLevel + 1;
+
+            // Update profiles.level_up_best_level if improved
+            const bestLevel = typeof profile?.level_up_best_level === 'number' ? profile.level_up_best_level : 0;
+            if (newLevel > bestLevel) {
+              try {
+                const sb4: any = supabase;
+                const { error: profileUpdateErr } = await sb4
+                  .from('profiles')
+                  .update({ level_up_best_level: newLevel })
+                  .eq('id', user.id);
+                if (profileUpdateErr) {
+                  console.warn('[LevelUp] update profiles.level_up_best_level error', profileUpdateErr);
+                } else if (import.meta.env.DEV) {
+                  console.log('[LevelUp] profiles.level_up_best_level updated to', newLevel);
                 }
+                try {
+                  // Notify listeners (e.g., MainNavbar/HomePage) that profile changed
+                  window.dispatchEvent(new Event('profileUpdated'));
+                } catch {}
+              } catch (e) {
+                console.warn('[LevelUp] exception updating profiles.level_up_best_level', e);
               }
             }
           }

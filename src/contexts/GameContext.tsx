@@ -8,7 +8,7 @@ import { ROUNDS_PER_GAME } from '@/utils/gameCalculations';
 import { Hint } from '@/hooks/useHintV2';
 import { RoundResult, GuessCoordinates } from '@/types';
 import { useGamePreparation, PrepStatus, PreparedImage } from '@/hooks/useGamePreparation';
-import { getLevelUpConstraints } from '@/lib/levelUpConfig';
+import { getLevelUpConstraints, setLevelUpOldestYear } from '@/lib/levelUpConfig';
 import { awardRoundAchievements, awardGameAchievements } from '@/utils/achievements';
 import { setCurrentRoundInSession } from '@/utils/roomState';
 
@@ -114,6 +114,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   const { timerSeconds, setTimerSeconds } = useSettingsStore();
   const [roundTimerSec, setRoundTimerSec] = useState<number>(timerSeconds || 60);
   const [timerEnabled, setTimerEnabled] = useState<boolean>(true);
+  // Cache for global oldest image year (used by Level Up constraints)
+  const levelUpOldestYearRef = React.useRef<number | null>(null);
 
   // Keep roundTimerSec in sync with timerSeconds from settings store
   useEffect(() => {
@@ -726,6 +728,37 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     setError(null);
     setImages([]);
     setRoundResults([]);
+
+    // Ensure the Level Up constraints are informed by the actual oldest event year in DB.
+    // Fetch once per provider lifetime and cache.
+    try {
+      if (levelUpOldestYearRef.current == null) {
+        const { data, error } = await (supabase as any)
+          .from('images')
+          .select('year')
+          .not('year', 'is', null)
+          .order('year', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        const min = (!error && data && typeof data.year === 'number') ? data.year : null;
+        if (min != null) {
+          levelUpOldestYearRef.current = min;
+          try { setLevelUpOldestYear(min); } catch {}
+          if (import.meta.env.DEV) {
+            try { console.debug('[GameContext][LevelUp] Fetched oldest image year:', min); } catch {}
+          }
+        } else {
+          // Clear to fall back on default tuneables if query failed
+          levelUpOldestYearRef.current = null;
+          try { setLevelUpOldestYear(null); } catch {}
+        }
+      } else {
+        try { setLevelUpOldestYear(levelUpOldestYearRef.current); } catch {}
+      }
+    } catch (e) {
+      try { console.warn('[GameContext][LevelUp] Failed to fetch oldest year; using defaults', e); } catch {}
+      try { setLevelUpOldestYear(null); } catch {}
+    }
 
     // Compute constraints and apply timer (Level Up has its own defaults)
     const c = getLevelUpConstraints(level);

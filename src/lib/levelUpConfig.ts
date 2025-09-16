@@ -33,7 +33,7 @@ export interface LevelUpTuneables {
   TIMER_MIN_SEC: number;         // Level 100 timer (e.g., 5)
   
   // Year range settings
-  YEAR_END_FIXED: number;        // Fixed upper bound (2025)
+  YEAR_END_FIXED: number;        // Fixed upper bound (defaults to current year)
   YEAR_START_L1: number;         // Level 1 start year (e.g., 1975)
   YEAR_START_L100_OVERRIDE: number | null; // Optional override for L100 start year
   
@@ -52,7 +52,7 @@ export const defaultLevelUpTuneables: LevelUpTuneables = {
   ROUNDS_PER_GAME: 5,
   TIMER_MAX_SEC: 300,    // 5 minutes
   TIMER_MIN_SEC: 5,      // 5 seconds
-  YEAR_END_FIXED: 2025,
+  YEAR_END_FIXED: new Date().getFullYear(),
   YEAR_START_L1: 1975,
   YEAR_START_L100_OVERRIDE: null, // Will use DB's oldest year if null
   OVERALL_ACC_L1: 50,
@@ -155,5 +155,25 @@ export function makeGetLevelUpConstraints(
   };
 }
 
-// Backward compatibility alias
-export const getLevelUpConstraints = makeGetLevelUpConstraints();
+// Module-scoped configurable oldest year value set at runtime by callers (e.g., after fetching from DB)
+let __configuredOldestYear: number | null = null;
+
+/**
+ * Set the oldest event year observed in the DB. Pass null/undefined to clear.
+ * Call this once you have fetched the global minimum year to enable dynamic Level Up ranges.
+ */
+export function setLevelUpOldestYear(year: number | null | undefined) {
+  if (typeof year === 'number' && Number.isFinite(year)) {
+    __configuredOldestYear = Math.floor(year);
+  } else {
+    __configuredOldestYear = null;
+  }
+}
+
+// Backward compatibility alias that adapts to the configured oldest year and current year at call time.
+export function getLevelUpConstraints(level: number): LevelConstraints {
+  // Use the default tuneables (which carry a dynamic YEAR_END_FIXED based on current year at module load)
+  // and apply the configured oldest year if available.
+  const getter = makeGetLevelUpConstraints({}, __configuredOldestYear ?? undefined);
+  return getter(level);
+}

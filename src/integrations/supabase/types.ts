@@ -246,6 +246,7 @@ export type Database = {
           display_name: string | null
           id: string
           updated_at: string | null
+          level_up_best_level: number | null
         }
         Insert: {
           avatar_image_url?: string | null
@@ -255,6 +256,7 @@ export type Database = {
           display_name?: string | null
           id: string
           updated_at?: string | null
+          level_up_best_level?: number | null
         }
         Update: {
           avatar_image_url?: string | null
@@ -264,6 +266,7 @@ export type Database = {
           display_name?: string | null
           id?: string
           updated_at?: string | null
+          level_up_best_level?: number | null
         }
         Relationships: []
       }

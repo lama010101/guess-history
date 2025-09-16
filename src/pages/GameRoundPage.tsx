@@ -31,7 +31,7 @@ import {
 } from '@/utils/gameCalculations';
 import { useGameLocalCountdown } from '@/gameTimer/useGameLocalCountdown';
 import { buildTimerId } from '@/lib/timerId';
-import { getLevelUpConstraints } from '@/lib/levelUpConfig';
+import { getLevelUpConstraints, setLevelUpOldestYear } from '@/lib/levelUpConfig';
 import { supabase } from '@/integrations/supabase/client';
 
 // Cache the global minimum year to avoid repeated queries in a session
@@ -409,6 +409,7 @@ const GameRoundPage = () => {
       try {
         if (__globalMinYearCache !== null) {
           if (isMounted) setGlobalMinYear(__globalMinYearCache);
+          try { setLevelUpOldestYear(__globalMinYearCache); } catch {}
           return;
         }
         const { data, error } = await (supabase as any)
@@ -421,6 +422,7 @@ const GameRoundPage = () => {
         const min = (!error && data && typeof data.year === 'number') ? data.year : 1850;
         __globalMinYearCache = min;
         if (isMounted) setGlobalMinYear(min);
+        try { setLevelUpOldestYear(min); } catch {}
       } catch (e) {
         try { console.warn('[GameRoundPage] Failed to fetch global min year; using defaults', e); } catch {}
       }

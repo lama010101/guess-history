@@ -174,7 +174,7 @@ export default function PreparationOverlay() {
           ) : (
             <Loader2 className="h-6 w-6 animate-spin text-history-primary" />
           )}
-          <h2 className="text-xl font-semibold">{isError ? 'Preparation failed' : "Dropping you into history…"}</h2>
+          <h2 className="text-xl font-semibold">{isError ? 'Preparation failed' : "Dropping you into History…"}</h2>
         </div>
 
         {/* Body */}

@@ -410,7 +410,7 @@ __QA checklist__
   - Auto-advance: In addition to the button, a guarded `useEffect` auto-starts the next level after a short delay when pass criteria are met. This calls `resetGame()` and `startLevelUpGame(currentLevel+1)`.
   - Resilient guard (2025-09-11): Both the auto-advance effect and the footer “Continue to Level {n}” button call a shared `startNextLevel()` helper which uses an in-flight ref guard (`isContinuingRef`). The guard prevents duplicate starts while a start is in progress and is always released in `finally` so a failed auto-advance does not leave the button unresponsive. Legacy `autoAdvanceStartedRef` was removed.
 
-#### Level Up — Pass/Fail Evaluation and Persistence (2025-09-01, updated 2025-09-13)
+#### Level Up — Pass/Fail Evaluation and Persistence (2025-09-01, updated 2025-09-15)
 
 - __Source__: `src/pages/FinalResultsPage.tsx`
 - __Computation__
@@ -422,14 +422,23 @@ __QA checklist__
   - Overall net accuracy ≥ `requiredOverallAccuracy`.
   - Best time or location accuracy ≥ `requiredRoundAccuracy` after penalties.
   - Defaults at L1 remain 50% overall and 70% best-axis; these scale toward 100% by L100 as defined by tuneables.
-- __Persistence on pass__ (non-guest users only)
+- __Persistence on pass__ (all users)
   - Derives the current level from the URL via `currentLevelFromPath` on `src/pages/FinalResultsPage.tsx`.
   - Computes `newLevel = currentLevel + 1` and updates `profiles.level_up_best_level` if the new level exceeds the previous best.
   - Emits `window.dispatchEvent(new Event('profileUpdated'))` on success so `HomePage` (and navbar) refresh the Level badge immediately.
   - There is no dependency on `games.level` for progression anymore.
 - __Notes__
   - UI components (`LevelResultBanner`, `LevelRequirementCard`) and the pass/fail logic both read the same dynamic thresholds. The `LevelRequirementCard` target labels display `> {requiredOverallAccuracy}%` and `> {requiredRoundAccuracy}%` for clarity. Logic runs once per game after submission guard (`submittedGameIdRef`).
-  - Guests are skipped for persistence.
+    - Note: Previously guests were skipped. Progress is now persisted for all users (registered and anonymous) provided RLS allows updating their own profile row.
+
+#### Level Up — Dynamic Year Range (2025-09-15)
+
+- Source: `src/lib/levelUpConfig.ts`
+- End year: always the current calendar year at runtime.
+- Start year: increases older with level via linear interpolation between `YEAR_START_L1` (default 1975) at Level 1 and the oldest event year in the database by Level 100.
+- Oldest year detection: fetched once from `public.images` (min `year`) and set via `setLevelUpOldestYear(year)`.
+  - Fetch points: `src/contexts/GameContext.tsx` in `startLevelUpGame()` and `src/pages/GameRoundPage.tsx` on initial load.
+- Constraints getter: `getLevelUpConstraints(level)` uses the configured oldest year dynamically; callers pass `minYear`/`maxYear` to image preparation so Level Up uses progressively older images while always including events up to the present.
 
 #### Level Up — Requirement Copy Clarification (2025-09-15)
 

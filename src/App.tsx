@@ -172,10 +172,11 @@ const App = () => {
                             <Route path="account" element={<UserProfilePage />} />
                           </Route>
                           <Route path="room" element={<GameRoomPage />} />
-                          <Route path="game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
-                          <Route path="game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />
                           <Route path="lobby/:roomId" element={<LobbyPage />} />
                         </Route>
+                        {/* Solo game routes WITHOUT MainLayout (no navbar on game screens) */}
+                        <Route path="/solo/game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
+                        <Route path="/solo/game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />
                         {/* Final Results page with its own MainNavbar */}
                         <Route path="/solo/game/room/:roomId/final" element={<FinalResultsPage />} />
 

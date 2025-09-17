@@ -297,6 +297,18 @@
   - Behavior: On mobile (md-), the page shows two stacked cards in this order: `Join Game` then `Host Game`. On md+ the cards render side-by-side.
   - Implementation: Removed the mobile tab toggle; both cards are always visible. No functional changes to the join/create handlers.
 
+#### Compete Landing Page — UI Updates (2025-09-16)
+
+- Page: `src/pages/PlayWithFriends.tsx`
+- Header: The title reads `Compete` and sits on the same line as the `← Back` button.
+- Cards: Both `Join Game` and `Host Game` sections are wrapped in grey cards using `bg-[#444]` with a subtle border `border-[#555]` and rounded corners.
+- Join button: Uses the same turquoise gradient as the Create Room button — `bg-gradient-to-r from-emerald-400 to-cyan-400 text-black hover:opacity-90` — instead of orange.
+- Inputs:
+  - Room code input widened to show the full placeholder (`w-60`) and keeps spaced uppercase tracking (`tracking-[0.4em]`).
+  - All inputs have a white background with black text in both light and dark themes: `bg-white text-black dark:bg-white dark:text-black` and a light border `border-zinc-300`.
+  - The paste invite link input follows the same white/black styling.
+- Rationale: Ensures the `ENTER CODE` placeholder is fully visible and improves contrast/legibility in dark mode while keeping primary CTAs consistent.
+
 - __Variants: SYNC and ASYNC__
   - Lobby: `src/pages/Room.tsx` contains a UI toggle (`mode` state) to select between `'sync'` and `'async'`. The server emits a `start` event; the client starts the game with `startGame({ roomId, seed, timerSeconds, timerEnabled, competeVariant: mode })`.
   - Routing (already present):

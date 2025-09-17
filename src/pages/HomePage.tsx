@@ -272,7 +272,7 @@ const HomePage = () => {
                   className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-yellow-300 via-orange-400 to-orange-600 cursor-pointer"
                   onClick={() => handleStartGame('classic')}
                 >
-                  <img src="/icons/solo.webp" alt="Solo" className="w-36 h-36 object-contain" />
+                  <img src="/icons/solo.webp" alt="Solo" className="h-40 w-auto object-contain" />
                 </div>
                 <div
                   className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1 cursor-pointer"
@@ -325,7 +325,7 @@ const HomePage = () => {
                   onClick={() => handleStartGame('levelup')}
                 >
                   <div className="relative w-full h-full flex items-center justify-center">
-                    <img src="/icons/level.webp" alt="Level Up" className="w-36 h-36 object-contain" />
+                    <img src="/icons/level.webp" alt="Level Up" className="h-40 w-auto object-contain" />
                     <div className="absolute top-2 right-2 bg-black/60 text-white text-xs font-bold px-2 py-1 rounded">
                       Lv {Math.max(1, Number((profile as any)?.level_up_best_level || 1))}
                     </div>
@@ -346,8 +346,8 @@ const HomePage = () => {
                   navigate('/compete');
                 }}
               >
-                <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-purple-300 via-violet-500 to-purple-700">
-                  <img src="/icons/compete.webp" alt="Compete" className="w-36 h-36 object-contain" />
+                <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-emerald-400 to-cyan-400">
+                  <img src="/icons/compete.webp" alt="Compete" className="h-40 w-auto object-contain" />
                 </div>
                 <div className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1">
                   COMPETE

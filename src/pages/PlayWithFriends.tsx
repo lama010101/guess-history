@@ -17,7 +17,7 @@ const Compete: React.FC = () => {
   const { user } = useAuth();
   const [joinCode, setJoinCode] = useState<string>('');
 
-  const validJoinCode = useMemo(() => /^[A-Z0-9]{6}$/.test(joinCode), [joinCode]);
+  const validJoinCode = useMemo(() => /^[a-z0-9]{6}$/.test(joinCode), [joinCode]);
 
   const handleCreate = useCallback(() => {
     const code = randomCode(6);
@@ -27,78 +27,57 @@ const Compete: React.FC = () => {
 
   const handleJoin = useCallback(() => {
     if (!validJoinCode) return;
-    navigate(`/room/${joinCode}`);
+    // Navigate using a canonical uppercase room code
+    navigate(`/room/${joinCode.toUpperCase()}`);
   }, [validJoinCode, joinCode, navigate]);
 
   return (
     <div className="min-h-screen w-full bg-history-light dark:bg-black text-white">
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-4">
+        {/* Header: Back left, title centered */}
+        <div className="relative mb-6">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-2 text-sm text-zinc-300 hover:text-white"
+            className="absolute left-0 top-1 inline-flex items-center gap-2 text-sm text-zinc-300 hover:text-white"
             aria-label="Back"
           >
             <ArrowLeft className="h-4 w-4" />
             Back
           </button>
+          <h1 className="text-2xl font-bold text-center">Compete</h1>
         </div>
-
-        <h1 className="text-2xl font-bold mb-4">Play with friends</h1>
         {/* Cards: Join first (always visible on mobile), Host below on mobile; side-by-side on md+ */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Join card */}
-          <div className={`rounded-2xl border border-zinc-800 bg-zinc-900/60 shadow-lg p-5`}>
+          <div className={`rounded-2xl border border-[#555] bg-[#444] shadow-lg p-5`}>
             <h2 className="text-lg font-semibold mb-3">Join Game</h2>
             <label htmlFor="join-code" className="block text-xs text-zinc-400 mb-2">Room Code</label>
             <div className="flex items-center gap-3">
               <Input
                 id="join-code"
                 value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                placeholder="Enter Code"
+                onChange={(e) => setJoinCode(e.target.value.toLowerCase())}
+                placeholder="enter code"
                 maxLength={6}
-                className="w-40 tracking-[0.4em] uppercase bg-zinc-950 border-zinc-700 text-white placeholder:text-zinc-500"
+                className="w-60 tracking-[0.4em] bg-white text-black dark:bg-white dark:text-black placeholder:text-zinc-500 border-zinc-300"
                 aria-label="Room code"
               />
               <Button
                 onClick={handleJoin}
                 disabled={!validJoinCode}
-                variant={validJoinCode ? 'default' : 'secondary'}
-                className="rounded-xl"
+                className="rounded-xl text-black bg-gradient-to-r from-emerald-400 to-cyan-400 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Join
               </Button>
             </div>
             <p className="text-[11px] text-zinc-500 mt-3">6 letters/numbers, not case sensitive.</p>
 
-            {/* OR divider */}
-            <div className="my-3 flex items-center gap-3 text-[11px] text-zinc-500">
-              <div className="h-px flex-1 bg-zinc-800" />
-              OR
-              <div className="h-px flex-1 bg-zinc-800" />
-            </div>
-
-            {/* Paste invite link */}
-            <div className="mt-4">
-              <label htmlFor="paste-invite" className="block text-xs text-zinc-400 mb-2">Paste invite link</label>
-              <Input
-                id="paste-invite"
-                placeholder="https://your-app/room/ABC123"
-                className="bg-zinc-950 border-zinc-700 text-white placeholder:text-zinc-500"
-                onChange={(e) => {
-                  const v = e.target.value.toUpperCase();
-                  const match = v.match(/([A-Z0-9]{6})\b/);
-                  if (match) setJoinCode(match[1]);
-                }}
-              />
-            </div>
+            {/* Paste invite link removed — only Room Code input is used */}
           </div>
 
           {/* Host card */}
-          <div className={`rounded-2xl border border-zinc-800 bg-zinc-900/60 shadow-lg p-5`}>
+          <div className={`rounded-2xl border border-[#555] bg-[#444] shadow-lg p-5`}>
             <div className="flex items-center gap-2 mb-3">
               <Users className="h-5 w-5 text-cyan-400" />
               <h2 className="text-lg font-semibold">Host Game</h2>

@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { X, Copy, Users, RefreshCw, Share2, Search, UserPlus, UserMinus, ExternalLink, ChevronDown, ChevronUp, Clock, MessageSquare } from 'lucide-react';
+import { X, Copy, Users, RefreshCw, Search, UserPlus, UserMinus, ExternalLink, ChevronDown, ChevronUp, Clock, MessageSquare } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import FriendsPage from '@/pages/FriendsPage';
 import { partyUrl, LobbyServerMessage, LobbyClientMessage } from '@/lib/partyClient';
 import { useGame } from '@/contexts/GameContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -63,6 +65,7 @@ const Room: React.FC = () => {
   const [mode, setMode] = useState<'sync' | 'async'>('sync');
   const modeRef = useRef<'sync' | 'async'>('sync');
   const [ownId, setOwnId] = useState<string>('');
+  const [friendsModalOpen, setFriendsModalOpen] = useState(false);
   // Local timer slider state (host-only) to avoid flicker while dragging
   const [localTimerSec, setLocalTimerSec] = useState<number>(Number(roundTimerSec || 60));
   const [draggingTimer, setDraggingTimer] = useState(false);
@@ -651,13 +654,13 @@ const Room: React.FC = () => {
         #room-timer-range:focus { outline: none; }
         /* WebKit track */
         #room-timer-range::-webkit-slider-runnable-track { height: 6px; background: rgba(255,255,255,0.25); border-radius: 9999px; }
-        /* WebKit thumb (3x larger, turquoise with halo) */
-        #room-timer-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 36px; height: 36px; border-radius: 50%; background: #22d3ee; border: 3px solid #22d3ee; margin-top: -15px; box-shadow: 0 0 0 12px rgba(34, 211, 238, 0.25); }
+        /* WebKit thumb (reduced size, turquoise with halo) */
+        #room-timer-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #22d3ee; border: 2px solid #22d3ee; margin-top: -6px; box-shadow: 0 0 0 6px rgba(34, 211, 238, 0.25); }
         #room-timer-range:disabled::-webkit-slider-thumb { background: #0891b2; border-color: #0891b2; box-shadow: none; }
         /* Firefox track */
         #room-timer-range::-moz-range-track { height: 6px; background: rgba(255,255,255,0.25); border-radius: 9999px; }
         /* Firefox thumb */
-        #room-timer-range::-moz-range-thumb { width: 36px; height: 36px; border-radius: 50%; background: #22d3ee; border: 3px solid #22d3ee; box-shadow: 0 0 0 12px rgba(34, 211, 238, 0.25); }
+        #room-timer-range::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #22d3ee; border: 2px solid #22d3ee; box-shadow: 0 0 0 6px rgba(34, 211, 238, 0.25); }
         #room-timer-range:disabled::-moz-range-thumb { background: #0891b2; border-color: #0891b2; box-shadow: none; }
       `}</style>
       <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6 pb-24">
@@ -683,6 +686,15 @@ const Room: React.FC = () => {
               <span className="inline-flex items-center gap-1"><Clock className="h-4 w-4" />ASYNC</span>
             </button>
           </div>
+
+  {/* Friends modal */}
+  <Dialog open={friendsModalOpen} onOpenChange={setFriendsModalOpen}>
+    <DialogContent className="max-w-4xl w-[92vw] max-h-[85vh] p-0 overflow-auto bg-black text-white border border-neutral-800">
+      <div className="p-4">
+        <FriendsPage />
+      </div>
+    </DialogContent>
+  </Dialog>
           <div className="text-xs text-neutral-300 text-center max-w-xl px-3">
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 justify-center">
               <div className="inline-flex items-center gap-1"><RefreshCw className="h-3 w-3 text-cyan-300" /><span>Sync: everyone plays the same round at the same time; host sets the timer.</span></div>
@@ -707,7 +719,7 @@ const Room: React.FC = () => {
                       setTimerEnabled(!!checked);
                     }}
                     disabled={!isHost || mode === 'sync'}
-                    className="mr-3 data-[state=checked]:bg-cyan-500 h-4 w-8"
+                    className="mr-3 h-4 w-8 data-[state=unchecked]:bg-white data-[state=checked]:bg-white"
                   />
                   <Label htmlFor="room-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm text-white">
                     <span>Round Timer</span>
@@ -761,19 +773,14 @@ const Room: React.FC = () => {
               </div>
               <Label className="text-xs text-neutral-400">Room Code</Label>
               <div className="mt-1 flex items-center gap-2">
-                <Input value={roomCode} readOnly className="bg-neutral-950 border-neutral-700 text-white tracking-widest uppercase" />
+                <Input value={roomCode.toLowerCase()} readOnly className="bg-neutral-950 border-neutral-700 text-white tracking-widest" />
                 {isHost && (
                   <Button onClick={copyCode} size="icon" className="bg-neutral-800 hover:bg-neutral-700" aria-label="Copy room code">
                     <Copy className="h-4 w-4" />
                   </Button>
                 )}
               </div>
-              {isHost && (
-                <Button onClick={copyInvite} className="mt-3 w-full bg-white text-black hover:bg-white/90 inline-flex items-center gap-2">
-                  <Share2 className="h-4 w-4" />
-                  {copied ? 'Link copied!' : 'Share Invite'}
-                </Button>
-              )}
+              {/* Share Invite removed — only Room Code is used */}
             </div>
 
             {/* Chat moved below Players in right column */}
@@ -806,7 +813,7 @@ const Room: React.FC = () => {
                         <div className="-mt-2 mb-3 text-right">
                           <button
                             type="button"
-                            onClick={() => navigate('/home')}
+                            onClick={() => setFriendsModalOpen(true)}
                             className="text-xs text-emerald-300 hover:text-emerald-200 inline-flex items-center gap-1"
                           >
                             <ExternalLink className="h-3.5 w-3.5" /> Manage friends

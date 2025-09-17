@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { fetchUserProfile, UserProfile } from '@/utils/profile/profileService';
 import { Badge } from "@/components/ui/badge";
 import { formatInteger } from '@/utils/format';
+import InvitesBell from '@/components/navigation/InvitesBell';
 
 interface MainNavbarProps {
   onMenuClick?: () => void;
@@ -133,8 +134,12 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
             )}
           </div>
 
-          {/* Avatar/Menu button on the right */}
-          <div className="flex items-center">
+          {/* Invites bell and Avatar/Menu button on the right */}
+          <div className="flex items-center gap-2">
+            {/* Stop propagation so clicking the bell doesn't trigger header navigation */}
+            <div onClick={(e) => e.stopPropagation()}>
+              <InvitesBell />
+            </div>
             <Button 
               variant="ghost" 
               size="icon"

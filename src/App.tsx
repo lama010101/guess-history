@@ -11,6 +11,7 @@ import { LogWindowModal } from "@/components/LogWindowModal";
 import { AuthRedirectWrapper } from "@/components/AuthRedirectWrapper";
 import PreparationOverlay from "@/components/game/PreparationOverlay";
 import InviteListener from "@/components/InviteListener";
+import { Toaster } from "@/components/ui/toaster";
 
 import MainLayout from "./layouts/MainLayout";
 import HomePage from "./pages/HomePage";
@@ -213,6 +214,8 @@ const App = () => {
                       </Route>
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
+                    {/* Global toast renderer */}
+                    <Toaster />
                     </GameProvider>
                   </AuthRedirectWrapper>
                 </BrowserRouter>

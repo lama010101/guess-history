@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { NavProfile } from "@/components/NavProfile";
 import { StatsDisplay } from "@/components/StatsDisplay";
+import InvitesBell from "@/components/navigation/InvitesBell";
 
 const MainLayout = () => {
   return (
@@ -10,7 +11,10 @@ const MainLayout = () => {
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <StatsDisplay />
-          <NavProfile />
+          <div className="flex items-center gap-2">
+            <InvitesBell />
+            <NavProfile />
+          </div>
         </div>
       </div>
     </nav>

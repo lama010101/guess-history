@@ -347,7 +347,7 @@ const HomePage = () => {
                 }}
               >
                 <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-emerald-400 to-cyan-400">
-                  <img src="/icons/compete.webp" alt="Compete" className="h-40 w-auto object-contain" />
+                  <img src="/icons/compete.webp" alt="Compete" className="h-42 w-auto object-contain" />
                 </div>
                 <div className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1">
                   COMPETE

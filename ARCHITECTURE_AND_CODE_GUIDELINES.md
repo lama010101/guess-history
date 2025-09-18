@@ -1555,6 +1555,7 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - When all connected players are ready, server broadcasts:
     - `start { startedAt: string, durationSec: number, timerEnabled: boolean }`
   - Server persists round start metadata for recovery.
+  - Fallback behavior (2025-09-18): If the server cannot start the authoritative Supabase timer (missing env vars or RPC failure), it still broadcasts `start` immediately with `timerEnabled: false` and `startedAt = now`. Clients proceed with local timers to ensure games start reliably in Sync mode during development or partial outages.
 
 - **Client handling** (`src/pages/Room.tsx`)
   - On `start`:

@@ -386,22 +386,29 @@ export default class Lobby implements Party.Server {
             this.started = true;
 
             let startedAt: string | null = null;
+            // Effective timer flag that we will advertise to clients. If we
+            // fail to start the authoritative timer, we fall back to
+            // non-authoritative local timers by setting this to false.
+            let effectiveTimerEnabled = timerEnabled;
             if (timerEnabled) {
               const started = await this.startRoundTimer(durationSec);
               if (!started) {
-                // Could not start authoritative timer; reset and wait for retry
-                this.started = false;
-                console.warn("lobby: unable to start authoritative timer; not broadcasting start");
-                return;
+                console.warn(
+                  "lobby: unable to start authoritative timer; falling back to non-authoritative start"
+                );
+                // Fallback: proceed with a start using client/local timers
+                effectiveTimerEnabled = false;
+                startedAt = new Date().toISOString();
+              } else {
+                startedAt = started.startedAt;
               }
-              startedAt = started.startedAt;
             } else {
               // Timer disabled: still mark a start for synchronization
               startedAt = new Date().toISOString();
             }
 
-            this.broadcast({ type: "start", startedAt, durationSec, timerEnabled });
-            await this.logEvent("start", { startedAt, durationSec, timerEnabled });
+            this.broadcast({ type: "start", startedAt, durationSec, timerEnabled: effectiveTimerEnabled });
+            await this.logEvent("start", { startedAt, durationSec, timerEnabled: effectiveTimerEnabled });
             // Persist authoritative round 1 start for async/refresh recovery
             await this.persistRoundStart(startedAt, durationSec);
           }

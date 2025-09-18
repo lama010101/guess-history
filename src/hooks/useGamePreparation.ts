@@ -105,8 +105,12 @@ export function useGamePreparation() {
     } catch {}
 
     // 1) Select image IDs (and persist to game_sessions when roomId provided)
+    // IMPORTANT for multiplayer determinism: when roomId is provided, do NOT filter by per-user history.
+    // Passing p_user_id = NULL ensures every client uses the same eligible set and, with the same seed,
+    // gets the exact same 5 images in the same order.
+    const effectiveUserIdForRpc = roomId ? null : userId;
     const rpcArgs: any = {
-      p_user_id: userId,
+      p_user_id: effectiveUserIdForRpc,
       p_room_id: roomId,
       p_count: count,
       // Always include year bounds to disambiguate RPC overloads (prefer 6-arg variant)

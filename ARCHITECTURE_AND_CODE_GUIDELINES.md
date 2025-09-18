@@ -303,6 +303,20 @@
     3) `startGame` selects the shared 5 images via RPC and preloads them; the global overlay shows progress thumbnails and hides automatically on completion.
     4) Navigates to `/compete/(sync|async)/game/room/:roomId/round/1`.
 
+#### Compete — Deterministic 5-Image Set Across Players (2025-09-18)
+
+- Files:
+  - `src/hooks/useGamePreparation.ts`
+  - `src/contexts/GameContext.tsx`
+  - `src/utils/imageHistory.ts`
+- Determinism rules:
+  - The seed for a multiplayer start is `uuidv5(\"${roomCode}:${startedAt}\", uuidv5.URL)` emitted by the lobby server in the `start` event.
+  - When `roomId` is provided (multiplayer), `useGamePreparation.prepare()` calls the RPC `create_game_session_and_pick_images` with `p_user_id = NULL` (ignoring per-user history) to ensure every client computes from the same eligible set.
+  - The RPC persists the ordered `image_ids` to `public.game_sessions` under `room_id`; late joiners and refreshes hydrate via `getOrPersistRoomImages(roomId, seed, count)` restoring the exact stored order.
+  - Ordering is deterministic (`ORDER BY md5(p_seed || image_id)`) so all players see the same 5 images in the same order for a given room/startedAt.
+- Rationale:
+  - Passing a real `p_user_id` allowed each client’s personal history to exclude different images, which could diverge the selection/order even with the same seed. Setting `p_user_id = NULL` for multiplayer avoids this and restores strict cross-player consistency.
+
 ### Compete Mode — SYNC/ASYNC Variants and Leaderboards (2025-09-13)
 
 - __Top Navbar on /compete__

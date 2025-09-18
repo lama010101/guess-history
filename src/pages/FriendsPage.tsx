@@ -447,23 +447,6 @@ const FriendsPage = () => {
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => inviteFriendToGame(friend)}
-                          >
-                            <Mail className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Invite to Game</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
                             onClick={() => removeFriend(friend.id)}
                           >
                             <UserMinus className="h-4 w-4 text-red-500" />

@@ -1,24 +1,39 @@
-import React from 'react';
-import { Button } from '@/components/ui/button';
+import React from "react";
+import { Button } from "@/components/ui/button";
 
 interface InviteToastContentProps {
-  hostName?: string | null;
   roomId: string;
-  onAccept: () => void;
-  onDecline: () => void;
+  hostName?: string | null;
+  onAccept: () => void | Promise<void>;
+  onDecline: () => void | Promise<void>;
 }
 
-const InviteToastContent: React.FC<InviteToastContentProps> = ({ hostName, roomId, onAccept, onDecline }) => {
+const InviteToastContent: React.FC<InviteToastContentProps> = ({ roomId, hostName, onAccept, onDecline }) => {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="space-y-2">
       <div className="text-sm">
-        <span className="font-medium">{hostName ?? 'Someone'}</span> invites you to room <span className="font-mono">{roomId}</span>
+        {hostName ? (
+          <span>
+            <span className="font-medium">{hostName}</span> invites you to room {roomId}
+          </span>
+        ) : (
+          <span>New invite to room {roomId}</span>
+        )}
       </div>
       <div className="flex items-center gap-2">
-        <Button size="sm" className="bg-emerald-500 hover:bg-emerald-500/90 text-black" onClick={onAccept}>
+        <Button
+          size="sm"
+          className="bg-emerald-500 hover:bg-emerald-500/90 text-black"
+          onClick={onAccept}
+        >
           Accept
         </Button>
-        <Button size="sm" className="bg-red-500 hover:bg-red-500/90 text-white" onClick={onDecline}>
+        <Button
+          size="sm"
+          variant="destructive"
+          className="bg-red-500 hover:bg-red-500/90 text-white"
+          onClick={onDecline}
+        >
           Decline
         </Button>
       </div>

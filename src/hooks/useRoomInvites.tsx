@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
 import { acquireChannel } from "@/integrations/supabase/realtime";
+import { useNavigate } from "react-router-dom";
+import InviteToastContent from "@/components/invites/InviteToastContent";
 
 export type RoomInvite = Database["public"]["Tables"]["room_invites"]["Row"];
 export type Invite = RoomInvite & { inviter_display_name?: string };
@@ -15,6 +17,7 @@ const POLL_INTERVAL_MS = 8000; // fallback polling to reconcile missed realtime 
 export function useRoomInvites() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [invites, setInvites] = useState<Invite[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,12 +48,27 @@ export function useRoomInvites() {
           const newlyDiscovered = rows.filter((r) => !shownInviteToastIds.has(r.id));
           for (const r of newlyDiscovered) {
             shownInviteToastIds.add(r.id);
-            toast({
+            // Initial toast (host name may be enriched shortly)
+            const handle = toast({
               title: "New room invite",
-              description: `You have a new invite to room ${r.room_id}`,
-              duration: 5000,
+              description: (
+                <InviteToastContent
+                  roomId={r.room_id}
+                  hostName={null}
+                  onAccept={async () => {
+                    navigate(`/room/${encodeURIComponent(r.room_id)}`);
+                    try { await supabase.from('room_invites').delete().eq('id', r.id); } catch {}
+                    handle.dismiss();
+                  }}
+                  onDecline={async () => {
+                    try { await supabase.from('room_invites').delete().eq('id', r.id); } catch {}
+                    handle.dismiss();
+                  }}
+                />
+              ),
+              duration: 120000,
             });
-            // Best-effort: enrich inviter's display name and update toast
+            // Enrich with host display name and update toast + local state
             (async () => {
               try {
                 const { data: prof } = await supabase
@@ -59,11 +77,26 @@ export function useRoomInvites() {
                   .eq('id', r.inviter_user_id as string)
                   .maybeSingle();
                 const host = (prof?.display_name || r.inviter_user_id) as string;
-                toast({ title: "New room invite", description: `${host} invites you to room ${r.room_id}` });
+                handle.update({
+                  id: (handle as any).id,
+                  description: (
+                    <InviteToastContent
+                      roomId={r.room_id}
+                      hostName={host}
+                      onAccept={async () => {
+                        navigate(`/room/${encodeURIComponent(r.room_id)}`);
+                        try { await supabase.from('room_invites').delete().eq('id', r.id); } catch {}
+                        handle.dismiss();
+                      }}
+                      onDecline={async () => {
+                        try { await supabase.from('room_invites').delete().eq('id', r.id); } catch {}
+                        handle.dismiss();
+                      }}
+                    />
+                  ),
+                });
                 setInvites((prev) => prev.map((i) => (i.id === r.id ? { ...i, inviter_display_name: host } : i)));
-              } catch {
-                // ignore
-              }
+              } catch {}
             })();
           }
         }
@@ -71,12 +104,32 @@ export function useRoomInvites() {
         if (!loadedOnceRef.current && rows.length) {
           for (const r of rows) shownInviteToastIds.add(r.id);
         }
-        setInvites(rows);
+        // Enrich all rows with inviter display names (batch) so the bell sheet shows host names
+        try {
+          const inviterIds = Array.from(new Set(rows.map((r) => r.inviter_user_id).filter(Boolean))) as string[];
+          if (inviterIds.length > 0) {
+            const { data: profs } = await supabase
+              .from('profiles')
+              .select('id, display_name')
+              .in('id', inviterIds);
+            const nameMap = new Map<string, string>();
+            (profs ?? []).forEach((p: any) => nameMap.set(p.id, p.display_name));
+            const enriched = rows.map((r) => ({
+              ...r,
+              inviter_display_name: nameMap.get(r.inviter_user_id as string),
+            }));
+            setInvites(enriched);
+          } else {
+            setInvites(rows);
+          }
+        } catch {
+          setInvites(rows);
+        }
       }
       if (!opts?.silent) setLoading(false);
       loadedOnceRef.current = true;
     },
-    [authLoading, userId, toast]
+    [authLoading, userId, toast, navigate]
   );
 
   useEffect(() => {
@@ -103,10 +156,24 @@ export function useRoomInvites() {
           const isFirstToastForThisInvite = !shownInviteToastIds.has(newInvite.id);
           if (isFirstToastForThisInvite) {
             shownInviteToastIds.add(newInvite.id);
-            toast({
+            const t = toast({
               title: "New room invite",
-              description: `You have a new invite to room ${newInvite.room_id}`,
-              duration: 5000,
+              description: (
+                <InviteToastContent
+                  roomId={newInvite.room_id}
+                  hostName={null}
+                  onAccept={async () => {
+                    navigate(`/room/${encodeURIComponent(newInvite.room_id)}`);
+                    try { await supabase.from('room_invites').delete().eq('id', newInvite.id); } catch {}
+                    t.dismiss();
+                  }}
+                  onDecline={async () => {
+                    try { await supabase.from('room_invites').delete().eq('id', newInvite.id); } catch {}
+                    t.dismiss();
+                  }}
+                />
+              ),
+              duration: 120000,
             });
           }
 
@@ -130,13 +197,28 @@ export function useRoomInvites() {
               console.log('[useRoomInvites] Profile fetched at:', new Date().toISOString());
 
               const host = profile?.display_name || newInvite.inviter_user_id;
-
-              // Update toast with the host's name
+              // Update toast with the host's name by re-issuing content (non-destructive)
               if (isFirstToastForThisInvite) {
-                toast({
-                  title: "New room invite",
-                  description: `${host} invites you to room ${newInvite.room_id}`,
-                });
+                try {
+                  const t = toast({
+                    title: "New room invite",
+                    description: (
+                      <InviteToastContent
+                        roomId={newInvite.room_id}
+                        hostName={host as string}
+                        onAccept={async () => {
+                          navigate(`/room/${encodeURIComponent(newInvite.room_id)}`);
+                          try { await supabase.from('room_invites').delete().eq('id', newInvite.id); } catch {}
+                        }}
+                        onDecline={async () => {
+                          try { await supabase.from('room_invites').delete().eq('id', newInvite.id); } catch {}
+                          t.dismiss();
+                        }}
+                      />
+                    ),
+                    duration: 120000,
+                  });
+                } catch {}
               }
 
               setInvites((prev) =>

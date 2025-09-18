@@ -52,8 +52,8 @@ export const InvitesBell: React.FC = () => {
             invites.map((inv) => (
               <div key={inv.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-\[\#444\] p-3">
                 <div className="flex flex-col">
-                  <div className="text-sm font-medium">Room {inv.room_id}</div>
-                  <div className="text-xs text-zinc-400">Invited at {new Date(inv.created_at).toLocaleString()}</div>
+                  <div className="text-sm font-medium">{inv.inviter_display_name ? `${inv.inviter_display_name} invited you` : `Room ${inv.room_id}`}</div>
+                  <div className="text-xs text-zinc-400">Room {inv.room_id} • Invited at {new Date(inv.created_at).toLocaleString()}</div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button size="sm" className="bg-emerald-500 hover:bg-emerald-500/90 text-black" onClick={() => accept(inv.id, inv.room_id)}>

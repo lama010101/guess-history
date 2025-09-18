@@ -177,3 +177,26 @@
 .mode-levelup .hover\:bg-orange-500\/90:hover { background-color: hsl(var(--secondary) / 0.9) !important; }
 .mode-levelup .active\:bg-orange-500\/70:active { background-color: hsl(var(--secondary) / 0.7) !important; }
 .mode-levelup .active\:bg-orange-500\/90:active { background-color: hsl(var(--secondary) / 0.9) !important; }
+
+/* Compete mode theming overrides */
+.mode-compete {
+  /* Shift secondary highlight to turquoise for Compete */
+  /* cyan-400 in HSL approx: 187 92% 42% (we'll use a close match via hex below for utility remaps) */
+  --secondary: 187 92% 42%;
+}
+
+/* Remap prominent orange utilities to turquoise within Compete context */
+.mode-compete .bg-orange-500 { background-color: #22d3ee !important; }
+.mode-compete .hover\:bg-orange-500:hover { background-color: #22d3ee !important; }
+.mode-compete .active\:bg-orange-500:active { background-color: #22d3ee !important; }
+.mode-compete .hover\:bg-orange-600:hover { background-color: #06b6d4 !important; }
+
+/* Alpha background variants used by fullscreen controls (map to Compete turquoise) */
+.mode-compete .bg-orange-500\/60 { background-color: rgba(34, 211, 238, 0.6) !important; }
+.mode-compete .bg-orange-500\/70 { background-color: rgba(34, 211, 238, 0.7) !important; }
+.mode-compete .bg-orange-500\/80 { background-color: rgba(34, 211, 238, 0.8) !important; }
+.mode-compete .bg-orange-500\/90 { background-color: rgba(34, 211, 238, 0.9) !important; }
+.mode-compete .hover\:bg-orange-500\/70:hover { background-color: rgba(34, 211, 238, 0.7) !important; }
+.mode-compete .hover\:bg-orange-500\/90:hover { background-color: rgba(34, 211, 238, 0.9) !important; }
+.mode-compete .active\:bg-orange-500\/70:active { background-color: rgba(34, 211, 238, 0.7) !important; }
+.mode-compete .active\:bg-orange-500\/90:active { background-color: rgba(34, 211, 238, 0.9) !important; }

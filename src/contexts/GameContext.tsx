@@ -550,27 +550,15 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       let preparedImages: GameImage[] | null = null;
 
       if (isMultiplayer) {
-        // Deterministic, shared set persisted by roomId and seed.
-        const imageBatch = await getOrPersistRoomImages(newRoomId, settings?.seed ?? '', ROUNDS_PER_GAME);
-        if (!imageBatch || imageBatch.length < ROUNDS_PER_GAME) {
-          console.warn('[GameContext] getOrPersistRoomImages returned insufficient images', imageBatch?.length);
-          setIsLoading(false);
-          setError('Could not fetch enough images for multiplayer');
-          return;
-        }
-
-        const resolveUrl = (img: any) => {
-          if (img.firebase_url) return String(img.firebase_url);
-          let finalUrl: string | null = img.image_url as string | null;
-          if (finalUrl && !finalUrl.startsWith('http')) {
-            const { data } = supabase.storage.from('images').getPublicUrl(finalUrl);
-            finalUrl = data?.publicUrl || '';
-          }
-          return finalUrl || '';
-        };
-
-        preparedImages = imageBatch.map((img: any) => ({
-          id: String(img.id),
+        // Use the same preparation pipeline as Solo/Level Up so the global PreparationOverlay shows
+        const prep = await prepare({
+          userId: user?.id ?? null,
+          roomId: newRoomId,
+          count: ROUNDS_PER_GAME,
+          seed: settings?.seed ?? null,
+        });
+        preparedImages = prep.images.map((img) => ({
+          id: img.id,
           title: img.title,
           description: img.description,
           source_citation: img.source_citation,
@@ -579,13 +567,13 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           year: img.year,
           image_url: img.image_url,
           location_name: img.location_name,
-          url: resolveUrl(img),
+          url: img.url,
           firebase_url: img.firebase_url,
           confidence: img.confidence,
         }));
 
         try {
-          devDebug('[GameContext] MP deterministic images selected (first 5 IDs)', {
+          devDebug('[GameContext] MP prepared images (first 5 IDs)', {
             first5: preparedImages.map(i => i.id).slice(0, 5),
             total: preparedImages.length,
             roomId: newRoomId,
@@ -599,7 +587,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           const playedIds = preparedImages.map((i) => i.id);
           await recordPlayedImages(user?.id ?? null, playedIds);
         } catch (e) {
-          console.warn('[GameContext] Failed to record played images (multiplayer)', e);
+          console.warn('[GameContext] Failed to record played images (multiplayer prepared)', e);
         }
       } else {
         try {

@@ -27,6 +27,7 @@ import HomePage from './src/pages/HomePage';
 import RoundResultsPage from './src/pages/RoundResultsPage';
 import GameRoundPage from './src/pages/GameRoundPage';
 import InviteListener from "./src/components/InviteListener";
+import PreparationOverlay from "./src/components/game/PreparationOverlay";
 import Room from "./src/pages/Room";
 import SoloGameRoundPage from './src/pages/solo/SoloGameRoundPage';
 import SoloRoundResultsPage from './src/pages/solo/SoloRoundResultsPage';
@@ -102,6 +103,8 @@ const App = () => {
                 <ModeClassWatcher />
                 <GameProvider>
                   <InviteListener />
+                  {/* Global preparation overlay: shows during Solo, Level Up, and Compete preloading */}
+                  <PreparationOverlay />
                   {(import.meta as any)?.env?.DEV && <DevToastProbe />}
                   <Routes>
                   <Route path="/home" element={<HomePage />} />

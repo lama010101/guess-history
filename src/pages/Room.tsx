@@ -291,6 +291,11 @@ const Room: React.FC = () => {
                   abortPreparation();
                   console.debug('[Room] Aborted any existing preparation before starting game');
                 } catch {}
+                // Apply compete theming immediately so PreparationOverlay uses turquoise accents on Room route
+                try {
+                  document.body.classList.add('mode-compete');
+                  document.body.classList.remove('mode-levelup');
+                } catch {}
                 startGame({ roomId: roomCode, seed, timerSeconds: data.durationSec, timerEnabled: data.timerEnabled, competeVariant: modeRef.current }).catch(() => {
                   startedRef.current = false;
                 });

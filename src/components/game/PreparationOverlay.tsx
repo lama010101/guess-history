@@ -71,6 +71,24 @@ export default function PreparationOverlay() {
   );
 
   const { loaded = 0, total = 0 } = prepProgress || { loaded: 0, total: 0 };
+
+  // Choose accent color by mode (read from <body> classes)
+  const mode: 'compete' | 'levelup' | 'solo' = useMemo(() => {
+    try {
+      const b = document.body;
+      if (b.classList.contains('mode-compete')) return 'compete';
+      if (b.classList.contains('mode-levelup')) return 'levelup';
+      return 'solo';
+    } catch {
+      return 'solo';
+    }
+  }, [prepStatus]);
+  const spinnerClass = useMemo(() => {
+    return mode === 'compete' ? 'text-cyan-400' : mode === 'levelup' ? 'text-pink-500' : 'text-orange-500';
+  }, [mode]);
+  const barFilledClass = useMemo(() => {
+    return mode === 'compete' ? 'bg-cyan-400' : mode === 'levelup' ? 'bg-pink-500' : 'bg-orange-500';
+  }, [mode]);
   // Fallback count for generic ratio-based progress and for hold-visible behavior
   const filledSegments = useMemo(() => {
     const segments = 5;
@@ -172,7 +190,7 @@ export default function PreparationOverlay() {
           {isError ? (
             <TriangleAlert className="h-6 w-6 text-red-500" />
           ) : (
-            <Loader2 className="h-6 w-6 animate-spin text-history-primary" />
+            <Loader2 className={`h-6 w-6 animate-spin ${spinnerClass}`} />
           )}
           <h2 className="text-xl font-semibold">{isError ? 'Preparation failed' : "Dropping you into History…"}</h2>
         </div>
@@ -192,8 +210,8 @@ export default function PreparationOverlay() {
                   className={
                     'h-2 flex-1 rounded-sm transition-colors duration-300 ' +
                     ((preparedLoadedIndices && preparedImages)
-                      ? (hasLoaded(preparedLoadedIndices as any, i) ? 'bg-pink-500' : 'bg-zinc-300 dark:bg-zinc-700')
-                      : (i < filledSegments ? 'bg-pink-500' : 'bg-zinc-300 dark:bg-zinc-700'))
+                      ? (hasLoaded(preparedLoadedIndices as any, i) ? barFilledClass : 'bg-zinc-300 dark:bg-zinc-700')
+                      : (i < filledSegments ? barFilledClass : 'bg-zinc-300 dark:bg-zinc-700'))
                   }
                 />
               ))}

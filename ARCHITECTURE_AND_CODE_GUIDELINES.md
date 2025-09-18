@@ -261,7 +261,7 @@
 
 ### Mode-based Theming (Solo, Compete, Collaborate, Level Up)
 
-- **Goal**: Solo keeps original orange accents. Compete shows purple. Collaborate shows turquoise. Level up shows pink.
+- **Goal**: Solo keeps original orange accents. Compete shows turquoise. Collaborate remains turquoise-friendly where used. Level Up shows pink.
 - **Body classes**: `App.tsx` `ModeClassWatcher` toggles on `<body>` based on route:
   - `mode-solo` when path includes `/solo/`
   - `mode-compete` when path includes `/compete/`
@@ -269,7 +269,7 @@
   - `mode-levelup` when path includes `/level/`
 - **CSS variables** (`src/index.css`):
   - Default (Solo): `--secondary` = orange (25 95% 53%).
-  - Compete: `body.mode-compete { --secondary: 270 85% 60%; }` (purple)
+  - Compete: `body.mode-compete { --secondary: 187 92% 42%; }` (turquoise)
   - Collaborate: `body.mode-collaborate { --secondary: 189 90% 45%; }` (turquoise)
   - Level Up: `body.mode-levelup { --secondary: 325 90% 60%; }` (pink)
 - **Tailwind orange remapping (scoped)**: Under `@layer utilities` we map Tailwind `*-orange-*` utilities to `hsl(var(--secondary))` within `.mode-compete`, `.mode-collaborate`, and `.mode-levelup`:
@@ -281,9 +281,27 @@
   - Avoid hardcoded hex/orange. Use `hsl(var(--secondary))` in custom CSS.
 - **Testing**:
   - Solo: `/solo/...` → orange.
-  - Compete: `/compete/...` → purple.
+  - Compete: `/compete/...` → turquoise.
   - Collaborate: `/collaborate/...` → turquoise.
   - Verify buttons, sliders, rings, gradients, SVGs.
+
+#### Preparation Overlay — Global Mount and Compete Support (2025-09-18)
+
+- Components/Files:
+  - `App.tsx` — mounts `src/components/game/PreparationOverlay.tsx` globally inside `GameProvider` so it appears for all modes.
+  - `src/components/game/PreparationOverlay.tsx` — accent color now adapts by mode:
+    - Solo: orange
+    - Level Up: pink (via `body.mode-levelup`)
+    - Compete: turquoise (via `body.mode-compete`)
+  - `src/pages/Room.tsx` — on lobby `start` event, adds `body.mode-compete` immediately (before navigation) so the overlay uses turquoise during multiplayer preloading.
+  - `src/contexts/GameContext.tsx` — multiplayer `startGame({ roomId, seed, ... })` now runs through `useGamePreparation.prepare({ roomId, seed, count: 5 })` (same as Solo/Level Up), which drives the overlay while selecting/fetching/preloading.
+
+- Behavior:
+  - When all players are ready and the server emits `start { startedAt, durationSec, timerEnabled }`, the client:
+    1) Derives `seed = uuidv5(roomCode:startedAt)`.
+    2) Aborts any in-flight prep, applies `body.mode-compete` for theming, and calls `startGame({ roomId, seed, timerSeconds: durationSec, timerEnabled })`.
+    3) `startGame` selects the shared 5 images via RPC and preloads them; the global overlay shows progress thumbnails and hides automatically on completion.
+    4) Navigates to `/compete/(sync|async)/game/room/:roomId/round/1`.
 
 ### Compete Mode — SYNC/ASYNC Variants and Leaderboards (2025-09-13)
 

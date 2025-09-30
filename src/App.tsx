@@ -32,6 +32,7 @@ import AuthPage from "./pages/AuthPage";
 
 
 import RoundResultsPage from "./pages/RoundResultsPage";
+import CompeteRoundResultsPage from "./pages/compete/CompeteRoundResultsPage";
 import Compete from "./pages/PlayWithFriends";
 import Room from "./pages/Room";
 import TimerMainPage from "./timer/pages/MainPage";
@@ -193,7 +194,7 @@ const App = () => {
 
                         {/* Compete (multiplayer) routes - sync and async variants */}
                         <Route path="/compete/sync/game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
-                        <Route path="/compete/sync/game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />
+                        <Route path="/compete/sync/game/room/:roomId/round/:roundNumber/results" element={<CompeteRoundResultsPage />} />
                         <Route path="/compete/sync/game/room/:roomId/final" element={<FinalResultsPage />} />
                         <Route path="/compete/async/game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
                         <Route path="/compete/async/game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />

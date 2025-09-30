@@ -25,4 +25,7 @@ export interface RoundResult {
   xpWhere?: number;
   accuracy?: number;
   hintsUsed?: number;
+  xpTotal?: number;
+  timeAccuracy?: number;
+  locationAccuracy?: number;
 }

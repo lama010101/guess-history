@@ -7,6 +7,16 @@ export interface RoomRoundState {
   duration_sec: number;
 }
 
+type SessionProgressPayload = {
+  roomId: string;
+  roundNumber: number;
+  currentRoute?: string | null;
+  substep?: string | null;
+  startedAt?: string | null;
+  durationSec?: number | null;
+  timerEnabled?: boolean | null;
+};
+
 /**
  * Build a canonical round session identifier for a given room and round number.
  * Keep this centralized so all features (hints, results, etc.) remain consistent.
@@ -65,6 +75,52 @@ export async function setCurrentRoundInSession(roomId: string, roundNumber: numb
       message: e?.message || String(e),
       roomId,
       roundNumber,
+    });
+  }
+}
+
+function normalizeProgressPayload(payload: SessionProgressPayload, userId: string) {
+  return {
+    room_id: payload.roomId,
+    user_id: userId,
+    round_number: payload.roundNumber,
+    current_route: payload.currentRoute ?? null,
+    substep: payload.substep ?? null,
+    round_started_at: payload.startedAt ?? null,
+    duration_sec: payload.durationSec ?? null,
+    timer_enabled: payload.timerEnabled ?? null,
+  };
+}
+
+export async function upsertSessionProgress(payload: SessionProgressPayload): Promise<void> {
+  try {
+    if (!payload.roomId || Number.isNaN(payload.roundNumber)) return;
+    const { data } = await supabase.auth.getUser();
+    const user = data?.user;
+    if (!user?.id) return;
+
+    const upsertPayload = normalizeProgressPayload(payload, user.id);
+    const { error } = await supabase
+      .from('session_progress' as any)
+      .upsert(upsertPayload, { onConflict: 'room_id,user_id' } as any);
+
+    if (error) {
+      const code = (error as any).code;
+      const message = (error as any).message || String(error);
+      if (code !== '42P01' && code !== '42703') {
+        console.warn('[roomState] upsertSessionProgress error', {
+          code,
+          message,
+          roomId: payload.roomId,
+          roundNumber: payload.roundNumber,
+        });
+      }
+    }
+  } catch (e: any) {
+    console.warn('[roomState] upsertSessionProgress exception', {
+      message: e?.message || String(e),
+      roomId: payload.roomId,
+      roundNumber: payload.roundNumber,
     });
   }
 }

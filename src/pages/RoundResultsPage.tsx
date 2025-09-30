@@ -30,7 +30,7 @@ import {
   computeRoundNetPercent
 } from '@/utils/gameCalculations';
 import LevelRoundProgressCard from '@/components/levelup/LevelRoundProgressCard';
-import RoundScoreboard from '@/components/scoreboard/RoundScoreboard';
+// Round leaderboard moved to CompeteRoundResultsPage (triple leaderboards)
 // Timer integration removed to prevent flickering of Next Round button
 
 // Removed imports for utils/resultsFetching as we use context now
@@ -176,16 +176,15 @@ const RoundResultsPage = () => {
     console.log('Query Params:', { userId: user.id, roundSessionId });
 
       try {
-      // Query for round_hints (not in generated Database types yet) using a loosely-typed client
-      const sb: any = supabase;
-      const { data, error } = await sb
+      // Query for round_hints (not in generated Database types yet)
+      const { data, error } = await supabase
         .from('round_hints')
         .select('hint_id, xpDebt, accDebt, label, hint_type, purchased_at, round_id')
         .eq('user_id', user.id)
         .eq('round_id', roundSessionId)
         .order('purchased_at', { ascending: true });
 
-      const hintRecords = ((data ?? []) as unknown) as RoundHintRow[];
+      const hintRecords: RoundHintRow[] = (data ?? []) as RoundHintRow[];
 
       if (error) {
         console.error('Error fetching hint debts:', error);
@@ -307,7 +306,7 @@ const RoundResultsPage = () => {
   }, [contextResult, currentImage, roomId, currentRoundIndex]);
 
   // Mapping function: Context -> Layout Type
-  const mapToLayoutResultType = (
+  const mapToLayoutResultType = useCallback((
       ctxResult: ContextRoundResult | undefined,
       img: GameImage | null,
       debts: typeof hintDebts
@@ -390,12 +389,12 @@ const RoundResultsPage = () => {
       };
       
       return layoutResult;
-  }
+  }, [earnedBadges]);
 
   // Generate the result in the format the layout expects (memoized to avoid re-creating every render)
   const resultForLayout = useMemo(() => {
     return mapToLayoutResultType(contextResult, currentImage, hintDebts);
-  }, [mapToLayoutResultType, contextResult, currentImage, hintDebts, earnedBadges]);
+  }, [mapToLayoutResultType, contextResult, currentImage, hintDebts]);
 
   // --- Level Up per-round net percent (for progress card) ---
   const isLevelUpRoute = useMemo(() => location.pathname.includes('/level/'), [location.pathname]);
@@ -513,6 +512,7 @@ const RoundResultsPage = () => {
         result={resultForLayout}
         avatarUrl={profile?.avatar_image_url || profile?.avatar_url || '/assets/default-avatar.png'}
         peers={(peerRows || []).filter(p => !user || p.userId !== user.id)}
+        currentUserDisplayName={profile?.display_name || 'You'}
         nextRoundButton={
           <div className="flex items-center gap-2">
             <Button 
@@ -553,12 +553,6 @@ const RoundResultsPage = () => {
           ) : null
         }
       />
-      {/* SYNC Compete: Round leaderboard */}
-      {isSyncCompeteRoute && roomId ? (
-        <div className="px-4 pt-2">
-          <RoundScoreboard roomId={roomId} roundNumber={roundNumber} />
-        </div>
-      ) : null}
       <ConfirmNavigationDialog
         isOpen={showConfirmDialog}
         onClose={() => setShowConfirmDialog(false)}

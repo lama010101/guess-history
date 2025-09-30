@@ -314,8 +314,8 @@
   - When `roomId` is provided (multiplayer), `useGamePreparation.prepare()` calls the RPC `create_game_session_and_pick_images` with `p_user_id = NULL` (ignoring per-user history) to ensure every client computes from the same eligible set.
   - The RPC persists the ordered `image_ids` to `public.game_sessions` under `room_id`; late joiners and refreshes hydrate via `getOrPersistRoomImages(roomId, seed, count)` restoring the exact stored order.
   - Ordering is deterministic (`ORDER BY md5(p_seed || image_id)`) so all players see the same 5 images in the same order for a given room/startedAt.
-- Rationale:
-  - Passing a real `p_user_id` allowed each client’s personal history to exclude different images, which could diverge the selection/order even with the same seed. Setting `p_user_id = NULL` for multiplayer avoids this and restores strict cross-player consistency.
+  - Rationale:
+    - Passing a real `p_user_id` allowed each client’s personal history to exclude different images, which could diverge the selection/order even with the same seed. Setting `p_user_id = NULL` for multiplayer avoids this and restores strict cross-player consistency.
 
 ### Compete Mode — SYNC/ASYNC Variants and Leaderboards (2025-09-13)
 
@@ -353,6 +353,7 @@
     - Data source: Supabase RPC `public.get_round_scoreboard(p_room_id text, p_round_number int)`
     - Displays: player name, round `score`, `accuracy`, and `-XP` (penalty). Highlights current user.
     - Rendered from `src/pages/RoundResultsPage.tsx` only when the URL starts with `/compete/sync/` and `roomId` is present.
+  - Inline header leaderboard (sync results): `src/pages/compete/results/CompeteSyncRoundResultsPage.tsx` renders a single "Round Leaderboard" card above the result layout. Data comes from `useCompeteRoundLeaderboards`, which merges authoritative snapshots (`sync_round_scores`) with realtime peer data to guarantee every participant is shown and sorted by descending score.
   - Final leaderboard component: `src/components/scoreboard/FinalScoreboard.tsx`
     - Data source: Supabase RPC `public.get_final_scoreboard(p_room_id text)`
     - Displays: `Net XP`, `Total XP`, `-XP`, and `Net Avg Accuracy` sorted by net XP.
@@ -367,6 +368,106 @@ __QA checklist__
 - In a SYNC room, after each round, the round leaderboard renders on the Results page.
 - On the Final Results page for SYNC rooms, the final leaderboard renders below the final score card.
 - ASYNC rooms do not render leaderboards; existing behavior is unchanged.
+
+#### Compete Round Results — Participants' Answers (2025-09-18)
+
+- Goal: On Compete mode round results, show the answers of all participants for the round (year guess and distance from correct location), alongside the existing map markers.
+- Files:
+  - `src/hooks/useRoundPeers.ts` — Fetches per-round peer data via `get_round_scoreboard` RPC and enriches with `round_results` lat/lng. Ensures session membership in `public.session_players`. Uses 1-based `roundNumber` for RPC and 0-based `round_index` for DB/realtime.
+  - `src/pages/RoundResultsPage.tsx` — Calls `useRoundPeers(roomId, roundNumber)` and passes `peers` to the layout. Also passes `currentUserDisplayName` from `profiles.display_name` (fallback "You").
+  - `src/components/layouts/ResultsLayout2.tsx` — Renders:
+    - Peer markers and dashed polylines on the map (existing)
+    - New "Participants' Answers" card listing each participant (self + peers) with columns: Name, Year (or "No guess"), Distance (formatted with user’s unit preference via `formatDistanceFromKm`)
+- Rendering rules:
+  - The Participants' Answers card renders only when there is at least one peer (`peers.length > 0`), i.e., in Compete rooms.
+  - The current user is included in the list (labeled with their display name or "You"); peers exclude the current user in `RoundResultsPage`.
+- Data sources and indexing:
+  - Scores/years/distances come from `get_round_scoreboard`.
+  - Coordinates (guess, actual) come from `public.round_results` for the same `room_id` and 0-based `round_index`.
+  - Realtime refresh is subscribed on `round_results` for the room/round and triggers a re-fetch.
+  - Units and language:
+  - Distance units follow `useSettingsStore().distanceUnit` (km/mi).
+  - Map label language remains controlled by `useSettingsStore().mapLabelLanguage` (local vs English) and does not affect the table.
+
+##### Update (2025-09-18): Peer fetch union and name source
+
+- Data union in `src/hooks/useRoundPeers.ts`:
+  - Baseline rows come from `public.session_players` (room roster) to guarantee we always display every participant's name.
+  - We unify users by `user_id` across three sources:
+    - `session_players` → `display_name` (preferred name source)
+    - RPC `public.get_round_scoreboard(room_id, round_number)` → score, accuracy, xp_total, xp_debt, acc_debt, distance_km, guess_year
+    - `public.round_results` (filtered by `room_id` and 0-based `round_index`) → `guess_lat`, `guess_lng`, `actual_lat`, `actual_lng`, `distance_km`, `guess_year`
+  - Merge rules per user:
+    - `displayName`: prefer `session_players.display_name`, fallback to `scoreboard.display_name`, else `'Unknown'`.
+
+#### Compete Round Results — Triple Leaderboards (2025-09-24)
+
+- Goal: In Compete mode, display three round leaderboards side-by-side the standard results UI:
+  - Total (When + Where), When, Where.
+- Files:
+  - `src/components/scoreboard/CompeteRoundLeaderboards.tsx` — renders three tables using peer data from `useRoundPeers` and local image metadata for the round.
+  - `src/pages/compete/CompeteRoundResultsPage.tsx` — composes the standard `RoundResultsPage` with the new leaderboards and is routed for `/compete/sync/.../results`.
+  - `src/App.tsx` — routes:
+    - SYNC: `/compete/sync/.../results` → `CompeteRoundResultsPage` (triple leaderboards)
+    - ASYNC: `/compete/async/.../results` → `RoundResultsPage` (no triple leaderboards)
+- Data & calculations:
+  - Source rows from `useRoundPeers(roomId, roundNumber)`, which unions `session_players`, `get_round_scoreboard`, and `round_results` by `user_id`.
+  - Where% = `calculateLocationAccuracy(distanceKm)`; When% = `calculateTimeAccuracy(guessYear, actualYear)`.
+  - Total = When% + Where% (percent-based composite for per-round ranking; does not use XP).
+  - All three tables sort descending by value and highlight the current user.
+- Rendering rules:
+  - Leaderboards render whenever `roomId` is present on Compete results pages.
+  - If the image metadata is not yet available, the component shows a waiting message instead of inaccurate percentages.
+
+#### Compete Sync — Round Snapshot Storage & Hook (2025-09-28)
+
+- Schema:
+  - Migration `supabase/migrations/20250925_create_sync_round_scores.sql` now creates two tables guarded by RLS:
+    - `public.sync_room_players(room_id text, user_id uuid, display_name text, joined_at timestamptz)` keeps a lightweight roster for scoreboard name lookups.
+    - `public.sync_round_scores` stores per-player round snapshots (XP totals, accuracy percentages, distance, guess metadata) keyed by `(room_id, round_number, user_id)`.
+  - Policies allow authenticated users to read any rows for rooms where they appear in `session_players`/`sync_room_players`, while write operations remain self-scoped (`auth.uid() = user_id`).
+
+- Server writes:
+  - `src/contexts/GameContext.tsx` `recordRoundResult()` now:
+    - Computes `timeAccuracy`, `locationAccuracy`, and `xpTotal` for every result.
+    - Ensures a `sync_room_players` upsert per recorded round (mirroring `session_players`).
+    - Upserts the snapshot into `sync_round_scores` whenever the current URL begins with `/compete/sync/`.
+
+- Client consumption:
+  - Hook `src/hooks/useSyncRoundScores.ts` fetches the `sync_round_scores` rows (backfilling names via `sync_room_players` when necessary) and keeps them in sync using a realtime channel (`postgres_changes` on `sync_round_scores`).
+  - Selector hook `src/hooks/useCompeteRoundLeaderboards.ts` derives Total/When/Where percentages from snapshots (falling back to `useRoundPeers` when snapshots are absent) and exposes them to both inline and triple leaderboard UIs.
+
+#### Compete SYNC Start Gating — All Players Ready (2025-09-24)
+
+- Server: `server/lobby.ts`
+  - Maintains roster with `ready` flags per connection; first join is host.
+  - On any `ready` update, computes `allReady` across current `players` and broadcasts `start { startedAt, durationSec, timerEnabled }` exactly once when all connected players are ready.
+  - Authoritative timer RPC (`start_timer`) is attempted when enabled via feature flag; otherwise falls back to non-authoritative startedAt.
+- Client: `src/pages/Room.tsx`
+  - Provides a `Ready?/Ready` toggle per player (`toggleReady` sends `{ type: 'ready', ready }`).
+  - Removes any auto-start-on-player-count; game starts strictly on server `start` event.
+  - On `start`, derives deterministic seed `uuidv5(roomCode:startedAt)` and calls `startGame({ roomId, seed, timerSeconds, timerEnabled, competeVariant: mode })`.
+    - `distanceKm`/`guessYear`: prefer scoreboard values; fallback to `round_results` when scoreboard is null.
+    - Coordinates always come from `round_results` (scoreboard does not include lat/lng).
+  - Result: Names render even if the scoreboard returns empty or partial rows.
+
+- Indexing & realtime:
+  - UI uses 1-based `roundNumber` in routes; DB uses 0-based `round_index`.
+  - The scoreboard RPC accepts 1-based and internally converts to 0-based.
+  - Realtime subscription filter is precise: `room_id=eq.<roomId>,round_index=eq.<0-based>` on `public.round_results`.
+
+- RLS & membership:
+  - `public.round_results` has participant-safe SELECT via `rr_select_participants_in_room` allowing any user listed in `public.session_players` for the room to read all rows for that `room_id`.
+  - `useRoundPeers` ensures membership by upserting into `public.session_players` before RPC/queries.
+
+- Upserts & uniqueness when recording results:
+  - Unique indexes: `(room_id, user_id, round_index)` and `(user_id, game_id, round_index)`.
+  - `recordRoundResult` chooses the conflict target based on presence of `room_id` and persists `room_id` and 0-based `round_index` consistently.
+
+- Rendering contract:
+  - `src/components/layouts/ResultsLayout2.tsx` receives `peers` and renders:
+    - Map markers/polylines for peer guesses when coordinates exist.
+    - The Participants' Answers table (includes the current user and peers; current user label comes from `currentUserDisplayName`).
 
 ### Level Up Mode — Routing, Start Logic, and Integration (2025-08-27, updated)
 
@@ -2908,3 +3009,75 @@ Notes
 
 - __Notes__
   - If the database has fewer than `p_count` eligible images after exclusions and filters (e.g., year bounds), the RPC may return fewer rows; the client guards for this and surfaces an error when insufficient images are available.
+
+### Scoreboards — xp_total Compatibility (2025-09-18)
+
+- __Problem__
+  - Some environments did not have `round_results.xp_total`, causing the scoreboard RPC to error (`column rr.xp_total does not exist`).
+
+- __Change__
+  - Rewrote both RPCs to compute `xp_total` on the fly as `COALESCE(rr.xp_where, 0) + COALESCE(rr.xp_when, 0)` instead of selecting `rr.xp_total`.
+  - Files:
+    - SQL: `supabase/migrations/20250918_fix_scoreboard_xp_total_compat.sql`
+    - Client: `src/hooks/useRoundPeers.ts` and `src/components/scoreboard/RoundScoreboard.tsx` now pass a 1-based `p_round_number` to `public.get_round_scoreboard` (the RPC converts to 0-based internally).
+
+- __Contract__
+  - `public.get_round_scoreboard(p_room_id text, p_round_number integer)` expects a 1-based round number. Internally it uses `GREATEST(0, p_round_number - 1)` to select the `round_index`.
+  - Realtime subscriptions on `round_results` remain 0-based in the client since `round_index` is stored 0-based in the DB.
+
+- __Apply__
+  - Apply the migration using the migration runner with a one-off filter:
+    - PowerShell:
+      - `$env:MIGRATION_ONLY = "20250918_fix_scoreboard_xp_total_compat.sql"; npx tsx scripts/apply-migrations.ts`
+    - Ensure `.env.local` (or `.env`) includes a valid `SUPABASE_DB_CONNECTION` or `SUPABASE_DB_URL` pointing to Postgres. The script can also fall back to the Supabase Postgres HTTP API if direct DB access fails (requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`).
+
+- __Notes__
+  - The scoreboard UI and `useRoundPeers` continue to display `xp_total` values; these now come from the computed sum.
+  - Unique indexes and RLS policies for `round_results` and `session_players` remain unchanged.
+
+### Authoritative Timer — Server User Binding (2025-09-20)
+
+- Files:
+  - `server/lobby.ts`
+  - `supabase/migrations/20250920_update_start_timer_add_user_param.sql`
+  - `partykit.json` (`vars.SUPABASE_SERVER_USER_ID`)
+- Change:
+  - The RPC `public.start_timer(p_timer_id text, p_duration_sec int)` now accepts an optional third parameter `p_user_id uuid default null` and uses `coalesce(p_user_id, auth.uid())` internally.
+  - The PartyKit lobby passes `p_user_id = SUPABASE_SERVER_USER_ID` when `ENABLE_AUTH_TIMER === '1'`, so authoritative timers are created under a stable server user instead of `NULL`.
+- Enablement:
+  - Set `SUPABASE_SERVER_USER_ID` to a valid UUID (e.g., an internal service account user) in the PartyKit environment. With feature flag off (`ENABLE_AUTH_TIMER = "0"`), the server falls back to non-authoritative timers without errors.
+- Diagnostics:
+  - If `SUPABASE_SERVER_USER_ID` is missing, the lobby logs: `startRoundTimer skipped because SUPABASE_SERVER_USER_ID is not configured` and uses the non-authoritative fallback.
+
+### Authoritative Timer Flags & Session Player Sync (2025-09-29)
+
+- Config updates:
+  - `partykit.json` now defaults `ENABLE_AUTH_TIMER` and `ENABLE_ROOM_ROUND_PERSIST` to `"1"`. Deployment environments must supply `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_SERVER_USER_ID` for RPC calls to succeed. Missing credentials fall back to non-authoritative timers as before.
+  - Invite protection uses HMAC verification when `INVITE_HMAC_SECRET` is present. Client invite tokens are formatted `<roomId>.<signature>` where `signature = base64url(HMAC_SHA256(secret, roomId))`. Lobby rejects mismatched/invalid tokens.
+- Server behavior (`server/lobby.ts`):
+  - On join/rename/ready/kick/disconnect the lobby writes to `public.session_players` via REST, keeping `display_name`, `ready`, and `is_host` in sync with Supabase for observers and recovery flows.
+  - Host reassignment calls a helper to clear the previous host row before marking the new host, ensuring a single `is_host = true` per room.
+  - Ready toggles persist immediately so scoreboard/diagnostic tools can rely on `session_players.ready` without waiting for game start.
+
+### Session Progress Tracking (2025-09-29)
+
+- Utility: `upsertSessionProgress()` in `src/utils/roomState.ts` performs `upsert` into `public.session_progress` with `(room_id, user_id)` primary key. Payload includes `current_route`, `substep`, `round_started_at`, `duration_sec`, and `timer_enabled`.
+- Client integration (`src/pages/GameRoundPage.tsx`):
+  - Writes progress whenever the round view mounts or state changes (`waiting`, `intro`, `active`, `results`).
+  - On manual submission and timeout auto-submit, it records `substep: 'results'` with the navigation target before redirecting.
+- Usage: Consumers can query `session_progress` to resume multiplayer sessions, drive spectator dashboards, or audit player states. RLS already restricts rows to authenticated participants (see `20250819_create_multiplayer_core.sql`).
+
+### Supabase Client Singleton & Fetch Intercept (2025-09-20)
+
+- File: `src/integrations/supabase/client.ts`
+- Problem: HMR created multiple Supabase clients, leading to warnings like "Multiple GoTrueClient instances" and duplicated fetch intercepts.
+- Fix:
+  - Reuse a single client across HMR: `export const supabase = (globalThis as any).__supabaseClient ||= createClient(...)`.
+  - Guard the global fetch intercept so it runs once per page load via `window.__supabaseFetchIntercepted`.
+- Result: A single GoTrue client is used throughout the app; warnings and auth-state duplication are eliminated.
+
+### User Metrics — Avoid 406 for Empty Rows (2025-09-20)
+
+- File: `src/utils/profile/profileService.ts`
+- Change: Replaced `.single()` with `.maybeSingle()` for selects on `public.user_metrics` (fetch and post-upsert verify).
+- Rationale: `.single()` returns 406 when zero rows match; `.maybeSingle()` returns `{ data: null, error: null }`, enabling first-time-user flows without errors.

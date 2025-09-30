@@ -84,6 +84,7 @@ export interface ResultsLayoutProps {
   nextRoundButton?: React.ReactNode;
   rateButton?: React.ReactNode;
   peers?: PeerRoundRow[];
+  currentUserDisplayName?: string;
 }
 
 const ResultsLayout2: React.FC<ResultsLayoutProps> = ({ 
@@ -97,7 +98,8 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   totalRounds,
   nextRoundButton,
   rateButton,
-  peers = []
+  peers = [],
+  currentUserDisplayName = 'You'
 }) => {
   const { user } = useAuth();
   const distanceUnit = useSettingsStore(s => s.distanceUnit);
@@ -165,6 +167,17 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   const mapCenter = bounds ? bounds.getCenter() : correctPosition;
 
   const userIcon = useMemo(() => createUserIcon(avatarUrl), [avatarUrl]);
+
+  // Build a lightweight participants list combining the current user and peers
+  const participants = useMemo(() => {
+    const self = {
+      id: user?.id || 'self',
+      name: currentUserDisplayName || 'You',
+      guessYear: result?.guessYear ?? null,
+      distanceKm: result?.distanceKm ?? null,
+    } as { id: string; name: string; guessYear: number | null; distanceKm: number | null };
+    return [self, ...(peers || []).map(p => ({ id: p.userId, name: p.displayName || 'Player', guessYear: p.guessYear, distanceKm: p.distanceKm }))];
+  }, [user?.id, currentUserDisplayName, result?.guessYear, result?.distanceKm, peers]);
 
   // Early returns after all hooks above
   if (error) {
@@ -449,6 +462,41 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                 </Badge>
               </div>
             </div>
+
+            {/* Participants' answers (Compete mode) */}
+            {peers && peers.length > 0 && (
+              <div className="bg-white dark:bg-[#333333] rounded-2xl shadow-lg p-4">
+                <div className="border-b border-border pb-3 mb-3 flex justify-between items-center">
+                  <h2 className="font-normal text-lg text-gray-900 dark:text-gray-100 flex items-center">
+                    Participants' Answers
+                  </h2>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-muted-foreground">
+                        <th className="py-2 pr-2 font-medium">Name</th>
+                        <th className="py-2 pr-2 font-medium">Year</th>
+                        <th className="py-2 pr-2 font-medium">Distance</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {participants.map(p => (
+                        <tr key={p.id} className="border-t border-gray-200 dark:border-gray-700">
+                          <td className="py-2 pr-2">{p.name}</td>
+                          <td className="py-2 pr-2">{p.guessYear == null ? 'No guess' : p.guessYear}</td>
+                          <td className="py-2 pr-2">
+                            {p.distanceKm == null
+                              ? 'No guess'
+                              : (() => { const d = formatDistanceFromKm(p.distanceKm, distanceUnit); return `${d.value} ${d.unitLabel} away`; })()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             {result.hintDebts && result.hintDebts.length > 0 && (
               <HintDebtsCard 

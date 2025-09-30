@@ -341,6 +341,78 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_room_players: {
+        Row: {
+          room_id: string
+          user_id: string
+          display_name: string | null
+          joined_at: string
+        }
+        Insert: {
+          room_id: string
+          user_id: string
+          display_name?: string | null
+          joined_at?: string
+        }
+        Update: {
+          room_id?: string
+          user_id?: string
+          display_name?: string | null
+          joined_at?: string
+        }
+        Relationships: []
+      }
+      sync_round_scores: {
+        Row: {
+          id: string
+          room_id: string
+          round_number: number
+          user_id: string
+          display_name: string | null
+          xp_total: number
+          time_accuracy: number
+          location_accuracy: number
+          distance_km: number | null
+          year_difference: number | null
+          guess_year: number | null
+          guess_lat: number | null
+          guess_lng: number | null
+          submitted_at: string
+        }
+        Insert: {
+          id?: string
+          room_id: string
+          round_number: number
+          user_id: string
+          display_name?: string | null
+          xp_total?: number
+          time_accuracy?: number
+          location_accuracy?: number
+          distance_km?: number | null
+          year_difference?: number | null
+          guess_year?: number | null
+          guess_lat?: number | null
+          guess_lng?: number | null
+          submitted_at?: string
+        }
+        Update: {
+          id?: string
+          room_id?: string
+          round_number?: number
+          user_id?: string
+          display_name?: string | null
+          xp_total?: number
+          time_accuracy?: number
+          location_accuracy?: number
+          distance_km?: number | null
+          year_difference?: number | null
+          guess_year?: number | null
+          guess_lat?: number | null
+          guess_lng?: number | null
+          submitted_at?: string
+        }
+        Relationships: []
+      }
       round_results: {
         Row: {
           id: string

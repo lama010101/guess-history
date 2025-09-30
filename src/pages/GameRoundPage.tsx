@@ -8,8 +8,7 @@ import { GuessCoordinates } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserProfile, fetchUserProfile } from '@/utils/profile/profileService';
 import { useToast } from "@/components/ui/use-toast";
-import { setCurrentRoundInSession } from '@/utils/roomState';
-import { getCurrentRoundFromSession } from '@/utils/roomState';
+import { setCurrentRoundInSession, getCurrentRoundFromSession, upsertSessionProgress } from '@/utils/roomState';
 import { Button } from '@/components/ui/button';
 import { SegmentedProgressBar } from '@/components/ui';
 import LevelUpIntro from '@/components/levelup/LevelUpIntro';
@@ -452,7 +451,7 @@ const GameRoundPage = () => {
 
 
   // Handle guess submission
-  const handleSubmitGuess = useCallback(() => {
+  const handleSubmitGuess = useCallback(async () => {
     console.log('[GameRoundPage] handleSubmitGuess called');
     if (isSubmitting) {
       console.log('[GameRoundPage] Already submitting, returning');
@@ -537,6 +536,20 @@ const GameRoundPage = () => {
       console.log('[GameRoundPage] recordRoundResult called, navigating to results');
 
       setCurrentGuess(null);
+      if (roomId) {
+        try {
+          await upsertSessionProgress({
+            roomId,
+            roundNumber,
+            currentRoute: `${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`,
+            substep: 'results',
+            timerEnabled,
+            durationSec: timerEnabled ? roundTimerSec : null,
+          });
+        } catch (error) {
+          console.error('Error during session progress upsert:', error);
+        }
+      }
       navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
     } catch (error) {
       console.error('Error during guess submission:', error);
@@ -559,13 +572,31 @@ const GameRoundPage = () => {
     currentGuess,
     setIsSubmitting,
     setIsTimerActive,
-    purchasedHints,
+    purchasedHints.length,
+    xpDebt,
+    accDebt,
     recordRoundResult,
     currentRoundIndex,
     setCurrentGuess,
     navigate,
     roomId,
+    timerEnabled,
+    roundTimerSec,
+    modeBasePath,
   ]);
+
+  useEffect(() => {
+    if (!roomId) return;
+    upsertSessionProgress({
+      roomId,
+      roundNumber,
+      currentRoute: location.pathname,
+      substep: showIntro ? 'intro' : (roundStarted ? 'active' : 'waiting'),
+      startedAt: roundStarted ? new Date().toISOString() : null,
+      durationSec: timerEnabled ? roundTimerSec : null,
+      timerEnabled,
+    }).catch(() => {});
+  }, [roomId, roundNumber, location.pathname, showIntro, roundStarted, roundTimerSec, timerEnabled]);
 
   // Handle timer completion
   const handleTimeComplete = useCallback(() => {

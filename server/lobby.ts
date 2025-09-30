@@ -1,5 +1,6 @@
 import type * as Party from "partykit/server";
 import { z } from "zod";
+import { createHmac, timingSafeEqual } from "crypto";
 
 // Types
 const JoinMessage = z.object({
@@ -67,13 +68,34 @@ type ProgressMsg = { type: "progress"; from: string; roundNumber: number; subste
 type Outgoing = PlayersMsg | FullMsg | ChatMsg | RosterMsg | StartMsg | SettingsMsg | HelloMsg | ProgressMsg;
 
 // Env typing for vars
-type Env = { MAX_PLAYERS?: string; SUPABASE_URL?: string; SUPABASE_SERVICE_ROLE_KEY?: string };
+type Env = {
+  MAX_PLAYERS?: string;
+  SUPABASE_URL?: string;
+  SUPABASE_SERVICE_ROLE_KEY?: string;
+  // Feature flags (opt-in)
+  // When '1', attempt to start authoritative server timer via Supabase RPC.
+  ENABLE_AUTH_TIMER?: string;
+  // When '1', persist round starts to room_rounds via REST.
+  ENABLE_ROOM_ROUND_PERSIST?: string;
+  // Stable server user id to attribute authoritative timers to (uuid)
+  SUPABASE_SERVER_USER_ID?: string;
+  INVITE_HMAC_SECRET?: string;
+};
+
+function decodeBase64Url(input: string): Buffer {
+  const normalized = input.replace(/-/g, "+").replace(/_/g, "/");
+  const padLength = (4 - (normalized.length % 4)) % 4;
+  const padded = normalized + "=".repeat(padLength);
+  return Buffer.from(padded, "base64");
+}
 
 export default class Lobby implements Party.Server {
   // Track connected players: connId -> name
   private players = new Map<string, string>();
   // Readiness per connection
   private ready = new Map<string, boolean>();
+  // Map connection id -> user id (when provided)
+  private playerUserIds = new Map<string, string | null>();
   // First join becomes host
   private hostId: string | null = null;
   // Start flag to avoid duplicate starts
@@ -89,9 +111,42 @@ export default class Lobby implements Party.Server {
 
   // TODO: enforceInviteToken(token: string): Promise<boolean>
   // Validate invite token using HMAC when implemented
-  private async enforceInviteToken(_token?: string): Promise<boolean> {
-    // TODO: implement HMAC verification using env vars
-    return true;
+  private async enforceInviteToken(token?: string): Promise<boolean> {
+    const env = (this.room.env as unknown as Env) || {};
+    const secret = env.INVITE_HMAC_SECRET;
+    if (!secret) {
+      return true;
+    }
+    if (!token) {
+      console.warn("lobby: join missing invite token while INVITE_HMAC_SECRET is configured", {
+        roomId: this.room.id,
+      });
+      return true;
+    }
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 2) {
+        console.warn("lobby: invite token malformed", { tokenSnippet: token.slice(0, 8) });
+        return false;
+      }
+      const [roomPart, signature] = parts;
+      if (roomPart !== this.room.id) {
+        console.warn("lobby: invite token room mismatch", { expected: this.room.id, provided: roomPart });
+        return false;
+      }
+      const expected = createHmac('sha256', secret).update(roomPart).digest();
+      const provided = decodeBase64Url(signature);
+      if (expected.length !== provided.length) {
+        return false;
+      }
+      if (!timingSafeEqual(expected, provided)) {
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.warn("lobby: invite token verification failed", e);
+      return false;
+    }
   }
 
   // Build canonical timer ID for a given 0-based round index
@@ -105,8 +160,17 @@ export default class Lobby implements Party.Server {
   // Returns startedAt from server on success, otherwise null
   private async startRoundTimer(durationSec: number): Promise<{ startedAt: string; durationSec: number } | null> {
     const env = (this.room.env as unknown as Env) || {};
+    // Dev-safe default: skip authoritative timer unless explicitly enabled
+    if (env.ENABLE_AUTH_TIMER !== '1') {
+      console.warn('lobby: startRoundTimer skipped (ENABLE_AUTH_TIMER != 1). Using non-authoritative timers.');
+      return null;
+    }
     if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
       console.warn("lobby: startRoundTimer skipped due to missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+      return null;
+    }
+    if (!env.SUPABASE_SERVER_USER_ID) {
+      console.warn('lobby: startRoundTimer skipped because SUPABASE_SERVER_USER_ID is not configured');
       return null;
     }
 
@@ -120,7 +184,11 @@ export default class Lobby implements Party.Server {
       const res = await fetch(url, {
         method: "POST",
         headers,
-        body: JSON.stringify({ p_timer_id: timerId, p_duration_sec: Math.max(5, Math.min(600, durationSec)) }),
+        body: JSON.stringify({
+          p_timer_id: timerId,
+          p_duration_sec: Math.max(5, Math.min(600, durationSec)),
+          p_user_id: env.SUPABASE_SERVER_USER_ID,
+        }),
       });
       if (!res.ok) {
         let body = "";
@@ -192,6 +260,74 @@ export default class Lobby implements Party.Server {
       : undefined;
   }
 
+  private async ensureSessionPlayerRow(userId: string, data: { display_name?: string | null; is_host?: boolean; ready?: boolean }) {
+    const env = (this.room.env as unknown as Env) || {};
+    if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return;
+    const headers = { ...this.supabaseHeaders(env)! };
+    headers.Prefer = "return=minimal,resolution=merge-duplicates";
+    const payload = [{
+      room_id: this.room.id,
+      user_id: userId,
+      display_name: data.display_name ?? null,
+      is_host: data.is_host ?? false,
+      ready: data.ready ?? false,
+    }];
+    try {
+      const res = await fetch(`${env.SUPABASE_URL}/rest/v1/session_players`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        let body = "";
+        try { body = await res.text(); } catch {}
+        console.warn("lobby: ensureSessionPlayerRow failed", res.status, res.statusText, body);
+      }
+    } catch (e) {
+      console.warn("lobby: ensureSessionPlayerRow exception", e);
+    }
+  }
+
+  private async patchSessionPlayerRow(userId: string, patch: Record<string, unknown>) {
+    const entries = Object.entries(patch).filter(([, value]) => value !== undefined);
+    if (entries.length === 0) return;
+    const cleaned: Record<string, unknown> = Object.fromEntries(entries);
+    const env = (this.room.env as unknown as Env) || {};
+    if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return;
+    const headers = { ...this.supabaseHeaders(env)! };
+    headers.Prefer = "return=minimal";
+    const query = `${env.SUPABASE_URL}/rest/v1/session_players?room_id=eq.${encodeURIComponent(this.room.id)}&user_id=eq.${userId}`;
+    try {
+      const res = await fetch(query, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify(cleaned),
+      });
+      if (!res.ok) {
+        let body = "";
+        try { body = await res.text(); } catch {}
+        console.warn("lobby: patchSessionPlayerRow failed", res.status, res.statusText, body);
+      }
+    } catch (e) {
+      console.warn("lobby: patchSessionPlayerRow exception", e);
+    }
+  }
+
+  private async markHostFlags(previousHostConn: string | null, nextHostConn: string | null) {
+    if (previousHostConn && previousHostConn !== nextHostConn) {
+      const prevUserId = this.playerUserIds.get(previousHostConn);
+      if (prevUserId) {
+        await this.patchSessionPlayerRow(prevUserId, { is_host: false });
+      }
+    }
+    if (nextHostConn) {
+      const nextUserId = this.playerUserIds.get(nextHostConn);
+      if (nextUserId) {
+        await this.patchSessionPlayerRow(nextUserId, { is_host: true });
+      }
+    }
+  }
+
   private async persistChat(message: string) {
     const env = (this.room.env as unknown as Env) || {};
     if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return; // best-effort only
@@ -211,6 +347,11 @@ export default class Lobby implements Party.Server {
 
   private async persistRoundStart(startedAt: string, durationSec: number) {
     const env = (this.room.env as unknown as Env) || {};
+    // Dev-safe default: do not persist unless explicitly enabled
+    if (env.ENABLE_ROOM_ROUND_PERSIST !== '1') {
+      console.warn('lobby: persistRoundStart skipped (ENABLE_ROOM_ROUND_PERSIST != 1)');
+      return;
+    }
     if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
       console.warn(
         "lobby: persistRoundStart skipped due to missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY"
@@ -293,10 +434,22 @@ export default class Lobby implements Party.Server {
           }
 
           this.players.set(conn.id, effectiveName);
+          this.playerUserIds.set(conn.id, msg.userId ?? null);
           // Assign host if none
+          const previousHost = this.hostId;
           if (!this.hostId) this.hostId = conn.id;
           // New joins are not ready by default
           this.ready.set(conn.id, false);
+          if (msg.userId) {
+            await this.ensureSessionPlayerRow(msg.userId, {
+              display_name: effectiveName,
+              is_host: this.hostId === conn.id,
+              ready: false,
+            });
+            if (previousHost !== this.hostId) {
+              await this.markHostFlags(previousHost, this.hostId);
+            }
+          }
           this.broadcastRoster();
           // Identify this connection to the client
           conn.send(
@@ -323,6 +476,10 @@ export default class Lobby implements Party.Server {
           const newName = msg.name.trim().slice(0, 32);
           if (!newName) return;
           this.players.set(conn.id, newName);
+          const userId = this.playerUserIds.get(conn.id);
+          if (userId) {
+            await this.patchSessionPlayerRow(userId, { display_name: newName });
+          }
           await this.logEvent("rename", { id: conn.id, name: newName });
           this.broadcastRoster();
           return;
@@ -375,6 +532,10 @@ export default class Lobby implements Party.Server {
         if (msg.type === "ready") {
           if (!this.players.has(conn.id)) return; // must have joined
           this.ready.set(conn.id, !!msg.ready);
+          const userId = this.playerUserIds.get(conn.id);
+          if (userId) {
+            await this.patchSessionPlayerRow(userId, { ready: !!msg.ready });
+          }
           await this.logEvent("ready", { id: conn.id, ready: !!msg.ready });
           this.broadcastRoster();
 
@@ -429,9 +590,15 @@ export default class Lobby implements Party.Server {
           // Cleanup state in case close event arrives later
           this.players.delete(targetId);
           this.ready.delete(targetId);
+          const targetUserId = this.playerUserIds.get(targetId);
+          if (targetUserId) {
+            await this.patchSessionPlayerRow(targetUserId, { ready: false, is_host: false });
+          }
           if (this.hostId === targetId) {
             const first = this.players.keys().next();
+            const previousHost = this.hostId;
             this.hostId = first.done ? null : first.value;
+            await this.markHostFlags(previousHost, this.hostId);
           }
           this.broadcastRoster();
           return;
@@ -463,10 +630,17 @@ export default class Lobby implements Party.Server {
     if (name) {
       this.players.delete(conn.id);
       this.ready.delete(conn.id);
+      const userId = this.playerUserIds.get(conn.id) || null;
+      if (userId) {
+        await this.patchSessionPlayerRow(userId, { ready: false, is_host: false });
+      }
+      this.playerUserIds.delete(conn.id);
       // Reassign host if needed
       if (this.hostId === conn.id) {
+        const previousHost = this.hostId;
         const first = this.players.keys().next();
         this.hostId = first.done ? null : first.value;
+        await this.markHostFlags(previousHost, this.hostId);
       }
       this.broadcastRoster();
       await this.logEvent("leave", { id: conn.id, name });

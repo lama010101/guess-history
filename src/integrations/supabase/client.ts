@@ -49,22 +49,27 @@ const interceptFetch: typeof fetch = async (input: RequestInfo | URL, init?: Req
 
 // Force global override to catch any internal usage
 try {
-  // Only override in browser contexts
-  if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
+  // Only override in browser contexts and ensure we only intercept once across HMR
+  if (
+    typeof window !== 'undefined' &&
+    typeof window.fetch === 'function' &&
+    !(window as any).__supabaseFetchIntercepted
+  ) {
     window.fetch = interceptFetch as any;
+    (window as any).__supabaseFetchIntercepted = true;
   }
 } catch {
   // ignore
 }
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+const clientOptions = {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
     storageKey: 'supabase.auth.token',
     storage: {
-      getItem: (key) => {
+      getItem: (key: string) => {
         try {
           const remember = (() => {
             if (sessionStorage.getItem('auth.remember') === 'false') return false;
@@ -77,7 +82,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
           return localStorage.getItem(key);
         }
       },
-      setItem: (key, value) => {
+      setItem: (key: string, value: string) => {
         try {
           const remember = (() => {
             if (sessionStorage.getItem('auth.remember') === 'false') return false;
@@ -94,7 +99,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
           document.cookie = `${key}=${value};domain=.guess-history.com;path=/;max-age=${60 * 60 * 24 * 7};secure;samesite=lax`;
         }
       },
-      removeItem: (key) => {
+      removeItem: (key: string) => {
         try {
           // Remove from both to be safe
           localStorage.removeItem(key);
@@ -111,4 +116,12 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   global: {
     fetch: interceptFetch,
   }
-});
+} as const;
+
+// Create or reuse a singleton Supabase client across HMR reloads
+const g: any = (globalThis as any);
+export const supabase = (g.__supabaseClient ||= createClient<Database>(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY,
+  clientOptions as any
+));

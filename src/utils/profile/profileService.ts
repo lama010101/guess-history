@@ -439,7 +439,7 @@ export async function fetchUserStats(userId: string): Promise<UserStats | null> 
       .from('user_metrics')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching user stats:', error);
@@ -537,13 +537,13 @@ export const updateUserMetrics = async (
       .from('user_metrics')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     // Normalize mode key for dynamic column names
     const modeKey = (mode || 'solo') as 'solo' | 'level' | 'compete' | 'collaborate';
 
-    if (fetchError && fetchError.code === 'PGRST116') {
-      // New user: No existing record found
+    if (!existingData && !fetchError) {
+      // New user: No existing record found (no 406 thanks to maybeSingle)
       console.log(`[ProfileService] [GameID: ${gameId || 'N/A'}] No existing metrics for user ${userId}. Creating new record.`);
       metricsToUpsert = {
         user_id: userId,
@@ -655,7 +655,7 @@ export const updateUserMetrics = async (
       .from('user_metrics')
       .select('xp_total, overall_accuracy, games_played')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (verifyError) {
       console.warn(`[ProfileService] [GameID: ${gameId || 'N/A'}] Warning: Error verifying metrics update for user ${userId}, but upsert reported success. Error:`, verifyError);

@@ -4,7 +4,7 @@ import { Loader } from 'lucide-react';
 
 interface RoundScoreboardProps {
   roomId: string;
-  // Round number as shown in the URL (1-based). The RPC expects 0-based.
+  // Round number as shown in the URL (1-based). The RPC expects 1-based and converts to 0-based internally.
   roundNumber: number;
 }
 
@@ -35,10 +35,10 @@ const RoundScoreboard: React.FC<RoundScoreboardProps> = ({ roomId, roundNumber }
         const { data: auth } = await supabase.auth.getUser();
         setCurrentUserId(auth?.user?.id ?? null);
         const sb: any = supabase;
-        const zeroBasedIndex = Math.max(0, (roundNumber || 1) - 1);
+        const oneBasedRound = Math.max(1, (roundNumber || 1));
         const { data, error } = await sb.rpc('get_round_scoreboard', {
           p_room_id: roomId,
-          p_round_number: zeroBasedIndex,
+          p_round_number: oneBasedRound,
         });
         if (cancelled) return;
         if (error) {

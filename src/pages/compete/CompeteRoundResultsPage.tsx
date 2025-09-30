@@ -1,1 +1,1 @@
-export { default } from '../RoundResultsPage';
+export { default } from './results/CompeteSyncRoundResultsPage';

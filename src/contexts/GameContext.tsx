@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSettingsStore } from '@/lib/useSettingsStore';
 import { v4 as uuidv4 } from 'uuid'; // For generating unique game IDs
 import { getNewImages, getOrPersistRoomImages, recordPlayedImages } from '@/utils/imageHistory';
-import { ROUNDS_PER_GAME } from '@/utils/gameCalculations';
+import { ROUNDS_PER_GAME, calculateTimeAccuracy, calculateLocationAccuracy } from '@/utils/gameCalculations';
 import { Hint } from '@/hooks/useHintV2';
 import { RoundResult, GuessCoordinates } from '@/types';
 import { useGamePreparation, PrepStatus, PreparedImage } from '@/hooks/useGamePreparation';
@@ -964,7 +964,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
   
 
-  const recordRoundResult = useCallback(async (resultData: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'>, currentRoundIndex: number) => {
+  const recordRoundResult = useCallback(async (resultData: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'> & {
+    accuracy?: number | null;
+    xpTotal?: number | null;
+    timeAccuracy?: number | null;
+    locationAccuracy?: number | null;
+  }, currentRoundIndex: number) => {
     if (!gameId) {
       console.error('[GameContext] CRITICAL: gameId is null. Cannot record round result. This should not happen if a game is in progress.');
       return;
@@ -984,6 +989,13 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         xpWhen = Math.round(resultData.score * 0.3); // Example split
     }
     
+    const computedTimeAccuracy = (resultData.guessYear != null)
+      ? calculateTimeAccuracy(resultData.guessYear, currentImage.year)
+      : 0;
+    const computedLocationAccuracy = (resultData.distanceKm != null)
+      ? calculateLocationAccuracy(resultData.distanceKm)
+      : 0;
+
     const fullResult: RoundResult = {
         roundIndex: currentRoundIndex,
         imageId: currentImage.id,
@@ -994,7 +1006,11 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         guessYear: resultData.guessYear,
         xpWhere,
         xpWhen,
-        hintsUsed: resultData.hintsUsed || 0
+        hintsUsed: resultData.hintsUsed || 0,
+        timeAccuracy: resultData.timeAccuracy ?? computedTimeAccuracy,
+        locationAccuracy: resultData.locationAccuracy ?? computedLocationAccuracy,
+        xpTotal: resultData.xpTotal ?? ((xpWhere ?? 0) + (xpWhen ?? 0)),
+        accuracy: resultData.accuracy ?? ((computedTimeAccuracy + computedLocationAccuracy) / 2),
     };
 
     console.log(`[GameContext] [GameID: ${gameId || 'N/A'}] Recording result for round ${currentRoundIndex + 1}:`, fullResult);
@@ -1006,6 +1022,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         console.error('No user found, cannot persist round result');
         return;
       }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', user.id)
+        .maybeSingle();
+      const displayName = profile?.display_name ?? null;
       // Derive effective room id: prefer context, then URL, then sessionStorage
       let effectiveRoomId: string | null = roomId;
       if (!effectiveRoomId && typeof window !== 'undefined') {
@@ -1025,6 +1047,11 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       console.log('[GameContext] recordRoundResult effectiveRoomId:', effectiveRoomId ?? 'null');
 
       // Build full payload (preferred schema)
+      const xpTotal = fullResult.xpTotal ?? ((fullResult.xpWhere ?? 0) + (fullResult.xpWhen ?? 0));
+      const timeAccuracy = Number.isFinite(fullResult.timeAccuracy) ? Number(fullResult.timeAccuracy) : (Number.isFinite(computedTimeAccuracy) ? computedTimeAccuracy : 0);
+      const locationAccuracy = Number.isFinite(fullResult.locationAccuracy) ? Number(fullResult.locationAccuracy) : (Number.isFinite(computedLocationAccuracy) ? computedLocationAccuracy : 0);
+      const averageAccuracy = Number(resultData.accuracy ?? ((timeAccuracy + locationAccuracy) / 2));
+
       const payloadFull = {
         user_id: user.id,
         game_id: gameId,
@@ -1032,8 +1059,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         round_index: currentRoundIndex,
         image_id: currentImage.id,
         score: fullResult.score,
-        accuracy: Number(resultData.accuracy ?? 0),
-        xp_total: (fullResult.xpWhere ?? 0) + (fullResult.xpWhen ?? 0),
+        accuracy: averageAccuracy,
+        xp_total: xpTotal,
         xp_where: fullResult.xpWhere,
         xp_when: fullResult.xpWhen,
         hints_used: fullResult.hintsUsed,
@@ -1128,6 +1155,59 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           console.warn('[GameContext] recordRoundResult: fallback handling threw', fallbackErr);
         }
       }
+      // Upsert sync room membership (new table)
+      try {
+        if (effectiveRoomId) {
+          const { error: syncMemberErr } = await supabase
+            .from('sync_room_players')
+            .upsert({
+              room_id: effectiveRoomId,
+              user_id: user.id,
+              display_name: displayName,
+            }, { onConflict: 'room_id,user_id' });
+          if (syncMemberErr) {
+            console.warn('[GameContext] sync_room_players upsert failed', syncMemberErr);
+          }
+        }
+      } catch (syncMembershipError) {
+        console.warn('[GameContext] sync_room_players persistence error', syncMembershipError);
+      }
+
+      // Persist snapshot to sync scoreboard table for Compete Sync mode
+      try {
+        if (effectiveRoomId) {
+          const path = typeof window !== 'undefined' ? (window.location.pathname || '') : '';
+          const isSyncRoute = path.startsWith('/compete/sync/');
+          if (isSyncRoute) {
+            const roundNumber = currentRoundIndex + 1;
+            const snapshotPayload = {
+              room_id: effectiveRoomId,
+              round_number: roundNumber,
+              user_id: user.id,
+              display_name: displayName,
+              xp_total: xpTotal,
+              time_accuracy: timeAccuracy,
+              location_accuracy: locationAccuracy,
+              distance_km: fullResult.distanceKm,
+              year_difference: (fullResult.guessYear != null ? (fullResult.guessYear - currentImage.year) : null),
+              guess_year: fullResult.guessYear,
+              guess_lat: fullResult.guessCoordinates?.lat ?? null,
+              guess_lng: fullResult.guessCoordinates?.lng ?? null,
+            } as const;
+
+            const { error: syncError } = await supabase
+              .from('sync_round_scores')
+              .upsert(snapshotPayload, { onConflict: 'room_id,round_number,user_id' });
+
+            if (syncError) {
+              console.warn('[GameContext] sync_round_scores upsert failed', syncError);
+            }
+          }
+        }
+      } catch (snapshotErr) {
+        console.warn('[GameContext] sync_round_scores persistence error', snapshotErr);
+      }
+
       // Update local state after persistence attempts (regardless of fallback path)
       setRoundResults((prev) => {
         const next = [...prev];

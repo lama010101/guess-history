@@ -168,16 +168,115 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
   const userIcon = useMemo(() => createUserIcon(avatarUrl), [avatarUrl]);
 
-  // Build a lightweight participants list combining the current user and peers
-  const participants = useMemo(() => {
-    const self = {
-      id: user?.id || 'self',
-      name: currentUserDisplayName || 'You',
-      guessYear: result?.guessYear ?? null,
-      distanceKm: result?.distanceKm ?? null,
-    } as { id: string; name: string; guessYear: number | null; distanceKm: number | null };
-    return [self, ...(peers || []).map(p => ({ id: p.userId, name: p.displayName || 'Player', guessYear: p.guessYear, distanceKm: p.distanceKm }))];
-  }, [user?.id, currentUserDisplayName, result?.guessYear, result?.distanceKm, peers]);
+  type LeaderboardEntry = {
+    userId: string;
+    displayName: string;
+    totalMetric: number;
+    whenMetric: number;
+    whereMetric: number;
+  };
+
+  const selfUserId = user?.id || 'self';
+
+  const leaderboardEntries = useMemo<LeaderboardEntry[]>(() => {
+    const clampPercent = (value: number | null | undefined) => {
+      if (typeof value !== 'number' || Number.isNaN(value)) return 0;
+      return Math.min(100, Math.max(0, value));
+    };
+
+    const normalizeTime = (raw: number | null | undefined, fallbackGuess: number | null | undefined, fallbackEvent: number | null | undefined) => {
+      if (raw != null) return clampPercent(raw);
+      if (fallbackGuess == null || fallbackEvent == null) return 0;
+      const diff = Math.abs(fallbackGuess - fallbackEvent);
+      if (!Number.isFinite(diff)) return 0;
+      const ratio = Math.max(0, Math.min(100, 100 - Math.min(diff, 50) / 50 * 100));
+      return Math.round(ratio);
+    };
+
+    const normalizeDistance = (raw: number | null | undefined) => {
+      if (raw == null || Number.isNaN(raw)) return 0;
+      const maxDist = 2000;
+      const clamped = Math.max(0, Math.min(maxDist, raw));
+      return Math.round((1 - clamped / maxDist) * 100);
+    };
+
+    const entries: LeaderboardEntry[] = [];
+
+    entries.push({
+      userId: selfUserId,
+      displayName: currentUserDisplayName,
+      totalMetric: clampPercent(netAccuracy),
+      whenMetric: clampPercent(netTimeAccuracy),
+      whereMetric: clampPercent(netLocationAccuracy),
+    });
+
+    for (const peer of peers || []) {
+      const normalizedTime = normalizeTime(peer.timeAccuracy, peer.guessYear, result?.eventYear ?? null);
+      const normalizedWhere = peer.locationAccuracy != null
+        ? clampPercent(peer.locationAccuracy)
+        : normalizeDistance(peer.distanceKm);
+
+      entries.push({
+        userId: peer.userId,
+        displayName: peer.displayName || 'Player',
+        totalMetric: clampPercent(peer.accuracy),
+        whenMetric: normalizedTime,
+        whereMetric: normalizedWhere,
+      });
+    }
+
+    return entries;
+  }, [selfUserId, currentUserDisplayName, netAccuracy, netTimeAccuracy, netLocationAccuracy, peers, result?.eventYear]);
+
+  const hasLeaderboardPeers = leaderboardEntries.length > 1;
+
+  const renderLeaderboard = (metric: 'total' | 'when' | 'where') => {
+    if (!hasLeaderboardPeers) return null;
+
+    const sorted = [...leaderboardEntries].sort((a, b) => {
+      const getValue = (entry: LeaderboardEntry) => {
+        if (metric === 'when') return entry.whenMetric;
+        if (metric === 'where') return entry.whereMetric;
+        return entry.totalMetric;
+      };
+      return getValue(b) - getValue(a);
+    });
+
+    return (
+      <div className="mt-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#222222]">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-muted-foreground">
+              <th className="py-2 px-3 font-medium">Player</th>
+              <th className="py-2 px-3 font-medium">%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((entry) => {
+              const value = metric === 'when'
+                ? entry.whenMetric
+                : metric === 'where'
+                  ? entry.whereMetric
+                  : entry.totalMetric;
+              const isSelf = entry.userId === selfUserId;
+              return (
+                <tr
+                  key={`${metric}-${entry.userId}`}
+                  className={cn(
+                    'border-t border-gray-200 dark:border-gray-700',
+                    isSelf && 'bg-gray-200/70 dark:bg-white/10 font-semibold'
+                  )}
+                >
+                  <td className="py-2 px-3">{entry.displayName}</td>
+                  <td className="py-2 px-3 text-right">{`${Math.round(value)}%`}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
 
   // Early returns after all hooks above
   if (error) {
@@ -268,6 +367,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                     </div>
                   </div>
                 )}
+                {renderLeaderboard('total')}
               </div>
             </div>
 
@@ -461,42 +561,8 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
                 </Badge>
               </div>
+              {renderLeaderboard('where')}
             </div>
-
-            {/* Participants' answers (Compete mode) */}
-            {peers && peers.length > 0 && (
-              <div className="bg-white dark:bg-[#333333] rounded-2xl shadow-lg p-4">
-                <div className="border-b border-border pb-3 mb-3 flex justify-between items-center">
-                  <h2 className="font-normal text-lg text-gray-900 dark:text-gray-100 flex items-center">
-                    Participants' Answers
-                  </h2>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-muted-foreground">
-                        <th className="py-2 pr-2 font-medium">Name</th>
-                        <th className="py-2 pr-2 font-medium">Year</th>
-                        <th className="py-2 pr-2 font-medium">Distance</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {participants.map(p => (
-                        <tr key={p.id} className="border-t border-gray-200 dark:border-gray-700">
-                          <td className="py-2 pr-2">{p.name}</td>
-                          <td className="py-2 pr-2">{p.guessYear == null ? 'No guess' : p.guessYear}</td>
-                          <td className="py-2 pr-2">
-                            {p.distanceKm == null
-                              ? 'No guess'
-                              : (() => { const d = formatDistanceFromKm(p.distanceKm, distanceUnit); return `${d.value} ${d.unitLabel} away`; })()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
 
             {result.hintDebts && result.hintDebts.length > 0 && (
               <HintDebtsCard 

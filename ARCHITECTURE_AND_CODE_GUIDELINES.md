@@ -400,6 +400,39 @@ __QA checklist__
   - Merge rules per user:
     - `displayName`: prefer `session_players.display_name`, fallback to `scoreboard.display_name`, else `'Unknown'`.
 
+#### Multiplayer SQL Verification Cheatsheet (2025-10-06)
+
+- **Purpose**: validate multiplayer rooms without replaying a Sync session. Run the following in the Supabase SQL editor.
+
+- **Impersonate a participant and fetch the round scoreboard**
+
+```sql
+select set_config('request.jwt.claim.role', 'authenticated', false);
+select set_config('request.jwt.claim.sub', '<user-uuid>', false);
+select auth.uid();
+select *
+from public.get_round_scoreboard('<room-id>', <round-number>);
+```
+
+- **Inspect room membership**
+
+```sql
+select user_id, display_name, is_host, ready, last_seen
+from public.session_players
+where room_id = '<room-id>';
+```
+
+- **Inspect persisted round results**
+
+```sql
+select user_id, round_index, score, accuracy, guess_year, distance_km, created_at
+from public.round_results
+where room_id = '<room-id>'
+order by round_index, created_at;
+```
+
+- Replace placeholders before running. Keep these snippets aligned with `src/hooks/useRoundPeers.ts` whenever data sources or fallbacks change.
+
 #### Compete Round Results — Triple Leaderboards (2025-09-24)
 
 - Goal: In Compete mode, display three round leaderboards side-by-side the standard results UI:

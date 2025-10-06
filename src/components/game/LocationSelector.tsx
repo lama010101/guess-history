@@ -12,6 +12,13 @@ interface LocationSelectorProps {
   avatarUrl?: string;
   locationLabel?: string;
   onHome?: () => void;
+  peerMarkers?: Array<{
+    id: string;
+    lat: number;
+    lng: number;
+    avatarUrl?: string | null;
+    displayName?: string | null;
+  }>;
 }
 
 const LocationSelector: React.FC<LocationSelectorProps> = ({
@@ -21,7 +28,8 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
   onSubmit,
   hasSelectedLocation = false,
   avatarUrl,
-  onHome
+  onHome,
+  peerMarkers = []
 }) => {
   const [center, setCenter] = useState<{ lat: number; lon: number } | null>(null);
   const [externalPos, setExternalPos] = useState<{ lat: number; lng: number } | null>(null);
@@ -55,6 +63,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
           showSearch={false}
           externalPosition={externalPos}
           onCenterChange={setCenter}
+          peerMarkers={peerMarkers}
         />
       </div>
     </div>

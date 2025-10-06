@@ -80,6 +80,7 @@ type Env = {
   // Stable server user id to attribute authoritative timers to (uuid)
   SUPABASE_SERVER_USER_ID?: string;
   INVITE_HMAC_SECRET?: string;
+  ALLOW_DEV_NO_INVITE?: string;
 };
 
 function decodeBase64Url(input: string): Buffer {
@@ -114,7 +115,13 @@ export default class Lobby implements Party.Server {
   private async enforceInviteToken(token?: string): Promise<boolean> {
     const env = (this.room.env as unknown as Env) || {};
     const secret = env.INVITE_HMAC_SECRET;
-    if (!secret) {
+    const secretDefined = typeof secret === 'string' && secret.trim().length > 0 && !secret.startsWith('${');
+    if (env.ALLOW_DEV_NO_INVITE === '1') {
+      console.warn("lobby: invite enforcement bypassed because ALLOW_DEV_NO_INVITE=1", { roomId: this.room.id });
+      return true;
+    }
+    if (!secretDefined) {
+      // Treat placeholder/unset secret as disabled (common in dev)
       return true;
     }
     if (!token) {
@@ -169,7 +176,9 @@ export default class Lobby implements Party.Server {
       console.warn("lobby: startRoundTimer skipped due to missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
       return null;
     }
-    if (!env.SUPABASE_SERVER_USER_ID) {
+    const serverUserId = env.SUPABASE_SERVER_USER_ID;
+    const serverUserConfigured = typeof serverUserId === 'string' && serverUserId.trim().length > 0 && !serverUserId.startsWith('${');
+    if (!serverUserConfigured) {
       console.warn('lobby: startRoundTimer skipped because SUPABASE_SERVER_USER_ID is not configured');
       return null;
     }
@@ -187,7 +196,7 @@ export default class Lobby implements Party.Server {
         body: JSON.stringify({
           p_timer_id: timerId,
           p_duration_sec: Math.max(5, Math.min(600, durationSec)),
-          p_user_id: env.SUPABASE_SERVER_USER_ID,
+          p_user_id: serverUserId,
         }),
       });
       if (!res.ok) {

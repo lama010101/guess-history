@@ -19,6 +19,13 @@ interface HomeMapProps {
   showSearch?: boolean;
   externalPosition?: { lat: number; lng: number } | null;
   onCenterChange?: (center: { lat: number; lon: number }) => void;
+  peerMarkers?: Array<{
+    id: string;
+    lat: number;
+    lng: number;
+    avatarUrl?: string | null;
+    displayName?: string | null;
+  }>;
 }
 
 // Component that handles map click events
@@ -67,6 +74,7 @@ const HomeMap: React.FC<HomeMapProps> = ({
   showSearch = true,
   externalPosition = null,
   onCenterChange,
+  peerMarkers = [],
 }) => {
   const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(null);
   const [location, setLocation] = useState<string>('Select a location');
@@ -270,11 +278,31 @@ const HomeMap: React.FC<HomeMapProps> = ({
           
           <MapClickHandler onMapClick={handleMapClick} />
           <FullscreenHandler />
-          
+
           {markerPosition && (
-            <AvatarMarker lat={markerPosition[0]} lng={markerPosition[1]} imageUrl={avatarUrl ?? undefined} sizePx={100} />
+            <AvatarMarker 
+              lat={markerPosition[0]} 
+              lng={markerPosition[1]} 
+              imageUrl={avatarUrl ?? undefined} 
+              sizePx={100} 
+            />
           )}
-          
+
+          {peerMarkers.map((peer) => {
+            if (typeof peer.lat !== 'number' || typeof peer.lng !== 'number') {
+              return null;
+            }
+            return (
+              <AvatarMarker
+                key={`peer-marker-${peer.id}`}
+                lat={peer.lat}
+                lng={peer.lng}
+                imageUrl={peer.avatarUrl ?? undefined}
+                sizePx={80}
+              />
+            );
+          })}
+
           <FullscreenControl position="topright" />
           <ZoomControl position="topleft" zoomInText="+" zoomOutText="–" />
         </MapContainer>

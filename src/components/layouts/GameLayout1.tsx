@@ -52,6 +52,19 @@ export interface GameLayout1Props {
   // Level Up HUD button
   levelLabel?: string;
   onOpenLevelIntro?: () => void;
+  peerMarkers?: Array<{
+    id: string;
+    lat: number;
+    lng: number;
+    avatarUrl?: string | null;
+    displayName?: string | null;
+  }>;
+  peerRoster?: Array<{
+    id: string;
+    displayName: string;
+    avatarUrl: string | null;
+    isSelf?: boolean;
+  }>;
 }
 
 const GameLayout1: React.FC<GameLayout1Props> = ({
@@ -81,6 +94,8 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   maxYear,
   levelLabel,
   onOpenLevelIntro,
+  peerMarkers = [],
+  peerRoster = [],
 }) => {
   const [isImageFullScreen, setIsImageFullScreen] = useState(true);
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
@@ -332,6 +347,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             accDebt={accDebt}
             levelLabel={levelLabel}
             onOpenLevelIntro={onOpenLevelIntro}
+            peerRoster={peerRoster}
           />
         </div>
       </div>
@@ -517,6 +533,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                   hasSelectedLocation={!!currentGuess}
                   avatarUrl={avatarUrl}
                   onHome={() => onConfirmNavigation(() => onNavigateHome())}
+                  peerMarkers={peerMarkers}
                 />
               </div>
             </CardContent>

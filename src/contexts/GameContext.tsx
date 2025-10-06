@@ -1089,6 +1089,14 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           .upsert(payloadFull, { onConflict: conflictTarget });
         upsertData = data;
         upsertError = error;
+        if (error) {
+          console.error('[GameContext] recordRoundResult upsert failed (primary payload)', {
+            roomId: payloadFull.room_id,
+            roundIndex: payloadFull.round_index,
+            conflictTarget,
+            error,
+          });
+        }
       }
 
       // Fallbacks for schema drift

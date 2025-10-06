@@ -25,18 +25,18 @@ import {
   calculateDistanceKm, 
   calculateRoundScore, 
   calculateTimeXP, 
-  calculateLocationXP, 
+  calculateLocationXP,
   ROUNDS_PER_GAME 
 } from '@/utils/gameCalculations';
 import { useGameLocalCountdown } from '@/gameTimer/useGameLocalCountdown';
 import { buildTimerId } from '@/lib/timerId';
 import { getLevelUpConstraints, setLevelUpOldestYear } from '@/lib/levelUpConfig';
 import { supabase } from '@/integrations/supabase/client';
+import { useRoundPeers } from '@/hooks/useRoundPeers';
 
 // Cache the global minimum year to avoid repeated queries in a session
 let __globalMinYearCache: number | null = null;
 
-// Rename component
 const GameRoundPage = () => {
   // --- Hint system V2 ---
   const navigate = useNavigate();
@@ -48,6 +48,7 @@ const GameRoundPage = () => {
     const idx = path.indexOf('/game/');
     return idx > 0 ? path.slice(0, idx) : '/solo';
   }, [location.pathname]);
+  const isCompeteMode = useMemo(() => modeBasePath.startsWith('/compete'), [modeBasePath]);
   // Detect Level Up routes and apply theming
   useEffect(() => {
     const isLevelUp = location.pathname.includes('/level/');
@@ -383,23 +384,79 @@ const GameRoundPage = () => {
   }, [user, roomId, gameId, currentRoundIndex, navigate, roundNumber, modeBasePath, submittedRedirectRef]);
 
   // Persist URL-derived round to the backend session so refresh lands on same round
-  
 
   // Determine the image for this round
   const imageForRound =
-      !isContextLoading &&
-      images.length > 0 &&
-      !isNaN(roundNumber) &&
-      roundNumber > 0 &&
-      roundNumber <= images.length
-        ? images[currentRoundIndex]
-        : null;
+    !isContextLoading &&
+    images.length > 0 &&
+    !isNaN(roundNumber) &&
+    roundNumber > 0 &&
+    roundNumber <= images.length
+      ? images[currentRoundIndex]
+      : null;
+
+  const effectiveRoundNumber = Number.isFinite(roundNumber) ? roundNumber : null;
+  const { peers: roundPeers } = useRoundPeers(
+    isCompeteMode && roomId ? roomId : null,
+    isCompeteMode ? effectiveRoundNumber : null
+  );
+
+  const peerMarkers = useMemo(() => {
+    if (!isCompeteMode) {
+      return [] as Array<{ id: string; lat: number; lng: number; avatarUrl?: string | null; displayName?: string | null }>;
+    }
+    return (roundPeers || [])
+      .filter((peer) => peer.userId !== (user?.id || null) && peer.guessLat != null && peer.guessLng != null)
+      .map((peer) => ({
+        id: peer.userId,
+        lat: peer.guessLat as number,
+        lng: peer.guessLng as number,
+        avatarUrl: peer.avatarUrl ?? null,
+        displayName: peer.displayName ?? 'Player',
+      }));
+  }, [isCompeteMode, roundPeers, user?.id]);
+
+  const peerRoster = useMemo(() => {
+    if (!isCompeteMode) {
+      return [] as Array<{ id: string; displayName: string; avatarUrl: string | null; isSelf: boolean }>;
+    }
+
+    const rosterMap = new Map<string, { id: string; displayName: string; avatarUrl: string | null; isSelf: boolean }>();
+
+    (roundPeers || []).forEach((peer) => {
+      rosterMap.set(peer.userId, {
+        id: peer.userId,
+        displayName: peer.displayName || 'Player',
+        avatarUrl: peer.avatarUrl ?? null,
+        isSelf: peer.userId === (user?.id || null),
+      });
+    });
+
+    if (user?.id) {
+      const existing = rosterMap.get(user.id) ?? null;
+      const selfDisplayName = profile?.display_name || (existing && existing.displayName) || user.email || 'You';
+      const selfAvatar = profile?.avatar_image_url ?? profile?.avatar_url ?? (existing ? existing.avatarUrl : null);
+
+      rosterMap.set(user.id, {
+        id: user.id,
+        displayName: selfDisplayName,
+        avatarUrl: selfAvatar ?? null,
+        isSelf: true,
+      });
+    }
+
+    return Array.from(rosterMap.values());
+  }, [isCompeteMode, roundPeers, user?.id, profile]);
 
   useEffect(() => {
     if (import.meta.env.DEV) {
       console.debug('[GameRoundPage] imageForRound', { roundNumber, hasImage: !!imageForRound });
+      if (isCompeteMode) {
+        console.debug('[GameRoundPage] peerMarkers', peerMarkers);
+        console.debug('[GameRoundPage] peerRoster', peerRoster);
+      }
     }
-  }, [roundNumber, imageForRound]);
+  }, [roundNumber, imageForRound, peerMarkers, peerRoster, isCompeteMode]);
 
   // Fetch global minimum event year once and cache it for the session
   useEffect(() => {
@@ -810,8 +867,10 @@ const GameRoundPage = () => {
         maxYear={maxYearProp}
         levelLabel={isLevelUpRoute ? `Level ${levelUpLevel ?? 1}` : undefined}
         onOpenLevelIntro={() => { setIntroSource('hub'); setShowIntro(true); }}
+        peerMarkers={peerMarkers}
+        peerRoster={peerRoster}
       />
-
+      
       {/* Level Up Intro overlay BEFORE starting Round 1 (Level Up only) */}
       {isLevelUpRoute && showIntro && createPortal(
         <div className="fixed inset-0 z-[11000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">

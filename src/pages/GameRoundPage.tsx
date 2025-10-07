@@ -1,8 +1,8 @@
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useState, useCallback, useMemo, useRef, type CSSProperties } from 'react';
 import GameLayout1 from "@/components/layouts/GameLayout1";
-import { Loader, MapPin } from "lucide-react";
+import { Loader, MapPin, MessageCircle, X } from "lucide-react";
 import { useGame } from '@/contexts/GameContext';
 import { GuessCoordinates } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,6 +33,7 @@ import { buildTimerId } from '@/lib/timerId';
 import { getLevelUpConstraints, setLevelUpOldestYear } from '@/lib/levelUpConfig';
 import { supabase } from '@/integrations/supabase/client';
 import { useRoundPeers } from '@/hooks/useRoundPeers';
+import { useLobbyChat } from '@/hooks/useLobbyChat';
 
 // Cache the global minimum year to avoid repeated queries in a session
 let __globalMinYearCache: number | null = null;
@@ -63,6 +64,10 @@ const GameRoundPage = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const avatarClusterRef = useRef<HTMLDivElement | null>(null);
+  const [chatPanelStyle, setChatPanelStyle] = useState<CSSProperties | null>(null);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -73,6 +78,104 @@ const GameRoundPage = () => {
     };
     loadProfile();
   }, [user]);
+
+  const displayName = useMemo(() => {
+    const derived = profile?.display_name || user?.user_metadata?.display_name || user?.email || 'Anonymous';
+    return String(derived ?? '').trim() || 'Anonymous';
+  }, [profile?.display_name, user?.user_metadata?.display_name, user?.email]);
+
+  const {
+    messages: chatMessages,
+    sendMessage: sendChatMessage,
+    status: chatStatus,
+    resetChat,
+  } = useLobbyChat({
+    roomCode: isCompeteMode ? roomId : null,
+    displayName,
+    userId: user?.id,
+    enabled: isCompeteMode && !!roomId,
+  });
+
+  useEffect(() => {
+    if (!isChatOpen) return;
+    const container = document.getElementById('game-chat-scroller');
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
+  }, [chatMessages, isChatOpen]);
+
+  const handleSendChat = useCallback(() => {
+    const success = sendChatMessage(chatInput);
+    if (success) {
+      setChatInput('');
+    }
+  }, [chatInput, sendChatMessage]);
+
+  const closeChat = useCallback(() => {
+    setIsChatOpen(false);
+    try { localStorage.setItem('gh:lastChatRoom', roomId ?? ''); } catch {}
+  }, [roomId]);
+
+  const toggleChat = useCallback(() => {
+    setIsChatOpen((prev) => {
+      const next = !prev;
+      if (!next) {
+        try { localStorage.setItem('gh:lastChatRoom', roomId ?? ''); } catch {}
+      }
+      return next;
+    });
+  }, [roomId]);
+
+  const updateChatPanelPosition = useCallback(() => {
+    const clusterEl = avatarClusterRef.current;
+    const fallback: CSSProperties = {
+      position: 'fixed',
+      right: 16,
+      bottom: 96,
+      width: 320,
+    };
+
+    if (!clusterEl) {
+      setChatPanelStyle(fallback);
+      return;
+    }
+
+    const rect = clusterEl.getBoundingClientRect();
+    const width = 320;
+    const gap = 12;
+    let left = rect.left + rect.width - width;
+    left = Math.min(Math.max(left, 16), window.innerWidth - width - 16);
+    const top = Math.max(gap, rect.top - gap);
+
+    setChatPanelStyle({
+      position: 'fixed',
+      top,
+      left,
+      width,
+      transform: 'translateY(-100%)',
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!isChatOpen) return;
+    updateChatPanelPosition();
+  }, [isChatOpen, updateChatPanelPosition]);
+
+  useEffect(() => {
+    if (!isChatOpen) return;
+    const handleUpdate = () => updateChatPanelPosition();
+    window.addEventListener('resize', handleUpdate);
+    window.addEventListener('scroll', handleUpdate, true);
+    return () => {
+      window.removeEventListener('resize', handleUpdate);
+      window.removeEventListener('scroll', handleUpdate, true);
+    };
+  }, [isChatOpen, updateChatPanelPosition]);
+
+  useEffect(() => {
+    return () => {
+      resetChat();
+    };
+  }, [resetChat]);
 
   // Ensure we have an authenticated session (guest is fine) before starting timers
   useEffect(() => {
@@ -869,6 +972,10 @@ const GameRoundPage = () => {
         onOpenLevelIntro={() => { setIntroSource('hub'); setShowIntro(true); }}
         peerMarkers={peerMarkers}
         peerRoster={peerRoster}
+        onOpenChat={chatStatus === 'open' || chatStatus === 'connecting' || chatStatus === 'full' ? toggleChat : undefined}
+        isChatOpen={isChatOpen}
+        chatMessageCount={chatMessages.length}
+        avatarClusterRef={avatarClusterRef}
       />
       
       {/* Level Up Intro overlay BEFORE starting Round 1 (Level Up only) */}
@@ -903,6 +1010,70 @@ const GameRoundPage = () => {
         onClose={() => setShowConfirmDialog(false)}
         onConfirm={handleConfirmNavigation}
       />
+
+      {isCompeteMode && roomId && isChatOpen && (
+        <div
+          className="pointer-events-none z-[1500]"
+          style={chatPanelStyle ?? { position: 'fixed', right: 16, bottom: 96, width: 320 }}
+        >
+          <div className="pointer-events-auto w-[320px] max-h-[60vh] rounded-2xl border border-white/10 bg-black/70 backdrop-blur-xl shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="h-4 w-4 text-emerald-300" />
+                <div className="text-sm font-semibold text-white">Room Chat</div>
+                <div className="text-xs text-white/60">{chatMessages.length} msg</div>
+              </div>
+              <button
+                type="button"
+                onClick={closeChat}
+                className="text-white/70 hover:text-white" aria-label="Close chat"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div id="game-chat-scroller" className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+              {chatMessages.length === 0 ? (
+                <div className="text-xs text-white/50">No messages yet. Say hi!</div>
+              ) : (
+                chatMessages.map((msg) => (
+                  <div key={msg.id} className="text-xs text-white/90">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold truncate max-w-[65%]">{msg.from}</span>
+                      <span className="text-[10px] text-white/50">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <div className="text-white/80 whitespace-pre-wrap break-words">{msg.message}</div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="px-4 py-3 border-t border-white/10 flex items-center gap-2">
+              <input
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendChat();
+                  }
+                }}
+                placeholder={chatStatus === 'open' ? 'Type a message…' : chatStatus === 'connecting' ? 'Connecting…' : 'Chat unavailable'}
+                disabled={chatStatus !== 'open'}
+                className="flex-1 rounded-lg bg-white/10 text-white placeholder:text-white/40 border border-white/20 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              />
+              <button
+                type="button"
+                onClick={handleSendChat}
+                disabled={chatStatus !== 'open' || !chatInput.trim()}
+                className="px-3 py-1.5 rounded-lg bg-emerald-400 text-sm font-semibold text-black disabled:bg-white/20 disabled:text-white/50"
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HUD chat button replaces legacy floating toggle */}
     </div>
   );
 };

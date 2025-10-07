@@ -155,7 +155,29 @@ const RoundResultsPage = () => {
   const currentImage = images.length > currentRoundIndex ? images[currentRoundIndex] : null;
 
   // --- Multiplayer peers: fetch other players' answers for this room/round ---
-  const { peers: peerRows } = useRoundPeers(roomId || null, Number.isFinite(roundNumber) ? roundNumber : null);
+  const { peers: peerRows, miniLeaderboards } = useRoundPeers(roomId || null, Number.isFinite(roundNumber) ? roundNumber : null);
+
+  const layoutLeaderboards = useMemo(() => {
+    if (!miniLeaderboards) return undefined;
+    return {
+      total: miniLeaderboards.total.map((row) => ({
+        userId: row.userId,
+        displayName: row.displayName,
+        value: row.value ?? 0,
+      })),
+      when: miniLeaderboards.time.map((row) => ({
+        userId: row.userId,
+        displayName: row.displayName,
+        value: row.value ?? 0,
+      })),
+      where: miniLeaderboards.location.map((row) => ({
+        userId: row.userId,
+        displayName: row.displayName,
+        value: row.value ?? 0,
+      })),
+      currentUserId: user?.id ?? null,
+    };
+  }, [miniLeaderboards, user?.id]);
 
   // Fetch and process hint debts when user, image, and results are ready
   const fetchDebts = useCallback(async () => {
@@ -512,6 +534,7 @@ const RoundResultsPage = () => {
         result={resultForLayout}
         avatarUrl={profile?.avatar_image_url || profile?.avatar_url || '/assets/default-avatar.png'}
         peers={(peerRows || []).filter(p => !user || p.userId !== user.id)}
+        leaderboards={layoutLeaderboards}
         currentUserDisplayName={profile?.display_name || 'You'}
         nextRoundButton={
           <div className="flex items-center gap-2">

@@ -65,6 +65,10 @@ export interface GameLayout1Props {
     avatarUrl: string | null;
     isSelf?: boolean;
   }>;
+  onOpenChat?: () => void;
+  isChatOpen?: boolean;
+  chatMessageCount?: number;
+  avatarClusterRef?: React.RefObject<HTMLDivElement>;
 }
 
 const GameLayout1: React.FC<GameLayout1Props> = ({
@@ -96,6 +100,10 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   onOpenLevelIntro,
   peerMarkers = [],
   peerRoster = [],
+  onOpenChat,
+  isChatOpen = false,
+  chatMessageCount = 0,
+  avatarClusterRef,
 }) => {
   const [isImageFullScreen, setIsImageFullScreen] = useState(true);
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
@@ -180,7 +188,6 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       return () => {
         window.clearInterval(whenTimer);
         window.clearInterval(whereTimer);
-        window.clearTimeout(totalTimer);
       };
     }
     return;
@@ -189,11 +196,12 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const [isHintModalV2Open, setIsHintModalV2Open] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const game = useGame();
+
   const { totalGameAccuracy, totalGameXP, roundTimerSec, timerEnabled } = game;
   const parsedYear = parseInt(yearInput, 10);
   // Dynamic year bounds based on prepared images for this game session
   const dynamicMinYear = useMemo(() => {
-    const ys = (game?.images || []).map(img => img.year).filter(y => typeof y === 'number' && !isNaN(y));
+    const ys = (game?.images || []).map((img) => img.year).filter((y) => typeof y === 'number' && !isNaN(y));
     if (ys.length === 0) return 1850;
     return Math.min(...ys);
   }, [game?.images]);
@@ -335,7 +343,6 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             hintsAllowed={14}
             currentAccuracy={totalGameAccuracy}
             currentScore={totalGameXP}
-            onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
             imageUrl={image.firebase_url || image.url}
             onFullscreen={handleImageFullscreen}
             isTimerActive={isTimerActive}
@@ -348,6 +355,10 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             levelLabel={levelLabel}
             onOpenLevelIntro={onOpenLevelIntro}
             peerRoster={peerRoster}
+            onOpenChat={onOpenChat}
+            isChatOpen={isChatOpen}
+            chatMessageCount={chatMessageCount}
+            avatarClusterRef={avatarClusterRef}
           />
         </div>
       </div>
@@ -668,6 +679,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
         onClose={() => setIsSettingsModalOpen(false)}
         onNavigateHome={() => onConfirmNavigation(() => onNavigateHome())}
       />
+
     </div>
   );
 };

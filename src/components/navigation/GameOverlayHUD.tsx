@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Settings, Maximize, Target, Zap, Sparkles } from 'lucide-react';
+import { Maximize, Target, Zap, Sparkles, MessageCircle } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { formatInteger } from '@/utils/format';
 import TimerDisplay from '@/components/game/TimerDisplay';
@@ -16,7 +16,6 @@ interface GameOverlayHUDProps {
   currentScore?: number;
   onNavigateHome?: () => void;
   onConfirmNavigation?: (navigateTo: () => void) => void;
-  onOpenSettingsModal?: () => void;
   onFullscreen?: () => void;
   imageUrl?: string;
   className?: string;
@@ -36,6 +35,10 @@ interface GameOverlayHUDProps {
     avatarUrl: string | null;
     isSelf?: boolean;
   }>;
+  onOpenChat?: () => void;
+  isChatOpen?: boolean;
+  chatMessageCount?: number;
+  avatarClusterRef?: React.RefObject<HTMLDivElement>;
 }
 
 const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
@@ -49,7 +52,6 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
   currentScore = 0,
   onNavigateHome,
   onConfirmNavigation,
-  onOpenSettingsModal,
   onFullscreen,
   imageUrl,
   className,
@@ -63,27 +65,23 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
   levelLabel,
   onOpenLevelIntro,
   peerRoster = [],
+  onOpenChat,
+  isChatOpen = false,
+  chatMessageCount = 0,
+  avatarClusterRef,
 }) => {
   // Show hint counter as X/Y where Y is the total allowed hints
   const isHintDisabled = hintsUsed >= hintsAllowed;
+  const formattedChatCount = chatMessageCount > 99 ? '99+' : String(chatMessageCount ?? 0);
+  const showChatCount = (chatMessageCount ?? 0) > 0;
+  const hasPeers = peerRoster.length > 0;
   
-  const handleSettingsClick = () => {
-    if (onOpenSettingsModal) {
-      onOpenSettingsModal();
-    } else {
-      // Fallback or error if the prop isn't provided, though it should be.
-      console.warn('onOpenSettingsModal not provided to GameOverlayHUD');
-      // Optionally navigate to a dedicated settings page as a fallback:
-      // navigate('/solo/settings'); 
-    }
-  };
-
   return (
     <div className={`absolute inset-0 z-40 flex flex-col justify-between p-4 pointer-events-none game-overlay-hud ${className || ''}`}>
       {/* Top bar - Score centered, Home button on right */}
       <div className="flex justify-between items-start w-full relative">
         {/* Left side - Timer */}
-        <div className="pointer-events-auto">
+        <div className="pointer-events-auto flex items-center gap-2">
           {timerEnabled && (
             <TimerDisplay
               remainingTime={Math.max(0, rawRemainingTime || 0)}
@@ -135,30 +133,65 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
         </div>
       </div>
 
-      {/* Bottom bar with Hint button and Home button */}
+      {/* Bottom bar with Hint button and chat avatars */}
       <div className="flex justify-between items-end w-full">
-        {/* Peer roster display and hint button */}
-        <div className="flex flex-col gap-2">
-          {peerRoster.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 pointer-events-none select-none">
-              <span className="text-xs font-semibold uppercase tracking-wide text-white/70">
-                Players
-              </span>
-              {peerRoster.map((peer) => (
-                <span
-                  key={`peer-pill-${peer.id}`}
-                  className={`text-xs font-medium rounded-full border border-white/30 px-3 py-1 bg-black/50 text-white/90 backdrop-blur-sm ${peer.isSelf ? 'border-amber-400 bg-amber-500/20 text-amber-100' : ''}`}
+        <div className="flex items-end gap-3 pointer-events-auto">
+          {(hasPeers || onOpenChat) && (
+            <div
+              ref={avatarClusterRef ?? undefined}
+              className={`relative flex items-center gap-2 bg-black/45 backdrop-blur-sm ${hasPeers ? 'px-3 py-2' : 'px-2 py-1'} rounded-full border border-white/20`}
+            >
+              {hasPeers && peerRoster.slice(0, 4).map((peer) => (
+                <button
+                  key={peer.id}
+                  type="button"
+                  onClick={onOpenChat}
+                  disabled={!onOpenChat}
+                  className={`relative flex items-center justify-center w-8 h-8 rounded-full overflow-hidden border ${peer.isSelf ? 'border-amber-300/80' : 'border-white/60'} bg-gradient-to-br from-orange-400 to-pink-500 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 disabled:cursor-not-allowed`}
+                  aria-label={peer.isSelf ? 'Open chat (you)' : 'Open chat'}
                 >
-                  {peer.displayName}
-                </span>
+                  {peer.avatarUrl ? (
+                    <img
+                      src={peer.avatarUrl}
+                      alt={peer.displayName}
+                      className="w-full h-full object-cover rounded-full"
+                    />
+                  ) : (
+                    <span className="w-full h-full flex items-center justify-center text-sm font-semibold text-white rounded-full">
+                      {(peer.displayName || '?').slice(0, 1).toUpperCase()}
+                    </span>
+                  )}
+                </button>
               ))}
+              {hasPeers && peerRoster.length > 4 && (
+                <span className="text-xs font-semibold text-white/90">
+                  +{peerRoster.length - 4}
+                </span>
+              )}
+              {onOpenChat && (
+                <button
+                  type="button"
+                  onClick={onOpenChat}
+                  className={`relative flex items-center justify-center w-9 h-9 rounded-full border border-white/50 ${isChatOpen ? 'bg-emerald-500/90 text-black' : 'bg-black/55 text-white hover:bg-black/70'} focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400`}
+                  aria-label={isChatOpen ? 'Hide chat' : 'Show chat'}
+                  aria-pressed={isChatOpen}
+                  title={isChatOpen ? 'Hide chat' : 'Show chat'}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  {showChatCount && (
+                    <span className="absolute -top-1.5 -right-1.5 rounded-full bg-emerald-400 text-black text-[0.65rem] font-semibold px-1.5 py-0.5 shadow-lg">
+                      {formattedChatCount}
+                    </span>
+                  )}
+                </button>
+              )}
             </div>
           )}
           {onHintV2Click && (
             <Button 
               size="sm" 
               variant="outline" 
-              className="bg-white/80 text-black hover:bg-white/90 border-none pointer-events-auto"
+              className="bg-white/80 text-black hover:bg-white/90 border-none"
               onClick={onHintV2Click}
               disabled={isHintDisabled}
             >
@@ -177,32 +210,6 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
         </div>
 
         <div className="pointer-events-auto flex items-center gap-3">
-          {peerRoster.length > 0 && (
-            <div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20">
-              {peerRoster.slice(0, 4).map((peer) => (
-                <div key={peer.id} className="flex items-center">
-                  <div className="w-8 h-8 rounded-full overflow-hidden border border-white/60 bg-gradient-to-br from-orange-400 to-pink-500 flex-shrink-0">
-                    {peer.avatarUrl ? (
-                      <img
-                        src={peer.avatarUrl}
-                        alt={peer.displayName}
-                        className="w-full h-full object-cover rounded-full"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-sm font-semibold text-white rounded-full">
-                        {(peer.displayName || '?').slice(0, 1).toUpperCase()}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {peerRoster.length > 4 && (
-                <span className="text-xs font-semibold text-white/90">
-                  +{peerRoster.length - 4}
-                </span>
-              )}
-            </div>
-          )}
           {onFullscreen && (
             <Button 
               size="icon"

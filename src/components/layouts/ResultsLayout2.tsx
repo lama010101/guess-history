@@ -72,6 +72,19 @@ interface RoundResult extends BaseRoundResult {
   source_citation?: string;
 }
 
+interface RoundLeaderboardEntry {
+  userId: string;
+  displayName: string;
+  value: number;
+}
+
+interface RoundLeaderboardsProps {
+  total: RoundLeaderboardEntry[];
+  when: RoundLeaderboardEntry[];
+  where: RoundLeaderboardEntry[];
+  currentUserId?: string | null;
+}
+
 export interface ResultsLayoutProps {
   loading: boolean;
   error: string | null;
@@ -85,6 +98,7 @@ export interface ResultsLayoutProps {
   rateButton?: React.ReactNode;
   peers?: PeerRoundRow[];
   currentUserDisplayName?: string;
+  leaderboards?: RoundLeaderboardsProps;
 }
 
 const ResultsLayout2: React.FC<ResultsLayoutProps> = ({ 
@@ -99,7 +113,8 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   nextRoundButton,
   rateButton,
   peers = [],
-  currentUserDisplayName = 'You'
+  currentUserDisplayName = 'You',
+  leaderboards,
 }) => {
   const { user } = useAuth();
   const distanceUnit = useSettingsStore(s => s.distanceUnit);
@@ -230,7 +245,60 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
   const hasLeaderboardPeers = leaderboardEntries.length > 1;
 
+  const renderLeaderboardTable = (
+    rows: Array<{ userId: string; displayName: string; value: number }>,
+    highlightUserId: string | null,
+    metric: 'total' | 'when' | 'where'
+  ) => {
+    if (!rows.length) return null;
+    return (
+      <div className="mt-4 rounded-xl border border-neutral-800 bg-neutral-900/60">
+        <table className="w-full text-sm">
+          <tbody>
+            {rows.map((entry, index) => {
+              const roundedValue = Math.round(entry.value ?? 0);
+              const isHighlighted = highlightUserId != null && entry.userId === highlightUserId;
+              const name = entry.displayName || 'Player';
+              const rowName = isHighlighted ? `(You) ${name}` : name;
+              const roundedClasses = index === 0
+                ? 'rounded-t-xl'
+                : index === rows.length - 1
+                  ? 'rounded-b-xl'
+                  : '';
+              return (
+                <tr
+                  key={`${metric}-${entry.userId}`}
+                  className={cn('bg-neutral-800/70', roundedClasses)}
+                >
+                  <td className="py-2 px-3">
+                    <span className={cn('text-neutral-200', isHighlighted && 'font-semibold text-white')}>{rowName}</span>
+                  </td>
+                  <td className="py-2 px-3 text-right">
+                    <span className={cn('font-medium text-neutral-200', isHighlighted && 'font-semibold text-white')}>{`${roundedValue}%`}</span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   const renderLeaderboard = (metric: 'total' | 'when' | 'where') => {
+    if (leaderboards) {
+      const rows = (metric === 'total'
+        ? leaderboards.total
+        : metric === 'when'
+          ? leaderboards.when
+          : leaderboards.where).map((row) => ({
+            userId: row.userId,
+            displayName: row.displayName,
+            value: row.value ?? 0,
+          }));
+      return renderLeaderboardTable(rows, leaderboards.currentUserId ?? null, metric);
+    }
+
     if (!hasLeaderboardPeers) return null;
 
     const sorted = [...leaderboardEntries].sort((a, b) => {
@@ -240,42 +308,17 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
         return entry.totalMetric;
       };
       return getValue(b) - getValue(a);
-    });
+    }).map((entry) => ({
+      userId: entry.userId,
+      displayName: entry.displayName,
+      value: metric === 'when'
+        ? entry.whenMetric
+        : metric === 'where'
+          ? entry.whereMetric
+          : entry.totalMetric,
+    }));
 
-    return (
-      <div className="mt-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#222222]">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-muted-foreground">
-              <th className="py-2 px-3 font-medium">Player</th>
-              <th className="py-2 px-3 font-medium">%</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((entry) => {
-              const value = metric === 'when'
-                ? entry.whenMetric
-                : metric === 'where'
-                  ? entry.whereMetric
-                  : entry.totalMetric;
-              const isSelf = entry.userId === selfUserId;
-              return (
-                <tr
-                  key={`${metric}-${entry.userId}`}
-                  className={cn(
-                    'border-t border-gray-200 dark:border-gray-700',
-                    isSelf && 'bg-gray-200/70 dark:bg-white/10 font-semibold'
-                  )}
-                >
-                  <td className="py-2 px-3">{entry.displayName}</td>
-                  <td className="py-2 px-3 text-right">{`${Math.round(value)}%`}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    );
+    return renderLeaderboardTable(sorted, selfUserId, metric);
   };
 
   // Early returns after all hooks above
@@ -446,6 +489,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
                 </Badge>
               </div>
+              {renderLeaderboard('when')}
             </div>
 
             <div className="bg-white dark:bg-[#333333] rounded-2xl shadow-lg p-4">

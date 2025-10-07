@@ -2,7 +2,6 @@ import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Loader, ChevronRight, Home, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import CompeteRoundLeaderboards from '@/components/scoreboard/CompeteRoundLeaderboards';
 import ResultsLayout2 from '@/components/layouts/ResultsLayout2';
 import ImageRatingModal from '@/components/rating/ImageRatingModal';
 import { ConfirmNavigationDialog } from '@/components/game/ConfirmNavigationDialog';
@@ -28,6 +27,27 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
   const { isLoading, error, contextResult, currentImage, hintDebts, playerSummary } = useCompeteRoundResult(roomId ?? null, Number.isFinite(oneBasedRound) ? oneBasedRound : null);
   const { peers } = useCompetePeers(roomId ?? null, Number.isFinite(oneBasedRound) ? oneBasedRound : null);
   const leaderboard = useCompeteRoundLeaderboards(roomId ?? null, Number.isFinite(oneBasedRound) ? oneBasedRound : null);
+
+  const layoutLeaderboards = useMemo(() => {
+    return {
+      total: leaderboard.total.map((row) => ({
+        userId: row.userId,
+        displayName: row.displayName,
+        value: row.value,
+      })),
+      when: leaderboard.when.map((row) => ({
+        userId: row.userId,
+        displayName: row.displayName,
+        value: row.value,
+      })),
+      where: leaderboard.where.map((row) => ({
+        userId: row.userId,
+        displayName: row.displayName,
+        value: row.value,
+      })),
+      currentUserId: leaderboard.currentUserId,
+    };
+  }, [leaderboard.total, leaderboard.when, leaderboard.where, leaderboard.currentUserId]);
 
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
@@ -206,21 +226,28 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-neutral-400">
-                    <th className="text-left py-2 pr-2">Player</th>
-                    <th className="text-right py-2 pr-2">Total Score</th>
-                  </tr>
-                </thead>
                 <tbody>
                   {leaderboard.total.map((row, index) => {
                     const isCurrent = leaderboard.currentUserId != null && row.userId === leaderboard.currentUserId;
+                    const displayName = row.displayName || 'Player';
+                    const nameWithYou = isCurrent ? `(You) ${displayName}` : displayName;
+                    const roundedClasses = index === 0
+                      ? 'rounded-t-lg'
+                      : index === leaderboard.total.length - 1
+                        ? 'rounded-b-lg'
+                        : '';
+                    const textClasses = isCurrent ? 'font-semibold text-white' : 'text-neutral-200';
                     return (
-                      <tr key={`inline:${row.userId}`} className={isCurrent ? 'bg-neutral-800/70' : index === 0 ? 'bg-emerald-500/10' : ''}>
-                        <td className={`py-2 pr-2 ${isCurrent ? 'font-semibold text-white' : 'text-neutral-100'}`}>
-                          {row.displayName || 'Player'}
+                      <tr
+                        key={`inline:${row.userId}`}
+                        className={`bg-neutral-800/70 ${roundedClasses}`.trim()}
+                      >
+                        <td className={`py-2 pr-2 ${textClasses}`}>
+                          {nameWithYou}
                         </td>
-                        <td className="py-2 pr-2 text-right font-medium">{Math.round(row.value)}</td>
+                        <td className={`py-2 pr-2 text-right ${isCurrent ? 'font-semibold text-white' : 'font-medium text-neutral-200'}`}>
+                          {Math.round(row.value)}
+                        </td>
                       </tr>
                     );
                   })}
@@ -240,6 +267,7 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
         avatarUrl={profile?.avatar_image_url || profile?.avatar_url || '/assets/default-avatar.png'}
         peers={peers.filter((peer) => !user || peer.userId !== user.id)}
         currentUserDisplayName={profile?.display_name || user?.user_metadata?.display_name || 'You'}
+        leaderboards={layoutLeaderboards}
         nextRoundButton={
           <div className="flex items-center gap-2">
             <Button
@@ -277,8 +305,6 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
           ) : null
         }
       />
-
-      {roomId ? <CompeteRoundLeaderboards roomId={roomId} roundNumber={oneBasedRound} /> : null}
 
       <ConfirmNavigationDialog
         isOpen={showConfirmDialog}

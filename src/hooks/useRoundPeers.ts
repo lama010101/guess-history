@@ -28,6 +28,20 @@ export interface PeerRoundRow {
   guessLng: number | null;
   actualLat: number | null;
   actualLng: number | null;
+  submitted: boolean;
+  ready: boolean;
+}
+
+export interface MiniLeaderboardRow {
+  userId: string;
+  displayName: string;
+  value: number | null;
+}
+
+export interface MiniLeaderboards {
+  total: MiniLeaderboardRow[];
+  time: MiniLeaderboardRow[];
+  location: MiniLeaderboardRow[];
 }
 
 interface UseRoundPeersResult {
@@ -35,6 +49,7 @@ interface UseRoundPeersResult {
   isLoading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
+  miniLeaderboards: MiniLeaderboards;
 }
 
 /**
@@ -49,6 +64,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
   const [peers, setPeers] = useState<PeerRoundRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [miniLeaderboards, setMiniLeaderboards] = useState<MiniLeaderboards>({ total: [], time: [], location: [] });
   const mountedRef = useRef(true);
 
   useEffect(() => () => { mountedRef.current = false; }, []);
@@ -86,6 +102,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
     if (!roomId || roundNumber == null) {
       devLog('Missing roomId or roundNumber', { roomId, roundNumber });
       setPeers([]);
+      setMiniLeaderboards({ total: [], time: [], location: [] });
       return;
     }
     devLog('Fetching peers for', { roomId, roundNumber });
@@ -170,6 +187,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
           console.warn('[useRoundPeers] get_round_scoreboard failed', scoreboardError);
           if (mountedRef.current) {
             setPeers([]);
+            setMiniLeaderboards({ total: [], time: [], location: [] });
             setError(message);
           }
           return;
@@ -179,7 +197,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       // 2. Fetch the list of participants (ensures we include everyone by name)
       const { data: spRows, error: spErr } = await (supabase as any)
         .from('session_players')
-        .select('user_id, display_name')
+        .select('user_id, display_name, ready')
         .eq('room_id', roomId);
       if (spErr) {
         console.warn('[useRoundPeers] session_players fetch failed', spErr);
@@ -253,6 +271,10 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
         const resolvedAvatar = profile?.avatar_image_url
           ?? profile?.avatar_url
           ?? (profile?.avatar_id ? avatarById.get(String(profile.avatar_id)) ?? null : null);
+        const hasRoundResult = !!rr;
+        const hasScoreboardEntry = !!sb && (
+          sb.score != null || sb.accuracy != null || sb.xp_total != null || sb.xp_where != null || sb.xp_when != null
+        );
         return {
           userId: uid,
           displayName: (sp?.display_name ?? sb?.display_name ?? profile?.display_name ?? 'Unknown') as string,
@@ -272,6 +294,8 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
           guessLng: rr?.guess_lng ?? null,
           actualLat: rr?.actual_lat ?? null,
           actualLng: rr?.actual_lng ?? null,
+          submitted: hasRoundResult || hasScoreboardEntry,
+          ready: sp?.ready === true,
         } as PeerRoundRow;
       });
 
@@ -301,18 +325,49 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
             guessLng: null,
             actualLat: null,
             actualLng: null,
+            submitted: false,
+            ready: sp?.ready === true,
           } as PeerRoundRow;
         });
       }
 
       devLog('merged peer count', mergedPeers.length, mergedPeers.map(p => ({ id: p.userId, hasAvatar: !!p.avatarUrl })));
 
+      const normalizeForSort = (value: number | null) => (typeof value === 'number' && Number.isFinite(value) ? value : -Infinity);
+      const buildLeaderboard = (extractor: (peer: PeerRoundRow) => number | null): MiniLeaderboardRow[] => {
+        const rows = mergedPeers
+          .filter((peer) => peer.ready)
+          .map((peer) => ({
+            userId: peer.userId,
+            displayName: peer.displayName,
+            value: extractor(peer),
+          }))
+          .filter((row) => row.value != null && Number.isFinite(Number(row.value)));
+
+        rows.sort((a, b) => {
+          const bVal = normalizeForSort(b.value);
+          const aVal = normalizeForSort(a.value);
+          if (bVal !== aVal) return bVal - aVal;
+          return a.displayName.localeCompare(b.displayName);
+        });
+
+        return rows.slice(0, 5);
+      };
+
       if (mountedRef.current) {
         setPeers(mergedPeers);
+        setMiniLeaderboards({
+          total: buildLeaderboard(peer => (typeof peer.xpTotal === 'number' ? peer.xpTotal : null)),
+          time: buildLeaderboard(peer => (typeof peer.timeAccuracy === 'number' ? peer.timeAccuracy : null)),
+          location: buildLeaderboard(peer => (typeof peer.locationAccuracy === 'number' ? peer.locationAccuracy : null)),
+        });
         setError(null);
       }
     } catch (e: any) {
-      if (mountedRef.current) setError(e?.message || 'Failed to load peers');
+      if (mountedRef.current) {
+        setError(e?.message || 'Failed to load peers');
+        setMiniLeaderboards({ total: [], time: [], location: [] });
+      }
     } finally {
       if (mountedRef.current) setIsLoading(false);
     }
@@ -347,5 +402,5 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
     };
   }, [roomId, roundNumber, refresh]);
 
-  return useMemo(() => ({ peers, isLoading, error, refresh }), [peers, isLoading, error, refresh]);
+  return useMemo(() => ({ peers, isLoading, error, refresh, miniLeaderboards }), [peers, isLoading, error, refresh, miniLeaderboards]);
 }

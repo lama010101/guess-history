@@ -22,21 +22,30 @@ const LeaderboardCard: React.FC<LeaderboardCardProps> = ({ title, rows, currentU
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead>
-              <tr className="text-neutral-400">
-                <th className="text-left py-2 pr-2">Player</th>
-                <th className="text-right py-2 pr-2">%</th>
-              </tr>
-            </thead>
             <tbody>
-              {rows.map((row) => {
+              {rows.map((row, index) => {
                 const isCurrent = currentUserId != null && row.userId === currentUserId;
+                const displayName = row.displayName || 'Player';
+                const nameWithYou = isCurrent ? `(You) ${displayName}` : displayName;
+                const baseRowClasses = 'bg-neutral-800/70';
+                const roundedClasses = index === 0
+                  ? 'rounded-t-lg'
+                  : index === rows.length - 1
+                    ? 'rounded-b-lg'
+                    : '';
                 return (
-                  <tr key={`${title}:${row.userId}`} className={isCurrent ? 'bg-neutral-800/60' : ''}>
+                  <tr
+                    key={`${title}:${row.userId}`}
+                    className={`${baseRowClasses} ${roundedClasses}`.trim()}
+                  >
                     <td className="py-2 pr-2">
-                      <span className={isCurrent ? 'font-semibold text-white' : ''}>{row.displayName || 'Player'}</span>
+                      <span className={isCurrent ? 'font-semibold text-white' : 'text-neutral-200'}>
+                        {nameWithYou}
+                      </span>
                     </td>
-                    <td className="py-2 pr-0 text-right font-medium">{Math.round(row.value)}</td>
+                    <td className={`py-2 pr-0 text-right ${isCurrent ? 'font-semibold text-white' : 'font-medium text-neutral-200'}`}>
+                      {Math.round(row.value)}
+                    </td>
                   </tr>
                 );
               })}

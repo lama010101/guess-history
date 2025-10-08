@@ -99,6 +99,7 @@ export interface ResultsLayoutProps {
   peers?: PeerRoundRow[];
   currentUserDisplayName?: string;
   leaderboards?: RoundLeaderboardsProps;
+  roundLeaderboardCard?: React.ReactNode;
 }
 
 const ResultsLayout2: React.FC<ResultsLayoutProps> = ({ 
@@ -115,6 +116,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   peers = [],
   currentUserDisplayName = 'You',
   leaderboards,
+  roundLeaderboardCard,
 }) => {
   const { user } = useAuth();
   const distanceUnit = useSettingsStore(s => s.distanceUnit);
@@ -410,9 +412,11 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                     </div>
                   </div>
                 )}
-                {renderLeaderboard('total')}
+                {!roundLeaderboardCard && renderLeaderboard('total')}
               </div>
             </div>
+
+            {roundLeaderboardCard}
 
             <div className="bg-white dark:bg-[#333333] rounded-2xl shadow-lg overflow-hidden">
               <div className="relative w-full aspect-video overflow-hidden rounded-t-lg">

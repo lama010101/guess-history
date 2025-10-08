@@ -33,7 +33,7 @@ import { buildTimerId } from '@/lib/timerId';
 import { getLevelUpConstraints, setLevelUpOldestYear } from '@/lib/levelUpConfig';
 import { supabase } from '@/integrations/supabase/client';
 import { useRoundPeers } from '@/hooks/useRoundPeers';
-import { useLobbyChat } from '@/hooks/useLobbyChat';
+import { useLobbyChat, type SubmissionBroadcast, type RoundCompleteBroadcast } from '@/hooks/useLobbyChat';
 
 // Cache the global minimum year to avoid repeated queries in a session
 let __globalMinYearCache: number | null = null;
@@ -50,6 +50,8 @@ const GameRoundPage = () => {
     return idx > 0 ? path.slice(0, idx) : '/solo';
   }, [location.pathname]);
   const isCompeteMode = useMemo(() => modeBasePath.startsWith('/compete'), [modeBasePath]);
+  const roundNumber = parseInt(roundNumberStr || '1', 10);
+  const currentRoundIndex = roundNumber - 1;
   // Detect Level Up routes and apply theming
   useEffect(() => {
     const isLevelUp = location.pathname.includes('/level/');
@@ -68,6 +70,10 @@ const GameRoundPage = () => {
   const [chatInput, setChatInput] = useState('');
   const avatarClusterRef = useRef<HTMLDivElement | null>(null);
   const [chatPanelStyle, setChatPanelStyle] = useState<CSSProperties | null>(null);
+  const [waitingForPeers, setWaitingForPeers] = useState(false);
+  const [submittedCounts, setSubmittedCounts] = useState<{ submitted: number; total: number }>({ submitted: 0, total: 0 });
+  const [hasSubmittedThisRound, setHasSubmittedThisRound] = useState(false);
+  const hasNavigatedToResultsRef = useRef(false);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -84,16 +90,54 @@ const GameRoundPage = () => {
     return String(derived ?? '').trim() || 'Anonymous';
   }, [profile?.display_name, user?.user_metadata?.display_name, user?.email]);
 
+  const handleSubmissionBroadcast = useCallback((payload: SubmissionBroadcast) => {
+    if (!isCompeteMode) return;
+    if (!Number.isFinite(roundNumber) || payload.roundNumber !== roundNumber) return;
+
+    setSubmittedCounts({ submitted: payload.submittedCount, total: payload.totalPlayers });
+
+    const totalPlayers = payload.totalPlayers;
+    const submittedCount = payload.submittedCount;
+    if (roomId && totalPlayers > 0 && submittedCount >= totalPlayers && !hasNavigatedToResultsRef.current) {
+      hasNavigatedToResultsRef.current = true;
+      setWaitingForPeers(false);
+      navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
+      return;
+    }
+
+    const currentUserId = user?.id ?? null;
+    if (!hasSubmittedThisRound && currentUserId && payload.userId && payload.userId === currentUserId) {
+      setHasSubmittedThisRound(true);
+      setWaitingForPeers(true);
+    }
+  }, [isCompeteMode, roundNumber, roomId, navigate, modeBasePath, user?.id, hasSubmittedThisRound]);
+
+  const handleRoundCompleteBroadcast = useCallback((payload: RoundCompleteBroadcast) => {
+    if (!isCompeteMode) return;
+    if (!Number.isFinite(roundNumber) || payload.roundNumber !== roundNumber) return;
+
+    setSubmittedCounts({ submitted: payload.submittedCount, total: payload.totalPlayers });
+    setWaitingForPeers(false);
+
+    if (roomId && !hasNavigatedToResultsRef.current) {
+      hasNavigatedToResultsRef.current = true;
+      navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
+    }
+  }, [isCompeteMode, roundNumber, roomId, navigate, modeBasePath]);
+
   const {
     messages: chatMessages,
     sendMessage: sendChatMessage,
     status: chatStatus,
     resetChat,
+    sendPayload: sendLobbyPayload,
   } = useLobbyChat({
     roomCode: isCompeteMode ? roomId : null,
     displayName,
     userId: user?.id,
     enabled: isCompeteMode && !!roomId,
+    onSubmission: handleSubmissionBroadcast,
+    onRoundComplete: handleRoundCompleteBroadcast,
   });
 
   useEffect(() => {
@@ -221,8 +265,6 @@ const GameRoundPage = () => {
   } = useGame();
   const { toast } = useToast();
 
-  const roundNumber = parseInt(roundNumberStr || '1', 10);
-  const currentRoundIndex = roundNumber - 1;
   const isLevelUpRoute = useMemo(() => location.pathname.includes('/level/'), [location.pathname]);
   // Parse level from route start: "/level" or "/level/:level"
   const levelUpLevel = useMemo(() => {
@@ -504,6 +546,34 @@ const GameRoundPage = () => {
     isCompeteMode ? effectiveRoundNumber : null
   );
 
+  useEffect(() => {
+    setWaitingForPeers(false);
+    setSubmittedCounts({ submitted: 0, total: 0 });
+    setHasSubmittedThisRound(false);
+    hasNavigatedToResultsRef.current = false;
+  }, [roomId, roundNumber]);
+
+  useEffect(() => {
+    if (!isCompeteMode || !roomId) {
+      setSubmittedCounts({ submitted: 0, total: 0 });
+      return;
+    }
+
+    const total = roundPeers.length;
+    const submitted = roundPeers.filter((peer) => peer.submitted).length;
+    setSubmittedCounts({ submitted, total });
+
+    if (!hasSubmittedThisRound) {
+      return;
+    }
+
+    if (waitingForPeers && total > 0 && submitted === total && !hasNavigatedToResultsRef.current) {
+      hasNavigatedToResultsRef.current = true;
+      setWaitingForPeers(false);
+      navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
+    }
+  }, [roundPeers, waitingForPeers, roomId, modeBasePath, navigate, roundNumber, isCompeteMode, hasSubmittedThisRound]);
+
   const peerMarkers = useMemo(() => {
     if (!isCompeteMode) {
       return [] as Array<{ id: string; lat: number; lng: number; avatarUrl?: string | null; displayName?: string | null }>;
@@ -632,6 +702,17 @@ const GameRoundPage = () => {
       return;
     }
 
+    // Require WebSocket connection + user ID so PartyKit receives submission
+    if (!sendLobbyPayload || !user?.id) {
+      console.warn('[GameRoundPage] Submission aborted: missing lobby connection or user ID');
+      toast({
+        title: 'Connection issue',
+        description: 'Waiting for lobby connection. Please try again in a moment.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // Defensive: Submit should only be possible when both year and location are selected
     if (selectedYear === null) {
       console.log('[GameRoundPage] No selectedYear, showing toast');
@@ -692,8 +773,21 @@ const GameRoundPage = () => {
       };
 
       console.log('[GameRoundPage] About to call recordRoundResult with:', resultData, currentRoundIndex);
-      recordRoundResult(resultData, currentRoundIndex);
-      console.log('[GameRoundPage] recordRoundResult called, navigating to results');
+      await recordRoundResult(resultData, currentRoundIndex);
+      if (isCompeteMode && roomId) {
+        const sent = sendLobbyPayload({ type: 'submission', roundNumber });
+        if (!sent) {
+          console.warn('[GameRoundPage] Failed to send submission payload after manual submit');
+          toast({
+            title: 'Connection issue',
+            description: 'We could not notify other players. Please retry.',
+            variant: 'destructive',
+          });
+          setIsSubmitting(false);
+          return;
+        }
+      }
+      console.log('[GameRoundPage] recordRoundResult resolved, navigating to results');
 
       setCurrentGuess(null);
       if (roomId) {
@@ -710,7 +804,12 @@ const GameRoundPage = () => {
           console.error('Error during session progress upsert:', error);
         }
       }
-      navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
+      setHasSubmittedThisRound(true);
+      if (isCompeteMode) {
+        setWaitingForPeers(true);
+      } else {
+        navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
+      }
     } catch (error) {
       console.error('Error during guess submission:', error);
       toast({
@@ -719,7 +818,11 @@ const GameRoundPage = () => {
         variant: 'destructive',
       });
     } finally {
-      setTimeout(() => setIsSubmitting(false), 300);
+      if (isCompeteMode) {
+        setTimeout(() => setIsSubmitting(false), 300);
+      } else {
+        setTimeout(() => setIsSubmitting(false), 300);
+      }
     }
   }, [
     isSubmitting,
@@ -743,6 +846,8 @@ const GameRoundPage = () => {
     timerEnabled,
     roundTimerSec,
     modeBasePath,
+    sendLobbyPayload,
+    isCompeteMode,
   ]);
 
   useEffect(() => {
@@ -759,13 +864,13 @@ const GameRoundPage = () => {
   }, [roomId, roundNumber, location.pathname, showIntro, roundStarted, roundTimerSec, timerEnabled]);
 
   // Handle timer completion
-  const handleTimeComplete = useCallback(() => {
+  const handleTimeComplete = useCallback(async () => {
     if (!timerEnabled) return;
     console.log("Timer completed - auto submitting");
     setHasTimedOut(true);
     setIsTimerActive(false);
     setIsSubmitting(true);
-    
+
     if (!imageForRound) {
       toast({
         title: "Error",
@@ -775,10 +880,18 @@ const GameRoundPage = () => {
       setIsSubmitting(false);
       return;
     }
-    
+
+    const emitSubmission = () => {
+      if (!isCompeteMode || !roomId || !sendLobbyPayload || !user?.id) return;
+      const sent = sendLobbyPayload({ type: 'submission', roundNumber });
+      if (!sent) {
+        console.warn('[GameRoundPage] Failed to send submission payload after timeout submit');
+      }
+    };
+
     try {
       if (!hasGuessedLocation) {
-        recordRoundResult(
+        await recordRoundResult(
           {
             guessCoordinates: null,
             distanceKm: null,
@@ -787,11 +900,12 @@ const GameRoundPage = () => {
             xpWhere: 0,
             xpWhen: 0,
             accuracy: 0,
-            hintsUsed: purchasedHints.length
+            hintsUsed: purchasedHints.length,
           },
-          currentRoundIndex
+          currentRoundIndex,
         );
-        
+        emitSubmission();
+
         toast({
           title: "Time's Up!",
           description: "No location was selected. Your score for this round is 0.",
@@ -801,9 +915,10 @@ const GameRoundPage = () => {
         navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
         setIsSubmitting(false);
         return;
-      } else if (selectedYear === null) {
-        // Location guessed but no year selected: assign no year and zero points
-        recordRoundResult(
+      }
+
+      if (selectedYear === null) {
+        await recordRoundResult(
           {
             guessCoordinates: currentGuess,
             distanceKm: null,
@@ -812,10 +927,12 @@ const GameRoundPage = () => {
             xpWhere: 0,
             xpWhen: 0,
             accuracy: 0,
-            hintsUsed: purchasedHints.length
+            hintsUsed: purchasedHints.length,
           },
-          currentRoundIndex
+          currentRoundIndex,
         );
+        emitSubmission();
+
         toast({
           title: "Time's Up!",
           description: "No year was selected. Your score for this round is 0.",
@@ -825,57 +942,76 @@ const GameRoundPage = () => {
         navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
         setIsSubmitting(false);
         return;
-      } else {
-        const distance = currentGuess 
-          ? calculateDistanceKm(
-              currentGuess.lat,
-              currentGuess.lng,
-              imageForRound.latitude,
-              imageForRound.longitude
-            ) 
-          : null;
-
-        const { 
-          timeXP = 0, 
-          locationXP = 0, 
-          roundXP: finalScore = 0, 
-          roundPercent = 0
-        } = distance !== null 
-          ? calculateRoundScore(distance, selectedYear, imageForRound.year, purchasedHints.length)
-          : { timeXP: 0, locationXP: 0, roundXP: 0, roundPercent: 0 };
-        
-        recordRoundResult(
-          {
-            guessCoordinates: currentGuess,
-            distanceKm: distance,
-            score: finalScore,
-            guessYear: selectedYear,
-            xpWhere: locationXP,
-            xpWhen: timeXP,
-            accuracy: roundPercent,
-            hintsUsed: purchasedHints.length
-          },
-          currentRoundIndex
-        );
-        
-        toast({
-          title: "Time's Up!",
-          description: "Submitting your current guess automatically.",
-          variant: "info",
-          className: "bg-white/70 text-black border border-gray-200",
-        });
       }
-      
+
+      const distance = currentGuess
+        ? calculateDistanceKm(
+            currentGuess.lat,
+            currentGuess.lng,
+            imageForRound.latitude,
+            imageForRound.longitude,
+          )
+        : null;
+
+      const {
+        timeXP = 0,
+        locationXP = 0,
+        roundXP: finalScore = 0,
+        roundPercent = 0,
+      } = distance !== null
+        ? calculateRoundScore(distance, selectedYear, imageForRound.year, purchasedHints.length)
+        : { timeXP: 0, locationXP: 0, roundXP: 0, roundPercent: 0 };
+
+      await recordRoundResult(
+        {
+          guessCoordinates: currentGuess,
+          distanceKm: distance,
+          score: finalScore,
+          guessYear: selectedYear,
+          xpWhere: locationXP,
+          xpWhen: timeXP,
+          accuracy: roundPercent,
+          hintsUsed: purchasedHints.length,
+        },
+        currentRoundIndex,
+      );
+      emitSubmission();
+
+      toast({
+        title: "Time's Up!",
+        description: "Submitting your current guess automatically.",
+        variant: "info",
+        className: "bg-white/70 text-black border border-gray-200",
+      });
+
       setTimeout(() => {
         navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
         setIsSubmitting(false);
       }, 2000);
-      
     } catch (error) {
       console.error("Error recording timeout result:", error);
       setIsSubmitting(false);
     }
-  }, [imageForRound, selectedYear, currentRoundIndex, recordRoundResult, toast, navigate, roomId, roundNumber, hasGuessedLocation, currentGuess, timerEnabled, modeBasePath]);
+  }, [
+    timerEnabled,
+    setHasTimedOut,
+    setIsTimerActive,
+    setIsSubmitting,
+    imageForRound,
+    toast,
+    isCompeteMode,
+    roomId,
+    sendLobbyPayload,
+    roundNumber,
+    hasGuessedLocation,
+    recordRoundResult,
+    purchasedHints.length,
+    currentRoundIndex,
+    navigate,
+    modeBasePath,
+    selectedYear,
+    currentGuess,
+  ]);
 
   const handleMapGuess = (lat: number, lng: number) => {
     console.log(`Guess placed at: Lat ${lat}, Lng ${lng}`);
@@ -976,6 +1112,9 @@ const GameRoundPage = () => {
         isChatOpen={isChatOpen}
         chatMessageCount={chatMessages.length}
         avatarClusterRef={avatarClusterRef}
+        waitingForPeers={waitingForPeers}
+        submittedCount={submittedCounts.submitted}
+        totalParticipants={submittedCounts.total}
       />
       
       {/* Level Up Intro overlay BEFORE starting Round 1 (Level Up only) */}

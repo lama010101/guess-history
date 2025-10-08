@@ -25,7 +25,7 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
 
   const oneBasedRound = Math.max(1, Number(roundNumber || 1));
   const { isLoading, error, contextResult, currentImage, hintDebts, playerSummary } = useCompeteRoundResult(roomId ?? null, Number.isFinite(oneBasedRound) ? oneBasedRound : null);
-  const { peers } = useCompetePeers(roomId ?? null, Number.isFinite(oneBasedRound) ? oneBasedRound : null);
+  const { peers, refresh: refreshPeers } = useCompetePeers(roomId ?? null, Number.isFinite(oneBasedRound) ? oneBasedRound : null);
   const leaderboard = useCompeteRoundLeaderboards(roomId ?? null, Number.isFinite(oneBasedRound) ? oneBasedRound : null);
 
   const layoutLeaderboards = useMemo(() => {
@@ -49,6 +49,20 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
     };
   }, [leaderboard.total, leaderboard.when, leaderboard.where, leaderboard.currentUserId]);
 
+  const leaderboardSourceLabel = useMemo(() => {
+    switch (leaderboard.source) {
+      case 'snapshots':
+        return 'Scores synced from Supabase snapshots';
+      case 'legacy':
+        return 'Scores based on live peer telemetry';
+      case 'mixed':
+        return 'Scores blended from snapshots and peer telemetry';
+      case 'empty':
+      default:
+        return null;
+    }
+  }, [leaderboard.source]);
+
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
@@ -56,6 +70,41 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [earnedBadges, setEarnedBadges] = useState<Badge[]>([]);
   const awardsSubmittedRef = useRef(false);
+  const allSubmittedRef = useRef(false);
+  const [forceRefreshingLeaderboards, setForceRefreshingLeaderboards] = useState(false);
+  const lastSubmittedCountRef = useRef(0);
+
+  const refreshLeaderboards = leaderboard.refresh;
+
+  const layoutResult = useMemo(() => {
+    if (!playerSummary || !contextResult || !currentImage) return null;
+    return {
+      imageId: currentImage.id,
+      eventLat: playerSummary.eventLat,
+      eventLng: playerSummary.eventLng,
+      locationName: playerSummary.locationName,
+      timeDifferenceDesc: playerSummary.timeDifferenceDesc,
+      guessLat: playerSummary.guessLat,
+      guessLng: playerSummary.guessLng,
+      distanceKm: playerSummary.distanceKm,
+      locationAccuracy: playerSummary.locationAccuracy,
+      guessYear: playerSummary.guessYear,
+      eventYear: playerSummary.eventYear,
+      yearDifference: playerSummary.guessYear == null ? null : Math.abs(playerSummary.eventYear - playerSummary.guessYear),
+      timeAccuracy: playerSummary.timeAccuracy,
+      xpTotal: playerSummary.xpTotal,
+      xpWhere: playerSummary.xpWhere,
+      xpWhen: playerSummary.xpWhen,
+      hintDebts,
+      imageTitle: playerSummary.imageTitle,
+      imageDescription: playerSummary.imageDescription,
+      imageUrl: playerSummary.imageUrl,
+      source_citation: playerSummary.sourceCitation,
+      confidence: playerSummary.confidence ?? 0,
+      earnedBadges,
+      isCorrect: playerSummary.isCorrect,
+    };
+  }, [playerSummary, contextResult, currentImage, hintDebts, earnedBadges]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -133,36 +182,47 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
     })();
   }, [contextResult, currentImage, roomId, oneBasedRound, toast]);
 
+  useEffect(() => {
+    if (!roomId || !layoutResult) {
+      allSubmittedRef.current = false;
+      lastSubmittedCountRef.current = 0;
+      if (forceRefreshingLeaderboards) setForceRefreshingLeaderboards(false);
+      return;
+    }
+
+    const roster = peers || [];
+    if (roster.length === 0) {
+      allSubmittedRef.current = false;
+      lastSubmittedCountRef.current = 0;
+      if (forceRefreshingLeaderboards) setForceRefreshingLeaderboards(false);
+      return;
+    }
+
+    const submittedCount = roster.filter((peer) => peer.submitted).length;
+    const totalParticipants = roster.length;
+
+    if (submittedCount < totalParticipants) {
+      allSubmittedRef.current = false;
+      lastSubmittedCountRef.current = submittedCount;
+      if (forceRefreshingLeaderboards) setForceRefreshingLeaderboards(false);
+      return;
+    }
+
+    if (submittedCount > 0 && submittedCount !== lastSubmittedCountRef.current) {
+      allSubmittedRef.current = true;
+      lastSubmittedCountRef.current = submittedCount;
+      setForceRefreshingLeaderboards(true);
+      (async () => {
+        await Promise.allSettled([
+          refreshLeaderboards(),
+          refreshPeers(),
+        ]);
+        setForceRefreshingLeaderboards(false);
+      })();
+    }
+  }, [peers, roomId, layoutResult, refreshLeaderboards, refreshPeers, forceRefreshingLeaderboards]);
+
   const totalRounds = images.length || 5;
-  const layoutResult = useMemo(() => {
-    if (!playerSummary || !contextResult || !currentImage) return null;
-    return {
-      imageId: currentImage.id,
-      eventLat: playerSummary.eventLat,
-      eventLng: playerSummary.eventLng,
-      locationName: playerSummary.locationName,
-      timeDifferenceDesc: playerSummary.timeDifferenceDesc,
-      guessLat: playerSummary.guessLat,
-      guessLng: playerSummary.guessLng,
-      distanceKm: playerSummary.distanceKm,
-      locationAccuracy: playerSummary.locationAccuracy,
-      guessYear: playerSummary.guessYear,
-      eventYear: playerSummary.eventYear,
-      yearDifference: playerSummary.guessYear == null ? null : Math.abs(playerSummary.eventYear - playerSummary.guessYear),
-      timeAccuracy: playerSummary.timeAccuracy,
-      xpTotal: playerSummary.xpTotal,
-      xpWhere: playerSummary.xpWhere,
-      xpWhen: playerSummary.xpWhen,
-      hintDebts,
-      imageTitle: playerSummary.imageTitle,
-      imageDescription: playerSummary.imageDescription,
-      imageUrl: playerSummary.imageUrl,
-      source_citation: playerSummary.sourceCitation,
-      confidence: playerSummary.confidence ?? 0,
-      earnedBadges,
-      isCorrect: playerSummary.isCorrect,
-    };
-  }, [playerSummary, contextResult, currentImage, hintDebts, earnedBadges]);
 
   const handleNavigateHome = () => {
     navigate('/home');
@@ -213,51 +273,6 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
 
   return (
     <>
-      <div className="px-4 pt-4">
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4 text-white shadow-md">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold flex items-center gap-2"><Users className="h-4 w-4" />Round Leaderboard</h2>
-            {leaderboard.isLoading && <span className="text-sm text-neutral-400">Updating…</span>}
-          </div>
-          {leaderboard.error ? (
-            <div className="text-sm text-red-300">{leaderboard.error}</div>
-          ) : leaderboard.total.length === 0 ? (
-            <div className="text-sm text-neutral-300">Waiting for players to finish this round…</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <tbody>
-                  {leaderboard.total.map((row, index) => {
-                    const isCurrent = leaderboard.currentUserId != null && row.userId === leaderboard.currentUserId;
-                    const displayName = row.displayName || 'Player';
-                    const nameWithYou = isCurrent ? `(You) ${displayName}` : displayName;
-                    const roundedClasses = index === 0
-                      ? 'rounded-t-lg'
-                      : index === leaderboard.total.length - 1
-                        ? 'rounded-b-lg'
-                        : '';
-                    const textClasses = isCurrent ? 'font-semibold text-white' : 'text-neutral-200';
-                    return (
-                      <tr
-                        key={`inline:${row.userId}`}
-                        className={`bg-neutral-800/70 ${roundedClasses}`.trim()}
-                      >
-                        <td className={`py-2 pr-2 ${textClasses}`}>
-                          {nameWithYou}
-                        </td>
-                        <td className={`py-2 pr-2 text-right ${isCurrent ? 'font-semibold text-white' : 'font-medium text-neutral-200'}`}>
-                          {Math.round(row.value)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-
       <ResultsLayout2
         round={oneBasedRound}
         totalRounds={images.length}
@@ -268,6 +283,56 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
         peers={peers.filter((peer) => !user || peer.userId !== user.id)}
         currentUserDisplayName={profile?.display_name || user?.user_metadata?.display_name || 'You'}
         leaderboards={layoutLeaderboards}
+        roundLeaderboardCard={(
+          <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4 text-white shadow-md">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold flex items-center gap-2"><Users className="h-4 w-4" />Round Leaderboard</h2>
+              <div className="flex flex-col items-end text-right">
+                {leaderboard.isLoading && <span className="text-sm text-neutral-400">Updating…</span>}
+                {forceRefreshingLeaderboards && <span className="text-xs text-neutral-300">Finalizing scores…</span>}
+              </div>
+            </div>
+            {leaderboardSourceLabel && !forceRefreshingLeaderboards && (
+              <div className="text-xs text-neutral-400 mb-2">{leaderboardSourceLabel}</div>
+            )}
+            {leaderboard.error ? (
+              <div className="text-sm text-red-300">{leaderboard.error}</div>
+            ) : leaderboard.total.length === 0 ? (
+              <div className="text-sm text-neutral-300">Waiting for players to finish this round…</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <tbody>
+                    {leaderboard.total.map((row, index) => {
+                      const isCurrent = leaderboard.currentUserId != null && row.userId === leaderboard.currentUserId;
+                      const displayName = row.displayName || 'Player';
+                      const nameWithYou = isCurrent ? `(You) ${displayName}` : displayName;
+                      const roundedClasses = index === 0
+                        ? 'rounded-t-lg'
+                        : index === leaderboard.total.length - 1
+                          ? 'rounded-b-lg'
+                          : '';
+                      const textClasses = isCurrent ? 'font-semibold text-white' : 'text-neutral-200';
+                      return (
+                        <tr
+                          key={`inline:${row.userId}`}
+                          className={`bg-neutral-800/70 ${roundedClasses}`.trim()}
+                        >
+                          <td className={`py-2 pr-2 ${textClasses}`}>
+                            {nameWithYou}
+                          </td>
+                          <td className={`py-2 pr-2 text-right ${isCurrent ? 'font-semibold text-white' : 'font-medium text-neutral-200'}`}>
+                            {Math.round(row.value)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
         nextRoundButton={
           <div className="flex items-center gap-2">
             <Button

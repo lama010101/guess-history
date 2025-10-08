@@ -56,7 +56,9 @@ export type LobbyServerMessage =
   | { type: 'settings'; timerSeconds?: number; timerEnabled?: boolean; mode?: 'sync' | 'async' }
   | { type: 'hello'; you: { id: string; name: string; host: boolean } }
   | { type: 'start'; startedAt: string; durationSec: number; timerEnabled: boolean }
-  | { type: 'progress'; from: string; roundNumber: number; substep?: string };
+  | { type: 'progress'; from: string; roundNumber: number; substep?: string }
+  | { type: 'submission'; roundNumber: number; connectionId: string; from: string; userId?: string | null; submittedCount: number; totalPlayers: number }
+  | { type: 'round-complete'; roundNumber: number; submittedCount: number; totalPlayers: number };
 
 export type LobbyClientMessage =
   | { type: 'join'; name: string; userId?: string; token?: string }
@@ -65,6 +67,7 @@ export type LobbyClientMessage =
   // Optional: host can send settings prior to start; server validates host
   | { type: 'settings'; timerSeconds?: number; timerEnabled?: boolean; mode?: 'sync' | 'async' }
   | { type: 'progress'; roundNumber: number; substep?: string }
+  | { type: 'submission'; roundNumber: number }
   // Host-only: remove a player from the lobby
   | { type: 'kick'; targetId: string }
   // Runtime display-name update; client may send when its name source changes

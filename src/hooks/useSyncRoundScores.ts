@@ -146,5 +146,6 @@ export function useSyncRoundScores(roomId: string | null, roundNumber: number | 
   return {
     entries: sortedEntries,
     loading,
+    refresh: fetchScores,
   };
 }

@@ -45,7 +45,21 @@ const RenameMessage = z.object({
   name: z.string().trim().min(1).max(32),
 });
 
-const IncomingMessage = z.union([JoinMessage, ChatMessage, ReadyMessage, SettingsMessage, KickMessage, ProgressMessage, RenameMessage]);
+const SubmissionMessage = z.object({
+  type: z.literal("submission"),
+  roundNumber: z.number().int().min(1).max(100),
+});
+
+const IncomingMessage = z.union([
+  JoinMessage,
+  ChatMessage,
+  ReadyMessage,
+  SettingsMessage,
+  KickMessage,
+  ProgressMessage,
+  SubmissionMessage,
+  RenameMessage,
+]);
 
 type Incoming = z.infer<typeof IncomingMessage>;
 
@@ -64,8 +78,33 @@ type StartMsg = { type: "start"; startedAt: string; durationSec: number; timerEn
 type SettingsMsg = { type: "settings"; timerSeconds?: number; timerEnabled?: boolean; mode?: "sync" | "async" };
 type HelloMsg = { type: "hello"; you: { id: string; name: string; host: boolean } };
 type ProgressMsg = { type: "progress"; from: string; roundNumber: number; substep?: string };
+type SubmissionBroadcastMsg = {
+  type: "submission";
+  roundNumber: number;
+  connectionId: string;
+  from: string;
+  userId?: string | null;
+  submittedCount: number;
+  totalPlayers: number;
+};
+type RoundCompleteMsg = {
+  type: "round-complete";
+  roundNumber: number;
+  submittedCount: number;
+  totalPlayers: number;
+};
 
-type Outgoing = PlayersMsg | FullMsg | ChatMsg | RosterMsg | StartMsg | SettingsMsg | HelloMsg | ProgressMsg;
+type Outgoing =
+  | PlayersMsg
+  | FullMsg
+  | ChatMsg
+  | RosterMsg
+  | StartMsg
+  | SettingsMsg
+  | HelloMsg
+  | ProgressMsg
+  | SubmissionBroadcastMsg
+  | RoundCompleteMsg;
 
 // Env typing for vars
 type Env = {
@@ -107,6 +146,8 @@ export default class Lobby implements Party.Server {
   private mode: "sync" | "async" = "sync";
   // Track live connections for administrative actions (kick)
   private conns = new Map<string, Party.Connection>();
+  private submissionsByRound = new Map<number, Set<string>>();
+  private completedRounds = new Set<number>();
 
   constructor(readonly room: Party.Room) {}
 
@@ -554,6 +595,10 @@ export default class Lobby implements Party.Server {
             const durationSec = Math.max(5, Math.min(600, this.timerSeconds || 60));
             const timerEnabled = !!this.timerEnabled;
             this.started = true;
+            this.submissionsByRound.clear();
+            this.completedRounds.clear();
+            this.submissionsByRound.clear();
+            this.completedRounds.clear();
 
             let startedAt: string | null = null;
             // Effective timer flag that we will advertise to clients. If we
@@ -625,6 +670,94 @@ export default class Lobby implements Party.Server {
           await this.logEvent("progress", out);
           return;
         }
+
+        if (msg.type === "submission") {
+          if (!this.players.has(conn.id)) return;
+          const totalPlayers = this.players.size;
+          if (totalPlayers <= 0) return;
+
+          const roundNumber = msg.roundNumber;
+          let submissions = this.submissionsByRound.get(roundNumber);
+          if (!submissions) {
+            submissions = new Set();
+            this.submissionsByRound.set(roundNumber, submissions);
+            this.completedRounds.delete(roundNumber);
+          }
+          if (submissions.has(conn.id)) {
+            return;
+          }
+          submissions.add(conn.id);
+
+          const submittedCount = submissions.size;
+          const submissionPayload: SubmissionBroadcastMsg = {
+            type: "submission",
+            roundNumber,
+            connectionId: conn.id,
+            from: this.players.get(conn.id) ?? "Unknown",
+            userId: this.playerUserIds.get(conn.id) ?? null,
+            submittedCount,
+            totalPlayers,
+          };
+          this.broadcast(submissionPayload);
+          await this.logEvent("submission", submissionPayload);
+
+          if (submittedCount >= totalPlayers && !this.completedRounds.has(roundNumber)) {
+            this.completedRounds.add(roundNumber);
+            const completePayload: RoundCompleteMsg = {
+              type: "round-complete",
+              roundNumber,
+              submittedCount,
+              totalPlayers,
+            };
+            this.broadcast(completePayload);
+            await this.logEvent("round-complete", completePayload);
+          }
+          return;
+        }
+
+        if (msg.type === "submission") {
+          if (!this.players.has(conn.id)) return;
+          const totalPlayers = this.players.size;
+          if (totalPlayers <= 0) return;
+
+          const roundNumber = msg.roundNumber;
+          let submissions = this.submissionsByRound.get(roundNumber);
+          if (!submissions) {
+            submissions = new Set();
+            this.submissionsByRound.set(roundNumber, submissions);
+            this.completedRounds.delete(roundNumber);
+          }
+          if (submissions.has(conn.id)) {
+            return;
+          }
+          submissions.add(conn.id);
+
+          const submittedCount = submissions.size;
+          const submissionPayload: SubmissionBroadcastMsg = {
+            type: "submission",
+            roundNumber,
+            connectionId: conn.id,
+            from: this.players.get(conn.id) ?? "Unknown",
+            userId: this.playerUserIds.get(conn.id) ?? null,
+            submittedCount,
+            totalPlayers,
+          };
+          this.broadcast(submissionPayload);
+          await this.logEvent("submission", submissionPayload);
+
+          if (submittedCount >= totalPlayers && !this.completedRounds.has(roundNumber)) {
+            this.completedRounds.add(roundNumber);
+            const completePayload: RoundCompleteMsg = {
+              type: "round-complete",
+              roundNumber,
+              submittedCount,
+              totalPlayers,
+            };
+            this.broadcast(completePayload);
+            await this.logEvent("round-complete", completePayload);
+          }
+          return;
+        }
       } catch (err) {
         // ignore malformed JSON
         console.warn("lobby: malformed message", err);
@@ -644,6 +777,9 @@ export default class Lobby implements Party.Server {
         await this.patchSessionPlayerRow(userId, { ready: false, is_host: false });
       }
       this.playerUserIds.delete(conn.id);
+      this.submissionsByRound.forEach((set) => {
+        set.delete(conn.id);
+      });
       // Reassign host if needed
       if (this.hostId === conn.id) {
         const previousHost = this.hostId;

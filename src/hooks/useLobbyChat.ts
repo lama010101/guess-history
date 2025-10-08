@@ -1,6 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { partyUrl, LobbyClientMessage, LobbyServerMessage } from '@/lib/partyClient';
 
+export interface SubmissionBroadcast {
+  roundNumber: number;
+  connectionId: string;
+  from: string;
+  userId?: string | null;
+  submittedCount: number;
+  totalPlayers: number;
+}
+
+export interface RoundCompleteBroadcast {
+  roundNumber: number;
+  submittedCount: number;
+  totalPlayers: number;
+}
+
 export interface LobbyChatMessage {
   id: string;
   from: string;
@@ -13,6 +28,8 @@ interface UseLobbyChatOptions {
   displayName: string;
   userId?: string | null;
   enabled?: boolean;
+  onSubmission?: (payload: SubmissionBroadcast) => void;
+  onRoundComplete?: (payload: RoundCompleteBroadcast) => void;
 }
 
 const MAX_RETRIES = 5;
@@ -27,6 +44,8 @@ export function useLobbyChat({
   displayName,
   userId,
   enabled = true,
+  onSubmission,
+  onRoundComplete,
 }: UseLobbyChatOptions) {
   const [status, setStatus] = useState<LobbyChatStatus>('idle');
   const [messages, setMessages] = useState<LobbyChatMessage[]>([]);
@@ -39,6 +58,11 @@ export function useLobbyChat({
   const latestDisplayNameRef = useRef(displayName.trim());
   const latestUserIdRef = useRef<string | undefined>(userId ?? undefined);
   const statusRef = useRef<LobbyChatStatus>('idle');
+  const latestCallbacksRef = useRef<Pick<UseLobbyChatOptions, 'onSubmission' | 'onRoundComplete'>>({
+    onSubmission,
+    onRoundComplete,
+  });
+  const pendingQueueRef = useRef<LobbyClientMessage[]>([]);
 
   const cleanup = useCallback(() => {
     try {
@@ -98,6 +122,19 @@ export function useLobbyChat({
         } catch (err) {
           setLastError(err instanceof Error ? err.message : String(err));
         }
+
+        // Flush any queued payloads now that the socket is open
+        const queued = pendingQueueRef.current;
+        if (queued.length > 0) {
+          const toSend = queued.splice(0, queued.length);
+          toSend.forEach((queuedPayload) => {
+            try {
+              ws.send(JSON.stringify(queuedPayload));
+            } catch (flushErr) {
+              setLastError(flushErr instanceof Error ? flushErr.message : String(flushErr));
+            }
+          });
+        }
       });
 
       ws.addEventListener('message', (event) => {
@@ -121,6 +158,23 @@ export function useLobbyChat({
                   },
                 ]);
               }
+              break;
+            case 'submission':
+              latestCallbacksRef.current.onSubmission?.({
+                roundNumber: data.roundNumber,
+                connectionId: data.connectionId,
+                from: data.from,
+                userId: data.userId,
+                submittedCount: data.submittedCount,
+                totalPlayers: data.totalPlayers,
+              });
+              break;
+            case 'round-complete':
+              latestCallbacksRef.current.onRoundComplete?.({
+                roundNumber: data.roundNumber,
+                submittedCount: data.submittedCount,
+                totalPlayers: data.totalPlayers,
+              });
               break;
             case 'full':
               setStatus('full');
@@ -164,6 +218,10 @@ export function useLobbyChat({
   }, [userId]);
 
   useEffect(() => {
+    latestCallbacksRef.current = { onSubmission, onRoundComplete };
+  }, [onSubmission, onRoundComplete]);
+
+  useEffect(() => {
     if (!enabled || !roomCode) {
       cleanup();
       setMessages([]);
@@ -190,24 +248,31 @@ export function useLobbyChat({
     }
   }, [displayName]);
 
-  const sendMessage = useCallback((rawMessage: string) => {
+  const sendPayload = useCallback((payload: LobbyClientMessage) => {
     const ws = wsRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN) return false;
-    const trimmed = rawMessage.trim();
-    if (!trimmed) return false;
-    const payload: LobbyClientMessage = {
-      type: 'chat',
-      message: trimmed,
-      timestamp: isoNow(),
-    };
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      pendingQueueRef.current.push(payload);
+      return true;
+    }
     try {
       ws.send(JSON.stringify(payload));
       return true;
     } catch (err) {
       setLastError(err instanceof Error ? err.message : String(err));
+      pendingQueueRef.current.push(payload);
       return false;
     }
   }, []);
+
+  const sendMessage = useCallback((rawMessage: string) => {
+    const trimmed = rawMessage.trim();
+    if (!trimmed) return false;
+    return sendPayload({
+      type: 'chat',
+      message: trimmed,
+      timestamp: isoNow(),
+    });
+  }, [sendPayload]);
 
   const resetChat = useCallback(() => {
     setMessages([]);
@@ -222,6 +287,7 @@ export function useLobbyChat({
     status: derivedStatus,
     messages,
     sendMessage,
+    sendPayload,
     resetChat,
     lastError,
   };

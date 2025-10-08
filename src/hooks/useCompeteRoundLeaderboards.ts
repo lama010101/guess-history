@@ -24,6 +24,7 @@ export interface CompeteLeaderboardState {
   currentUserId: string | null;
   actualYear: number | null;
   source: 'snapshots' | 'legacy' | 'mixed' | 'empty';
+  refresh: () => Promise<void>;
 }
 
 const EMPTY_ROWS = { total: [] as LeaderRow[], when: [] as LeaderRow[], where: [] as LeaderRow[] };
@@ -54,10 +55,19 @@ export function useCompeteRoundLeaderboards(
   const resolvedRoundNumber = hasValidRound ? Number(roundNumber) : null;
 
   const { images } = useGame();
-  const { peers, isLoading: peersLoading, error: peersError } = useRoundPeers(resolvedRoomId, resolvedRoundNumber);
+  const { peers, isLoading: peersLoading, error: peersError, refresh: refreshPeers } = useRoundPeers(resolvedRoomId, resolvedRoundNumber);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserDisplayName, setCurrentUserDisplayName] = useState<string | null>(null);
-  const { entries: snapshotEntries, loading: snapshotLoading } = useSyncRoundScores(resolvedRoomId, resolvedRoundNumber);
+  const { entries: snapshotEntries, loading: snapshotLoading, refresh: refreshSnapshots } = useSyncRoundScores(resolvedRoomId, resolvedRoundNumber);
+
+  const refresh = useMemo(() => {
+    return async () => {
+      await Promise.allSettled([
+        (async () => { if (typeof refreshPeers === 'function') await refreshPeers(); })(),
+        (async () => { if (typeof refreshSnapshots === 'function') await refreshSnapshots(); })(),
+      ]);
+    };
+  }, [refreshPeers, refreshSnapshots]);
 
   useEffect(() => {
     let cancelled = false;
@@ -198,5 +208,6 @@ export function useCompeteRoundLeaderboards(
     currentUserId,
     actualYear,
     source,
+    refresh,
   };
 }

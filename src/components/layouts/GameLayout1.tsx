@@ -69,6 +69,9 @@ export interface GameLayout1Props {
   isChatOpen?: boolean;
   chatMessageCount?: number;
   avatarClusterRef?: React.RefObject<HTMLDivElement>;
+  waitingForPeers?: boolean;
+  submittedCount?: number;
+  totalParticipants?: number;
 }
 
 const GameLayout1: React.FC<GameLayout1Props> = ({
@@ -104,6 +107,9 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   isChatOpen = false,
   chatMessageCount = 0,
   avatarClusterRef,
+  waitingForPeers = false,
+  submittedCount,
+  totalParticipants,
 }) => {
   const [isImageFullScreen, setIsImageFullScreen] = useState(true);
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
@@ -359,6 +365,9 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             isChatOpen={isChatOpen}
             chatMessageCount={chatMessageCount}
             avatarClusterRef={avatarClusterRef}
+            waitingForPeers={waitingForPeers}
+            submittedCount={submittedCount}
+            totalParticipants={totalParticipants}
           />
         </div>
       </div>
@@ -654,11 +663,13 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
         </div>
       </div>
       {/* Submitting overlay */}
-      {isSubmitting && (
+      {(isSubmitting || waitingForPeers) && (
         <div className="fixed inset-0 z-[10000] bg-black/60 flex items-center justify-center">
           <div className="flex flex-col items-center">
             <div className="h-10 w-10 rounded-full border-4 border-white/30 border-t-white animate-spin mb-3" />
-            <div className="text-white text-sm">Preparing results...</div>
+            <div className="text-white text-sm">
+              {waitingForPeers ? 'Waiting for other players…' : 'Preparing results...'}
+            </div>
           </div>
         </div>
       )}

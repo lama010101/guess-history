@@ -1,6 +1,6 @@
 import type * as Party from "partykit/server";
 import { z } from "zod";
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac, timingSafeEqual, randomUUID } from "crypto";
 
 // Types
 const JoinMessage = z.object({
@@ -74,7 +74,7 @@ interface ChatMsg {
 }
 type RosterEntry = { id: string; name: string; ready: boolean; host: boolean };
 type RosterMsg = { type: "roster"; players: RosterEntry[] };
-type StartMsg = { type: "start"; startedAt: string; durationSec: number; timerEnabled: boolean };
+type StartMsg = { type: "start"; startedAt: string; durationSec: number; timerEnabled: boolean; seed: string };
 type SettingsMsg = { type: "settings"; timerSeconds?: number; timerEnabled?: boolean; mode?: "sync" | "async" };
 type HelloMsg = { type: "hello"; you: { id: string; name: string; host: boolean } };
 type ProgressMsg = { type: "progress"; from: string; roundNumber: number; substep?: string };
@@ -621,6 +621,7 @@ export default class Lobby implements Party.Server {
             this.expectedParticipantsByRound.set(1, this.expectedParticipants);
 
             let startedAt: string | null = null;
+            const seed = randomUUID();
             // Effective timer flag that we will advertise to clients. If we
             // fail to start the authoritative timer, we fall back to
             // non-authoritative local timers by setting this to false.
@@ -642,8 +643,12 @@ export default class Lobby implements Party.Server {
               startedAt = new Date().toISOString();
             }
 
-            this.broadcast({ type: "start", startedAt, durationSec, timerEnabled: effectiveTimerEnabled });
-            await this.logEvent("start", { startedAt, durationSec, timerEnabled: effectiveTimerEnabled });
+            if (!startedAt) {
+              startedAt = new Date().toISOString();
+            }
+
+            this.broadcast({ type: "start", startedAt, durationSec, timerEnabled: effectiveTimerEnabled, seed });
+            await this.logEvent("start", { startedAt, durationSec, timerEnabled: effectiveTimerEnabled, seed });
             // Persist authoritative round 1 start for async/refresh recovery
             await this.persistRoundStart(startedAt, durationSec);
           }

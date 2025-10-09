@@ -550,9 +550,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       let preparedImages: GameImage[] | null = null;
 
       if (isMultiplayer) {
-        // Use the same preparation pipeline as Solo/Level Up so the global PreparationOverlay shows
         const prep = await prepare({
-          userId: user?.id ?? null,
+          userId: null, // ensure shared pool when roomId provided
           roomId: newRoomId,
           count: ROUNDS_PER_GAME,
           seed: settings?.seed ?? null,
@@ -590,33 +589,29 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           console.warn('[GameContext] Failed to record played images (multiplayer prepared)', e);
         }
       } else {
-        try {
-          const prep = await prepare({
-            userId: user?.id ?? null,
-            roomId: null,
-            count: ROUNDS_PER_GAME,
-            seed: null,
-          });
-          preparedImages = prep.images.map((img) => ({
-            id: img.id,
-            title: img.title,
-            description: img.description,
-            source_citation: img.source_citation,
-            latitude: img.latitude,
-            longitude: img.longitude,
-            year: img.year,
-            image_url: img.image_url,
-            location_name: img.location_name,
-            url: img.url,
-            firebase_url: img.firebase_url,
-            confidence: img.confidence,
-          }));
-        } catch (prepErr) {
-          console.warn('[GameContext] prepare() failed', prepErr);
-        }
+        const prep = await prepare({
+          userId: user?.id ?? null,
+          roomId: null,
+          count: ROUNDS_PER_GAME,
+          seed: null,
+        });
+        preparedImages = prep.images.map((img) => ({
+          id: img.id,
+          title: img.title,
+          description: img.description,
+          source_citation: img.source_citation,
+          latitude: img.latitude,
+          longitude: img.longitude,
+          year: img.year,
+          image_url: img.image_url,
+          location_name: img.location_name,
+          url: img.url,
+          firebase_url: img.firebase_url,
+          confidence: img.confidence,
+        }));
 
-        if (!preparedImages) {
-          // Legacy no-repeat fetch for solo
+        if (!preparedImages || preparedImages.length < ROUNDS_PER_GAME) {
+          console.warn('[GameContext] prepare() returned insufficient images, attempting legacy getNewImages fallback');
           const imageBatch = await getNewImages(user?.id ?? null, ROUNDS_PER_GAME);
           if (!imageBatch || imageBatch.length < ROUNDS_PER_GAME) {
             console.warn('Could not fetch at least 5 images, fetched:', imageBatch?.length);
@@ -624,7 +619,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             setError('Could not fetch at least 5 images.');
             return;
           }
-          const mappedImages: GameImage[] = imageBatch.map((img: any) => ({
+          preparedImages = imageBatch.map((img: any) => ({
             id: String(img.id),
             title: img.title,
             description: img.description,
@@ -638,47 +633,25 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             firebase_url: img.firebase_url,
             confidence: img.confidence,
           }));
-          // Persist solo selection to game_sessions for stable hydration on refresh
-          try {
-            const imageIds = mappedImages.map((i) => i.id);
-            await supabase
-              .from('game_sessions' as any)
-              .upsert(
-                { room_id: newRoomId, seed: newRoomId, image_ids: imageIds, started_at: new Date().toISOString() },
-                { onConflict: 'room_id' }
-              );
-          } catch (e) {
-            console.warn('[GameContext] solo fallback persist to game_sessions failed', e);
-          }
-          setImages(mappedImages);
-          // Record played images to prevent repeats next games
-          try {
-            const playedIds = mappedImages.map((i) => i.id);
-            await recordPlayedImages(user?.id ?? null, playedIds);
-          } catch (e) {
-            console.warn('[GameContext] Failed to record played images (solo fallback)', e);
-          }
-        } else {
-          // Persist solo (prepared) selection to game_sessions for stable hydration on refresh
-          try {
-            const imageIds = preparedImages.map((i) => i.id);
-            await supabase
-              .from('game_sessions' as any)
-              .upsert(
-                { room_id: newRoomId, seed: newRoomId, image_ids: imageIds, started_at: new Date().toISOString() },
-                { onConflict: 'room_id' }
-              );
-          } catch (e) {
-            console.warn('[GameContext] solo prepared persist to game_sessions failed', e);
-          }
-          setImages(preparedImages);
-          // Record played images to prevent repeats next games
-          try {
-            const playedIds = preparedImages.map((i) => i.id);
-            await recordPlayedImages(user?.id ?? null, playedIds);
-          } catch (e) {
-            console.warn('[GameContext] Failed to record played images (solo prepared)', e);
-          }
+        }
+
+        try {
+          const imageIds = preparedImages.map((i) => i.id);
+          await supabase
+            .from('game_sessions' as any)
+            .upsert(
+              { room_id: newRoomId, seed: newRoomId, image_ids: imageIds, started_at: new Date().toISOString() },
+              { onConflict: 'room_id' }
+            );
+        } catch (e) {
+          console.warn('[GameContext] solo persist to game_sessions failed', e);
+        }
+        setImages(preparedImages);
+        try {
+          const playedIds = preparedImages.map((i) => i.id);
+          await recordPlayedImages(user?.id ?? null, playedIds);
+        } catch (e) {
+          console.warn('[GameContext] Failed to record played images (solo)', e);
         }
       }
       devLog("Prepared and preloaded 5 images stored in context:", preparedImages);
@@ -849,30 +822,19 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   const processRawImages = useCallback(async (selectedImages: any[]): Promise<GameImage[]> => {
     return Promise.all(
       selectedImages.map(async (img: any) => {
-        if (img.firebase_url) {
-          return {
-            id: img.id,
-            title: img.title || 'Untitled',
-            description: img.description || 'No description.',
-            latitude: img.latitude || 0,
-            longitude: img.longitude || 0,
-            year: img.year || 0,
-            image_url: img.image_url,
-            location_name: img.location_name || 'Unknown Location',
-            url: img.firebase_url,
-            firebase_url: img.firebase_url,
-            confidence: img.confidence,
-            source_citation: img.source_citation
-          } as GameImage;
-        }
+        const resolvePublicUrl = (rawUrl: string | null | undefined) => {
+          if (!rawUrl) return null;
+          if (typeof rawUrl === 'string' && rawUrl.startsWith('http')) {
+            return rawUrl;
+          }
+          const { data } = supabase.storage.from('images').getPublicUrl(String(rawUrl));
+          return data?.publicUrl ?? null;
+        };
 
-        let finalUrl = img.image_url;
-        if (finalUrl && !finalUrl.startsWith('http')) {
-          const { data: urlData } = supabase.storage.from('images').getPublicUrl(finalUrl);
-          finalUrl = urlData?.publicUrl || 'placeholder.jpg';
-        } else if (!finalUrl) {
-          finalUrl = 'placeholder.jpg';
-        }
+        const firebaseUrl = img.firebase_url ? String(img.firebase_url) : null;
+        const imageUrl = img.url ? String(img.url) : resolvePublicUrl(img.image_url);
+        const fallbackUrl = resolvePublicUrl(img.image_url);
+        const finalUrl = firebaseUrl || imageUrl || fallbackUrl || '';
 
         return {
           id: img.id,
@@ -884,7 +846,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           image_url: img.image_url,
           location_name: img.location_name || 'Unknown Location',
           url: finalUrl,
-          firebase_url: img.firebase_url ?? undefined,
+          firebase_url: firebaseUrl ?? undefined,
           confidence: img.confidence,
           source_citation: img.source_citation
         } as GameImage;

@@ -1,3 +1,9 @@
+### Multiplayer Final Scoreboard RPC (2025-10-09)
+
+- Purpose: Align the Supabase `get_final_scoreboard` RPC return types with the client expectations in `src/components/scoreboard/FinalScoreboard.tsx` for compete sync final leaderboards.
+- Migration: `supabase/migrations/20251009_fix_final_scoreboard_return_types.sql` casts scoreboard aggregates (`SUM(score)`, `SUM(xp_total)`, `SUM(xp_debt)`, `COUNT(id)`, net XP) to `integer` while retaining accuracy fields as `numeric(5,2)`.
+- Impact: Prevents `structure of query does not match function result type` errors and allows final leaderboards to load successfully.
+
 ### Global Metrics — Per-Mode Aggregates (2025-09-09)
 
 - Purpose: Record users' global stats per mode in addition to the overall totals.
@@ -3128,3 +3134,11 @@ Notes
 - File: `src/utils/profile/profileService.ts`
 - Change: Replaced `.single()` with `.maybeSingle()` for selects on `public.user_metrics` (fetch and post-upsert verify).
 - Rationale: `.single()` returns 406 when zero rows match; `.maybeSingle()` returns `{ data: null, error: null }`, enabling first-time-user flows without errors.
+#### Compete  Deterministic 5-Image Set Across Players (2025-10-09)
+
+- **Files**: server/lobby.ts, src/lib/partyClient.ts, src/pages/Room.tsx, src/contexts/GameContext.tsx, src/hooks/useGamePreparation.ts, src/utils/imageHistory.ts
+- **Server seed**: The PartyKit lobby now emits { type: 'start', startedAt, durationSec, timerEnabled, seed } using a cryptographically strong UUID. Clients still derive uuidv5(roomCode:startedAt) only if the seed field is missing (legacy host fallback).
+- **Client flow**: Room.tsx aborts any in-flight prep, applies mode-compete, and calls startGame({ roomId, seed, timerSeconds: durationSec, timerEnabled }) so every player enters the same preparation pipeline.
+- **Shared RPC**: useGamePreparation.prepare() always passes p_user_id = NULL when oomId is provided. create_game_session_and_pick_images persists the ordered image_ids, and getOrPersistRoomImages(roomId, seed, count) now invokes the same RPC when no session exists (local seeded shuffle removed).
+- **Deterministic order**: Ordering stays on the server (ORDER BY md5(p_seed || image_id)), guaranteeing identical image lists on initial load, refresh, and late join.
+- **Outcome**: Centralizing seed generation and selection on the server eliminates the repeated  same five images issue and keeps reconnects aligned with the authoritative list for Compete rooms.

@@ -275,8 +275,10 @@ const Room: React.FC = () => {
             case 'start':
               if (!startedRef.current) {
                 startedRef.current = true;
-                // Derive a deterministic UUID seed from roomCode and startedAt timestamp
-                const seed = uuidv5(`${roomCode}:${data.startedAt}`, uuidv5.URL);
+                // Prefer server-provided seed; fall back to deterministic UUIDv5(roomCode:startedAt)
+                const seed = data.seed && data.seed.length > 0
+                  ? data.seed
+                  : uuidv5(`${roomCode}:${data.startedAt}`, uuidv5.URL);
                 try {
                   console.debug('[Room] start event received', {
                     roomCode,

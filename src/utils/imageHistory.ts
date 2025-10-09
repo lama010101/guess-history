@@ -42,26 +42,6 @@ export async function getNewImages(userId: string | null, count: number) {
 }
 
 /**
- * Deterministic image selection for multiplayer rooms.
- * All clients fetch the same ordered list (by id) and then apply the same seeded shuffle.
- * @param count number of images to select
- * @param seed any string; same seed yields same order
- */
-export async function getImagesForRoom(count: number, seed: string) {
-  const { data, error } = await supabase
-    .from('images')
-    .select('*')
-    .eq('ready', true)
-    .order('id', { ascending: true }); // stable base order across clients
-  if (error) throw error;
-
-  const list = (data ?? []).slice();
-  const rng = seededRng(seed);
-  seededShuffle(list, rng);
-  return list.slice(0, count);
-}
-
-/**
  * Persist and retrieve deterministic image order for a room.
  * If a record exists for the room, return those images in stored order.
  * Otherwise, compute with seed, persist, and return.
@@ -95,57 +75,45 @@ export async function getOrPersistRoomImages(roomId: string, seed: string, count
       const ordered = (session.image_ids as string[]).map((id) => byId.get(id)).filter(Boolean);
       return ordered.slice(0, count);
     }
-
-    // No existing session: compute with seed and persist
-    const computed = await getImagesForRoom(count, seed);
-    const imageIds = computed.map((i: any) => i.id);
-    const { error: insErr } = await supabase
-      .from('game_sessions')
-      .upsert({ room_id: roomId, seed, image_ids: imageIds, started_at: new Date().toISOString() }, { onConflict: 'room_id' })
-      .select('room_id')
-      .single();
-    if (insErr && insErr.code !== '42P01') {
-      console.warn('getOrPersistRoomImages: insert error', insErr);
+    // No existing session: call RPC to create one with shared seed
+    const rpcArgs: any = {
+      p_room_id: roomId,
+      p_count: count,
+      p_user_id: null,
+      p_min_year: null,
+      p_max_year: null,
+    };
+    if (seed) {
+      rpcArgs.p_seed = seed;
     }
-    return computed;
+
+    const { data: rows, error: rpcErr } = await (supabase as any).rpc('create_game_session_and_pick_images', rpcArgs);
+    if (rpcErr) {
+      throw rpcErr;
+    }
+
+    const orderedIds: string[] = Array.isArray(rows)
+      ? rows
+          .filter((r: any) => r && r.image_id)
+          .sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0))
+          .map((r: any) => r.image_id)
+      : [];
+
+    if (orderedIds.length === 0) {
+      return [];
+    }
+
+    const { data: imgs, error: imgErr } = await supabase
+      .from('images')
+      .select('*')
+      .in('id', orderedIds);
+    if (imgErr) throw imgErr;
+    const byId = new Map((imgs ?? []).map((i: any) => [i.id, i]));
+    return orderedIds.map((id) => byId.get(id)).filter(Boolean);
   } catch (e: any) {
-    // Fallback if the table is missing or any other error occurs
     console.warn('getOrPersistRoomImages fallback due to error:', e?.message || e);
-    return getImagesForRoom(count, seed);
+    throw e;
   }
-}
-
-// --- Seeded RNG + shuffle helpers ---
-function hashStr32(str: string): number {
-  let h = 2166136261 >>> 0; // FNV-1a basis
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-
-function mulberry32(a: number) {
-  return function () {
-    let t = (a += 0x6d2b79f5);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function seededRng(seed: string) {
-  return mulberry32(hashStr32(seed));
-}
-
-function seededShuffle<T>(array: T[], rnd: () => number) {
-  let currentIndex = array.length;
-  while (currentIndex !== 0) {
-    const randomIndex = Math.floor(rnd() * currentIndex);
-    currentIndex--;
-    [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
-  }
-  return array;
 }
 
 /**

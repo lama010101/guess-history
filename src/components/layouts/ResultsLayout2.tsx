@@ -420,10 +420,9 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
             <div className="bg-white dark:bg-[#333333] rounded-2xl shadow-lg overflow-hidden">
               <div className="relative w-full aspect-video overflow-hidden rounded-t-lg">
-                <img src={result.imageUrl} alt={result.imageTitle} className="w-full h-full object-cover" />
+                <img src={result.imageUrl} alt="Historical reference" className="w-full h-full object-cover" />
               </div>
               <div className="p-4">
-                <h3 className="text-xl font-bold mb-2 text-foreground">{result.imageTitle}</h3>
                 <p className="text-muted-foreground text-sm mb-4">{result.imageDescription}</p>
 
                 {/* Confidence and Source Link */}

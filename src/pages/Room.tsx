@@ -298,7 +298,7 @@ const Room: React.FC = () => {
                   document.body.classList.add('mode-compete');
                   document.body.classList.remove('mode-levelup');
                 } catch {}
-                startGame({ roomId: roomCode, seed, timerSeconds: data.durationSec, timerEnabled: data.timerEnabled, competeVariant: modeRef.current }).catch(() => {
+                startGame({ roomId: roomCode, seed, timerSeconds: data.durationSec, timerEnabled: data.timerEnabled, competeVariant: modeRef.current, useHostHistory: isHost }).catch(() => {
                   startedRef.current = false;
                 });
               }

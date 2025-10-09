@@ -423,6 +423,11 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                 <img src={result.imageUrl} alt="Historical reference" className="w-full h-full object-cover" />
               </div>
               <div className="p-4">
+                {result.imageTitle && (
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    {result.imageTitle}
+                  </h3>
+                )}
                 <p className="text-muted-foreground text-sm mb-4">{result.imageDescription}</p>
 
                 {/* Confidence and Source Link */}

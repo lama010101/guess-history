@@ -56,7 +56,7 @@ interface GameContextState {
   setHintsAllowed: (hints: number) => void;
   setRoundTimerSec: (seconds: number) => void;
   setTimerEnabled: (enabled: boolean) => void; // Function to enable/disable timer
-  startGame: (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string; seed?: string; competeVariant?: 'sync' | 'async' }) => Promise<void>; // Updated to accept settings incl. roomId + seed + competeVariant
+  startGame: (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string; seed?: string; competeVariant?: 'sync' | 'async'; useHostHistory?: boolean }) => Promise<void>; // Updated to accept settings incl. roomId + seed + competeVariant
   startLevelUpGame: (level: number, settings?: { roomId?: string; seed?: string }) => Promise<void>;
   recordRoundResult: (result: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'>, currentRoundIndex: number) => void;
   handleTimeUp?: (currentRoundIndex: number) => void;
@@ -508,7 +508,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   }, []);
 
   // Function to fetch images and start a new game
-  const startGame = useCallback(async (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string; seed?: string; competeVariant?: 'sync' | 'async' }) => {
+  const startGame = useCallback(async (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string; seed?: string; competeVariant?: 'sync' | 'async'; useHostHistory?: boolean }) => {
     devLog("Starting new game...");
     clearSavedGameState(); // Clear any existing saved state
     setIsLoading(true);
@@ -550,11 +550,17 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       let preparedImages: GameImage[] | null = null;
 
       if (isMultiplayer) {
+        const useHostHistory = !!settings?.useHostHistory;
+        const multiplayerUserId = useHostHistory ? user?.id ?? null : null;
+        if (useHostHistory && !multiplayerUserId) {
+          console.warn('[GameContext] Host history requested but userId missing; falling back to shared pool');
+        }
         const prep = await prepare({
-          userId: null, // ensure shared pool when roomId provided
+          userId: multiplayerUserId,
           roomId: newRoomId,
           count: ROUNDS_PER_GAME,
           seed: settings?.seed ?? null,
+          usePlayerHistory: useHostHistory && !!multiplayerUserId,
         });
         preparedImages = prep.images.map((img) => ({
           id: img.id,

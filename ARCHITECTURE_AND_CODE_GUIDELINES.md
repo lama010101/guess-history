@@ -100,6 +100,7 @@
       3) Otherwise → `<name>.partykit.dev` from `partykit.json` (production cloud)
   - Message shapes (source of truth):
     - Server→Client: `players`, `full`, `chat { from, message, timestamp }`, `roster { id, name, ready, host }[]`, `settings { timerSeconds?, timerEnabled? }`, `hello { you }`, `start { startedAt, durationSec, timerEnabled }`.
+      - Multiplayer submissions now include `{ submittedCount, totalPlayers, lobbySize }`, where `totalPlayers` reflects the active participants for that round (deduplicated by `user_id`) and `lobbySize` reflects the full lobby membership.
     - Client→Server: `join { name, userId?, token? }`, `chat { message, timestamp }`, `ready { ready }`, `settings { timerSeconds?, timerEnabled? }`, `rename { name }`.
 
 ### Lobby Message Shapes and Display Name Enrichment
@@ -316,6 +317,19 @@
   - Ordering is deterministic (`ORDER BY md5(p_seed || image_id)`) so all players see the same 5 images in the same order for a given room/startedAt.
   - Rationale:
     - Passing a real `p_user_id` allowed each client’s personal history to exclude different images, which could diverge the selection/order even with the same seed. Setting `p_user_id = NULL` for multiplayer avoids this and restores strict cross-player consistency.
+
+#### Multiplayer Round Participation Tracking (2025-10-09)
+
+- Files:
+  - `server/lobby.ts`
+  - `src/lib/partyClient.ts`
+  - `src/hooks/useLobbyChat.ts`
+- Behavior:
+  - The lobby server deduplicates participants per round using a stable key (`user:{userId}` or `conn:{connectionId}`) to prevent ghost sockets from inflating submission counts.
+  - `progress { substep: 'round-start' }` resets per-round submissions and seeds the active participant set for that round. Clients send this when entering a new round (`GameRoundPage`).
+  - `submission` broadcasts include `submittedCount`, `totalPlayers` (active participants expected for the round), and `lobbySize` (current connected members) so HUD badges reflect accurate counts (e.g., `2/2`).
+  - Completing a round clears per-round tracking and carries the observed participant count forward so subsequent rounds expect the same players unless the roster changes.
+  - Disconnects prune the participant key from all tracking maps to keep totals accurate.
 
 ### Compete Mode — SYNC/ASYNC Variants and Leaderboards (2025-09-13)
 

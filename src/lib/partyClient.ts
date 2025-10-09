@@ -57,8 +57,8 @@ export type LobbyServerMessage =
   | { type: 'hello'; you: { id: string; name: string; host: boolean } }
   | { type: 'start'; startedAt: string; durationSec: number; timerEnabled: boolean }
   | { type: 'progress'; from: string; roundNumber: number; substep?: string }
-  | { type: 'submission'; roundNumber: number; connectionId: string; from: string; userId?: string | null; submittedCount: number; totalPlayers: number }
-  | { type: 'round-complete'; roundNumber: number; submittedCount: number; totalPlayers: number };
+  | { type: 'submission'; roundNumber: number; connectionId: string; from: string; userId?: string | null; submittedCount: number; totalPlayers: number; lobbySize: number }
+  | { type: 'round-complete'; roundNumber: number; submittedCount: number; totalPlayers: number; lobbySize: number };
 
 export type LobbyClientMessage =
   | { type: 'join'; name: string; userId?: string; token?: string }

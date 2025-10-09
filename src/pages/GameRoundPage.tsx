@@ -300,7 +300,12 @@ const GameRoundPage = () => {
 
   // For Level Up: auto-show intro ONLY at round 1 and gate timer start until Start is pressed
   useEffect(() => {
-    if (isLevelUpRoute && roundNumber === 1) {
+    if (!isLevelUpRoute) {
+      setRoundStarted(true);
+      return;
+    }
+
+    if (roundNumber === 1) {
       setIntroSource('auto');
       setShowIntro(true);
       setRoundStarted(false);
@@ -308,7 +313,7 @@ const GameRoundPage = () => {
       if (import.meta.env.DEV) {
         try { console.debug('[GameRoundPage] Level Up gating: auto intro (round 1) & pause timer', { roundNumber }); } catch {}
       }
-    } else if (isLevelUpRoute) {
+    } else {
       // No auto modal beyond round 1; ensure round is considered started
       setRoundStarted(true);
     }
@@ -552,6 +557,14 @@ const GameRoundPage = () => {
     setHasSubmittedThisRound(false);
     hasNavigatedToResultsRef.current = false;
   }, [roomId, roundNumber]);
+
+  useEffect(() => {
+    if (!isCompeteMode || !roomId || typeof roundNumber !== 'number' || Number.isNaN(roundNumber)) {
+      return;
+    }
+    setRoundStarted((prev) => prev || !isLevelUpRoute || roundNumber > 1);
+    sendLobbyPayload?.({ type: 'progress', roundNumber, substep: 'round-start' });
+  }, [isCompeteMode, roomId, roundNumber, sendLobbyPayload, isLevelUpRoute]);
 
   useEffect(() => {
     if (!isCompeteMode || !roomId) {

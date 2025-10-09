@@ -8,12 +8,14 @@ export interface SubmissionBroadcast {
   userId?: string | null;
   submittedCount: number;
   totalPlayers: number;
+  lobbySize: number;
 }
 
 export interface RoundCompleteBroadcast {
   roundNumber: number;
   submittedCount: number;
   totalPlayers: number;
+  lobbySize: number;
 }
 
 export interface LobbyChatMessage {
@@ -167,6 +169,7 @@ export function useLobbyChat({
                 userId: data.userId,
                 submittedCount: data.submittedCount,
                 totalPlayers: data.totalPlayers,
+                lobbySize: data.lobbySize,
               });
               break;
             case 'round-complete':
@@ -174,6 +177,7 @@ export function useLobbyChat({
                 roundNumber: data.roundNumber,
                 submittedCount: data.submittedCount,
                 totalPlayers: data.totalPlayers,
+                lobbySize: data.lobbySize,
               });
               break;
             case 'full':

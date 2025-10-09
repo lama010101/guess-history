@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 
 import { Share2, Loader, Home, Target, Zap, RefreshCw } from "lucide-react";
 import { NavProfile } from "@/components/NavProfile";
@@ -46,8 +46,11 @@ const FinalResultsPage = () => {
     globalAccuracy = 0,
     gameId,
     setProvisionalGlobalMetrics,
-    roomId
+    roomId,
+    syncRoomId
   } = useGame();
+  const { roomId: routeRoomId } = useParams<{ roomId?: string }>();
+  const effectiveRoomId = React.useMemo(() => roomId || routeRoomId || null, [roomId, routeRoomId]);
   const submittedGameIdRef = useRef<string | null>(null);
   const provisionalAppliedRef = useRef<boolean>(false);
   const awardsSubmittedRef = useRef<boolean>(false);
@@ -90,14 +93,19 @@ const FinalResultsPage = () => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
     };
-    
+
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  React.useEffect(() => {
+    if (!isSyncCompeteRoute) return;
+    if (!routeRoomId) return;
+    syncRoomId(routeRoomId);
+  }, [isSyncCompeteRoute, routeRoomId, syncRoomId]);
   // currentLevelFromPath is used for UI text (banner and Continue button)
 
-  useEffect(() => {
+  React.useEffect(() => {
     const updateMetricsAndFetchGlobal = async () => {
       // Need results and images to compute provisional values
       if (roundResults.length === 0 || !images.length) {
@@ -143,9 +151,9 @@ const FinalResultsPage = () => {
       // Fetch actual debts across all rounds for this game/user
       let totalXpDebt = 0;
       const perRoundAccDebt: Record<string, number> = {};
-      if ((roomId || gameId) && images.length > 0) {
-        const roomRoundIds = roomId ? images.map((_, idx) => makeRoundId(roomId, idx + 1)) : [];
-        const gameRoundIds = !roomId && gameId ? images.map((_, idx) => makeRoundId(gameId, idx + 1)) : [];
+      if ((effectiveRoomId || gameId) && images.length > 0) {
+        const roomRoundIds = effectiveRoomId ? images.map((_, idx) => makeRoundId(effectiveRoomId, idx + 1)) : [];
+        const gameRoundIds = !effectiveRoomId && gameId ? images.map((_, idx) => makeRoundId(gameId, idx + 1)) : [];
         const roundIds = roomRoundIds.length > 0 ? roomRoundIds : gameRoundIds;
         try {
           // round_hints is not part of generated Database types; use a loosely-typed client
@@ -183,7 +191,7 @@ const FinalResultsPage = () => {
         if (!img || !result) return { netPercent: 0, timeNet: 0, locNet: 0 };
         const timeAcc = calculateTimeAccuracy(result.guessYear || 0, img.year || 0);
         const locAcc = calculateLocationAccuracy(result.distanceKm || 0);
-        const rid = roomId ? makeRoundId(roomId, idx + 1) : (gameId ? makeRoundId(gameId, idx + 1) : '');
+        const rid = effectiveRoomId ? makeRoundId(effectiveRoomId, idx + 1) : (gameId ? makeRoundId(gameId, idx + 1) : '');
         const accDebt = rid ? (perRoundAccDebt[rid] || 0) : 0;
         const netPercent = computeRoundNetPercent(timeAcc, locAcc, accDebt);
         const timeNet = Math.max(0, Math.round(timeAcc - accDebt));
@@ -311,7 +319,7 @@ const FinalResultsPage = () => {
           const actualYears = images.map((img) => img.year || 0);
           await awardGameAchievements({
             userId: user.id,
-            contextId: roomId || gameId || null,
+            contextId: effectiveRoomId || gameId || null,
             actualYears,
             results: roundResults,
           });
@@ -361,7 +369,7 @@ const FinalResultsPage = () => {
     };
 
     updateMetricsAndFetchGlobal();
-  }, [roundResults, images, gameId, roomId, setProvisionalGlobalMetrics, refreshGlobalMetrics]);
+  }, [roundResults, images, gameId, effectiveRoomId, setProvisionalGlobalMetrics, refreshGlobalMetrics]);
 
   // Manage active badge popup from queue
   useEffect(() => {
@@ -695,9 +703,9 @@ const FinalResultsPage = () => {
                 </div>
 
                 {/* SYNC Compete: show final leaderboard for all participants */}
-                {isSyncCompeteRoute && roomId ? (
+                {isSyncCompeteRoute && effectiveRoomId ? (
                   <div className="mt-6 bg-[#444444] rounded-lg p-4">
-                    <FinalScoreboard roomId={roomId} />
+                    <FinalScoreboard roomId={effectiveRoomId} />
                   </div>
                 ) : null}
               </div>

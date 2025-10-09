@@ -86,12 +86,14 @@ type SubmissionBroadcastMsg = {
   userId?: string | null;
   submittedCount: number;
   totalPlayers: number;
+  lobbySize: number;
 };
 type RoundCompleteMsg = {
   type: "round-complete";
   roundNumber: number;
   submittedCount: number;
   totalPlayers: number;
+  lobbySize: number;
 };
 
 type Outgoing =
@@ -148,6 +150,9 @@ export default class Lobby implements Party.Server {
   private conns = new Map<string, Party.Connection>();
   private submissionsByRound = new Map<number, Set<string>>();
   private completedRounds = new Set<number>();
+  private activeByRound = new Map<number, Set<string>>();
+  private expectedParticipants = 0;
+  private expectedParticipantsByRound = new Map<number, number>();
 
   constructor(readonly room: Party.Room) {}
 
@@ -292,6 +297,19 @@ export default class Lobby implements Party.Server {
     const raw = env.MAX_PLAYERS ?? "2";
     const n = Number(raw);
     return Number.isFinite(n) && n > 0 ? Math.min(n, 8) : 2; // cap for safety
+  }
+
+  private participantKey(connId: string): string {
+    const userId = this.playerUserIds.get(connId);
+    return userId && userId.length > 0 ? `user:${userId}` : `conn:${connId}`;
+  }
+
+  private uniqueParticipantCount(): number {
+    const seen = new Set<string>();
+    for (const connId of this.players.keys()) {
+      seen.add(this.participantKey(connId));
+    }
+    return seen.size;
   }
 
   private broadcast(msg: Outgoing) {
@@ -597,8 +615,10 @@ export default class Lobby implements Party.Server {
             this.started = true;
             this.submissionsByRound.clear();
             this.completedRounds.clear();
-            this.submissionsByRound.clear();
-            this.completedRounds.clear();
+            this.activeByRound.clear();
+            this.expectedParticipants = this.uniqueParticipantCount();
+            this.expectedParticipantsByRound.clear();
+            this.expectedParticipantsByRound.set(1, this.expectedParticipants);
 
             let startedAt: string | null = null;
             // Effective timer flag that we will advertise to clients. If we
@@ -660,10 +680,27 @@ export default class Lobby implements Party.Server {
 
         if (msg.type === "progress") {
           if (!this.players.has(conn.id)) return;
+          const roundNumber = msg.roundNumber;
+          if (msg.substep === "round-start") {
+            this.submissionsByRound.delete(roundNumber);
+            this.completedRounds.delete(roundNumber);
+            let active = this.activeByRound.get(roundNumber);
+            if (!active) {
+              active = new Set();
+              this.activeByRound.set(roundNumber, active);
+            }
+            active.add(this.participantKey(conn.id));
+            const expected = Math.max(
+              this.expectedParticipantsByRound.get(roundNumber) ?? 0,
+              active.size,
+              this.expectedParticipants
+            );
+            this.expectedParticipantsByRound.set(roundNumber, expected);
+          }
           const out: ProgressMsg = {
             type: "progress",
             from: conn.id,
-            roundNumber: msg.roundNumber,
+            roundNumber,
             substep: msg.substep,
           };
           this.broadcast(out);
@@ -673,22 +710,32 @@ export default class Lobby implements Party.Server {
 
         if (msg.type === "submission") {
           if (!this.players.has(conn.id)) return;
-          const totalPlayers = this.players.size;
-          if (totalPlayers <= 0) return;
+          const lobbySize = this.uniqueParticipantCount();
+          if (lobbySize <= 0) return;
 
           const roundNumber = msg.roundNumber;
+          let active = this.activeByRound.get(roundNumber);
+          if (!active) {
+            active = new Set();
+            this.activeByRound.set(roundNumber, active);
+          }
+          const participantKey = this.participantKey(conn.id);
+          active.add(participantKey);
+
           let submissions = this.submissionsByRound.get(roundNumber);
           if (!submissions) {
             submissions = new Set();
             this.submissionsByRound.set(roundNumber, submissions);
             this.completedRounds.delete(roundNumber);
           }
-          if (submissions.has(conn.id)) {
+          if (submissions.has(participantKey)) {
             return;
           }
-          submissions.add(conn.id);
+          submissions.add(participantKey);
 
           const submittedCount = submissions.size;
+          const expectedFromHistory = this.expectedParticipantsByRound.get(roundNumber) ?? this.expectedParticipants;
+          const totalPlayers = Math.max(expectedFromHistory, active.size, submittedCount);
           const submissionPayload: SubmissionBroadcastMsg = {
             type: "submission",
             roundNumber,
@@ -697,6 +744,7 @@ export default class Lobby implements Party.Server {
             userId: this.playerUserIds.get(conn.id) ?? null,
             submittedCount,
             totalPlayers,
+            lobbySize,
           };
           this.broadcast(submissionPayload);
           await this.logEvent("submission", submissionPayload);
@@ -708,53 +756,15 @@ export default class Lobby implements Party.Server {
               roundNumber,
               submittedCount,
               totalPlayers,
+              lobbySize,
             };
             this.broadcast(completePayload);
             await this.logEvent("round-complete", completePayload);
-          }
-          return;
-        }
-
-        if (msg.type === "submission") {
-          if (!this.players.has(conn.id)) return;
-          const totalPlayers = this.players.size;
-          if (totalPlayers <= 0) return;
-
-          const roundNumber = msg.roundNumber;
-          let submissions = this.submissionsByRound.get(roundNumber);
-          if (!submissions) {
-            submissions = new Set();
-            this.submissionsByRound.set(roundNumber, submissions);
-            this.completedRounds.delete(roundNumber);
-          }
-          if (submissions.has(conn.id)) {
-            return;
-          }
-          submissions.add(conn.id);
-
-          const submittedCount = submissions.size;
-          const submissionPayload: SubmissionBroadcastMsg = {
-            type: "submission",
-            roundNumber,
-            connectionId: conn.id,
-            from: this.players.get(conn.id) ?? "Unknown",
-            userId: this.playerUserIds.get(conn.id) ?? null,
-            submittedCount,
-            totalPlayers,
-          };
-          this.broadcast(submissionPayload);
-          await this.logEvent("submission", submissionPayload);
-
-          if (submittedCount >= totalPlayers && !this.completedRounds.has(roundNumber)) {
-            this.completedRounds.add(roundNumber);
-            const completePayload: RoundCompleteMsg = {
-              type: "round-complete",
-              roundNumber,
-              submittedCount,
-              totalPlayers,
-            };
-            this.broadcast(completePayload);
-            await this.logEvent("round-complete", completePayload);
+            this.submissionsByRound.delete(roundNumber);
+            this.activeByRound.delete(roundNumber);
+            const nextExpected = Math.max(this.expectedParticipants, submittedCount);
+            this.expectedParticipants = nextExpected;
+            this.expectedParticipantsByRound.set(roundNumber + 1, nextExpected);
           }
           return;
         }
@@ -777,9 +787,16 @@ export default class Lobby implements Party.Server {
         await this.patchSessionPlayerRow(userId, { ready: false, is_host: false });
       }
       this.playerUserIds.delete(conn.id);
+      const participantKey = this.participantKey(conn.id);
       this.submissionsByRound.forEach((set) => {
-        set.delete(conn.id);
+        set.delete(participantKey);
       });
+      this.activeByRound.forEach((set, roundNumber) => {
+        if (set.delete(participantKey)) {
+          this.expectedParticipantsByRound.set(roundNumber, Math.max(set.size, this.expectedParticipantsByRound.get(roundNumber) ?? 0));
+        }
+      });
+      this.expectedParticipants = Math.max(this.uniqueParticipantCount(), this.expectedParticipants - 1);
       // Reassign host if needed
       if (this.hostId === conn.id) {
         const previousHost = this.hostId;

@@ -95,6 +95,7 @@ export interface ResultsLayoutProps {
   round?: number;
   totalRounds?: number;
   nextRoundButton?: React.ReactNode;
+  nextRoundCountdown?: number | null;
   rateButton?: React.ReactNode;
   peers?: PeerRoundRow[];
   currentUserDisplayName?: string;
@@ -112,6 +113,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   round,
   totalRounds,
   nextRoundButton,
+  nextRoundCountdown,
   rateButton,
   peers = [],
   currentUserDisplayName = 'You',

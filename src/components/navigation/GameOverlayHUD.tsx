@@ -42,6 +42,7 @@ interface GameOverlayHUDProps {
   waitingForPeers?: boolean;
   submittedCount?: number;
   totalParticipants?: number;
+  submissionNotice?: string | null;
 }
 
 const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
@@ -75,6 +76,8 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
   waitingForPeers = false,
   submittedCount,
   totalParticipants,
+  submissionNotice = null,
+  countdownBadge,
 }) => {
   // Show hint counter as X/Y where Y is the total allowed hints
   const isHintDisabled = hintsUsed >= hintsAllowed;
@@ -127,6 +130,11 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
               <span>{formatInteger(currentScore)}</span>
             </Badge>
           </div>
+          {countdownBadge?.active && (
+            <div className="mt-3 px-4 py-1.5 rounded-full bg-red-500/90 text-white text-sm font-semibold shadow-lg">
+              {`${countdownBadge.remaining}s left`}
+            </div>
+          )}
           {waitingLabel && (
             <div className="mt-2 px-3 py-1 rounded-full bg-amber-300/90 text-black text-xs font-semibold shadow">
               {waitingLabel}
@@ -155,54 +163,59 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
       <div className="flex justify-between items-end w-full">
         <div className="flex items-end gap-3 pointer-events-auto">
           {(hasPeers || onOpenChat) && (
-            <div
-              ref={avatarClusterRef ?? undefined}
-              className={`relative flex items-center gap-2 bg-black/45 backdrop-blur-sm ${hasPeers ? 'px-3 py-2' : 'px-2 py-1'} rounded-full border border-white/20`}
-            >
-              {hasPeers && peerRoster.slice(0, 4).map((peer) => (
-                <button
-                  key={peer.id}
-                  type="button"
-                  onClick={onOpenChat}
-                  disabled={!onOpenChat}
-                  className={`relative flex items-center justify-center w-8 h-8 rounded-full overflow-hidden border ${peer.isSelf ? 'border-amber-300/80' : 'border-white/60'} bg-gradient-to-br from-orange-400 to-pink-500 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 disabled:cursor-not-allowed`}
-                  aria-label={peer.isSelf ? 'Open chat (you)' : 'Open chat'}
-                >
-                  {peer.avatarUrl ? (
-                    <img
-                      src={peer.avatarUrl}
-                      alt={peer.displayName}
-                      className="w-full h-full object-cover rounded-full"
-                    />
-                  ) : (
-                    <span className="w-full h-full flex items-center justify-center text-sm font-semibold text-white rounded-full">
-                      {(peer.displayName || '?').slice(0, 1).toUpperCase()}
-                    </span>
-                  )}
-                </button>
-              ))}
-              {hasPeers && peerRoster.length > 4 && (
-                <span className="text-xs font-semibold text-white/90">
-                  +{peerRoster.length - 4}
-                </span>
+            <div className="relative flex flex-col items-center">
+              {submissionNotice && (
+                <div className="mb-2 px-3 py-1 rounded-full bg-emerald-300/90 text-black text-xs font-semibold shadow">{submissionNotice}</div>
               )}
-              {onOpenChat && (
-                <button
-                  type="button"
-                  onClick={onOpenChat}
-                  className={`relative flex items-center justify-center w-9 h-9 rounded-full border border-white/50 ${isChatOpen ? 'bg-emerald-500/90 text-black' : 'bg-black/55 text-white hover:bg-black/70'} focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400`}
-                  aria-label={isChatOpen ? 'Hide chat' : 'Show chat'}
-                  aria-pressed={isChatOpen}
-                  title={isChatOpen ? 'Hide chat' : 'Show chat'}
-                >
-                  <MessageCircle className="h-4 w-4" />
-                  {showChatCount && (
-                    <span className="absolute -top-1.5 -right-1.5 rounded-full bg-emerald-400 text-black text-[0.65rem] font-semibold px-1.5 py-0.5 shadow-lg">
-                      {formattedChatCount}
-                    </span>
-                  )}
-                </button>
-              )}
+              <div
+                ref={avatarClusterRef ?? undefined}
+                className={`relative flex items-center gap-2 bg-black/45 backdrop-blur-sm ${hasPeers ? 'px-3 py-2' : 'px-2 py-1'} rounded-full border border-white/20`}
+              >
+                {hasPeers && peerRoster.slice(0, 4).map((peer) => (
+                  <button
+                    key={peer.id}
+                    type="button"
+                    onClick={onOpenChat}
+                    disabled={!onOpenChat}
+                    className={`relative flex items-center justify-center w-8 h-8 rounded-full overflow-hidden border ${peer.isSelf ? 'border-amber-300/80' : 'border-white/60'} bg-gradient-to-br from-orange-400 to-pink-500 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 disabled:cursor-not-allowed`}
+                    aria-label={peer.isSelf ? 'Open chat (you)' : 'Open chat'}
+                  >
+                    {peer.avatarUrl ? (
+                      <img
+                        src={peer.avatarUrl}
+                        alt={peer.displayName}
+                        className="w-full h-full object-cover rounded-full"
+                      />
+                    ) : (
+                      <span className="w-full h-full flex items-center justify-center text-sm font-semibold text-white rounded-full">
+                        {(peer.displayName || '?').slice(0, 1).toUpperCase()}
+                      </span>
+                    )}
+                  </button>
+                ))}
+                {hasPeers && peerRoster.length > 4 && (
+                  <span className="text-xs font-semibold text-white/90">
+                    +{peerRoster.length - 4}
+                  </span>
+                )}
+                {onOpenChat && (
+                  <button
+                    type="button"
+                    onClick={onOpenChat}
+                    className={`relative flex items-center justify-center w-9 h-9 rounded-full border border-white/50 ${isChatOpen ? 'bg-emerald-500/90 text-black' : 'bg-black/55 text-white hover:bg-black/70'} focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400`}
+                    aria-label={isChatOpen ? 'Hide chat' : 'Show chat'}
+                    aria-pressed={isChatOpen}
+                    title={isChatOpen ? 'Hide chat' : 'Show chat'}
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    {showChatCount && (
+                      <span className="absolute -top-1.5 -right-1.5 rounded-full bg-emerald-400 text-black text-[0.65rem] font-semibold px-1.5 py-0.5 shadow-lg">
+                        {formattedChatCount}
+                      </span>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
           )}
           {onHintV2Click && (

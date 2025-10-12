@@ -134,9 +134,32 @@
 }
 
 html, body {
+  margin: 0;
   font-family: 'Montserrat', sans-serif !important;
   @apply bg-background text-foreground;
   color-scheme: dark;
+}
+
+.submission-flash {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0) 60%);
+  pointer-events: none;
+  mix-blend-mode: screen;
+  animation: submission-flash-fade 0.35s ease-in-out forwards;
+  z-index: 9999;
+}
+
+@keyframes submission-flash-fade {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 @layer base {

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, useEffect } from 'react';
+import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Loader, ChevronRight, Home, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -73,6 +73,9 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
   const allSubmittedRef = useRef(false);
   const [forceRefreshingLeaderboards, setForceRefreshingLeaderboards] = useState(false);
   const lastSubmittedCountRef = useRef(0);
+  const [nextRoundCountdown, setNextRoundCountdown] = useState<number | null>(null);
+  const countdownTimerRef = useRef<number | null>(null);
+  const autoAdvanceRef = useRef(false);
 
   const refreshLeaderboards = leaderboard.refresh;
 
@@ -233,7 +236,7 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
     setShowConfirmDialog(true);
   };
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (navigating) return;
     if (!roomId) {
       toast({ title: 'Error', description: 'Game ID (Room ID) not found', variant: 'destructive' });
@@ -241,12 +244,70 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
     }
     setNavigating(true);
     const isLastRound = oneBasedRound === totalRounds;
+    setNextRoundCountdown(null);
+    if (countdownTimerRef.current) {
+      window.clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+
     if (isLastRound) {
       navigate(`/compete/sync/game/room/${roomId}/final`);
     } else {
       navigate(`/compete/sync/game/room/${roomId}/round/${oneBasedRound + 1}`);
     }
-  };
+  }, [navigating, roomId, toast, oneBasedRound, totalRounds, navigate]);
+
+  useEffect(() => {
+    if (!layoutResult) return;
+
+    const isLastRound = oneBasedRound === totalRounds;
+    if (isLastRound) {
+      setNextRoundCountdown(null);
+      if (countdownTimerRef.current) {
+        window.clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+      }
+      return;
+    }
+
+    setNextRoundCountdown(30);
+    autoAdvanceRef.current = false;
+
+    if (countdownTimerRef.current) {
+      window.clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+
+    countdownTimerRef.current = window.setInterval(() => {
+      setNextRoundCountdown((prev) => {
+        if (prev == null) return null;
+        if (prev <= 1) {
+          if (!autoAdvanceRef.current) {
+            autoAdvanceRef.current = true;
+            handleNext();
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (countdownTimerRef.current) {
+        window.clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+      }
+    };
+  }, [layoutResult, oneBasedRound, totalRounds, handleNext]);
+
+  useEffect(() => {
+    return () => {
+      if (countdownTimerRef.current) {
+        window.clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+      }
+    };
+  }, []);
 
   if (isLoading) {
     return (
@@ -338,10 +399,15 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
             <Button
               onClick={handleNext}
               disabled={navigating}
-              className="rounded-xl bg-orange-500 text-white font-semibold text-sm px-5 py-2 shadow-lg hover:bg-orange-500"
+              className="rounded-xl bg-orange-500 text-white font-semibold text-sm px-5 py-2 shadow-lg hover:bg-orange-500 flex items-center gap-2"
             >
-              {navigating ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
-              <span className="ml-2">{oneBasedRound === images.length ? 'Finish Game' : 'Next Round'}</span>
+              {typeof nextRoundCountdown === 'number' && nextRoundCountdown >= 0 && (
+                <span className="text-xs font-semibold bg-black/30 rounded-full px-2 py-0.5">
+                  {`${nextRoundCountdown}s`}
+                </span>
+              )}
+              <span>{oneBasedRound === totalRounds ? 'Finish Game' : 'Next Round'}</span>
+              {navigating ? <Loader className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
             </Button>
           </div>
         }

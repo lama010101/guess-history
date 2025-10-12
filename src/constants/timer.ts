@@ -1,0 +1,1 @@
+export const COUNTDOWN_RUSH_THRESHOLD_SEC = 15;

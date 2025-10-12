@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import { useSettingsStore } from '@/lib/useSettingsStore';
+import { COUNTDOWN_RUSH_THRESHOLD_SEC } from '@/constants/timer';
 
 // Helper function to format time as MM:SS
 const formatTime = (seconds: number): string => {
@@ -22,6 +23,7 @@ interface TimerDisplayProps {
   onTimeout?: () => void;
   roundTimerSec: number;
   externalTimer?: boolean;
+  onCriticalChange?: (isCritical: boolean, seconds: number) => void;
 }
 
 const TimerDisplay: React.FC<TimerDisplayProps> = ({
@@ -30,7 +32,8 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
   isActive,
   onTimeout,
   roundTimerSec,
-  externalTimer = false
+  externalTimer = false,
+  onCriticalChange,
 }) => {
   const { soundEnabled, vibrateEnabled } = useSettingsStore();
   const countdownBeepRef = useRef<HTMLAudioElement | null>(null);
@@ -58,7 +61,7 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
     };
   }, []);
   
-  // Play countdown sound effect when time <= 10 seconds and stop when round is over
+  // Play countdown sound effect when time <= threshold seconds and stop when round is over
   useEffect(() => {
     // Stop any playing sounds if timer is not active or time is up
     if (!isActive || remainingTime <= 0) {
@@ -67,20 +70,20 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
       }
       return;
     }
-    
-    // Play beep sound for countdown when under 10 seconds
-    if (remainingTime <= 10 && remainingTime > 0 && soundEnabled) {
+
+    // Play beep sound for countdown when under threshold seconds
+    if (remainingTime <= COUNTDOWN_RUSH_THRESHOLD_SEC && remainingTime > 0 && soundEnabled) {
       if (countdownBeepRef.current) {
         const beepSound = countdownBeepRef.current.cloneNode() as HTMLAudioElement;
         beepSound.volume = 1.0;
         beepSound.play().catch(e => console.error('Error playing countdown sound:', e));
       }
     }
-    // Vibrate once per second when under 10 seconds if enabled
+    // Vibrate once per second when under threshold seconds if enabled
     if (
       vibrateEnabled &&
       typeof navigator !== 'undefined' && typeof (navigator as any).vibrate === 'function' &&
-      remainingTime <= 10 && remainingTime > 0 &&
+      remainingTime <= COUNTDOWN_RUSH_THRESHOLD_SEC && remainingTime > 0 &&
       lastVibrateSecondRef.current !== remainingTime
     ) {
       try { (navigator as any).vibrate(60); } catch {}
@@ -100,21 +103,23 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
 
   // Calculate progress for circular timer
   const { progress, isCritical, size, strokeWidth, radius, circumference, strokeDashoffset, color } = useMemo(() => {
-    if (roundTimerSec <= 0) return {
-      progress: 0,
-      isCritical: false,
-      size: 40, // Slightly larger size
-      strokeWidth: 4,
-      radius: 0,
-      circumference: 0,
-      strokeDashoffset: 0,
-      color: '#22c55e' // Default green
-    };
+    if (roundTimerSec <= 0) {
+      return {
+        progress: 0,
+        isCritical: false,
+        size: 40,
+        strokeWidth: 4,
+        radius: 0,
+        circumference: 0,
+        strokeDashoffset: 0,
+        color: '#22c55e',
+      };
+    }
 
     const progress = Math.max(0, Math.min(100, (remainingTime / roundTimerSec) * 100));
-    const isCritical = remainingTime <= 10;
-    const size = 42; // Slightly larger for better visibility
-    const strokeWidth = 4; // Thicker stroke
+    const isCritical = remainingTime <= COUNTDOWN_RUSH_THRESHOLD_SEC;
+    const size = 42;
+    const strokeWidth = 4;
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
     const strokeDashoffset = circumference - (progress / 100) * circumference;
@@ -122,6 +127,12 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
 
     return { progress, isCritical, size, strokeWidth, radius, circumference, strokeDashoffset, color };
   }, [remainingTime, roundTimerSec]);
+
+  useEffect(() => {
+    if (!onCriticalChange) return;
+    const isWithinThreshold = remainingTime > 0 && remainingTime <= COUNTDOWN_RUSH_THRESHOLD_SEC;
+    onCriticalChange(isWithinThreshold, remainingTime);
+  }, [remainingTime, onCriticalChange]);
 
   // Timer countdown effect (disabled if using external timer control)
   useEffect(() => {
@@ -174,7 +185,7 @@ const TimerDisplay: React.FC<TimerDisplayProps> = ({
   }
 
   // Timer style based on screenshots
-  const isRed = remainingTime <= 10;
+  const isRed = remainingTime <= COUNTDOWN_RUSH_THRESHOLD_SEC;
   const bgColor = isRed ? 'rgba(239,68,68,0.8)' : 'rgba(0,0,0,0.6)';
   const textClass = isRed ? 'animate-pulse' : '';
 

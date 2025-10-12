@@ -21,6 +21,7 @@ export type UseGameLocalCountdown = {
   remainingSec: number; // ceil(seconds)
   start: () => void; // explicit start (writes a session if not exists)
   reset: () => void; // clear local session and ended sentinel
+  clampRemaining: (seconds: number) => void; // force remaining duration to provided seconds
 };
 
 // Storage keys (scoped per timerId)
@@ -184,6 +185,44 @@ export function useGameLocalCountdown(options: UseGameLocalCountdownOptions): Us
     tickMs,
   });
 
+  const clampRemaining = useCallback((seconds: number) => {
+    const clampedSec = Math.max(0, Math.floor(seconds));
+    const ms = clampedSec * 1000;
+    const now = Date.now();
+
+    if (!timerId) {
+      setDurationMs(ms);
+      setStartAt(ms > 0 ? now : null);
+      setExpired(ms <= 0);
+      setReady(true);
+      return;
+    }
+
+    if (ms <= 0) {
+      clearSession(timerId);
+      writeEnded(timerId);
+      setDurationMs(0);
+      setStartAt(null);
+      setExpired(true);
+      setReady(true);
+      return;
+    }
+
+    const session: LocalSessionV1 = {
+      version: 1,
+      durationMs: ms,
+      startAt: now,
+      createdAt: now,
+    };
+
+    writeSession(timerId, session);
+    clearEnded(timerId);
+    setDurationMs(ms);
+    setStartAt(session.startAt);
+    setExpired(false);
+    setReady(true);
+  }, [timerId]);
+
   const remainingSec = useMemo(() => {
     return Math.ceil(Math.max(0, remainingMs) / 1000);
   }, [remainingMs]);
@@ -217,5 +256,5 @@ export function useGameLocalCountdown(options: UseGameLocalCountdownOptions): Us
     setReady(true);
   }, [timerId]);
 
-  return { ready, expired, remainingSec, start, reset };
+  return { ready, expired, remainingSec, start, reset, clampRemaining };
 }

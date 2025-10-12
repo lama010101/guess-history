@@ -2,9 +2,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { useEffect, useLayoutEffect, useState, useCallback, useMemo, useRef, type CSSProperties } from 'react';
 import GameLayout1 from "@/components/layouts/GameLayout1";
-import { Loader, MapPin, MessageCircle, X } from "lucide-react";
-import { useGame } from '@/contexts/GameContext';
-import { GuessCoordinates } from '@/types';
+import { Loader, MapPin, MessageCircle, X, Zap } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserProfile, fetchUserProfile } from '@/utils/profile/profileService';
 import { useToast } from "@/components/ui/use-toast";
@@ -34,6 +32,9 @@ import { getLevelUpConstraints, setLevelUpOldestYear } from '@/lib/levelUpConfig
 import { supabase } from '@/integrations/supabase/client';
 import { useRoundPeers } from '@/hooks/useRoundPeers';
 import { useLobbyChat, type SubmissionBroadcast, type RoundCompleteBroadcast } from '@/hooks/useLobbyChat';
+import { useSettingsStore } from '@/lib/useSettingsStore';
+import { useGame } from '@/contexts/GameContext';
+import type { GuessCoordinates } from '@/types';
 
 // Cache the global minimum year to avoid repeated queries in a session
 let __globalMinYearCache: number | null = null;
@@ -68,12 +69,61 @@ const GameRoundPage = () => {
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
+  const rushAudioRef = useRef<HTMLAudioElement | null>(null);
+  const { soundEnabled, vibrateEnabled } = useSettingsStore();
   const avatarClusterRef = useRef<HTMLDivElement | null>(null);
   const [chatPanelStyle, setChatPanelStyle] = useState<CSSProperties | null>(null);
   const [waitingForPeers, setWaitingForPeers] = useState(false);
   const [submittedCounts, setSubmittedCounts] = useState<{ submitted: number; total: number }>({ submitted: 0, total: 0 });
   const [hasSubmittedThisRound, setHasSubmittedThisRound] = useState(false);
   const hasNavigatedToResultsRef = useRef(false);
+  const [submissionNotice, setSubmissionNotice] = useState<string | null>(null);
+  const submissionNoticeTimeoutRef = useRef<number | null>(null);
+  const [flashActive, setFlashActive] = useState(false);
+  const flashTimeoutRef = useRef<number | null>(null);
+  const pendingClampRef = useRef(false);
+  const hasClampedThisRound = useRef(false);
+  const timerEnabledRef = useRef(false);
+  const timerReadyRef = useRef(false);
+  const remainingTimeRef = useRef(0);
+  const clampRemainingRef = useRef<(seconds: number) => void>(() => {});
+
+  const showSubmissionNotice = useCallback((message: string) => {
+    if (submissionNoticeTimeoutRef.current && typeof window !== 'undefined') {
+      window.clearTimeout(submissionNoticeTimeoutRef.current);
+    }
+    setSubmissionNotice(message);
+    if (typeof window !== 'undefined') {
+      submissionNoticeTimeoutRef.current = window.setTimeout(() => {
+        setSubmissionNotice(null);
+        submissionNoticeTimeoutRef.current = null;
+      }, 3500);
+    }
+    if (flashTimeoutRef.current && typeof window !== 'undefined') {
+      window.clearTimeout(flashTimeoutRef.current);
+    }
+    setFlashActive(true);
+    if (typeof window !== 'undefined') {
+      flashTimeoutRef.current = window.setTimeout(() => {
+        setFlashActive(false);
+        flashTimeoutRef.current = null;
+      }, 300);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      rushAudioRef.current = new Audio('/sounds/countdown-beep.mp3');
+      rushAudioRef.current.preload = 'auto';
+    }
+
+    return () => {
+      if (rushAudioRef.current) {
+        rushAudioRef.current.pause();
+        rushAudioRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -84,6 +134,41 @@ const GameRoundPage = () => {
     };
     loadProfile();
   }, [user]);
+
+  const triggerCountdownRushFeedback = useCallback(() => {
+    if (soundEnabled && rushAudioRef.current) {
+      try {
+        const burst = rushAudioRef.current.cloneNode() as HTMLAudioElement;
+        burst.volume = 1.0;
+        burst.play().catch(() => {});
+      } catch {}
+    }
+    if (
+      vibrateEnabled &&
+      typeof navigator !== 'undefined' &&
+      typeof (navigator as any).vibrate === 'function'
+    ) {
+      try { (navigator as any).vibrate([120, 60, 120]); } catch {}
+    }
+  }, [soundEnabled, vibrateEnabled]);
+
+  const applyCountdownRush = useCallback(() => {
+    if (!timerEnabledRef.current) return;
+    if (hasClampedThisRound.current) return;
+
+    const clampTarget = 15;
+
+    hasClampedThisRound.current = true;
+
+    if (timerReadyRef.current) {
+      clampRemainingRef.current(clampTarget);
+    } else {
+      pendingClampRef.current = true;
+    }
+
+    setRemainingTime((prev) => (prev > clampTarget ? clampTarget : prev));
+    triggerCountdownRushFeedback();
+  }, [triggerCountdownRushFeedback]);
 
   const displayName = useMemo(() => {
     const derived = profile?.display_name || user?.user_metadata?.display_name || user?.email || 'Anonymous';
@@ -98,6 +183,18 @@ const GameRoundPage = () => {
 
     const totalPlayers = payload.totalPlayers;
     const submittedCount = payload.submittedCount;
+    const currentUserId = user?.id ?? null;
+    const isSelf = !!currentUserId && payload.userId && payload.userId === currentUserId;
+    if (!isSelf) {
+      const name = payload.from?.trim() ? payload.from : 'Another player';
+      const progressLabel = totalPlayers > 0 ? ` (${submittedCount}/${totalPlayers})` : '';
+      showSubmissionNotice(`${name} submitted${progressLabel}`);
+
+      if (timerEnabledRef.current && submittedCount === 1 && remainingTimeRef.current > 15) {
+        applyCountdownRush();
+      }
+    }
+
     if (roomId && totalPlayers > 0 && submittedCount >= totalPlayers && !hasNavigatedToResultsRef.current) {
       hasNavigatedToResultsRef.current = true;
       setWaitingForPeers(false);
@@ -105,12 +202,21 @@ const GameRoundPage = () => {
       return;
     }
 
-    const currentUserId = user?.id ?? null;
     if (!hasSubmittedThisRound && currentUserId && payload.userId && payload.userId === currentUserId) {
       setHasSubmittedThisRound(true);
       setWaitingForPeers(true);
     }
-  }, [isCompeteMode, roundNumber, roomId, navigate, modeBasePath, user?.id, hasSubmittedThisRound]);
+  }, [
+    isCompeteMode,
+    roundNumber,
+    roomId,
+    navigate,
+    modeBasePath,
+    user?.id,
+    hasSubmittedThisRound,
+    showSubmissionNotice,
+    applyCountdownRush,
+  ]);
 
   const handleRoundCompleteBroadcast = useCallback((payload: RoundCompleteBroadcast) => {
     if (!isCompeteMode) return;
@@ -401,7 +507,12 @@ const GameRoundPage = () => {
     } catch {}
   }, [autoStart, timerEnabled, roundStarted, timerId, autoStartMissing]);
 
-  const { ready: timerReady, expired: timerExpired, remainingSec } = useGameLocalCountdown({
+  const {
+    ready: timerReady,
+    expired: timerExpired,
+    remainingSec,
+    clampRemaining,
+  } = useGameLocalCountdown({
     timerId,
     durationSec: roundTimerSec,
     autoStart,
@@ -410,6 +521,22 @@ const GameRoundPage = () => {
       handleTimeComplete();
     },
   });
+
+  useEffect(() => {
+    timerEnabledRef.current = timerEnabled;
+  }, [timerEnabled]);
+
+  useEffect(() => {
+    timerReadyRef.current = timerReady;
+  }, [timerReady]);
+
+  useEffect(() => {
+    remainingTimeRef.current = remainingTime;
+  }, [remainingTime]);
+
+  useEffect(() => {
+    clampRemainingRef.current = clampRemaining;
+  }, [clampRemaining]);
 
   // When duration changes from Level Up constraints, reflect it in the local UI state
   // only before the server timer hydrates. Once hydrated, server values take over
@@ -556,7 +683,35 @@ const GameRoundPage = () => {
     setSubmittedCounts({ submitted: 0, total: 0 });
     setHasSubmittedThisRound(false);
     hasNavigatedToResultsRef.current = false;
+    setSubmissionNotice(null);
+    setFlashActive(false);
+    pendingClampRef.current = false;
+    hasClampedThisRound.current = false;
   }, [roomId, roundNumber]);
+
+  useEffect(() => {
+    if (!timerEnabled) {
+      pendingClampRef.current = false;
+      return;
+    }
+    if (pendingClampRef.current && timerReady) {
+      pendingClampRef.current = false;
+      clampRemainingRef.current(15);
+    }
+  }, [timerEnabled, timerReady]);
+
+  useEffect(() => {
+    return () => {
+      if (submissionNoticeTimeoutRef.current && typeof window !== 'undefined') {
+        window.clearTimeout(submissionNoticeTimeoutRef.current);
+        submissionNoticeTimeoutRef.current = null;
+      }
+      if (flashTimeoutRef.current && typeof window !== 'undefined') {
+        window.clearTimeout(flashTimeoutRef.current);
+        flashTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!isCompeteMode || !roomId || typeof roundNumber !== 'number' || Number.isNaN(roundNumber)) {
@@ -1032,6 +1187,8 @@ const GameRoundPage = () => {
     setHasGuessedLocation(true);
   };
 
+  const chatEnabled = false;
+
   useEffect(() => {
     // Always synchronize the context room ID with the URL room ID and ensure membership
     if (!isContextLoading && roomId) {
@@ -1085,6 +1242,7 @@ const GameRoundPage = () => {
   return (
     // Use relative positioning to allow absolute positioning for the button
     <div className="relative w-full min-h-screen flex flex-col">
+      {flashActive && <div className="submission-flash" />}
       {/* Progress bar at the very top */}
       <div className="w-full bg-history-primary absolute top-0 z-50">
         <div className="max-w-7xl mx-auto">
@@ -1121,13 +1279,14 @@ const GameRoundPage = () => {
         onOpenLevelIntro={() => { setIntroSource('hub'); setShowIntro(true); }}
         peerMarkers={peerMarkers}
         peerRoster={peerRoster}
-        onOpenChat={chatStatus === 'open' || chatStatus === 'connecting' || chatStatus === 'full' ? toggleChat : undefined}
-        isChatOpen={isChatOpen}
-        chatMessageCount={chatMessages.length}
+        onOpenChat={chatEnabled ? toggleChat : undefined}
+        isChatOpen={chatEnabled ? isChatOpen : false}
+        chatMessageCount={chatEnabled ? chatMessages.length : 0}
         avatarClusterRef={avatarClusterRef}
         waitingForPeers={waitingForPeers}
         submittedCount={submittedCounts.submitted}
         totalParticipants={submittedCounts.total}
+        submissionNotice={submissionNotice}
       />
       
       {/* Level Up Intro overlay BEFORE starting Round 1 (Level Up only) */}

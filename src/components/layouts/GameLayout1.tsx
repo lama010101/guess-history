@@ -72,6 +72,7 @@ export interface GameLayout1Props {
   waitingForPeers?: boolean;
   submittedCount?: number;
   totalParticipants?: number;
+  submissionNotice?: string | null;
 }
 
 const GameLayout1: React.FC<GameLayout1Props> = ({
@@ -110,6 +111,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   waitingForPeers = false,
   submittedCount,
   totalParticipants,
+  submissionNotice = null,
 }) => {
   const [isImageFullScreen, setIsImageFullScreen] = useState(true);
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
@@ -368,6 +370,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             waitingForPeers={waitingForPeers}
             submittedCount={submittedCount}
             totalParticipants={totalParticipants}
+            submissionNotice={submissionNotice}
           />
         </div>
       </div>

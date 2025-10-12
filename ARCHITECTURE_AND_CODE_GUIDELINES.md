@@ -316,18 +316,35 @@
   - `src/hooks/useGamePreparation.ts`
   - `src/contexts/GameContext.tsx`
   - `src/utils/imageHistory.ts`
+
 - Determinism rules:
-  - The seed for a multiplayer start is `uuidv5(\"${roomCode}:${startedAt}\", uuidv5.URL)` emitted by the lobby server in the `start` event.
+  - The seed for a multiplayer start is `uuidv5("${roomCode}:${startedAt}", uuidv5.URL)` emitted by the lobby server in the `start` event.
   - When `roomId` is provided (multiplayer), `useGamePreparation.prepare()` calls the RPC `create_game_session_and_pick_images` with `p_user_id = NULL` (ignoring per-user history) to ensure every client computes from the same eligible set.
   - The RPC persists the ordered `image_ids` to `public.game_sessions` under `room_id`; late joiners and refreshes hydrate via `getOrPersistRoomImages(roomId, seed, count)` restoring the exact stored order.
   - Ordering is deterministic (`ORDER BY md5(p_seed || image_id)`) so all players see the same 5 images in the same order for a given room/startedAt.
   - Rationale:
     - Passing a real `p_user_id` allowed each client’s personal history to exclude different images, which could diverge the selection/order even with the same seed. Setting `p_user_id = NULL` for multiplayer avoids this and restores strict cross-player consistency.
 
+#### Update (2025-10-12): Seeded Hash Sampling & Multiplayer Fallbacks
+
+- **Migrations**
+  - `supabase/migrations/20251012_update_game_prep_sampling_seeded_hash_fix.sql`
+    - Redefines `public.create_game_session_and_pick_images` to order all eligible images by `md5(p_seed || id)` and casts `row_number()` to `integer`, fixing the previous bigint mismatch.
+  - `supabase/migrations/20251012_update_game_prep_sampling_add_fallback.sql`
+    - Adds a fallback pass that ignores player history when fewer than `p_count` images remain, guaranteeing at least `p_count` rows.
+- **Client flow (`src/hooks/useGamePreparation.ts`)**
+  - Multiplayer preparation first calls `getOrPersistRoomImages(roomId, seed, count)`; this seeds, persists, and hydrates the deterministic list when available.
+  - If no persisted list exists yet, the hook invokes `create_game_session_and_pick_images` with `p_room_id = NULL` (and `count * 10` when multiplayer) to obtain a seeded batch, then slices to `count` and upserts `public.game_sessions` so late joiners hydrate the same order.
+  - The RPC only receives `p_user_id` when `usePlayerHistory` is requested and a `userId` is available (solo/host-history flows). Guests in multiplayer never send their own history, preventing divergent exclusions.
+  - As a last resort, the hook retries `getOrPersistRoomImages` to keep room selection consistent if the RPC yields zero rows.
+- **Solo impact**
+  - Solo shares the seeded-hash ordering but continues to pass the user’s history (`p_user_id`) so repeated images are avoided per player.
+
 #### Multiplayer Round Participation Tracking (2025-10-09)
 
 - Files:
   - `server/lobby.ts`
+{{ ... }}
   - `src/lib/partyClient.ts`
   - `src/hooks/useLobbyChat.ts`
 - Behavior:

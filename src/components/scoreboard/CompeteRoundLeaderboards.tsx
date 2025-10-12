@@ -13,6 +13,11 @@ interface LeaderboardCardProps {
   currentUserId: string | null;
 }
 
+const formatPenalty = (accDebt?: number) => {
+  if (accDebt == null || accDebt <= 0) return null;
+  return `-${Math.round(accDebt)}%`;
+};
+
 const LeaderboardCard: React.FC<LeaderboardCardProps> = ({ title, rows, currentUserId }) => {
   return (
     <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4 text-white shadow-md">
@@ -33,6 +38,14 @@ const LeaderboardCard: React.FC<LeaderboardCardProps> = ({ title, rows, currentU
                   : index === rows.length - 1
                     ? 'rounded-b-lg'
                     : '';
+                const penaltyText = formatPenalty(row.accDebt);
+                const netAccuracy = Math.round(row.value ?? 0);
+                const detailParts: string[] = [];
+                if (penaltyText) {
+                  detailParts.push(penaltyText);
+                }
+                detailParts.push(`${netAccuracy}%`);
+
                 return (
                   <tr
                     key={`${title}:${row.userId}`}
@@ -44,7 +57,7 @@ const LeaderboardCard: React.FC<LeaderboardCardProps> = ({ title, rows, currentU
                       </span>
                     </td>
                     <td className={`py-2 pr-0 text-right ${isCurrent ? 'font-semibold text-white' : 'font-medium text-neutral-200'}`}>
-                      {Math.round(row.value)}
+                      {detailParts.join(' ')}
                     </td>
                   </tr>
                 );

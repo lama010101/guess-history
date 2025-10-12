@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRoundPeers } from '@/hooks/useRoundPeers';
 import { useGame } from '@/contexts/GameContext';
-import { calculateLocationAccuracy, calculateTimeAccuracy } from '@/utils/gameCalculations';
+import { calculateLocationAccuracy, calculateTimeAccuracy, computeRoundNetPercent } from '@/utils/gameCalculations';
 import { supabase } from '@/integrations/supabase/client';
 import { useSyncRoundScores } from '@/hooks/useSyncRoundScores';
 
@@ -12,6 +12,8 @@ export interface LeaderRow {
   xpTotal?: number;
   timeAccuracy?: number;
   locationAccuracy?: number;
+  accDebt?: number;
+  baseAccuracy?: number;
 }
 
 export interface CompeteLeaderboardState {
@@ -174,11 +176,22 @@ export function useCompeteRoundLeaderboards(
         : null;
       const locationAcc = pickNumber(snapshot?.locationAccuracy, fallbackLocationAcc) ?? 0;
 
+      const accDebt = Math.max(0, Math.round(pickNumber((snapshot as any)?.accDebt, peer?.accDebt) ?? 0));
       const overallAccuracy = Math.round((timeAcc + locationAcc) / 2);
+      const netAccuracy = computeRoundNetPercent(timeAcc, locationAcc, accDebt);
 
-      total.push({ userId, displayName, value: overallAccuracy, xpTotal, timeAccuracy: timeAcc, locationAccuracy: locationAcc });
-      when.push({ userId, displayName, value: timeAcc });
-      where.push({ userId, displayName, value: locationAcc });
+      total.push({
+        userId,
+        displayName,
+        value: netAccuracy,
+        xpTotal,
+        timeAccuracy: timeAcc,
+        locationAccuracy: locationAcc,
+        accDebt,
+        baseAccuracy: overallAccuracy,
+      });
+      when.push({ userId, displayName, value: timeAcc, accDebt });
+      where.push({ userId, displayName, value: locationAcc, accDebt });
     });
 
     total.sort(sortDescending);

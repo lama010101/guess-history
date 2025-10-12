@@ -534,6 +534,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       const newRoomId = settings?.roomId && settings.roomId.trim().length > 0
         ? settings.roomId
         : `room_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const lobbySeed = settings?.seed ?? null;
       const newGameId = uuidv4();
       setGameId(newGameId);
       const isMultiplayer = !!settings?.roomId && !!settings?.seed;
@@ -550,17 +551,17 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       let preparedImages: GameImage[] | null = null;
 
       if (isMultiplayer) {
-        const useHostHistory = !!settings?.useHostHistory;
-        const multiplayerUserId = useHostHistory ? user?.id ?? null : null;
-        if (useHostHistory && !multiplayerUserId) {
-          console.warn('[GameContext] Host history requested but userId missing; falling back to shared pool');
+        const isHostPlayer = settings?.useHostHistory === true;
+        const multiplayerUserId = isHostPlayer ? user?.id ?? null : null;
+        if (isHostPlayer && !multiplayerUserId) {
+          console.warn('[GameContext] Host history requested but userId missing; proceeding without history filter');
         }
         const prep = await prepare({
           userId: multiplayerUserId,
           roomId: newRoomId,
           count: ROUNDS_PER_GAME,
-          seed: settings?.seed ?? null,
-          usePlayerHistory: useHostHistory && !!multiplayerUserId,
+          seed: lobbySeed,
+          usePlayerHistory: isHostPlayer,
         });
         preparedImages = prep.images.map((img) => ({
           id: img.id,
@@ -599,7 +600,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           userId: user?.id ?? null,
           roomId: null,
           count: ROUNDS_PER_GAME,
-          seed: null,
+          seed: lobbySeed,
         });
         preparedImages = prep.images.map((img) => ({
           id: img.id,
@@ -646,7 +647,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           await supabase
             .from('game_sessions' as any)
             .upsert(
-              { room_id: newRoomId, seed: newRoomId, image_ids: imageIds, started_at: new Date().toISOString() },
+              { room_id: newRoomId, seed: lobbySeed ?? newRoomId, image_ids: imageIds, started_at: new Date().toISOString() },
               { onConflict: 'room_id' }
             );
         } catch (e) {

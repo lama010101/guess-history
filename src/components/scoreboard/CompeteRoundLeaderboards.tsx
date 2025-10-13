@@ -38,26 +38,29 @@ const LeaderboardCard: React.FC<LeaderboardCardProps> = ({ title, rows, currentU
                   : index === rows.length - 1
                     ? 'rounded-b-lg'
                     : '';
-                const penaltyText = formatPenalty(row.accDebt);
-                const netAccuracy = Math.round(row.value ?? 0);
-                const detailParts: string[] = [];
-                if (penaltyText) {
-                  detailParts.push(penaltyText);
-                }
-                detailParts.push(`${netAccuracy}%`);
+                const netAccuracy = Math.max(0, Math.round(row.value ?? 0));
+                const rank = index + 1;
+                const hintsUsed = Math.max(0, Number(row.hintsUsed ?? 0));
+                const hintsLabel = `${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'}`;
 
                 return (
                   <tr
                     key={`${title}:${row.userId}`}
                     className={`${baseRowClasses} ${roundedClasses}`.trim()}
                   >
+                    <td className="py-2 pl-3 pr-2 text-neutral-400 font-medium">#{rank}</td>
                     <td className="py-2 pr-2">
-                      <span className={isCurrent ? 'font-semibold text-white' : 'text-neutral-200'}>
-                        {nameWithYou}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className={isCurrent ? 'font-semibold text-white' : 'text-neutral-200'}>
+                          {nameWithYou}
+                        </span>
+                        <span className={hintsUsed > 0 ? 'text-xs text-red-400 font-semibold' : 'text-xs text-red-400'}>
+                          {hintsLabel}
+                        </span>
+                      </div>
                     </td>
-                    <td className={`py-2 pr-0 text-right ${isCurrent ? 'font-semibold text-white' : 'font-medium text-neutral-200'}`}>
-                      {detailParts.join(' ')}
+                    <td className={`py-2 pr-3 text-right ${isCurrent ? 'font-semibold text-white' : 'font-medium text-neutral-200'}`}>
+                      {netAccuracy}%
                     </td>
                   </tr>
                 );

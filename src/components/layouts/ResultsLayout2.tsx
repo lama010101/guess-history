@@ -193,6 +193,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
     totalMetric: number;
     whenMetric: number;
     whereMetric: number;
+    hintsUsed: number;
   };
 
   const selfUserId = user?.id || 'self';
@@ -227,6 +228,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
       totalMetric: clampPercent(netAccuracy),
       whenMetric: clampPercent(netTimeAccuracy),
       whereMetric: clampPercent(netLocationAccuracy),
+      hintsUsed: Math.max(0, Number(result?.hintsUsed ?? 0)),
     });
 
     for (const peer of peers || []) {
@@ -241,6 +243,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
         totalMetric: clampPercent(peer.accuracy),
         whenMetric: normalizedTime,
         whereMetric: normalizedWhere,
+        hintsUsed: Math.max(0, Number(peer.hintsUsed ?? 0)),
       });
     }
 
@@ -250,7 +253,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   const hasLeaderboardPeers = leaderboardEntries.length > 1;
 
   const renderLeaderboardTable = (
-    rows: Array<{ userId: string; displayName: string; value: number }>,
+    rows: Array<{ userId: string; displayName: string; value: number; hintsUsed?: number }>,
     highlightUserId: string | null,
     metric: 'total' | 'when' | 'where'
   ) => {
@@ -269,13 +272,20 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                 : index === rows.length - 1
                   ? 'rounded-b-xl'
                   : '';
+              const rank = index + 1;
+              const hintsUsed = Math.max(0, Number(entry.hintsUsed ?? 0));
+              const hintsLabel = `${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'}`;
               return (
                 <tr
                   key={`${metric}-${entry.userId}`}
                   className={cn('bg-neutral-800/70', roundedClasses)}
                 >
+                  <td className="py-2 px-3 text-neutral-400 font-medium">#{rank}</td>
                   <td className="py-2 px-3">
-                    <span className={cn('text-neutral-200', isHighlighted && 'font-semibold text-white')}>{rowName}</span>
+                    <div className="flex flex-col">
+                      <span className={cn('text-neutral-200', isHighlighted && 'font-semibold text-white')}>{rowName}</span>
+                      <span className="text-xs text-red-400 font-semibold">{hintsLabel}</span>
+                    </div>
                   </td>
                   <td className="py-2 px-3 text-right">
                     <span className={cn('font-medium text-neutral-200', isHighlighted && 'font-semibold text-white')}>{`${roundedValue}%`}</span>
@@ -320,6 +330,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
         : metric === 'where'
           ? entry.whereMetric
           : entry.totalMetric,
+      hintsUsed: entry.hintsUsed,
     }));
 
     return renderLeaderboardTable(sorted, selfUserId, metric);

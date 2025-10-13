@@ -164,16 +164,19 @@ const RoundResultsPage = () => {
         userId: row.userId,
         displayName: row.displayName,
         value: row.value ?? 0,
+        hintsUsed: row.hintsUsed ?? 0,
       })),
       when: miniLeaderboards.time.map((row) => ({
         userId: row.userId,
         displayName: row.displayName,
         value: row.value ?? 0,
+        hintsUsed: row.hintsUsed ?? 0,
       })),
       where: miniLeaderboards.location.map((row) => ({
         userId: row.userId,
         displayName: row.displayName,
         value: row.value ?? 0,
+        hintsUsed: row.hintsUsed ?? 0,
       })),
       currentUserId: user?.id ?? null,
     };
@@ -377,7 +380,7 @@ const RoundResultsPage = () => {
 
       // Construct the object matching LayoutRoundResultType from utils/resultsFetching
       const isCorrect = locationAccuracy >= 95; // Consider 95%+ as correct
-    const layoutResult: LayoutRoundResultType = {
+      const layoutResult: LayoutRoundResultType = {
           // Fields identified from linter errors & ResultsLayout2 usage
           imageId: img.id, 
           eventLat: ctxResult.actualCoordinates.lat, // Use actual coords
@@ -397,6 +400,7 @@ const RoundResultsPage = () => {
           xpWhen: xpWhen,
           // Include hint information
           hintDebts: debts, // Pass hint debts to the layout
+          hintsUsed,
           // Include image details if the type definition requires them
           imageTitle: img.title || 'Untitled',
           imageDescription: img.description || 'No description.',

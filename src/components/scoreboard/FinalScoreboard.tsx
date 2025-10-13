@@ -16,6 +16,7 @@ type FinalRow = {
   rounds_played: number | null;
   avg_accuracy: number | null;
   net_avg_accuracy: number | null;
+  total_hints_used?: number | null;
 };
 
 const FinalScoreboard: React.FC<FinalScoreboardProps> = ({ roomId }) => {
@@ -73,27 +74,25 @@ const FinalScoreboard: React.FC<FinalScoreboardProps> = ({ roomId }) => {
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead>
-              <tr className="text-neutral-400">
-                <th className="text-left py-2 pr-2">Player</th>
-                <th className="text-right py-2 pr-2">Net XP</th>
-                <th className="text-right py-2 pr-2">Total XP</th>
-                <th className="text-right py-2 pr-2">-XP</th>
-                <th className="text-right py-2 pr-2">Net Acc</th>
-              </tr>
-            </thead>
             <tbody>
-              {rows.map((r) => {
+              {rows.map((r, index) => {
                 const isMe = currentUserId && r.user_id === currentUserId;
+                const rank = index + 1;
+                const name = r.display_name || 'Player';
+                const nameWithYou = isMe ? `(You) ${name}` : name;
+                const hintsUsed = Math.max(0, Math.round(r.total_hints_used ?? 0));
+                const netAccuracy = Math.max(0, Math.round(r.net_avg_accuracy ?? r.avg_accuracy ?? 0));
+                const hintsLabel = `${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'}`;
                 return (
-                  <tr key={r.user_id} className={isMe ? 'bg-neutral-800/50' : ''}>
+                  <tr key={r.user_id} className={isMe ? 'bg-neutral-800/60' : 'bg-neutral-800/40'}>
+                    <td className="py-2 pl-3 pr-2 text-neutral-400 font-medium">#{rank}</td>
                     <td className="py-2 pr-2">
-                      <span className={isMe ? 'font-semibold text-white' : ''}>{r.display_name || 'Player'}</span>
+                      <div className="flex flex-col">
+                        <span className={isMe ? 'font-semibold text-white' : 'text-neutral-200'}>{nameWithYou}</span>
+                        <span className="text-xs text-red-400 font-semibold">{hintsLabel}</span>
+                      </div>
                     </td>
-                    <td className="text-right py-2 pr-2">{Math.max(0, Math.round(r.net_xp ?? 0))}</td>
-                    <td className="text-right py-2 pr-2 text-neutral-200">{Math.max(0, Math.round(r.total_xp ?? 0))}</td>
-                    <td className="text-right py-2 pr-2 text-red-400">-{Math.max(0, Math.round(r.total_xp_debt ?? 0))}</td>
-                    <td className="text-right py-2 pr-2">{Math.round(r.net_avg_accuracy ?? r.avg_accuracy ?? 0)}%</td>
+                    <td className="py-2 pr-3 text-right font-semibold text-white">{netAccuracy}%</td>
                   </tr>
                 );
               })}

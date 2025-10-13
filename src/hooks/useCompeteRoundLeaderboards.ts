@@ -14,6 +14,7 @@ export interface LeaderRow {
   locationAccuracy?: number;
   accDebt?: number;
   baseAccuracy?: number;
+  hintsUsed?: number;
 }
 
 export interface CompeteLeaderboardState {
@@ -179,6 +180,9 @@ export function useCompeteRoundLeaderboards(
       const accDebt = Math.max(0, Math.round(pickNumber((snapshot as any)?.accDebt, peer?.accDebt) ?? 0));
       const overallAccuracy = Math.round((timeAcc + locationAcc) / 2);
       const netAccuracy = computeRoundNetPercent(timeAcc, locationAcc, accDebt);
+      const hintsUsed = Math.max(0, Math.round(pickNumber((snapshot as any)?.hintsUsed, peer?.hintsUsed) ?? 0));
+      const netTime = Math.max(0, Math.round(timeAcc - accDebt));
+      const netLocation = Math.max(0, Math.round(locationAcc - accDebt));
 
       total.push({
         userId,
@@ -189,9 +193,10 @@ export function useCompeteRoundLeaderboards(
         locationAccuracy: locationAcc,
         accDebt,
         baseAccuracy: overallAccuracy,
+        hintsUsed,
       });
-      when.push({ userId, displayName, value: timeAcc, accDebt });
-      where.push({ userId, displayName, value: locationAcc, accDebt });
+      when.push({ userId, displayName, value: netTime, accDebt, hintsUsed });
+      where.push({ userId, displayName, value: netLocation, accDebt, hintsUsed });
     });
 
     total.sort(sortDescending);

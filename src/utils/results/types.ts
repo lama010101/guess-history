@@ -45,6 +45,7 @@ export interface RoundResult {
   source_citation?: string;
   hintDebts?: HintDebt[];
   confidence?: number;
+  hintsUsed?: number;
 }
 
 // Maximum values for calculations

@@ -30,12 +30,15 @@ export interface PeerRoundRow {
   actualLng: number | null;
   submitted: boolean;
   ready: boolean;
+  hintsUsed: number | null;
+  netAccuracy: number | null;
 }
 
 export interface MiniLeaderboardRow {
   userId: string;
   displayName: string;
   value: number | null;
+  hintsUsed: number;
 }
 
 export interface MiniLeaderboards {
@@ -153,7 +156,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
           devLog('RPC denied by RLS; attempting round_results fallback');
           const fallbackQuery = await (supabase as any)
             .from('round_results')
-            .select('user_id, score, accuracy, xp_total, xp_debt, acc_debt, xp_where, xp_when, location_accuracy, time_accuracy, distance_km, guess_year, guess_lat, guess_lng, actual_lat, actual_lng')
+            .select('user_id, score, accuracy, xp_total, xp_debt, acc_debt, xp_where, xp_when, location_accuracy, time_accuracy, distance_km, guess_year, guess_lat, guess_lng, actual_lat, actual_lng, hints_used')
             .eq('room_id', roomId)
             .eq('round_index', oneBasedRound - 1);
           if (!fallbackQuery.error && Array.isArray(fallbackQuery.data)) {
@@ -175,6 +178,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
               guess_lng: row.guess_lng ?? null,
               actual_lat: row.actual_lat ?? null,
               actual_lng: row.actual_lng ?? null,
+              hints_used: row.hints_used ?? null,
             }));
             scoreboardError = null;
             devLog('Fallback round_results rows', scoreboardRows);
@@ -207,7 +211,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       const dbRoundIndex = Math.max(0, oneBasedRound - 1);
       const { data: rrRows, error: rrError } = await (supabase as any)
         .from('round_results')
-        .select('user_id, guess_year, distance_km, guess_lat, guess_lng, actual_lat, actual_lng, xp_where, xp_when, location_accuracy, time_accuracy, xp_total, score, accuracy, xp_debt, acc_debt')
+        .select('user_id, guess_year, distance_km, guess_lat, guess_lng, actual_lat, actual_lng, xp_where, xp_when, location_accuracy, time_accuracy, xp_total, score, accuracy, xp_debt, acc_debt, hints_used')
         .eq('room_id', roomId)
         .eq('round_index', dbRoundIndex);
       devLog('Round results query', { rrRows, rrError });
@@ -275,6 +279,11 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
         const hasScoreboardEntry = !!sb && (
           sb.score != null || sb.accuracy != null || sb.xp_total != null || sb.xp_where != null || sb.xp_when != null
         );
+        const rawHintsUsed = sb?.hints_used ?? rr?.hints_used ?? null;
+        const numericHintsUsed = rawHintsUsed != null ? Number(rawHintsUsed) : null;
+        const rawAccuracy = Number(sb?.accuracy ?? rr?.accuracy ?? 0);
+        const rawAccDebt = Number(sb?.acc_debt ?? rr?.acc_debt ?? 0);
+        const netAccuracy = Math.max(0, rawAccuracy - rawAccDebt);
         return {
           userId: uid,
           displayName: (sp?.display_name ?? sb?.display_name ?? profile?.display_name ?? 'Unknown') as string,
@@ -296,6 +305,8 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
           actualLng: rr?.actual_lng ?? null,
           submitted: hasRoundResult || hasScoreboardEntry,
           ready: sp?.ready === true,
+          hintsUsed: numericHintsUsed,
+          netAccuracy,
         } as PeerRoundRow;
       });
 
@@ -327,6 +338,8 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
             actualLng: null,
             submitted: false,
             ready: sp?.ready === true,
+            hintsUsed: 0,
+            netAccuracy: 0,
           } as PeerRoundRow;
         });
       }
@@ -341,6 +354,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
             userId: peer.userId,
             displayName: peer.displayName,
             value: extractor(peer),
+            hintsUsed: Math.max(0, Number(peer.hintsUsed ?? 0)),
           }))
           .filter((row) => row.value != null && Number.isFinite(Number(row.value)));
 
@@ -357,9 +371,19 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       if (mountedRef.current) {
         setPeers(mergedPeers);
         setMiniLeaderboards({
-          total: buildLeaderboard(peer => (typeof peer.xpTotal === 'number' ? peer.xpTotal : null)),
-          time: buildLeaderboard(peer => (typeof peer.timeAccuracy === 'number' ? peer.timeAccuracy : null)),
-          location: buildLeaderboard(peer => (typeof peer.locationAccuracy === 'number' ? peer.locationAccuracy : null)),
+          total: buildLeaderboard(peer => (typeof peer.netAccuracy === 'number' ? peer.netAccuracy : null)),
+          time: buildLeaderboard(peer => {
+            if (typeof peer.timeAccuracy === 'number') {
+              return Math.max(0, peer.timeAccuracy - Number(peer.accDebt ?? 0));
+            }
+            return null;
+          }),
+          location: buildLeaderboard(peer => {
+            if (typeof peer.locationAccuracy === 'number') {
+              return Math.max(0, peer.locationAccuracy - Number(peer.accDebt ?? 0));
+            }
+            return null;
+          }),
         });
         setError(null);
       }

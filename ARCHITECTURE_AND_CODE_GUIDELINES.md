@@ -354,6 +354,21 @@
   - Completing a round clears per-round tracking and carries the observed participant count forward so subsequent rounds expect the same players unless the roster changes.
   - Disconnects prune the participant key from all tracking maps to keep totals accurate.
 
+### Countdown Rush Threshold + Badge (2025-10-12)
+
+- Components updated: `src/components/game/TimerDisplay.tsx`, `src/components/navigation/GameOverlayHUD.tsx`, `src/components/layouts/FullscreenZoomableImage.tsx`, `src/components/layouts/GameLayout1.tsx`, `src/pages/GameRoundPage.tsx`, `src/components/game/GameHeader.tsx`.
+- `COUNTDOWN_RUSH_THRESHOLD_SEC` constant introduced in `src/constants/timer.ts` and set to 15 seconds.
+- Visual + haptic rush triggers (timer turning red, beeps, vibration) now engage at 15 seconds instead of 10 across all modes.
+- A centered HUD badge displays `15s left` while within the threshold; badge remains visible in fullscreen thanks to overlay integration.
+- Multiplayer clamp logic reuses the same threshold so late submissions force peers down to 15 seconds and play the same rush feedback.
+
+### Compete Results Auto-Advance (2025-10-12)
+
+- Page: `src/pages/compete/results/CompeteSyncRoundResultsPage.tsx`.
+- After a round ends (non-final), a 30-second countdown appears inside the `Next Round` CTA.
+- Countdown auto-navigates to the next round at zero; manual clicks cancel the timer and navigate immediately.
+- Countdown is disabled on the final round to avoid accidental auto-finish.
+
 ### Compete Mode — SYNC/ASYNC Variants and Leaderboards (2025-09-13)
 
 - __Top Navbar on /compete__

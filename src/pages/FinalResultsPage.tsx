@@ -89,6 +89,12 @@ const FinalResultsPage = () => {
     return getLevelUpConstraints(lvl);
   }, [isLevelUp, currentLevelFromPath]);
 
+  const resolveLocationAccuracy = React.useCallback(
+    (distanceKm: number | null | undefined): number => {
+      return typeof distanceKm === 'number' ? calculateLocationAccuracy(distanceKm) : 0;
+    },
+  []);
+
   React.useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
@@ -116,7 +122,7 @@ const FinalResultsPage = () => {
       const roundScores = roundResults.map((result, index) => {
         const img = images[index];
         if (!result || !img) return { roundXP: 0, roundPercent: 0 };
-        const locationXP = calculateLocationAccuracy(result.distanceKm || 0);
+        const locationXP = resolveLocationAccuracy(result?.distanceKm);
         const timeXP = calculateTimeAccuracy(result.guessYear || 0, img.year || 0);
         const roundXP = locationXP + timeXP;
         const roundPercent = (roundXP / 200) * 100;
@@ -190,7 +196,7 @@ const FinalResultsPage = () => {
         const result = roundResults[idx];
         if (!img || !result) return { netPercent: 0, timeNet: 0, locNet: 0 };
         const timeAcc = calculateTimeAccuracy(result.guessYear || 0, img.year || 0);
-        const locAcc = calculateLocationAccuracy(result.distanceKm || 0);
+        const locAcc = resolveLocationAccuracy(result?.distanceKm);
         const rid = effectiveRoomId ? makeRoundId(effectiveRoomId, idx + 1) : (gameId ? makeRoundId(gameId, idx + 1) : '');
         const accDebt = rid ? (perRoundAccDebt[rid] || 0) : 0;
         const netPercent = computeRoundNetPercent(timeAcc, locAcc, accDebt);
@@ -284,7 +290,7 @@ const FinalResultsPage = () => {
         const img = images[index];
         return sum + (result && img ? calculateTimeAccuracy(result.guessYear || 0, img.year || 0) : 0);
       }, 0);
-      const totalWhereXP = roundResults.reduce((sum, result) => sum + calculateLocationAccuracy(result.distanceKm || 0), 0);
+      const totalWhereXP = roundResults.reduce((sum, result) => sum + resolveLocationAccuracy(result?.distanceKm), 0);
       const totalWhenAccuracy = totalWhenXP > 0 ? (totalWhenXP / (roundResults.length * 100)) * 100 : 0;
       const totalWhereAccuracy = totalWhereXP > 0 ? (totalWhereXP / (roundResults.length * 100)) * 100 : 0;
 
@@ -485,7 +491,7 @@ const FinalResultsPage = () => {
   const roundScores = roundResults.map((result, index) => {
     const img = safeImages[index];
     if (!result || !img) return { roundXP: 0, roundPercent: 0 };
-    const locationXP = calculateLocationAccuracy(result.distanceKm || 0);
+    const locationXP = resolveLocationAccuracy(result?.distanceKm);
     const timeXP = calculateTimeAccuracy(result.guessYear || 0, img.year || 0);
     const roundXP = locationXP + timeXP;
     const roundPercent = (roundXP / 200) * 100;
@@ -499,7 +505,7 @@ const FinalResultsPage = () => {
     return sum + (result && img ? calculateTimeAccuracy(result.guessYear || 0, img.year || 0) : 0);
   }, 0);
   const totalWhereXP = roundResults.reduce((sum, result) => {
-    return sum + calculateLocationAccuracy(result.distanceKm || 0);
+    return sum + resolveLocationAccuracy(result?.distanceKm);
   }, 0);
 
   // Compute net values using aggregated debts (from DB)
@@ -507,7 +513,7 @@ const FinalResultsPage = () => {
     const result = roundResults[idx];
     if (!img || !result) return { netPercent: 0, timeNet: 0, locNet: 0 };
     const timeAcc = calculateTimeAccuracy(result.guessYear || 0, img.year || 0);
-    const locAcc = calculateLocationAccuracy(result.distanceKm || 0);
+    const locAcc = resolveLocationAccuracy(result?.distanceKm);
     const rid = roomId ? makeRoundId(roomId, idx + 1) : (gameId ? makeRoundId(gameId, idx + 1) : '');
     const accDebt = rid ? (accDebtByRound[rid] || 0) : 0;
     const netPercent = computeRoundNetPercent(timeAcc, locAcc, accDebt);

@@ -287,7 +287,7 @@ export function useLobbyChat({
     if (!ws) {
       pendingQueueRef.current.push(payload);
       scheduleReconnect();
-      return false;
+      return true;
     }
     if (ws.readyState === WebSocket.OPEN) {
       try {
@@ -297,16 +297,16 @@ export function useLobbyChat({
         setLastError(err instanceof Error ? err.message : String(err));
         pendingQueueRef.current.push(payload);
         scheduleReconnect();
-        return false;
+        return true;
       }
     }
     if (ws.readyState === WebSocket.CONNECTING) {
       pendingQueueRef.current.push(payload);
-      return false;
+      return true;
     }
     pendingQueueRef.current.push(payload);
     scheduleReconnect();
-    return false;
+    return true;
   }, [scheduleReconnect]);
 
   const sendMessage = useCallback((rawMessage: string) => {

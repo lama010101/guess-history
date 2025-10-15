@@ -358,7 +358,6 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       const normalizeForSort = (value: number | null) => (typeof value === 'number' && Number.isFinite(value) ? value : -Infinity);
       const buildLeaderboard = (extractor: (peer: PeerRoundRow) => number | null): MiniLeaderboardRow[] => {
         const rows = mergedPeers
-          .filter((peer) => peer.ready)
           .map((peer) => ({
             userId: peer.userId,
             displayName: peer.displayName,

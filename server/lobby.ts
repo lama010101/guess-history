@@ -190,9 +190,12 @@ export default class Lobby implements Party.Server {
       return true;
     }
     if (!token) {
-      console.warn("lobby: join missing invite token while INVITE_HMAC_SECRET is configured", {
-        roomId: this.room.id,
-      });
+      console.warn(
+        "lobby: join missing invite token while INVITE_HMAC_SECRET is configured — permitting join for now",
+        {
+          roomId: this.room.id,
+        },
+      );
       return true;
     }
     try {

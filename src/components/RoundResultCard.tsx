@@ -74,7 +74,12 @@ const RoundResultCard: React.FC<RoundResultCardProps> = ({ image, result, index 
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600 dark:text-gray-400">{result.distanceKm == null ? 'No guess' : (result.distanceKm === 0 ? <span className="text-green-600 dark:text-green-400 font-medium">Perfect!</span> : (() => { const d = formatDistanceFromKm(result.distanceKm, distanceUnit); return `${d.value} ${d.unitLabel} away`; })())}</span>
                       <div className="flex items-center gap-2">
-                        <Badge variant="accuracy" className="text-xs">{formatInteger(calculateLocationAccuracy(result.distanceKm || 0))}%</Badge>
+                        <Badge
+                          variant="accuracy"
+                          className="text-xs"
+                        >
+                          {formatInteger(result.distanceKm == null ? 0 : calculateLocationAccuracy(result.distanceKm))}%
+                        </Badge>
                         <Badge variant="xp" className="text-xs">{formatInteger(result.xpWhere ?? 0)} XP</Badge>
                       </div>
                     </div>

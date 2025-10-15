@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -8,8 +9,34 @@ import { useAuth } from '@/contexts/AuthContext';
  * - Avoids flicker by waiting for `isLoading` to finish before deciding
  */
 const RequireAuthSession = () => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, continueAsGuest } = useAuth();
   const location = useLocation();
+  const [attemptingGuestSession, setAttemptingGuestSession] = useState(false);
+  const guestAttemptRef = useRef(false);
+
+  useEffect(() => {
+    if (isLoading || user || guestAttemptRef.current) {
+      return;
+    }
+
+    guestAttemptRef.current = true;
+    let cancelled = false;
+    setAttemptingGuestSession(true);
+
+    continueAsGuest()
+      .catch(() => {
+        guestAttemptRef.current = false;
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setAttemptingGuestSession(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [continueAsGuest, isLoading, user]);
 
   if (isLoading) {
     try {
@@ -19,6 +46,9 @@ const RequireAuthSession = () => {
   }
 
   if (!user) {
+    if (attemptingGuestSession) {
+      return null;
+    }
     try {
       console.debug('[RequireAuthSession] No user session found. Redirecting to / from', location.pathname);
     } catch {}

@@ -448,7 +448,7 @@ const FinalResultsPage = () => {
 
   // Share game results via Web Share API with clipboard fallback
   const handleShare = async () => {
-    const shareText = `I scored ${totalScore} XP (${totalPercentage}% accuracy) in Guess History! Can you beat my score?`;
+    const shareText = `I achieved ${totalPercentage}% accuracy (${totalScore} XP) in Guess-History! Can you beat my score?`;
     const shareData = {
       title: 'Guess History - My Game Results',
       text: shareText,

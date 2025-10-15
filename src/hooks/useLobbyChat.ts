@@ -18,6 +18,12 @@ export interface RoundCompleteBroadcast {
   lobbySize: number;
 }
 
+export interface ResultsReadyBroadcast {
+  roundNumber: number;
+  readyCount: number;
+  totalPlayers: number;
+}
+
 export interface LobbyChatMessage {
   id: string;
   from: string;
@@ -33,6 +39,7 @@ interface UseLobbyChatOptions {
   onSubmission?: (payload: SubmissionBroadcast) => void;
   onRoundComplete?: (payload: RoundCompleteBroadcast) => void;
   onRoster?: (players: { id: string; name: string; ready: boolean; host: boolean }[]) => void;
+  onResultsReady?: (payload: ResultsReadyBroadcast) => void;
 }
 
 const MAX_RETRIES = 5;
@@ -50,6 +57,7 @@ export function useLobbyChat({
   onSubmission,
   onRoundComplete,
   onRoster: onRosterCallback,
+  onResultsReady,
 }: UseLobbyChatOptions) {
   const [status, setStatus] = useState<LobbyChatStatus>('idle');
   const [messages, setMessages] = useState<LobbyChatMessage[]>([]);
@@ -62,10 +70,11 @@ export function useLobbyChat({
   const latestDisplayNameRef = useRef(displayName.trim());
   const latestUserIdRef = useRef<string | undefined>(userId ?? undefined);
   const statusRef = useRef<LobbyChatStatus>('idle');
-  const latestCallbacksRef = useRef<Pick<UseLobbyChatOptions, 'onSubmission' | 'onRoundComplete' | 'onRoster'>>({
+  const latestCallbacksRef = useRef<Pick<UseLobbyChatOptions, 'onSubmission' | 'onRoundComplete' | 'onRoster' | 'onResultsReady'>>({
     onSubmission,
     onRoundComplete,
     onRoster: onRosterCallback,
+    onResultsReady,
   });
   const pendingQueueRef = useRef<LobbyClientMessage[]>([]);
 
@@ -83,8 +92,8 @@ export function useLobbyChat({
   }, []);
 
   const scheduleReconnect = useCallback(() => {
-    if (!enabled) return;
-    if (!roomCode) return;
+    if (!enabled || !roomCode) return;
+    if (reconnectTimerRef.current) return;
     if (retryRef.current >= MAX_RETRIES) {
       setStatus('closed');
       return;
@@ -92,12 +101,18 @@ export function useLobbyChat({
     retryRef.current += 1;
     const delay = Math.min(1000 * 2 ** (retryRef.current - 1), MAX_BACKOFF_MS);
     reconnectTimerRef.current = setTimeout(() => {
+      reconnectTimerRef.current = null;
       connect();
     }, delay);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, roomCode]);
 
   const connect = useCallback(() => {
+    const existing = wsRef.current;
+    if (existing && (existing.readyState === WebSocket.OPEN || existing.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+
     cleanup();
 
     if (!enabled || !roomCode) {
@@ -188,6 +203,13 @@ export function useLobbyChat({
                 lobbySize: data.lobbySize,
               });
               break;
+            case 'results-ready':
+              latestCallbacksRef.current.onResultsReady?.({
+                roundNumber: data.roundNumber,
+                readyCount: data.readyCount,
+                totalPlayers: data.totalPlayers,
+              });
+              break;
             case 'full':
               setStatus('full');
               break;
@@ -230,8 +252,8 @@ export function useLobbyChat({
   }, [userId]);
 
   useEffect(() => {
-    latestCallbacksRef.current = { onSubmission, onRoundComplete, onRoster: onRosterCallback };
-  }, [onSubmission, onRoundComplete, onRosterCallback]);
+    latestCallbacksRef.current = { onSubmission, onRoundComplete, onRoster: onRosterCallback, onResultsReady };
+  }, [onSubmission, onRoundComplete, onRosterCallback, onResultsReady]);
 
   useEffect(() => {
     if (!enabled || !roomCode) {
@@ -262,20 +284,29 @@ export function useLobbyChat({
 
   const sendPayload = useCallback((payload: LobbyClientMessage) => {
     const ws = wsRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
+    if (!ws) {
       pendingQueueRef.current.push(payload);
       scheduleReconnect();
       return false;
     }
-    try {
-      ws.send(JSON.stringify(payload));
-      return true;
-    } catch (err) {
-      setLastError(err instanceof Error ? err.message : String(err));
+    if (ws.readyState === WebSocket.OPEN) {
+      try {
+        ws.send(JSON.stringify(payload));
+        return true;
+      } catch (err) {
+        setLastError(err instanceof Error ? err.message : String(err));
+        pendingQueueRef.current.push(payload);
+        scheduleReconnect();
+        return false;
+      }
+    }
+    if (ws.readyState === WebSocket.CONNECTING) {
       pendingQueueRef.current.push(payload);
-      scheduleReconnect();
       return false;
     }
+    pendingQueueRef.current.push(payload);
+    scheduleReconnect();
+    return false;
   }, [scheduleReconnect]);
 
   const sendMessage = useCallback((rawMessage: string) => {

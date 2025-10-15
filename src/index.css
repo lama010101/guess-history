@@ -6,6 +6,63 @@
 @tailwind utilities;
 
 @layer components {
+  .slider-range {
+    background-color: hsl(var(--secondary));
+  }
+
+  .slider-thumb {
+    background-color: hsl(var(--secondary));
+    border-color: hsl(var(--secondary));
+  }
+
+  .slider-thumb::after {
+    content: "";
+    position: absolute;
+    inset: -10.5px;
+    border-radius: 9999px;
+    background-color: hsl(var(--secondary) / 0.5);
+    opacity: 0.5;
+    pointer-events: none;
+    transition: opacity 150ms ease;
+  }
+
+  .slider-thumb:focus-visible::after {
+    opacity: 0.7;
+  }
+
+  .switch-root[data-state="checked"] {
+    background-color: hsl(var(--secondary));
+  }
+
+  .switch-thumb {
+    background-color: #ffffff;
+    border-color: transparent;
+  }
+
+  .dark .switch-thumb {
+    background-color: #ffffff;
+  }
+
+  .switch-thumb[data-state="checked"] {
+    background-color: hsl(var(--secondary));
+    border-color: hsl(var(--secondary));
+  }
+
+  .switch-thumb::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
+    border-radius: 9999px;
+    background-color: hsl(var(--secondary) / 0.3);
+    opacity: 0;
+    transition: opacity 150ms ease;
+    pointer-events: none;
+  }
+
+  .switch-thumb[data-state="checked"]::after {
+    opacity: 1;
+  }
+
   /* Custom styles for the time slider */
   .time-slider {
     -webkit-appearance: none;

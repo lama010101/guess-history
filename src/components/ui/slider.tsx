@@ -17,13 +17,13 @@ const Slider = React.forwardRef<
   >
     {/* Track: neutral line (gray on light, white on dark) */}
     <SliderPrimitive.Track className="relative h-1 w-full grow overflow-hidden rounded-full bg-gray-300 dark:bg-white border-none">
-      {/* Hide filled range to remove trailing orange line */}
-      <SliderPrimitive.Range className="hidden" />
+      <SliderPrimitive.Range className="absolute h-full slider-range" />
     </SliderPrimitive.Track>
     {/* Thumb: ~33% smaller than previous (21px), 100% orange, halo persists */}
     <SliderPrimitive.Thumb
-      className="relative block h-[21px] w-[21px] rounded-full bg-orange-500 border-2 border-orange-500 transition-colors focus-visible:outline-none focus-visible:ring-0 disabled:pointer-events-none disabled:opacity-50
-                 after:content-[''] after:absolute after:-inset-[10.5px] after:rounded-full after:bg-orange-500/50 after:opacity-50 after:pointer-events-none after:transition-opacity"
+      className={cn(
+        "relative block h-[21px] w-[21px] rounded-full border-2 transition-colors focus-visible:outline-none focus-visible:ring-0 disabled:pointer-events-none disabled:opacity-50 slider-thumb"
+      )}
     />
   </SliderPrimitive.Root>
 ))

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 // Removed Select imports (language option removed)
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import { toast } from '@/components/ui/use-toast';
 import { Moon, Sun, Navigation } from "lucide-react";
 
@@ -157,66 +158,67 @@ const SettingsTab = forwardRef<SettingsTabHandle, SettingsTabProps>(({
           </div>
         </div>
 
-        {/* Distance Units */}
-        <div>
-          <Label className="mb-3 block text-history-primary dark:text-history-light">Distance Units</Label>
-          <RadioGroup 
-            value={updatedSettings.distance_unit ?? distanceUnit}
-            onValueChange={(value) => {
-              const v = (value === 'mi' ? 'mi' : 'km') as 'km' | 'mi';
-              setUpdatedSettings({...updatedSettings, distance_unit: v});
-              setDistanceUnit(v);
-            }}
-            className="flex flex-col sm:flex-row gap-4"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem 
-                value="km" 
-                id="km" 
-                className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" 
-              />
-              <Label htmlFor="km">Kilometers (km)</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem 
-                value="mi" 
-                id="mi" 
-                className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" 
-              />
-              <Label htmlFor="mi">Miles (mi)</Label>
-            </div>
-          </RadioGroup>
-        </div>
+        {/* Distance Units + Map Labels on shared row */}
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-10">
+          <div className="flex-1">
+            <Label className="mb-3 block text-history-primary dark:text-history-light">Distance Units</Label>
+            <RadioGroup 
+              value={updatedSettings.distance_unit ?? distanceUnit}
+              onValueChange={(value) => {
+                const v = (value === 'mi' ? 'mi' : 'km') as 'km' | 'mi';
+                setUpdatedSettings({...updatedSettings, distance_unit: v});
+                setDistanceUnit(v);
+              }}
+              className="flex gap-4 sm:gap-6"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem 
+                  value="km" 
+                  id="km" 
+                  className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" 
+                />
+                <Label htmlFor="km">Kilometers (km)</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem 
+                  value="mi" 
+                  id="mi" 
+                  className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" 
+                />
+                <Label htmlFor="mi">Miles (mi)</Label>
+              </div>
+            </RadioGroup>
+          </div>
 
-        {/* Map Labels Language */}
-        <div>
-          <Label className="mb-3 block text-history-primary dark:text-history-light">Map Labels</Label>
-          <RadioGroup 
-            value={(updatedSettings.language ?? (mapLabelLanguage === 'en' ? 'en' : 'local')) as string}
-            onValueChange={(value) => {
-              const v = value === 'en' ? 'en' : 'local';
-              setUpdatedSettings({ ...updatedSettings, language: v });
-              setMapLabelLanguage(v as 'en' | 'local');
-            }}
-            className="flex flex-col sm:flex-row gap-4"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem 
-                value="local" 
-                id="labels-local" 
-                className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" 
-              />
-              <Label htmlFor="labels-local">Local (native script)</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem 
-                value="en" 
-                id="labels-en" 
-                className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" 
-              />
-              <Label htmlFor="labels-en">English only</Label>
-            </div>
-          </RadioGroup>
+          <div className="flex-1">
+            <Label className="mb-3 block text-history-primary dark:text-history-light">Map Labels</Label>
+            <RadioGroup 
+              value={(updatedSettings.language ?? (mapLabelLanguage === 'en' ? 'en' : 'local')) as string}
+              onValueChange={(value) => {
+                const v = value === 'en' ? 'en' : 'local';
+                setUpdatedSettings({ ...updatedSettings, language: v });
+                setMapLabelLanguage(v as 'en' | 'local');
+              }}
+              className="flex gap-4 sm:gap-6"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem 
+                  value="local" 
+                  id="labels-local" 
+                  className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" 
+                />
+                <Label htmlFor="labels-local">Local (native script)</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem 
+                  value="en" 
+                  id="labels-en" 
+                  className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" 
+                />
+                <Label htmlFor="labels-en">English only</Label>
+              </div>
+            </RadioGroup>
+          </div>
         </div>
         
         {/* Inertia Enable + Level with inline header */}
@@ -235,17 +237,16 @@ const SettingsTab = forwardRef<SettingsTabHandle, SettingsTabProps>(({
           {updatedSettings.inertia_enabled !== false && (
             <div className="mt-2">
               <Label htmlFor="inertia-level" className="block mb-2">Level: {updatedSettings.inertia_level ?? 3}</Label>
-              <input
+              <Slider
                 id="inertia-level"
-                type="range"
+                value={[updatedSettings.inertia_level ?? 3]}
                 min={1}
                 max={5}
                 step={1}
-                value={updatedSettings.inertia_level ?? 3}
-                onChange={(e) => setUpdatedSettings({ ...updatedSettings, inertia_level: Number(e.target.value) })}
-                className="w-full"
+                onValueChange={(values) => setUpdatedSettings({ ...updatedSettings, inertia_level: values[0] })}
+                className="mt-1"
               />
-              <div className="flex justify-between text-xs text-muted-foreground mt-1">
+              <div className="flex justify-between text-xs text-muted-foreground mt-2">
                 <span>Short</span>
                 <span>Long</span>
               </div>

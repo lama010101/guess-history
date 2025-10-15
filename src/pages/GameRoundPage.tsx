@@ -51,6 +51,18 @@ const GameRoundPage: React.FC = () => {
     return idx > 0 ? path.slice(0, idx) : '/solo';
   }, [location.pathname]);
   const isCompeteMode = useMemo(() => modeBasePath.startsWith('/compete'), [modeBasePath]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (isCompeteMode) {
+      document.body.classList.add('mode-compete');
+    } else {
+      document.body.classList.remove('mode-compete');
+    }
+    return () => {
+      document.body.classList.remove('mode-compete');
+    };
+  }, [isCompeteMode]);
   const roundNumber = parseInt(roundNumberStr || '1', 10);
   const currentRoundIndex = roundNumber - 1;
   // Detect Level Up routes and apply theming

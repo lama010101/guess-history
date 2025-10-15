@@ -50,6 +50,12 @@ const SubmissionMessage = z.object({
   roundNumber: z.number().int().min(1).max(100),
 });
 
+const ResultsReadyMessage = z.object({
+  type: z.literal("results-ready"),
+  roundNumber: z.number().int().min(1).max(100),
+  ready: z.boolean(),
+});
+
 const IncomingMessage = z.union([
   JoinMessage,
   ChatMessage,
@@ -58,6 +64,7 @@ const IncomingMessage = z.union([
   KickMessage,
   ProgressMessage,
   SubmissionMessage,
+  ResultsReadyMessage,
   RenameMessage,
 ]);
 
@@ -95,6 +102,12 @@ type RoundCompleteMsg = {
   totalPlayers: number;
   lobbySize: number;
 };
+type ResultsReadyMsg = {
+  type: "results-ready";
+  roundNumber: number;
+  readyCount: number;
+  totalPlayers: number;
+};
 
 type Outgoing =
   | PlayersMsg
@@ -106,7 +119,8 @@ type Outgoing =
   | HelloMsg
   | ProgressMsg
   | SubmissionBroadcastMsg
-  | RoundCompleteMsg;
+  | RoundCompleteMsg
+  | ResultsReadyMsg;
 
 // Env typing for vars
 type Env = {
@@ -138,6 +152,7 @@ export default class Lobby implements Party.Server {
   private ready = new Map<string, boolean>();
   // Map connection id -> user id (when provided)
   private playerUserIds = new Map<string, string | null>();
+  private devInviteBypassLogged = false;
   // First join becomes host
   private hostId: string | null = null;
   // Start flag to avoid duplicate starts
@@ -153,6 +168,7 @@ export default class Lobby implements Party.Server {
   private activeByRound = new Map<number, Set<string>>();
   private expectedParticipants = 0;
   private expectedParticipantsByRound = new Map<number, number>();
+  private resultsReadyByRound = new Map<number, Set<string>>();
 
   constructor(readonly room: Party.Room) {}
 
@@ -163,7 +179,10 @@ export default class Lobby implements Party.Server {
     const secret = env.INVITE_HMAC_SECRET;
     const secretDefined = typeof secret === 'string' && secret.trim().length > 0 && !secret.startsWith('${');
     if (env.ALLOW_DEV_NO_INVITE === '1') {
-      console.warn("lobby: invite enforcement bypassed because ALLOW_DEV_NO_INVITE=1", { roomId: this.room.id });
+      if (!this.devInviteBypassLogged) {
+        console.warn("lobby: invite enforcement bypassed because ALLOW_DEV_NO_INVITE=1", { roomId: this.room.id });
+        this.devInviteBypassLogged = true;
+      }
       return true;
     }
     if (!secretDefined) {
@@ -701,6 +720,7 @@ export default class Lobby implements Party.Server {
               this.expectedParticipants
             );
             this.expectedParticipantsByRound.set(roundNumber, expected);
+            this.resultsReadyByRound.delete(roundNumber);
           }
           const out: ProgressMsg = {
             type: "progress",
@@ -771,6 +791,34 @@ export default class Lobby implements Party.Server {
             this.expectedParticipants = nextExpected;
             this.expectedParticipantsByRound.set(roundNumber + 1, nextExpected);
           }
+          return;
+        }
+
+        if (msg.type === "results-ready") {
+          if (!this.players.has(conn.id)) return;
+          const roundNumber = msg.roundNumber;
+          let readySet = this.resultsReadyByRound.get(roundNumber);
+          if (!readySet) {
+            readySet = new Set();
+            this.resultsReadyByRound.set(roundNumber, readySet);
+          }
+          const participantKey = this.participantKey(conn.id);
+          if (msg.ready) {
+            readySet.add(participantKey);
+          } else {
+            readySet.delete(participantKey);
+          }
+
+          const expectedFromHistory = this.expectedParticipantsByRound.get(roundNumber) ?? this.expectedParticipants;
+          const readyCount = readySet.size;
+          const broadcastPayload: ResultsReadyMsg = {
+            type: "results-ready",
+            roundNumber,
+            readyCount,
+            totalPlayers: Math.max(expectedFromHistory, readyCount),
+          };
+          this.broadcast(broadcastPayload);
+          await this.logEvent("results-ready", broadcastPayload);
           return;
         }
       } catch (err) {

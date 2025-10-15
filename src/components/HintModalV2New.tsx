@@ -248,7 +248,7 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
             <div className="relative mb-2">
               <h2 className="text-2xl font-bold text-center">HINTS</h2>
               <p className="text-gray-300 italic text-center text-sm mt-1 leading-tight">
-                Using a hint will reduce your score. Hints are AI-generated and could contain errors.
+                Using a hint will reduce your score. Hints are generated and verified by AI; rare errors may occur.
               </p>
               {/* requested: two empty lines after the info text */}
               <br />

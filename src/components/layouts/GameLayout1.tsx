@@ -64,6 +64,8 @@ export interface GameLayout1Props {
     displayName: string;
     avatarUrl: string | null;
     isSelf?: boolean;
+    submitted?: boolean;
+    recentlySubmitted?: boolean;
   }>;
   onOpenChat?: () => void;
   isChatOpen?: boolean;

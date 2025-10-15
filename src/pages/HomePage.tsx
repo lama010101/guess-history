@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import GlobalSettingsModal from '@/components/GlobalSettingsModal';
 import { AuthModal } from '@/components/AuthModal';
 import { Slider } from "@/components/ui/slider";
@@ -66,6 +66,8 @@ const HomePage = () => {
   const [pendingMode, setPendingMode] = useState<string | null>(null);
   const [showLoadingPopup, setShowLoadingPopup] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const cardsContainerRef = useRef<HTMLDivElement | null>(null);
+  const levelUpCardRef = useRef<HTMLDivElement | null>(null);
   // Removed Coming Soon popup for Compete
   devLog('[HomePage] Render', { isLoaded, user, isGuest });
   // Timer states
@@ -110,6 +112,19 @@ const HomePage = () => {
 
     loadUserData();
   }, [user, isGuest]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (typeof window === 'undefined') return;
+    if (window.innerWidth >= 768) return;
+    const container = cardsContainerRef.current;
+    const levelUpCard = levelUpCardRef.current;
+    if (!container || !levelUpCard) return;
+    const containerWidth = container.clientWidth;
+    const cardWidth = levelUpCard.clientWidth;
+    const target = levelUpCard.offsetLeft - Math.max(0, (containerWidth - cardWidth) / 2);
+    container.scrollTo({ left: Math.max(0, target), behavior: 'auto' });
+  }, [isLoaded]);
 
   // Refresh profile when other parts of the app update it (e.g., Level Up best level after passing)
   useEffect(() => {
@@ -263,16 +278,18 @@ const HomePage = () => {
         {isLoaded ? (
           <div className="w-full max-w-6xl mx-auto flex flex-col items-center">
             <Logo className="mt-28 md:mt-30 mb-14 md:mb-14 justify-center [&_img]:h-20 md:[&_img]:h-20"/>
-            <div className="-mx-0 md:mx-0 md:-mt-0 w-screen md:w-auto flex flex-row items-start gap-[2rem] md:gap-[3rem] overflow-x-auto md:overflow-visible snap-x snap-mandatory md:snap-none no-scrollbar px-0 md:px-2 touch-pan-x overscroll-x-contain pl-0 md:pl-0">
+            <div ref={cardsContainerRef} className="-mx-0 md:mx-0 md:-mt-0 w-screen md:w-auto flex flex-row items-start gap-[2rem] md:gap-[3rem] overflow-x-auto md:overflow-visible snap-x snap-mandatory md:snap-none no-scrollbar px-0 md:px-2 touch-pan-x overscroll-x-contain pl-0 md:pl-0">
               {/* Mobile left spacer to center first card */}
               <div className="shrink-0 w-[calc((100vw-13.5rem)/2)] md:hidden" aria-hidden="true" />
               {/* Solo Card */}
               <div className="flex flex-col items-center justify-center gap-0 py-2 md:py-2 shrink-0 snap-center">
                 <div
-                  className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-yellow-300 via-orange-400 to-orange-600 cursor-pointer"
+                  className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-[linear-gradient(180deg,_#fcd34d_0%,_#f97316_60%,_#ea580c_100%)] cursor-pointer"
                   onClick={() => handleStartGame('classic')}
                 >
-                  <img src="/icons/solo.webp" alt="Solo" className="h-40 w-auto object-contain" />
+                  <div className="flex items-center justify-center w-full h-full">
+                    <img src="/icons/solo.webp" alt="Solo" className="w-[66%] h-[66%] object-contain drop-shadow-[0_10px_18px_rgba(0,0,0,0.5)]" />
+                  </div>
                 </div>
                 <div
                   className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1 cursor-pointer"
@@ -288,14 +305,14 @@ const HomePage = () => {
                         id="solo-timer-toggle"
                         checked={isSoloTimerEnabled}
                         onCheckedChange={setIsSoloTimerEnabled}
-                        className="mr-3 data-[state=checked]:bg-gray-600 h-4 w-8"
+                        className="mr-3 h-4 w-8"
                       />
                       <Label htmlFor="solo-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm text-white">
                         <span>  Round Timer</span>
                       </Label>
                     </div>
                     {isSoloTimerEnabled && (
-                      <span className="text-sm font-bold text-orange-500">
+                      <span className="text-sm font-bold text-[#f97316]">
                         {formatTime(timerSeconds)}
                       </span>
                     )}
@@ -319,13 +336,13 @@ const HomePage = () => {
                 </div>
               </div>
               {/* Level Up Card */}
-              <div className="flex flex-col items-center justify-center gap-0 py-2 md:py-4 shrink-0 snap-center">
+              <div ref={levelUpCardRef} className="flex flex-col items-center justify-center gap-0 py-2 md:py-4 shrink-0 snap-center">
                 <div
                   className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-pink-300 via-fuchsia-400 to-purple-600 cursor-pointer"
                   onClick={() => handleStartGame('levelup')}
                 >
                   <div className="relative w-full h-full flex items-center justify-center">
-                    <img src="/icons/level.webp" alt="Level Up" className="h-40 w-auto object-contain" />
+                   <img src="/icons/level.webp" alt="Level Up" className="w-[66%] h-[66%] object-contain drop-shadow-[0_10px_18px_rgba(0,0,0,0.5)]" />
                     <div className="absolute top-2 right-2 bg-black/60 text-white text-xs font-bold px-2 py-1 rounded">
                       Lv {Math.max(1, Number((profile as any)?.level_up_best_level || 1))}
                     </div>
@@ -346,8 +363,10 @@ const HomePage = () => {
                   navigate('/compete');
                 }}
               >
-                <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-emerald-400 to-cyan-400">
-                  <img src="/icons/compete.webp" alt="Compete" className="h-42 w-auto object-contain" />
+ <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-[linear-gradient(180deg,_#45fff0_0%,_#00adc1_100%)]">
+                      <div className="flex items-center justify-center w-full h-full">
+                    <img src="/icons/compete.webp" alt="Compete" className="w-[66%] h-[66%] object-contain drop-shadow-[0_10px_18px_rgba(0,0,0,0.5)]" />
+                  </div>
                 </div>
                 <div className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1">
                   COMPETE

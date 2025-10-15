@@ -32,6 +32,7 @@ interface UseLobbyChatOptions {
   enabled?: boolean;
   onSubmission?: (payload: SubmissionBroadcast) => void;
   onRoundComplete?: (payload: RoundCompleteBroadcast) => void;
+  onRoster?: (players: { id: string; name: string; ready: boolean; host: boolean }[]) => void;
 }
 
 const MAX_RETRIES = 5;
@@ -48,6 +49,7 @@ export function useLobbyChat({
   enabled = true,
   onSubmission,
   onRoundComplete,
+  onRoster: onRosterCallback,
 }: UseLobbyChatOptions) {
   const [status, setStatus] = useState<LobbyChatStatus>('idle');
   const [messages, setMessages] = useState<LobbyChatMessage[]>([]);
@@ -60,9 +62,10 @@ export function useLobbyChat({
   const latestDisplayNameRef = useRef(displayName.trim());
   const latestUserIdRef = useRef<string | undefined>(userId ?? undefined);
   const statusRef = useRef<LobbyChatStatus>('idle');
-  const latestCallbacksRef = useRef<Pick<UseLobbyChatOptions, 'onSubmission' | 'onRoundComplete'>>({
+  const latestCallbacksRef = useRef<Pick<UseLobbyChatOptions, 'onSubmission' | 'onRoundComplete' | 'onRoster'>>({
     onSubmission,
     onRoundComplete,
+    onRoster: onRosterCallback,
   });
   const pendingQueueRef = useRef<LobbyClientMessage[]>([]);
 
@@ -161,6 +164,11 @@ export function useLobbyChat({
                 ]);
               }
               break;
+            case 'roster':
+              if (Array.isArray((data as any).players)) {
+                latestCallbacksRef.current.onRoster?.((data as any).players as { id: string; name: string; ready: boolean; host: boolean }[]);
+              }
+              break;
             case 'submission':
               latestCallbacksRef.current.onSubmission?.({
                 roundNumber: data.roundNumber,
@@ -222,8 +230,8 @@ export function useLobbyChat({
   }, [userId]);
 
   useEffect(() => {
-    latestCallbacksRef.current = { onSubmission, onRoundComplete };
-  }, [onSubmission, onRoundComplete]);
+    latestCallbacksRef.current = { onSubmission, onRoundComplete, onRoster: onRosterCallback };
+  }, [onSubmission, onRoundComplete, onRosterCallback]);
 
   useEffect(() => {
     if (!enabled || !roomCode) {
@@ -256,7 +264,8 @@ export function useLobbyChat({
     const ws = wsRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) {
       pendingQueueRef.current.push(payload);
-      return true;
+      scheduleReconnect();
+      return false;
     }
     try {
       ws.send(JSON.stringify(payload));
@@ -264,9 +273,10 @@ export function useLobbyChat({
     } catch (err) {
       setLastError(err instanceof Error ? err.message : String(err));
       pendingQueueRef.current.push(payload);
+      scheduleReconnect();
       return false;
     }
-  }, []);
+  }, [scheduleReconnect]);
 
   const sendMessage = useCallback((rawMessage: string) => {
     const trimmed = rawMessage.trim();

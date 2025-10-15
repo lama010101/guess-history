@@ -214,9 +214,9 @@ html, body {
     --ring: 0 0% 60%; /* Lighter ring for focus */
   }
 
-  /* Compete mode theme override: switch secondary to purple */
+  /* Compete mode theme override: switch secondary to turquoise */
   body.mode-compete, .mode-compete {
-    --secondary: 270 85% 60%; /* purple */
+    --secondary: 175 66% 51%; /* #30D5C8 */
     --secondary-foreground: 0 0% 100%;
   }
 

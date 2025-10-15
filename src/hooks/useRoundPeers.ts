@@ -69,6 +69,9 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
   const [error, setError] = useState<string | null>(null);
   const [miniLeaderboards, setMiniLeaderboards] = useState<MiniLeaderboards>({ total: [], time: [], location: [] });
   const mountedRef = useRef(true);
+  const refreshInFlightRef = useRef(false);
+  const queuedRefreshRef = useRef(false);
+  const pollIntervalRef = useRef<number | null>(null);
 
   useEffect(() => () => { mountedRef.current = false; }, []);
 
@@ -108,6 +111,12 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       setMiniLeaderboards({ total: [], time: [], location: [] });
       return;
     }
+    if (refreshInFlightRef.current) {
+      devLog('Refresh already in flight, queueing rerun');
+      queuedRefreshRef.current = true;
+      return;
+    }
+    refreshInFlightRef.current = true;
     devLog('Fetching peers for', { roomId, roundNumber });
     setIsLoading(true);
     setError(null);
@@ -393,7 +402,16 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
         setMiniLeaderboards({ total: [], time: [], location: [] });
       }
     } finally {
+      refreshInFlightRef.current = false;
       if (mountedRef.current) setIsLoading(false);
+      if (queuedRefreshRef.current) {
+        queuedRefreshRef.current = false;
+        requestAnimationFrame(() => {
+          if (mountedRef.current) {
+            refresh();
+          }
+        });
+      }
     }
   }, [roomId, roundNumber]);
 
@@ -425,6 +443,35 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       handle.release();
     };
   }, [roomId, roundNumber, refresh]);
+
+  useEffect(() => {
+    if (pollIntervalRef.current != null) {
+      window.clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+
+    if (!roomId || roundNumber == null) {
+      return;
+    }
+
+    const waitingForPeers = peers.length === 0 || peers.some((peer) => !peer.submitted);
+    if (!waitingForPeers) {
+      return;
+    }
+
+    if (typeof window !== 'undefined') {
+      pollIntervalRef.current = window.setInterval(() => {
+        refresh();
+      }, 4000);
+    }
+
+    return () => {
+      if (pollIntervalRef.current != null) {
+        window.clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, [roomId, roundNumber, peers, refresh]);
 
   return useMemo(() => ({ peers, isLoading, error, refresh, miniLeaderboards }), [peers, isLoading, error, refresh, miniLeaderboards]);
 }

@@ -32,7 +32,7 @@ const createUserIcon = (avatarUrl: string) => L.divIcon({
 });
 
 const correctIcon = L.divIcon({
-  html: `<div style="background-color: #10B981; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.3);"></div>`,
+  html: `<div style="background-color: hsl(var(--secondary)); width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px hsl(var(--secondary) / 0.6);"></div>`,
   className: 'correct-marker',
   iconSize: [30, 30],
   iconAnchor: [15, 30],
@@ -485,7 +485,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               <div className="text-sm mb-4 mt-4">
                 <div className="flex items-center">
                   <span className="text-foreground">Correct: </span>
-                  <span className="ml-2 text-orange-400 font-semibold text-lg">{result.eventYear}</span>
+                  <span className="ml-2 text-history-secondary font-semibold text-lg">{result.eventYear}</span>
                 </div>
                 <div className="flex items-center mt-1">
                   <span className="text-foreground">Your guess:</span>
@@ -494,7 +494,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               </div>
               <div className="mt-4">
                 <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
-                  <div className="h-1.5 rounded-full bg-orange-500" style={{ width: `${result.timeAccuracy}%` }} />
+                  <div className="h-1.5 rounded-full bg-history-secondary" style={{ width: `${result.timeAccuracy}%` }} />
                 </div>
                 <span className="sr-only">Time accuracy progress</span>
               </div>
@@ -530,7 +530,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               {/* badges moved below progress bar */}
               <div className="flex items-center mb-2">
                 <span className="text-foreground mr-2">Correct:</span>
-                <span className="text-orange-400 font-semibold">{result.locationName}</span>
+                <span className="text-history-secondary font-semibold">{result.locationName}</span>
               </div>
               <div className="relative h-64 md:h-80 rounded-lg overflow-hidden mb-4 z-0">
                 <MapContainer 
@@ -610,7 +610,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               </div>
               <div className="mt-4">
                 <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
-                  <div className="h-1.5 rounded-full bg-orange-500" style={{ width: `${result.locationAccuracy}%` }} />
+                  <div className="h-1.5 rounded-full bg-history-secondary" style={{ width: `${result.locationAccuracy}%` }} />
                 </div>
                 <span className="sr-only">Location accuracy progress</span>
               </div>

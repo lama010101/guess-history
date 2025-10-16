@@ -124,6 +124,17 @@ const RoundResultsPage = () => {
       document.body.classList.remove('mode-levelup');
     };
   }, [location.pathname]);
+
+  // Apply Compete theming via body class when under /compete/ routes
+  useEffect(() => {
+    const isCompete = location.pathname.includes('/compete/');
+    if (isCompete) {
+      document.body.classList.add('mode-compete');
+    }
+    return () => {
+      document.body.classList.remove('mode-compete');
+    };
+  }, [location.pathname]);
   
   const handleNavigateHome = useCallback(() => {
     navigate('/home');
@@ -535,29 +546,13 @@ const RoundResultsPage = () => {
         totalRounds={images.length}
         loading={navigating}
         error={null} 
-        result={resultForLayout}
-        avatarUrl={profile?.avatar_image_url || profile?.avatar_url || '/assets/default-avatar.png'}
-        peers={(peerRows || []).filter(p => !user || p.userId !== user.id)}
-        leaderboards={layoutLeaderboards}
-        currentUserDisplayName={profile?.display_name || 'You'}
-        nextRoundButton={
-          <div className="flex items-center gap-2">
-            <Button 
-              onClick={handleNext} 
-              disabled={navigating}
-              className="rounded-xl bg-orange-500 text-white font-semibold text-sm px-5 py-2 shadow-lg hover:bg-orange-500 active:bg-orange-500 transition-colors min-w-[120px]"
-            >
-              {navigating ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
-              <span className="ml-2">{roundNumber === images.length ? 'Finish Game' : 'Next Round'}</span>
-            </Button>
-          </div>
-        }
         homeButton={
           <Button
             variant="outline"
+            size="sm"
             onClick={() => confirmNavigation(handleNavigateHome)}
-            className="h-12 w-12 rounded-full text-black shadow-md border-none bg-white hover:bg-gray-100"
-            aria-label="Go Home"
+            className="px-2 py-1 h-auto text-xs rounded-md bg-[#444444] text-white hover:bg-[#555555] border border-[#444444] dark:bg-[#444444] dark:text-white dark:hover:bg-[#555555]"
+            aria-label="Return to Home"
             title="Return to Home"
           >
             <Home size={20} />

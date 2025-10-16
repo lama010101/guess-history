@@ -67,7 +67,16 @@ const FinalResultsPage = () => {
       document.body.classList.remove('mode-levelup');
     };
   }, [location.pathname]);
-  
+
+  useEffect(() => {
+    const isCompeteRoute = location.pathname.includes('/compete/');
+    if (isCompeteRoute) {
+      document.body.classList.add('mode-compete');
+    }
+    return () => {
+      document.body.classList.remove('mode-compete');
+    };
+  }, [location.pathname]);
   const [isScrolled, setIsScrolled] = React.useState(false);
   const [isRoundSummaryOpen, setIsRoundSummaryOpen] = React.useState(true);
   const [totalXpDebtState, setTotalXpDebtState] = React.useState(0);
@@ -654,7 +663,7 @@ const FinalResultsPage = () => {
                     </div>
                     <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-orange-500"
+                        className="h-full bg-history-secondary"
                         style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhenAccuracy)))}%` }}
                         aria-label={`Time accuracy ${formatInteger(totalWhenAccuracy)}%`}
                       />
@@ -667,7 +676,7 @@ const FinalResultsPage = () => {
                     </div>
                     <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-orange-500"
+                        className="h-full bg-history-secondary"
                         style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhereAccuracy)))}%` }}
                         aria-label={`Location accuracy ${formatInteger(totalWhereAccuracy)}%`}
                       />
@@ -737,7 +746,9 @@ const FinalResultsPage = () => {
           </main>
 
           {/* Badge unlock popup (game-level) */}
-          <BadgeEarnedPopup badge={activeBadge} onClose={handleBadgePopupClose} />
+          {activeBadge && (
+            <BadgeEarnedPopup badge={activeBadge} onClose={handleBadgePopupClose} />
+          )}
 
           <footer className="fixed bottom-0 left-0 w-full z-50 bg-black shadow-[0_-2px_12px_rgba(0,0,0,0.5)] px-4 py-3 flex justify-center items-center border-t border-gray-800">
             <div className="w-full max-w-md flex items-center justify-between gap-4">
@@ -750,12 +761,12 @@ const FinalResultsPage = () => {
                 <Home className="h-5 w-5" />
               </Button>
               {isLevelUp && passed ? (
-                <Button onClick={handleContinueNextLevel} className="flex-1 rounded-md bg-orange-500 text-white hover:bg-orange-600 gap-2 py-6 text-base" size="lg">
+                <Button onClick={handleContinueNextLevel} className="flex-1 rounded-md bg-history-secondary text-white hover:bg-history-secondary/90 gap-2 py-6 text-base" size="lg">
                   <RefreshCw className="h-5 w-5" />
                   {`Continue to Level ${typeof currentLevelFromPath === 'number' ? currentLevelFromPath + 1 : 2}`}
                 </Button>
               ) : (
-                <Button onClick={handlePlayAgain} className="flex-1 rounded-md bg-orange-500 text-white hover:bg-orange-600 gap-2 py-6 text-base" size="lg">
+                <Button onClick={handlePlayAgain} className="flex-1 rounded-md bg-history-secondary text-white hover:bg-history-secondary/90 gap-2 py-6 text-base" size="lg">
                   <RefreshCw className="h-5 w-5" />
                   Play Again
                 </Button>

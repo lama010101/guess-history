@@ -77,6 +77,27 @@ export function useLobbyChat({
     onResultsReady,
   });
   const pendingQueueRef = useRef<LobbyClientMessage[]>([]);
+  const joinAckedRef = useRef(false);
+
+  const flushPendingQueue = useCallback(() => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN || !joinAckedRef.current) {
+      return;
+    }
+    const queued = pendingQueueRef.current;
+    if (queued.length === 0) {
+      return;
+    }
+    const toSend = queued.splice(0, queued.length);
+    toSend.forEach((queuedPayload) => {
+      try {
+        ws.send(JSON.stringify(queuedPayload));
+      } catch (flushErr) {
+        pendingQueueRef.current.unshift(queuedPayload);
+        setLastError(flushErr instanceof Error ? flushErr.message : String(flushErr));
+      }
+    });
+  }, []);
 
   const cleanup = useCallback(() => {
     try {
@@ -89,6 +110,7 @@ export function useLobbyChat({
       clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = null;
     }
+    joinAckedRef.current = false;
   }, []);
 
   const scheduleReconnect = useCallback(() => {
@@ -139,21 +161,9 @@ export function useLobbyChat({
         try {
           ws.send(JSON.stringify(payload));
           lastSentNameRef.current = joinName;
+          joinAckedRef.current = false;
         } catch (err) {
           setLastError(err instanceof Error ? err.message : String(err));
-        }
-
-        // Flush any queued payloads now that the socket is open
-        const queued = pendingQueueRef.current;
-        if (queued.length > 0) {
-          const toSend = queued.splice(0, queued.length);
-          toSend.forEach((queuedPayload) => {
-            try {
-              ws.send(JSON.stringify(queuedPayload));
-            } catch (flushErr) {
-              setLastError(flushErr instanceof Error ? flushErr.message : String(flushErr));
-            }
-          });
         }
       });
 
@@ -183,6 +193,10 @@ export function useLobbyChat({
               if (Array.isArray((data as any).players)) {
                 latestCallbacksRef.current.onRoster?.((data as any).players as { id: string; name: string; ready: boolean; host: boolean }[]);
               }
+              break;
+            case 'hello':
+              joinAckedRef.current = true;
+              flushPendingQueue();
               break;
             case 'submission':
               latestCallbacksRef.current.onSubmission?.({
@@ -225,6 +239,7 @@ export function useLobbyChat({
       ws.addEventListener('close', () => {
         if (statusRef.current === 'full') return;
         setStatus('closed');
+        joinAckedRef.current = false;
         scheduleReconnect();
       });
 
@@ -289,7 +304,7 @@ export function useLobbyChat({
       scheduleReconnect();
       return true;
     }
-    if (ws.readyState === WebSocket.OPEN) {
+    if (ws.readyState === WebSocket.OPEN && joinAckedRef.current) {
       try {
         ws.send(JSON.stringify(payload));
         return true;
@@ -300,8 +315,9 @@ export function useLobbyChat({
         return true;
       }
     }
-    if (ws.readyState === WebSocket.CONNECTING) {
+    if (ws.readyState === WebSocket.CONNECTING || !joinAckedRef.current) {
       pendingQueueRef.current.push(payload);
+      flushPendingQueue();
       return true;
     }
     pendingQueueRef.current.push(payload);

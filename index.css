@@ -211,6 +211,8 @@
 .mode-compete .hover\:bg-orange-500:hover { background-color: #22d3ee !important; }
 .mode-compete .active\:bg-orange-500:active { background-color: #22d3ee !important; }
 .mode-compete .hover\:bg-orange-600:hover { background-color: #06b6d4 !important; }
+/* Dark-variant orange utility used by segmented progress bar */
+.dark .mode-compete .dark\:bg-orange-400 { background-color: #22d3ee !important; }
 
 /* Alpha background variants used by fullscreen controls (map to Compete turquoise) */
 .mode-compete .bg-orange-500\/60 { background-color: rgba(34, 211, 238, 0.6) !important; }

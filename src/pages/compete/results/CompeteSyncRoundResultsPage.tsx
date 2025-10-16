@@ -29,6 +29,13 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
   const { peers, refresh: refreshPeers } = useCompetePeers(roomId ?? null, Number.isFinite(oneBasedRound) ? oneBasedRound : null);
   const leaderboard = useCompeteRoundLeaderboards(roomId ?? null, Number.isFinite(oneBasedRound) ? oneBasedRound : null);
 
+  useEffect(() => {
+    document.body.classList.add('mode-compete');
+    return () => {
+      document.body.classList.remove('mode-compete');
+    };
+  }, []);
+
   const layoutLeaderboards = useMemo(() => {
     return {
       total: leaderboard.total.map((row) => ({

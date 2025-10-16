@@ -41,7 +41,40 @@ const FinalScoreboard: React.FC<FinalScoreboardProps> = ({ roomId }) => {
         if (error) {
           setError(error.message || 'Failed to load final leaderboard');
         } else {
-          setRows(Array.isArray(data) ? (data as FinalRow[]) : []);
+          const normalizeAccuracy = (row: FinalRow) => {
+            const candidates = [row.net_avg_accuracy, row.avg_accuracy];
+            for (const candidate of candidates) {
+              const numeric = Number(candidate);
+              if (Number.isFinite(numeric)) {
+                return numeric;
+              }
+            }
+            return 0;
+          };
+
+          const normalizeXP = (row: FinalRow) => {
+            const candidates = [row.net_xp, row.total_xp, row.total_score];
+            for (const candidate of candidates) {
+              const numeric = Number(candidate);
+              if (Number.isFinite(numeric)) {
+                return numeric;
+              }
+            }
+            return 0;
+          };
+
+          const rawRows = Array.isArray(data) ? (data as FinalRow[]) : [];
+          const sortedRows = [...rawRows].sort((a, b) => {
+            const accDiff = normalizeAccuracy(b) - normalizeAccuracy(a);
+            if (accDiff !== 0) return accDiff;
+            const xpDiff = normalizeXP(b) - normalizeXP(a);
+            if (xpDiff !== 0) return xpDiff;
+            const nameA = (a.display_name || '').toString();
+            const nameB = (b.display_name || '').toString();
+            return nameA.localeCompare(nameB);
+          });
+
+          setRows(sortedRows);
         }
       } catch (e) {
         if (!cancelled) setError('Failed to load final leaderboard');

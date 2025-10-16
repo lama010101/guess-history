@@ -165,7 +165,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
           devLog('RPC denied by RLS; attempting round_results fallback');
           const fallbackQuery = await (supabase as any)
             .from('round_results')
-            .select('user_id, score, accuracy, xp_total, xp_debt, acc_debt, xp_where, xp_when, location_accuracy, time_accuracy, distance_km, guess_year, guess_lat, guess_lng, actual_lat, actual_lng, hints_used')
+            .select('user_id, score, accuracy, xp_total, xp_debt, acc_debt, xp_where, xp_when, location_accuracy, time_accuracy, distance_km, guess_year, guess_lat, guess_lng, actual_lat, actual_lng, hints_used, hint_debts')
             .eq('room_id', roomId)
             .eq('round_index', oneBasedRound - 1);
           if (!fallbackQuery.error && Array.isArray(fallbackQuery.data)) {
@@ -220,7 +220,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       const dbRoundIndex = Math.max(0, oneBasedRound - 1);
       const { data: rrRows, error: rrError } = await (supabase as any)
         .from('round_results')
-        .select('user_id, guess_year, distance_km, guess_lat, guess_lng, actual_lat, actual_lng, xp_where, xp_when, location_accuracy, time_accuracy, xp_total, score, accuracy, xp_debt, acc_debt, hints_used')
+        .select('user_id, guess_year, distance_km, guess_lat, guess_lng, actual_lat, actual_lng, xp_where, xp_when, location_accuracy, time_accuracy, xp_total, score, accuracy, xp_debt, acc_debt, hints_used, hint_debts')
         .eq('room_id', roomId)
         .eq('round_index', dbRoundIndex);
       devLog('Round results query', { rrRows, rrError });
@@ -288,8 +288,18 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
         const hasScoreboardEntry = !!sb && (
           sb.score != null || sb.accuracy != null || sb.xp_total != null || sb.xp_where != null || sb.xp_when != null
         );
-        const rawHintsUsed = sb?.hints_used ?? rr?.hints_used ?? null;
-        const numericHintsUsed = rawHintsUsed != null ? Number(rawHintsUsed) : null;
+        const rawHintsUsedCandidates = [
+          sb?.hints_used,
+          rr?.hints_used,
+          Array.isArray((rr as any)?.hint_debts) ? (rr as any).hint_debts.length : null,
+        ];
+        const numericHintsUsed = rawHintsUsedCandidates.reduce<number | null>((acc, val) => {
+          if (acc != null && acc > 0) return acc;
+          if (val == null) return acc;
+          const parsed = Number(val);
+          if (!Number.isFinite(parsed) || parsed < 0) return acc;
+          return Math.max(acc ?? 0, parsed);
+        }, null);
         const rawAccuracy = Number(sb?.accuracy ?? rr?.accuracy ?? 0);
         const rawAccDebt = Number(sb?.acc_debt ?? rr?.acc_debt ?? 0);
         const netAccuracy = Math.max(0, rawAccuracy - rawAccDebt);

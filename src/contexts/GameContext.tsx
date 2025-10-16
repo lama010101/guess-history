@@ -938,6 +938,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     xpTotal?: number | null;
     timeAccuracy?: number | null;
     locationAccuracy?: number | null;
+    xpDebt?: number | null;
+    accDebt?: number | null;
   }, currentRoundIndex: number) => {
     if (!gameId) {
       console.error('[GameContext] CRITICAL: gameId is null. Cannot record round result. This should not happen if a game is in progress.');
@@ -1020,6 +1022,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       const timeAccuracy = Number.isFinite(fullResult.timeAccuracy) ? Number(fullResult.timeAccuracy) : (Number.isFinite(computedTimeAccuracy) ? computedTimeAccuracy : 0);
       const locationAccuracy = Number.isFinite(fullResult.locationAccuracy) ? Number(fullResult.locationAccuracy) : (Number.isFinite(computedLocationAccuracy) ? computedLocationAccuracy : 0);
       const averageAccuracy = Number(resultData.accuracy ?? ((timeAccuracy + locationAccuracy) / 2));
+      const xpDebtValue = Number.isFinite(Number(resultData.xpDebt)) ? Number(resultData.xpDebt) : 0;
+      const accDebtValue = Number.isFinite(Number(resultData.accDebt)) ? Number(resultData.accDebt) : 0;
 
       const payloadFull = {
         user_id: user.id,
@@ -1033,6 +1037,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         xp_where: fullResult.xpWhere,
         xp_when: fullResult.xpWhen,
         hints_used: fullResult.hintsUsed,
+        xp_debt: xpDebtValue,
+        acc_debt: accDebtValue,
         distance_km: fullResult.distanceKm,
         guess_year: fullResult.guessYear,
         guess_lat: fullResult.guessCoordinates?.lat ?? null,
@@ -1112,6 +1118,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
               xp_where: fullResult.xpWhere,
               xp_when: fullResult.xpWhen,
               hints_used: fullResult.hintsUsed,
+              xp_debt: xpDebtValue,
+              acc_debt: accDebtValue,
               distance_km: fullResult.distanceKm,
               guess_year: fullResult.guessYear,
               guess_lat: fullResult.guessCoordinates?.lat ?? null,
@@ -1165,11 +1173,14 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
               xp_total: xpTotal,
               time_accuracy: timeAccuracy,
               location_accuracy: locationAccuracy,
+              hints_used: fullResult.hintsUsed,
               distance_km: fullResult.distanceKm,
               year_difference: (fullResult.guessYear != null ? (fullResult.guessYear - currentImage.year) : null),
               guess_year: fullResult.guessYear,
               guess_lat: fullResult.guessCoordinates?.lat ?? null,
               guess_lng: fullResult.guessCoordinates?.lng ?? null,
+              xp_debt: xpDebtValue,
+              acc_debt: accDebtValue,
             } as const;
 
             const { error: syncError } = await supabase

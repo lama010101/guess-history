@@ -76,6 +76,7 @@ interface RoundLeaderboardEntry {
   userId: string;
   displayName: string;
   value: number;
+  hintsUsed?: number;
 }
 
 interface RoundLeaderboardsProps {
@@ -274,7 +275,9 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   : '';
               const rank = index + 1;
               const hintsUsed = Math.max(0, Number(entry.hintsUsed ?? 0));
-              const hintsLabel = `${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'}`;
+              const hintsLabel = hintsUsed > 0
+                ? `${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'}`
+                : null;
               return (
                 <tr
                   key={`${metric}-${entry.userId}`}
@@ -284,7 +287,11 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   <td className="py-2 px-3">
                     <div className="flex flex-col">
                       <span className={cn('text-neutral-200', isHighlighted && 'font-semibold text-white')}>{rowName}</span>
-                      <span className="text-xs text-red-400 font-semibold">{hintsLabel}</span>
+                      {hintsLabel ? (
+                        <span className="text-xs text-red-400 font-semibold">{hintsLabel}</span>
+                      ) : (
+                        <span className="text-xs text-transparent">•</span>
+                      )}
                     </div>
                   </td>
                   <td className="py-2 px-3 text-right">
@@ -309,6 +316,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
             userId: row.userId,
             displayName: row.displayName,
             value: row.value ?? 0,
+            hintsUsed: row.hintsUsed,
           }));
       return renderLeaderboardTable(rows, leaderboards.currentUserId ?? null, metric);
     }
@@ -321,7 +329,11 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
         if (metric === 'where') return entry.whereMetric;
         return entry.totalMetric;
       };
-      return getValue(b) - getValue(a);
+      const valueDiff = getValue(b) - getValue(a);
+      if (valueDiff !== 0) return valueDiff;
+      const totalDiff = b.totalMetric - a.totalMetric;
+      if (totalDiff !== 0) return totalDiff;
+      return a.displayName.localeCompare(b.displayName);
     }).map((entry) => ({
       userId: entry.userId,
       displayName: entry.displayName,

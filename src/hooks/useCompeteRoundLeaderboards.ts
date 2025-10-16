@@ -10,6 +10,7 @@ export interface LeaderRow {
   displayName: string;
   value: number;
   xpTotal?: number;
+  xpDebt?: number;
   timeAccuracy?: number;
   locationAccuracy?: number;
   accDebt?: number;
@@ -162,7 +163,9 @@ export function useCompeteRoundLeaderboards(
       const displayName = rawName && rawName.trim().length > 0 ? rawName.trim() : 'Player';
 
       const fallbackXp = pickNumber(peer?.score, peer?.xpTotal) ?? 0;
-      const xpTotal = pickNumber(snapshot?.xpTotal, fallbackXp) ?? 0;
+      const xpDebt = Math.max(0, Math.round(pickNumber((snapshot as any)?.xpDebt, peer?.xpDebt) ?? 0));
+      const xpTotalRaw = pickNumber(snapshot?.xpTotal, fallbackXp) ?? 0;
+      const xpTotal = Math.max(0, pickNumber(snapshot?.netXp, xpTotalRaw - xpDebt) ?? (xpTotalRaw - xpDebt));
 
       const fallbackTimeAcc = pickNumber(
         peer?.accuracy,
@@ -177,26 +180,27 @@ export function useCompeteRoundLeaderboards(
         : null;
       const locationAcc = pickNumber(snapshot?.locationAccuracy, fallbackLocationAcc) ?? 0;
 
-      const accDebt = Math.max(0, Math.round(pickNumber((snapshot as any)?.accDebt, peer?.accDebt) ?? 0));
+      const accDebt = Math.max(0, Math.round(pickNumber(snapshot?.accDebt, peer?.accDebt) ?? 0));
+      const netTimeAcc = Math.max(0, Math.round(pickNumber(snapshot?.netTimeAccuracy, timeAcc - accDebt) ?? (timeAcc - accDebt)));
+      const netLocationAcc = Math.max(0, Math.round(pickNumber(snapshot?.netLocationAccuracy, locationAcc - accDebt) ?? (locationAcc - accDebt)));
       const overallAccuracy = Math.round((timeAcc + locationAcc) / 2);
       const netAccuracy = computeRoundNetPercent(timeAcc, locationAcc, accDebt);
-      const hintsUsed = Math.max(0, Math.round(pickNumber((snapshot as any)?.hintsUsed, peer?.hintsUsed) ?? 0));
-      const netTime = Math.max(0, Math.round(timeAcc - accDebt));
-      const netLocation = Math.max(0, Math.round(locationAcc - accDebt));
+      const hintsUsed = Math.max(0, Math.round(pickNumber((snapshot as any)?.hintsUsed, peer?.hintsUsed, 0) ?? 0));
 
       total.push({
         userId,
         displayName,
         value: netAccuracy,
         xpTotal,
+        xpDebt,
         timeAccuracy: timeAcc,
         locationAccuracy: locationAcc,
         accDebt,
         baseAccuracy: overallAccuracy,
         hintsUsed,
       });
-      when.push({ userId, displayName, value: netTime, accDebt, hintsUsed });
-      where.push({ userId, displayName, value: netLocation, accDebt, hintsUsed });
+      when.push({ userId, displayName, value: netTimeAcc, accDebt, hintsUsed });
+      where.push({ userId, displayName, value: netLocationAcc, accDebt, hintsUsed });
     });
 
     total.sort(sortDescending);

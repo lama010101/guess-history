@@ -37,22 +37,19 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
   }, []);
 
   const layoutLeaderboards = useMemo(() => {
+    const mapper = (rows: typeof leaderboard.total) =>
+      [...rows]
+        .map((row) => ({ userId: row.userId, displayName: row.displayName, value: row.value, hintsUsed: row.hintsUsed }))
+        .sort((a, b) => {
+          const valueDiff = (b.value ?? 0) - (a.value ?? 0);
+          if (valueDiff !== 0) return valueDiff;
+          return a.displayName.localeCompare(b.displayName);
+        });
+
     return {
-      total: leaderboard.total.map((row) => ({
-        userId: row.userId,
-        displayName: row.displayName,
-        value: row.value,
-      })),
-      when: leaderboard.when.map((row) => ({
-        userId: row.userId,
-        displayName: row.displayName,
-        value: row.value,
-      })),
-      where: leaderboard.where.map((row) => ({
-        userId: row.userId,
-        displayName: row.displayName,
-        value: row.value,
-      })),
+      total: mapper(leaderboard.total),
+      when: mapper(leaderboard.when),
+      where: mapper(leaderboard.where),
       currentUserId: leaderboard.currentUserId,
     };
   }, [leaderboard.total, leaderboard.when, leaderboard.where, leaderboard.currentUserId]);
@@ -474,6 +471,9 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
                       const isCurrent = leaderboard.currentUserId != null && row.userId === leaderboard.currentUserId;
                       const displayName = row.displayName || 'Player';
                       const nameWithYou = isCurrent ? `(You) ${displayName}` : displayName;
+                      const hintsUsed = Math.max(0, Number(row.hintsUsed ?? 0));
+                      const accDebt = Math.max(0, Number((row as any).accDebt ?? 0));
+                      const xpDebt = Math.max(0, Number((row as any).xpDebt ?? 0));
                       const roundedClasses = index === 0
                         ? 'rounded-t-lg'
                         : index === leaderboard.total.length - 1
@@ -486,7 +486,14 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
                           className={`bg-neutral-800/70 ${roundedClasses}`.trim()}
                         >
                           <td className={`py-2 pr-2 ${textClasses}`}>
-                            {nameWithYou}
+                            <div className="flex flex-col">
+                              <span>{nameWithYou}</span>
+                              {hintsUsed > 0 ? (
+                                <span className="text-xs font-semibold text-red-400">{`-${accDebt}%${xpDebt > 0 ? `  -${xpDebt} XP` : ''}`}</span>
+                              ) : (
+                                <span className="text-xs text-transparent">•</span>
+                              )}
+                            </div>
                           </td>
                           <td className={`py-2 pr-2 text-right ${isCurrent ? 'font-semibold text-white' : 'font-medium text-neutral-200'}`}>
                             {Math.round(row.value)}

@@ -23,6 +23,7 @@ import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
 import UserProfilePage from './pages/UserProfile';
 import ProtectedRoute from './components/ProtectedRoute';
+import RegisteredRoute from './components/RegisteredRoute';
 import RequireAuthSession from './components/RequireAuthSession';
 import GameRoomPage from "./pages/GameRoomPage";
 import FriendsPage from '@/pages/FriendsPage';
@@ -152,11 +153,13 @@ const App = () => {
                         <Route path="/home" element={<MainLayout />}>
                           <Route index element={<HomePage />} />
                         </Route>
-                        <Route path="/compete" element={<MainLayout />}>
-                          <Route index element={<Compete />} />
-                        </Route>
-                        <Route path="/room/:roomCode" element={<MainLayout />}>
-                          <Route index element={<Room />} />
+                        <Route element={<RegisteredRoute />}>
+                          <Route path="/compete" element={<MainLayout />}>
+                            <Route index element={<Compete />} />
+                          </Route>
+                          <Route path="/room/:roomCode" element={<MainLayout />}>
+                            <Route index element={<Room />} />
+                          </Route>
                         </Route>
                         <Route path="/leaderboard" element={<MainLayout />}>
                           <Route index element={<LeaderboardPage />} />
@@ -193,12 +196,14 @@ const App = () => {
                         <Route path="/level/game/room/:roomId/final" element={<FinalResultsPage />} />
 
                         {/* Compete (multiplayer) routes - sync and async variants */}
-                        <Route path="/compete/sync/game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
-                        <Route path="/compete/sync/game/room/:roomId/round/:roundNumber/results" element={<CompeteRoundResultsPage />} />
-                        <Route path="/compete/sync/game/room/:roomId/final" element={<FinalResultsPage />} />
-                        <Route path="/compete/async/game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
-                        <Route path="/compete/async/game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />
-                        <Route path="/compete/async/game/room/:roomId/final" element={<FinalResultsPage />} />
+                        <Route element={<RegisteredRoute />}>
+                          <Route path="/compete/sync/game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
+                          <Route path="/compete/sync/game/room/:roomId/round/:roundNumber/results" element={<CompeteRoundResultsPage />} />
+                          <Route path="/compete/sync/game/room/:roomId/final" element={<FinalResultsPage />} />
+                          <Route path="/compete/async/game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
+                          <Route path="/compete/async/game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />
+                          <Route path="/compete/async/game/room/:roomId/final" element={<FinalResultsPage />} />
+                        </Route>
                         {/* Collaborate (co-op) routes */}
                         <Route path="/collaborate/game/room/:roomId/round/:roundNumber" element={<GameRoundPage />} />
                         <Route path="/collaborate/game/room/:roomId/round/:roundNumber/results" element={<RoundResultsPage />} />

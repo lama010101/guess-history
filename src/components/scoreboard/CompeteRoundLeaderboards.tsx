@@ -41,7 +41,9 @@ const LeaderboardCard: React.FC<LeaderboardCardProps> = ({ title, rows, currentU
                 const netAccuracy = Math.max(0, Math.round(row.value ?? 0));
                 const rank = index + 1;
                 const hintsUsed = Math.max(0, Number(row.hintsUsed ?? 0));
-                const hintsLabel = `${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'}`;
+                const hintsLabel = hintsUsed > 0
+                  ? `${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'}`
+                  : null;
 
                 return (
                   <tr
@@ -54,9 +56,11 @@ const LeaderboardCard: React.FC<LeaderboardCardProps> = ({ title, rows, currentU
                         <span className={isCurrent ? 'font-semibold text-white' : 'text-neutral-200'}>
                           {nameWithYou}
                         </span>
-                        <span className={hintsUsed > 0 ? 'text-xs text-red-400 font-semibold' : 'text-xs text-red-400'}>
-                          {hintsLabel}
-                        </span>
+                        {hintsLabel ? (
+                          <span className="text-xs text-red-400 font-semibold">{hintsLabel}</span>
+                        ) : (
+                          <span className="text-xs text-transparent">•</span>
+                        )}
                       </div>
                     </td>
                     <td className={`py-2 pr-3 text-right ${isCurrent ? 'font-semibold text-white' : 'font-medium text-neutral-200'}`}>

@@ -8,6 +8,12 @@ export interface SyncRoundScoreEntry {
   xpTotal: number;
   timeAccuracy: number;
   locationAccuracy: number;
+  xpDebt: number;
+  accDebt: number;
+  netXp: number;
+  netTimeAccuracy: number;
+  netLocationAccuracy: number;
+  hintsUsed: number;
   distanceKm: number | null;
   yearDifference: number | null;
   guessYear: number | null;
@@ -22,6 +28,9 @@ type RawScoreRow = {
   xp_total: number | null;
   time_accuracy: number | null;
   location_accuracy: number | null;
+  xp_debt: number | null;
+  acc_debt: number | null;
+  hints_used: number | null;
   distance_km: number | null;
   year_difference: number | null;
   guess_year: number | null;
@@ -49,9 +58,7 @@ export function useSyncRoundScores(roomId: string | null, roundNumber: number | 
     try {
       const { data: scoreRows, error } = await supabase
         .from('sync_round_scores')
-        .select(
-          'user_id, display_name, xp_total, time_accuracy, location_accuracy, distance_km, year_difference, guess_year, guess_lat, guess_lng, submitted_at'
-        )
+        .select('user_id, display_name, xp_total, time_accuracy, location_accuracy, xp_debt, acc_debt, hints_used, distance_km, year_difference, guess_year, guess_lat, guess_lng, submitted_at')
         .eq('room_id', roomId)
         .eq('round_number', roundNumber)
         .order('xp_total', { ascending: false });
@@ -87,12 +94,25 @@ export function useSyncRoundScores(roomId: string | null, roundNumber: number | 
 
       const processed: SyncRoundScoreEntry[] = rows.map((row) => {
         const fallbackName = nameMap.get(row.user_id) ?? 'Player';
+        const xpTotal = Number.isFinite(row.xp_total) ? Number(row.xp_total) : 0;
+        const timeAccuracy = Number.isFinite(row.time_accuracy) ? Number(row.time_accuracy) : 0;
+        const locationAccuracy = Number.isFinite(row.location_accuracy) ? Number(row.location_accuracy) : 0;
+        const xpDebt = Number.isFinite(row.xp_debt) ? Number(row.xp_debt) : 0;
+        const accDebt = Number.isFinite(row.acc_debt) ? Number(row.acc_debt) : 0;
+        const netTime = Math.max(0, Math.round(timeAccuracy - accDebt));
+        const netLocation = Math.max(0, Math.round(locationAccuracy - accDebt));
         return {
           userId: row.user_id,
           displayName: (row.display_name?.trim() || fallbackName || 'Player').slice(0, 48),
-          xpTotal: Number.isFinite(row.xp_total) ? Number(row.xp_total) : 0,
-          timeAccuracy: Number.isFinite(row.time_accuracy) ? Number(row.time_accuracy) : 0,
-          locationAccuracy: Number.isFinite(row.location_accuracy) ? Number(row.location_accuracy) : 0,
+          xpTotal,
+          timeAccuracy,
+          locationAccuracy,
+          xpDebt,
+          accDebt,
+          netXp: Math.max(0, xpTotal - Math.max(0, Math.round(Number(row.xp_debt) || 0))),
+          netTimeAccuracy: netTime,
+          netLocationAccuracy: netLocation,
+          hintsUsed: Math.max(0, Number(row.hints_used ?? 0)),
           distanceKm: row.distance_km !== null ? Number(row.distance_km) : null,
           yearDifference: row.year_difference !== null ? Number(row.year_difference) : null,
           guessYear: row.guess_year !== null ? Number(row.guess_year) : null,

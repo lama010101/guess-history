@@ -44,7 +44,27 @@ const RoundScoreboard: React.FC<RoundScoreboardProps> = ({ roomId, roundNumber }
         if (error) {
           setError(error.message || 'Failed to load round leaderboard');
         } else {
-          setRows(Array.isArray(data) ? (data as RoundRow[]) : []);
+          const normalizeAccuracy = (row: RoundRow) => {
+            const numeric = Number(row.accuracy);
+            return Number.isFinite(numeric) ? numeric : 0;
+          };
+          const normalizeScore = (row: RoundRow) => {
+            const numeric = Number(row.score ?? row.xp_total);
+            return Number.isFinite(numeric) ? numeric : 0;
+          };
+
+          const rawRows = Array.isArray(data) ? (data as RoundRow[]) : [];
+          const sortedRows = [...rawRows].sort((a, b) => {
+            const accDiff = normalizeAccuracy(b) - normalizeAccuracy(a);
+            if (accDiff !== 0) return accDiff;
+            const scoreDiff = normalizeScore(b) - normalizeScore(a);
+            if (scoreDiff !== 0) return scoreDiff;
+            const nameA = (a.display_name || '').toString();
+            const nameB = (b.display_name || '').toString();
+            return nameA.localeCompare(nameB);
+          });
+
+          setRows(sortedRows);
         }
       } catch (e) {
         if (!cancelled) setError('Failed to load round leaderboard');

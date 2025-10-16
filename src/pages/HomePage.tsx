@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import GuestBadge from '@/components/GuestBadge';
 import { UserSettings, fetchUserSettings, UserProfile, fetchUserProfile } from '@/utils/profile/profileService';
 import { useGame } from "@/contexts/GameContext";
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from "@/components/ui/button";
 import Logo from '@/components/Logo';
@@ -74,6 +74,8 @@ const HomePage = () => {
   const [isSoloTimerEnabled, setIsSoloTimerEnabled] = useState(false);
   const { timerSeconds, setTimerSeconds } = useSettingsStore();
   const navigate = useNavigate();
+  const location = useLocation();
+
   const gameContext = useGame();
   const { startGame, isLoading, startLevelUpGame } = gameContext || {};
 
@@ -137,6 +139,14 @@ const HomePage = () => {
     window.addEventListener('profileUpdated', onProfileUpdated);
     return () => window.removeEventListener('profileUpdated', onProfileUpdated);
   }, [user]);
+
+  useEffect(() => {
+    const state = location.state as { requireRegistration?: boolean } | undefined;
+    if (state?.requireRegistration && isGuest) {
+      setShowAuthModal(true);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, isGuest, navigate]);
 
   const handleSettingsUpdated = () => {
     if (user) {
@@ -336,7 +346,13 @@ const HomePage = () => {
                 </div>
               </div>
               {/* Level Up Card */}
-              <div ref={levelUpCardRef} className="flex flex-col items-center justify-center gap-0 py-2 md:py-4 shrink-0 snap-center">
+              <div ref={levelUpCardRef} className="relative flex flex-col items-center justify-center gap-0 py-2 md:py-4 shrink-0 snap-center">
+                {isGuest && (
+                  <div className="pointer-events-none absolute top-2 right-2 z-20 flex items-center gap-2 rounded-full bg-black/80 px-3 py-1 text-xs font-semibold text-white">
+                    <img src="/icons/lock.webp" alt="Locked" className="h-4 w-4" />
+                    <span>Sign up to unlock</span>
+                  </div>
+                )}
                 <div
                   className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-pink-300 via-fuchsia-400 to-purple-600 cursor-pointer"
                   onClick={() => handleStartGame('levelup')}
@@ -358,13 +374,16 @@ const HomePage = () => {
               {/* Compete Card (purple) */}
               <div
                 className="relative flex flex-col items-center justify-center gap-0 py-2 md:py-2 shrink-0 snap-center cursor-pointer"
-                onClick={() => {
-                  devLog('[HomePage] Compete card clicked. isGuest:', isGuest);
-                  navigate('/compete');
-                }}
+                onClick={() => handleStartGame('friends')}
               >
- <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-[linear-gradient(180deg,_#45fff0_0%,_#00adc1_100%)]">
-                      <div className="flex items-center justify-center w-full h-full">
+                {isGuest && (
+                  <div className="pointer-events-none absolute top-2 right-2 z-20 flex items-center gap-2 rounded-full bg-black/80 px-3 py-1 text-xs font-semibold text-white">
+                    <img src="/icons/lock.webp" alt="Locked" className="h-4 w-4" />
+                    <span>Sign up to unlock</span>
+                  </div>
+                )}
+                <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-[linear-gradient(180deg,_#45fff0_0%,_#00adc1_100%)]">
+                  <div className="flex items-center justify-center w-full h-full">
                     <img src="/icons/compete.webp" alt="Compete" className="w-[66%] h-[66%] object-contain drop-shadow-[0_10px_18px_rgba(0,0,0,0.5)]" />
                   </div>
                 </div>

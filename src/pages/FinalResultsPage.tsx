@@ -81,6 +81,11 @@ const FinalResultsPage = () => {
   const [isRoundSummaryOpen, setIsRoundSummaryOpen] = React.useState(true);
   const [totalXpDebtState, setTotalXpDebtState] = React.useState(0);
   const [accDebtByRound, setAccDebtByRound] = React.useState<Record<string, number>>({});
+  const [xpDebtByRound, setXpDebtByRound] = React.useState<Record<string, number>>({});
+  const [accDebtWhenByRound, setAccDebtWhenByRound] = React.useState<Record<string, number>>({});
+  const [accDebtWhereByRound, setAccDebtWhereByRound] = React.useState<Record<string, number>>({});
+  const [xpDebtWhenByRound, setXpDebtWhenByRound] = React.useState<Record<string, number>>({});
+  const [xpDebtWhereByRound, setXpDebtWhereByRound] = React.useState<Record<string, number>>({});
   const [earnedBadges, setEarnedBadges] = React.useState<EarnedBadgeType[]>([]);
   const [activeBadge, setActiveBadge] = React.useState<EarnedBadgeType | null>(null);
   const currentLevelFromPath = React.useMemo(() => {
@@ -166,6 +171,11 @@ const FinalResultsPage = () => {
       // Fetch actual debts across all rounds for this game/user
       let totalXpDebt = 0;
       const perRoundAccDebt: Record<string, number> = {};
+      const perRoundXpDebt: Record<string, number> = {};
+      const perRoundAccDebtWhen: Record<string, number> = {};
+      const perRoundAccDebtWhere: Record<string, number> = {};
+      const perRoundXpDebtWhen: Record<string, number> = {};
+      const perRoundXpDebtWhere: Record<string, number> = {};
       if ((effectiveRoomId || gameId) && images.length > 0) {
         const roomRoundIds = effectiveRoomId ? images.map((_, idx) => makeRoundId(effectiveRoomId, idx + 1)) : [];
         const gameRoundIds = !effectiveRoomId && gameId ? images.map((_, idx) => makeRoundId(gameId, idx + 1)) : [];
@@ -175,19 +185,28 @@ const FinalResultsPage = () => {
           const sb: any = supabase;
           const { data: rawRows, error } = await sb
             .from('round_hints')
-            .select('round_id, xpDebt, accDebt')
+            .select('round_id, xpDebt, accDebt, hint_type')
             .eq('user_id', user.id)
             .in('round_id', roundIds);
           if (error) {
             console.warn('[FinalResults] hint debts query error', error);
           } else if (Array.isArray(rawRows) && rawRows.length) {
-            const rows = (rawRows as unknown) as Array<{ round_id: string; xpDebt: number | null; accDebt: number | null }>;
+            const rows = (rawRows as unknown) as Array<{ round_id: string; xpDebt: number | null; accDebt: number | null; hint_type?: string | null }>;
             for (const r of rows) {
               const rid = r.round_id;
               const xd = Number(r.xpDebt) || 0;
               const ad = Number(r.accDebt) || 0;
               totalXpDebt += xd;
               perRoundAccDebt[rid] = (perRoundAccDebt[rid] || 0) + ad;
+              perRoundXpDebt[rid] = (perRoundXpDebt[rid] || 0) + xd;
+              const t = (r.hint_type || '').toLowerCase();
+              if (t === 'when') {
+                perRoundAccDebtWhen[rid] = (perRoundAccDebtWhen[rid] || 0) + ad;
+                perRoundXpDebtWhen[rid] = (perRoundXpDebtWhen[rid] || 0) + xd;
+              } else if (t === 'where') {
+                perRoundAccDebtWhere[rid] = (perRoundAccDebtWhere[rid] || 0) + ad;
+                perRoundXpDebtWhere[rid] = (perRoundXpDebtWhere[rid] || 0) + xd;
+              }
             }
           }
         } catch (e) {
@@ -198,6 +217,11 @@ const FinalResultsPage = () => {
       // Persist debts to state for render usage
       setTotalXpDebtState(totalXpDebt);
       setAccDebtByRound(perRoundAccDebt);
+      setXpDebtByRound(perRoundXpDebt);
+      setAccDebtWhenByRound(perRoundAccDebtWhen);
+      setAccDebtWhereByRound(perRoundAccDebtWhere);
+      setXpDebtWhenByRound(perRoundXpDebtWhen);
+      setXpDebtWhereByRound(perRoundXpDebtWhere);
 
       // Compute net final XP and net final accuracy using debts
       const netFinalXP = Math.max(0, Math.round(finalXP - totalXpDebt));
@@ -727,17 +751,22 @@ const FinalResultsPage = () => {
 
               {/* GAME SUMMARY removed per new design; metrics are now in the final score card */}
 
-              <div className="bg-[#444444] rounded-lg p-4 mb-4">
-                <h2 className="text-lg font-bold text-history-primary dark:text-history-light">BREAKDOWN</h2>
-              </div>
+              <h2 className="text-lg font-bold text-history-primary dark:text-history-light mb-2">BREAKDOWN</h2>
 
               <section className="grid gap-6 mb-8">
                 {images.map((image, index) => {
                   const result = roundResults?.[index];
                   if (!result) return null;
+                  const rid = effectiveRoomId ? makeRoundId(effectiveRoomId, index + 1) : (gameId ? makeRoundId(gameId, index + 1) : '');
+                  const accDebt = rid ? (accDebtByRound[rid] || 0) : 0;
+                  const xpDebt = rid ? (xpDebtByRound[rid] || 0) : 0;
+                  const accDebtWhen = rid ? (accDebtWhenByRound[rid] || 0) : 0;
+                  const accDebtWhere = rid ? (accDebtWhereByRound[rid] || 0) : 0;
+                  const xpDebtWhen = rid ? (xpDebtWhenByRound[rid] || 0) : 0;
+                  const xpDebtWhere = rid ? (xpDebtWhereByRound[rid] || 0) : 0;
                   return (
                     <div key={image.id} className="bg-[#444444] rounded-lg p-2">
-                      <RoundResultCard image={image} result={result} index={index} />
+                      <RoundResultCard image={image} result={result} index={index} accDebt={accDebt} xpDebt={xpDebt} accDebtWhen={accDebtWhen} accDebtWhere={accDebtWhere} xpDebtWhen={xpDebtWhen} xpDebtWhere={xpDebtWhere} />
                     </div>
                   );
                 })}

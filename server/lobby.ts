@@ -474,6 +474,22 @@ export default class Lobby implements Party.Server {
     }
   }
 
+  // Broadcast an updated results-ready summary for a round, using the
+  // currently active participant count for that round as the expected total.
+  private async broadcastResultsReadyForRound(roundNumber: number) {
+    const readySet = this.resultsReadyByRound.get(roundNumber) ?? new Set<string>();
+    const activeSize = this.activeByRound.get(roundNumber)?.size ?? 0;
+    const readyCount = readySet.size;
+    const payload: ResultsReadyMsg = {
+      type: "results-ready",
+      roundNumber,
+      readyCount,
+      totalPlayers: Math.max(activeSize, readyCount),
+    };
+    this.broadcast(payload);
+    await this.logEvent("results-ready", payload);
+  }
+
   private broadcastRoster() {
     const names = Array.from(this.players.values());
     // Maintain legacy 'players' message for compatibility
@@ -789,7 +805,6 @@ export default class Lobby implements Party.Server {
             this.broadcast(completePayload);
             await this.logEvent("round-complete", completePayload);
             this.submissionsByRound.delete(roundNumber);
-            this.activeByRound.delete(roundNumber);
             const nextExpected = Math.max(this.expectedParticipants, submittedCount);
             this.expectedParticipants = nextExpected;
             this.expectedParticipantsByRound.set(roundNumber + 1, nextExpected);
@@ -812,13 +827,13 @@ export default class Lobby implements Party.Server {
             readySet.delete(participantKey);
           }
 
-          const expectedFromHistory = this.expectedParticipantsByRound.get(roundNumber) ?? this.expectedParticipants;
+          const activeSize = this.activeByRound.get(roundNumber)?.size ?? 0;
           const readyCount = readySet.size;
           const broadcastPayload: ResultsReadyMsg = {
             type: "results-ready",
             roundNumber,
             readyCount,
-            totalPlayers: Math.max(expectedFromHistory, readyCount),
+            totalPlayers: Math.max(activeSize, readyCount),
           };
           this.broadcast(broadcastPayload);
           await this.logEvent("results-ready", broadcastPayload);
@@ -852,6 +867,14 @@ export default class Lobby implements Party.Server {
           this.expectedParticipantsByRound.set(roundNumber, Math.max(set.size, this.expectedParticipantsByRound.get(roundNumber) ?? 0));
         }
       });
+      // Also remove from results-ready sets and broadcast updated counts so
+      // clients no longer wait for a disconnected participant.
+      for (const [roundNumber, readySet] of this.resultsReadyByRound.entries()) {
+        const changed = readySet.delete(participantKey);
+        // Even if ready set didn't change, totalPlayers may have decreased due to
+        // active set shrinkage; broadcast to update client expectations.
+        await this.broadcastResultsReadyForRound(roundNumber);
+      }
       this.expectedParticipants = Math.max(this.uniqueParticipantCount(), this.expectedParticipants - 1);
       // Reassign host if needed
       if (this.hostId === conn.id) {

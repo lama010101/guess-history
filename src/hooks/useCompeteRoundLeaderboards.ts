@@ -180,12 +180,20 @@ export function useCompeteRoundLeaderboards(
         : null;
       const locationAcc = pickNumber(snapshot?.locationAccuracy, fallbackLocationAcc) ?? 0;
 
-      const accDebt = Math.max(0, Math.round(pickNumber(snapshot?.accDebt, peer?.accDebt) ?? 0));
+      // Compute hintsUsed first so we can prefer peer accDebt when snapshot is 0 but hints were used
+      const hintsUsed = Math.max(0, Math.round(pickNumber((snapshot as any)?.hintsUsed, peer?.hintsUsed, 0) ?? 0));
+
+      const accDebtSnapshot = pickNumber(snapshot?.accDebt, null);
+      const accDebtPeer = pickNumber(peer?.accDebt, null);
+      let accDebt = Math.max(0, Number(accDebtSnapshot ?? accDebtPeer ?? 0));
+      if ((accDebtSnapshot ?? null) === 0 && (accDebtPeer ?? 0) > 0 && hintsUsed > 0) {
+        accDebt = Math.max(0, Number(accDebtPeer));
+      }
+
       const netTimeAcc = Math.max(0, Math.round(pickNumber(snapshot?.netTimeAccuracy, timeAcc - accDebt) ?? (timeAcc - accDebt)));
       const netLocationAcc = Math.max(0, Math.round(pickNumber(snapshot?.netLocationAccuracy, locationAcc - accDebt) ?? (locationAcc - accDebt)));
       const overallAccuracy = Math.round((timeAcc + locationAcc) / 2);
       const netAccuracy = computeRoundNetPercent(timeAcc, locationAcc, accDebt);
-      const hintsUsed = Math.max(0, Math.round(pickNumber((snapshot as any)?.hintsUsed, peer?.hintsUsed, 0) ?? 0));
 
       total.push({
         userId,
@@ -199,8 +207,8 @@ export function useCompeteRoundLeaderboards(
         baseAccuracy: overallAccuracy,
         hintsUsed,
       });
-      when.push({ userId, displayName, value: netTimeAcc, accDebt, hintsUsed });
-      where.push({ userId, displayName, value: netLocationAcc, accDebt, hintsUsed });
+      when.push({ userId, displayName, value: netTimeAcc, accDebt, hintsUsed, timeAccuracy: timeAcc });
+      where.push({ userId, displayName, value: netLocationAcc, accDebt, hintsUsed, locationAccuracy: locationAcc });
     });
 
     total.sort(sortDescending);

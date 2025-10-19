@@ -39,7 +39,14 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
   const layoutLeaderboards = useMemo(() => {
     const mapper = (rows: typeof leaderboard.total) =>
       [...rows]
-        .map((row) => ({ userId: row.userId, displayName: row.displayName, value: row.value, hintsUsed: row.hintsUsed }))
+        .map((row) => ({
+          userId: row.userId,
+          displayName: row.displayName,
+          value: row.value,
+          hintsUsed: row.hintsUsed,
+          // pass through accDebt for inline hint label (percent of penalties)
+          accDebt: (row as any).accDebt ?? 0,
+        }))
         .sort((a, b) => {
           const valueDiff = (b.value ?? 0) - (a.value ?? 0);
           if (valueDiff !== 0) return valueDiff;
@@ -473,7 +480,6 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
                       const nameWithYou = isCurrent ? `(You) ${displayName}` : displayName;
                       const hintsUsed = Math.max(0, Number(row.hintsUsed ?? 0));
                       const accDebt = Math.max(0, Number((row as any).accDebt ?? 0));
-                      const xpDebt = Math.max(0, Number((row as any).xpDebt ?? 0));
                       const roundedClasses = index === 0
                         ? 'rounded-t-lg'
                         : index === leaderboard.total.length - 1
@@ -486,13 +492,11 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
                           className={`bg-neutral-800/70 ${roundedClasses}`.trim()}
                         >
                           <td className={`py-2 pr-2 ${textClasses}`}>
-                            <div className="flex flex-col">
+                            <div className="flex items-baseline gap-2">
                               <span>{nameWithYou}</span>
                               {hintsUsed > 0 ? (
-                                <span className="text-xs font-semibold text-red-400">{`-${accDebt}%${xpDebt > 0 ? `  -${xpDebt} XP` : ''}`}</span>
-                              ) : (
-                                <span className="text-xs text-transparent">•</span>
-                              )}
+                                <span className="text-xs font-semibold text-red-400">{`${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'} = ${accDebt}%`}</span>
+                              ) : null}
                             </div>
                           </td>
                           <td className={`py-2 pr-2 text-right ${isCurrent ? 'font-semibold text-white' : 'font-medium text-neutral-200'}`}>

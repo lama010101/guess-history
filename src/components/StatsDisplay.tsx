@@ -6,41 +6,44 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
 import { useGame } from '@/contexts/GameContext';
+
+const Pill: React.FC<{ icon: React.ReactNode; label: string; gradient: string }> = ({ icon, label, gradient }) => (
+  <div
+    className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold text-white shadow-[0_4px_18px_rgba(0,0,0,0.35)] transition-transform duration-200 hover:scale-[1.02] focus-visible:scale-[1.02] ${gradient}`}
+  >
+    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/20 text-white/90">
+      {icon}
+    </span>
+    <span>{label}</span>
+  </div>
+);
 
 export const StatsDisplay = () => {
   const { globalAccuracy, globalXP } = useGame();
 
   return (
-    <div className="flex items-center gap-6 text-white/80">
+    <div className="flex items-center gap-3 sm:gap-4 text-white/90">
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="flex items-center gap-2">
-              <Badge variant="accuracy" className="flex items-center gap-1 text-sm">
-                <Target className="h-4 w-4" />
-                <span>{Math.round(globalAccuracy)}%</span>
-              </Badge>
-            </div>
+            <Pill
+              icon={<Target className="h-3.5 w-3.5" />}
+              label={`${Math.round(globalAccuracy)}%`}
+              gradient="bg-gradient-to-r from-[#4765FF] via-[#4A7BFF] to-[#4DC5FF]"
+            />
           </TooltipTrigger>
-          <TooltipContent>
-            <p>Global Accuracy Score</p>
-          </TooltipContent>
+          <TooltipContent>Global Accuracy Score</TooltipContent>
         </Tooltip>
-
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="flex items-center gap-2">
-              <Badge variant="xp" className="flex items-center gap-1 text-sm">
-                <Zap className="h-4 w-4" />
-                <span>{globalXP.toLocaleString()}</span>
-              </Badge>
-            </div>
+            <Pill
+              icon={<Zap className="h-3.5 w-3.5" />}
+              label={`+${globalXP.toLocaleString()} XP`}
+              gradient="bg-gradient-to-r from-[#1AB977] via-[#22CC88] to-[#32F0B0]"
+            />
           </TooltipTrigger>
-          <TooltipContent>
-            <p>Total Experience Points (XP)</p>
-          </TooltipContent>
+          <TooltipContent>Total Experience Points (XP)</TooltipContent>
         </Tooltip>
       </TooltipProvider>
     </div>

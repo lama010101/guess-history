@@ -233,15 +233,21 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
     });
 
     for (const peer of peers || []) {
-      const normalizedTime = normalizeTime(peer.timeAccuracy, peer.guessYear, result?.eventYear ?? null);
-      const normalizedWhere = peer.locationAccuracy != null
+      const normalizedTimeRaw = normalizeTime(peer.timeAccuracy, peer.guessYear, result?.eventYear ?? null);
+      const normalizedWhereRaw = peer.locationAccuracy != null
         ? clampPercent(peer.locationAccuracy)
         : normalizeDistance(peer.distanceKm);
+      const accDebt = Math.max(0, Number(peer.accDebt ?? 0));
+      const normalizedTime = Math.max(0, normalizedTimeRaw - accDebt);
+      const normalizedWhere = Math.max(0, normalizedWhereRaw - accDebt);
+      const totalNet = typeof peer.netAccuracy === 'number'
+        ? clampPercent(peer.netAccuracy)
+        : Math.max(0, clampPercent(peer.accuracy) - accDebt);
 
       entries.push({
         userId: peer.userId,
         displayName: peer.displayName || 'Player',
-        totalMetric: clampPercent(peer.accuracy),
+        totalMetric: totalNet,
         whenMetric: normalizedTime,
         whereMetric: normalizedWhere,
         hintsUsed: Math.max(0, Number(peer.hintsUsed ?? 0)),
@@ -254,7 +260,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   const hasLeaderboardPeers = leaderboardEntries.length > 1;
 
   const renderLeaderboardTable = (
-    rows: Array<{ userId: string; displayName: string; value: number; hintsUsed?: number }>,
+    rows: Array<{ userId: string; displayName: string; value: number; hintsUsed?: number; accDebt?: number; base?: number }>,
     highlightUserId: string | null,
     metric: 'total' | 'when' | 'where'
   ) => {
@@ -275,23 +281,21 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   : '';
               const rank = index + 1;
               const hintsUsed = Math.max(0, Number(entry.hintsUsed ?? 0));
-              const hintsLabel = hintsUsed > 0
-                ? `${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'}`
-                : null;
+              const accDebt = Math.max(0, Number(entry.accDebt ?? 0));
+              const base = typeof entry.base === 'number' ? Math.round(entry.base) : undefined;
+              const penaltyByDiff = base != null ? Math.max(0, base - roundedValue) : undefined;
+              const penalty = penaltyByDiff != null ? Math.max(accDebt, penaltyByDiff) : accDebt;
               return (
                 <tr
                   key={`${metric}-${entry.userId}`}
                   className={cn('bg-neutral-800/70', roundedClasses)}
                 >
-                  <td className="py-2 px-3 text-neutral-400 font-medium">#{rank}</td>
                   <td className="py-2 px-3">
-                    <div className="flex flex-col">
+                    <div className="flex items-baseline gap-2">
                       <span className={cn('text-neutral-200', isHighlighted && 'font-semibold text-white')}>{rowName}</span>
-                      {hintsLabel ? (
-                        <span className="text-xs text-red-400 font-semibold">{hintsLabel}</span>
-                      ) : (
-                        <span className="text-xs text-transparent">•</span>
-                      )}
+                      {hintsUsed > 0 ? (
+                        <span className="text-xs text-red-400 font-semibold">{`${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'} = ${penalty}%`}</span>
+                      ) : null}
                     </div>
                   </td>
                   <td className="py-2 px-3 text-right">
@@ -312,17 +316,27 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
         ? leaderboards.total
         : metric === 'when'
           ? leaderboards.when
-          : leaderboards.where).map((row) => ({
-            userId: row.userId,
-            displayName: row.displayName,
-            value: row.value ?? 0,
-            hintsUsed: row.hintsUsed,
-          }));
+          : leaderboards.where).map((row) => {
+            const base = metric === 'total'
+              ? ((row as any).baseAccuracy ?? (((row as any).timeAccuracy ?? 0) + ((row as any).locationAccuracy ?? 0)) / 2)
+              : metric === 'when'
+                ? (row as any).timeAccuracy
+                : (row as any).locationAccuracy;
+            return {
+              userId: row.userId,
+              displayName: row.displayName,
+              value: row.value ?? 0,
+              hintsUsed: row.hintsUsed,
+              accDebt: (row as any).accDebt ?? 0,
+              base: typeof base === 'number' ? base : undefined,
+            };
+          });
       return renderLeaderboardTable(rows, leaderboards.currentUserId ?? null, metric);
     }
 
     if (!hasLeaderboardPeers) return null;
 
+    const accMap = new Map((peers || []).map(p => [p.userId, Math.max(0, Number(p.accDebt ?? 0))]));
     const sorted = [...leaderboardEntries].sort((a, b) => {
       const getValue = (entry: LeaderboardEntry) => {
         if (metric === 'when') return entry.whenMetric;
@@ -343,6 +357,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
           ? entry.whereMetric
           : entry.totalMetric,
       hintsUsed: entry.hintsUsed,
+      accDebt: accMap.get(entry.userId) ?? 0,
     }));
 
     return renderLeaderboardTable(sorted, selfUserId, metric);
@@ -506,14 +521,14 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               </div>
               <div className="mt-4">
                 <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
-                  <div className="h-1.5 rounded-full bg-history-secondary" style={{ width: `${result.timeAccuracy}%` }} />
+                  <div className="h-1.5 rounded-full bg-history-secondary" style={{ width: `${Math.max(0, Math.min(100, Math.round(netTimeAccuracy)))}%` }} />
                 </div>
                 <span className="sr-only">Time accuracy progress</span>
               </div>
               <div className="mt-3 flex justify-between items-center">
                 <Badge variant="accuracy" className="text-sm flex items-center gap-1">
                   <Target className="h-3 w-3" />
-                  {result.timeAccuracy.toFixed(0)}%
+                  {Math.round(netTimeAccuracy)}%
 
                 </Badge>
                 <Badge variant="xp" className="text-sm flex items-center gap-1">
@@ -622,14 +637,14 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               </div>
               <div className="mt-4">
                 <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
-                  <div className="h-1.5 rounded-full bg-history-secondary" style={{ width: `${result.locationAccuracy}%` }} />
+                  <div className="h-1.5 rounded-full bg-history-secondary" style={{ width: `${Math.max(0, Math.min(100, Math.round(netLocationAccuracy)))}%` }} />
                 </div>
                 <span className="sr-only">Location accuracy progress</span>
               </div>
               <div className="mt-3 flex justify-between items-center">
                 <Badge variant="accuracy" className="text-sm flex items-center gap-1">
                   <Target className="h-3 w-3" />
-                  {result.locationAccuracy.toFixed(0)}%
+                  {Math.round(netLocationAccuracy)}%
 
                 </Badge>
                 <Badge variant="xp" className="text-sm flex items-center gap-1">

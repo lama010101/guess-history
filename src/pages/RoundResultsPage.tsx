@@ -544,8 +544,25 @@ const RoundResultsPage = () => {
       <ResultsLayout2 
         round={roundNumber}
         totalRounds={images.length}
+        result={resultForLayout}
         loading={navigating}
         error={null} 
+        avatarUrl={profile?.avatar_image_url || profile?.avatar_url || '/assets/default-avatar.png'}
+        peers={(peerRows || []).filter(p => !user || p.userId !== user.id)}
+        leaderboards={layoutLeaderboards}
+        currentUserDisplayName={profile?.display_name || 'You'}
+        nextRoundButton={
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={handleNext}
+              disabled={navigating}
+              className="rounded-xl bg-orange-500 text-white font-semibold text-sm px-5 py-2 shadow-lg hover:bg-orange-500 active:bg-orange-500 transition-colors min-w-[120px]"
+            >
+              {navigating ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
+              <span className="ml-2">{roundNumber === images.length ? 'Finish Game' : 'Next Round'}</span>
+            </Button>
+          </div>
+        }
         homeButton={
           <Button
             variant="outline"

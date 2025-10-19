@@ -50,7 +50,7 @@ const Compete: React.FC = () => {
         {/* Cards: Join first (always visible on mobile), Host below on mobile; side-by-side on md+ */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Join card */}
-          <div className={`rounded-2xl border border-[#555] bg-[#444] shadow-lg p-5`}>
+          <div className={`rounded-2xl border border-[#555] bg-[#333333] shadow-lg p-5`}>
             <h2 className="text-lg font-semibold mb-3">Join Game</h2>
             <label htmlFor="join-code" className="block text-xs text-zinc-400 mb-2">Room Code</label>
             <div className="flex items-center gap-3">
@@ -77,7 +77,7 @@ const Compete: React.FC = () => {
           </div>
 
           {/* Host card */}
-          <div className={`rounded-2xl border border-[#555] bg-[#444] shadow-lg p-5`}>
+          <div className={`rounded-2xl border border-[#555] bg-[#333333] shadow-lg p-5`}>
             <div className="flex items-center gap-2 mb-3">
               <Users className="h-5 w-5 text-cyan-400" />
               <h2 className="text-lg font-semibold">Host Game</h2>

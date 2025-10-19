@@ -647,7 +647,7 @@ const FinalResultsPage = () => {
           <main className="flex-grow p-4 sm:p-6 md:p-8 pb-36">
             <div className="max-w-4xl mx-auto w-full">
               {isLevelUp && (
-                <div className="bg-[#444444] rounded-lg p-4 sm:p-6 mb-6">
+                <div className="bg-[#333333] rounded-lg p-4 sm:p-6 mb-6">
                   <div className="space-y-3">
                     <LevelResultBanner passed={passed} unlockedLevel={passed ? ((typeof currentLevelFromPath === 'number' ? currentLevelFromPath + 1 : 2)) : undefined} />
                     <LevelRequirementCard
@@ -665,7 +665,7 @@ const FinalResultsPage = () => {
                   </div>
                 </div>
               )}
-              <div className="bg-[#444444] rounded-lg p-6 text-white mb-8 sm:mb-12">
+              <div className="bg-[#333333] rounded-lg p-6 text-white mb-8 sm:mb-12">
                 <h1 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4 text-center">FINAL SCORE</h1>
                 <div className="flex justify-center items-center gap-4 mt-2">
                   <Badge variant="accuracy" className="text-lg flex items-center gap-1" aria-label={`Accuracy: ${totalPercentage}%`}>
@@ -743,7 +743,7 @@ const FinalResultsPage = () => {
 
                 {/* SYNC Compete: show final leaderboard for all participants */}
                 {isSyncCompeteRoute && effectiveRoomId ? (
-                  <div className="mt-6 bg-[#444444] rounded-lg p-4">
+                  <div className="mt-6 bg-[#333333] rounded-lg p-4">
                     <FinalScoreboard roomId={effectiveRoomId} />
                   </div>
                 ) : null}
@@ -765,7 +765,7 @@ const FinalResultsPage = () => {
                   const xpDebtWhen = rid ? (xpDebtWhenByRound[rid] || 0) : 0;
                   const xpDebtWhere = rid ? (xpDebtWhereByRound[rid] || 0) : 0;
                   return (
-                    <div key={image.id} className="bg-[#444444] rounded-lg p-2">
+                    <div key={image.id} className="bg-[#333333] rounded-lg p-2">
                       <RoundResultCard image={image} result={result} index={index} accDebt={accDebt} xpDebt={xpDebt} accDebtWhen={accDebtWhen} accDebtWhere={accDebtWhere} xpDebtWhen={xpDebtWhen} xpDebtWhere={xpDebtWhere} />
                     </div>
                   );

@@ -3,9 +3,9 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { X, Copy, Users, RefreshCw, Search, UserPlus, UserMinus, ExternalLink, ChevronDown, ChevronUp, Clock, MessageSquare } from 'lucide-react';
+import { X, Copy, Search, UserPlus, UserMinus, ChevronDown, ChevronUp, Clock, MessageSquare, ChevronLeft } from 'lucide-react';
+
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import FriendsPage from '@/pages/FriendsPage';
 import { partyUrl, LobbyServerMessage, LobbyClientMessage } from '@/lib/partyClient';
@@ -56,29 +56,30 @@ const Room: React.FC = () => {
   const [roster, setRoster] = useState<RosterEntry[]>([]);
   const [chat, setChat] = useState<ChatItem[]>([]);
   const [chatCollapsed, setChatCollapsed] = useState<boolean>(() => {
-    try { return localStorage.getItem(`room:${roomCode}:chatCollapsed`) === '1'; } catch { return false; }
+    try {
+      const stored = localStorage.getItem(`room:${roomCode}:chatCollapsed`);
+      return stored === '1';
+    } catch {
+      return false;
+    }
   });
+  const chatDefaultAppliedRef = useRef(false);
+  const [playersCollapsed, setPlayersCollapsed] = useState(false);
   const [input, setInput] = useState('');
   const [status, setStatus] = useState<'connecting' | 'open' | 'closed' | 'full'>('connecting');
   const [ownReady, setOwnReady] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [mode, setMode] = useState<'sync' | 'async'>('sync');
-  const modeRef = useRef<'sync' | 'async'>('sync');
   const [ownId, setOwnId] = useState<string>('');
   const [friendsModalOpen, setFriendsModalOpen] = useState(false);
-  // Local timer slider state (host-only) to avoid flicker while dragging
   const [localTimerSec, setLocalTimerSec] = useState<number>(Number(roundTimerSec || 60));
   const [draggingTimer, setDraggingTimer] = useState(false);
-
-  // Host-only friends helpers
   type FriendEntry = { id: string; display_name: string; avatar_url?: string };
   const [friendsList, setFriendsList] = useState<FriendEntry[]>([]);
   const [friendsLoading, setFriendsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  // Room invites
   type InviteEntry = { id: string; friend_id: string; display_name: string };
   const [invites, setInvites] = useState<InviteEntry[]>([]);
-
+  const [friendsAccordionOpen, setFriendsAccordionOpen] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const retryRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -91,6 +92,10 @@ const Room: React.FC = () => {
   const timerEnabledRef = useRef<boolean>(!!timerEnabled);
   const roundTimerSecRef = useRef<number>(Number(roundTimerSec || 0));
   const chatListRef = useRef<HTMLDivElement | null>(null);
+
+  const isHost = useMemo(() => {
+    return roster.some((r) => r.host && r.id === ownId);
+  }, [roster, ownId]);
 
   // Load the user's profile display_name (preferred join name)
   useEffect(() => {
@@ -118,20 +123,25 @@ const Room: React.FC = () => {
     };
   }, [user?.id]);
 
-  useEffect(() => { modeRef.current = mode; }, [mode]);
-  // Enforce timer enabled whenever switching to SYNC mode
-  useEffect(() => {
-    if (mode === 'sync' && !timerEnabledRef.current) {
-      setTimerEnabled(true);
-    }
-  }, [mode, setTimerEnabled]);
-
   // Persist chat collapsed state per room
   useEffect(() => {
-    try { localStorage.setItem(`room:${roomCode}:chatCollapsed`, chatCollapsed ? '1' : '0'); } catch {}
+    try {
+      localStorage.setItem(`room:${roomCode}:chatCollapsed`, chatCollapsed ? '1' : '0');
+    } catch {}
   }, [chatCollapsed, roomCode]);
   useEffect(() => {
-    try { setChatCollapsed(localStorage.getItem(`room:${roomCode}:chatCollapsed`) === '1'); } catch {}
+    chatDefaultAppliedRef.current = false;
+    try {
+      const stored = localStorage.getItem(`room:${roomCode}:chatCollapsed`);
+      if (stored === '1' || stored === '0') {
+        setChatCollapsed(stored === '1');
+        chatDefaultAppliedRef.current = true;
+      } else {
+        setChatCollapsed(false);
+      }
+    } catch {
+      setChatCollapsed(false);
+    }
   }, [roomCode]);
 
   const cleanupSocket = () => {
@@ -230,28 +240,18 @@ const Room: React.FC = () => {
                     ? data.timerSeconds === lastSentSettingsRef.current.sec
                     : true;
                 // Only skip if mode isn't present; if mode is present we must process it
-                if (echoEnabled && echoSeconds && (data.mode === undefined)) {
+                if (echoEnabled && echoSeconds) {
                   break;
                 }
               }
-              if (typeof data.timerEnabled === 'boolean') {
-                // In SYNC mode, timer must always be enabled
-                if (modeRef.current === 'sync') {
-                  if (!timerEnabledRef.current) setTimerEnabled(true);
-                } else if (data.timerEnabled !== timerEnabledRef.current) {
-                  setTimerEnabled(data.timerEnabled);
-                }
+              if (typeof data.timerEnabled === 'boolean' && data.timerEnabled !== timerEnabledRef.current) {
+                setTimerEnabled(data.timerEnabled);
               }
               if (typeof data.timerSeconds === 'number') {
                 // Clamp to UI range and step to prevent oscillation if server holds a wider range
                 const uiSec = Math.max(5, Math.min(300, Math.round(Number(data.timerSeconds) / 5) * 5));
                 if (uiSec !== roundTimerSecRef.current) {
                   setRoundTimerSec(uiSec);
-                }
-              }
-              if (data.mode === 'sync' || data.mode === 'async') {
-                if (data.mode !== modeRef.current) {
-                  setMode(data.mode);
                 }
               }
               break;
@@ -298,7 +298,7 @@ const Room: React.FC = () => {
                   document.body.classList.add('mode-compete');
                   document.body.classList.remove('mode-levelup');
                 } catch {}
-                startGame({ roomId: roomCode, seed, timerSeconds: data.durationSec, timerEnabled: data.timerEnabled, competeVariant: modeRef.current, useHostHistory: isHost }).catch(() => {
+                startGame({ roomId: roomCode, seed, timerSeconds: data.durationSec, timerEnabled: data.timerEnabled, competeVariant: 'sync', useHostHistory: isHost }).catch(() => {
                   startedRef.current = false;
                 });
               }
@@ -358,18 +358,27 @@ const Room: React.FC = () => {
   useEffect(() => { statusRef.current = status; }, [status]);
   useEffect(() => { timerEnabledRef.current = !!timerEnabled; }, [timerEnabled]);
   useEffect(() => { roundTimerSecRef.current = Number(roundTimerSec || 0); }, [roundTimerSec]);
+
   // Keep local slider value in sync when not dragging
   useEffect(() => {
-    if (!draggingTimer) {
-      setLocalTimerSec(Number(roundTimerSec || 60));
-    }
+    if (draggingTimer) return;
+    const val = Number(roundTimerSec || 60);
+    setLocalTimerSec(Math.max(5, Math.min(300, Math.round(val / 5) * 5)));
   }, [roundTimerSec, draggingTimer]);
 
-  // Host flag (used by multiple handlers)
-  const isHost = useMemo(() => {
-    // Determine host strictly from roster by connection id
-    return roster.some(r => r.host && r.id === ownId);
-  }, [roster, ownId]);
+  useEffect(() => {
+    if (!chatDefaultAppliedRef.current) {
+      const defaultCollapsed = isHost;
+      setChatCollapsed(defaultCollapsed);
+      try {
+        localStorage.setItem(`room:${roomCode}:chatCollapsed`, defaultCollapsed ? '1' : '0');
+      } catch {}
+      chatDefaultAppliedRef.current = true;
+    }
+    if (isHost && !timerEnabled) {
+      setTimerEnabled(true);
+    }
+  }, [isHost, timerEnabled, setTimerEnabled, roomCode]);
 
   const commitTimerSeconds = useCallback((val: number) => {
     const clamped = Math.max(5, Math.min(300, Math.round(Number(val) / 5) * 5));
@@ -378,17 +387,6 @@ const Room: React.FC = () => {
     // This will trigger the host settings sender effect downstream
     setRoundTimerSec(clamped);
   }, [setRoundTimerSec]);
-
-  // Send mode change to server (host-only)
-  const sendMode = useCallback((nextMode: 'sync' | 'async') => {
-    const ws = wsRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    if (!isHost) return;
-    const payload: LobbyClientMessage = { type: 'settings', mode: nextMode } as any;
-    try { ws.send(JSON.stringify(payload)); } catch {}
-  }, [isHost]);
-
-  // Remove previous auto-start behavior. Start is now driven by server 'start' event.
 
   const sendChat = useCallback(() => {
     const ws = wsRef.current;
@@ -408,8 +406,6 @@ const Room: React.FC = () => {
     ws.send(JSON.stringify(payload));
     setOwnReady(next);
   }, [ownReady]);
-
-  
 
   // Host-only friends helpers
   const loadFriends = useCallback(async () => {
@@ -652,333 +648,342 @@ const Room: React.FC = () => {
     } catch {}
   }, []);
 
+  const handleBack = useCallback(() => {
+    navigate('/compete');
+  }, [navigate]);
+
+  const sliderPercent = useMemo(() => {
+    const value = Number(localTimerSec || 60);
+    const clamped = Math.max(5, Math.min(300, value));
+    return ((clamped - 5) / 295) * 100;
+  }, [localTimerSec]);
+
+  const sliderStyle = useMemo<React.CSSProperties>(() => ({
+    background: `linear-gradient(to right, #22d3ee 0%, #22d3ee ${sliderPercent}%, rgba(255,255,255,0.12) ${sliderPercent}%, rgba(255,255,255,0.08) 100%)`,
+  }), [sliderPercent]);
+
   return (
-    <div className="min-h-screen w-full bg-history-light dark:bg-black text-white">
-      {/* Scoped styles for the round timer range input */}
+    <div className="min-h-screen w-full bg-[#0b0b0f] text-white">
       <style>{`
-        /* Base range track */
-        #room-timer-range { -webkit-appearance: none; appearance: none; height: 6px; background: transparent; }
+        #room-timer-range { -webkit-appearance: none; appearance: none; height: 10px; border-radius: 9999px; background: transparent; }
         #room-timer-range:focus { outline: none; }
-        /* WebKit track */
-        #room-timer-range::-webkit-slider-runnable-track { height: 6px; background: rgba(255,255,255,0.25); border-radius: 9999px; }
-        /* WebKit thumb (reduced size, turquoise with halo) */
-        #room-timer-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #22d3ee; border: 2px solid #22d3ee; margin-top: -6px; box-shadow: 0 0 0 6px rgba(34, 211, 238, 0.25); }
-        #room-timer-range:disabled::-webkit-slider-thumb { background: #0891b2; border-color: #0891b2; box-shadow: none; }
-        /* Firefox track */
-        #room-timer-range::-moz-range-track { height: 6px; background: rgba(255,255,255,0.25); border-radius: 9999px; }
-        /* Firefox thumb */
-        #room-timer-range::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #22d3ee; border: 2px solid #22d3ee; box-shadow: 0 0 0 6px rgba(34, 211, 238, 0.25); }
-        #room-timer-range:disabled::-moz-range-thumb { background: #0891b2; border-color: #0891b2; box-shadow: none; }
+        #room-timer-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #0f172a; border: 3px solid #22d3ee; box-shadow: 0 0 0 6px rgba(34,211,238,0.25); margin-top: -5px; }
+        #room-timer-range:disabled::-webkit-slider-thumb { background: #1e293b; border-color: #0ea5e9; box-shadow: none; }
+        #room-timer-range::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #0f172a; border: 3px solid #22d3ee; box-shadow: 0 0 0 6px rgba(34,211,238,0.25); }
+        #room-timer-range:disabled::-moz-range-thumb { background: #1e293b; border-color: #0ea5e9; box-shadow: none; }
+        #room-timer-range::-webkit-slider-runnable-track { height: 10px; border-radius: 9999px; background: transparent; }
+        #room-timer-range::-moz-range-track { height: 10px; border-radius: 9999px; background: transparent; }
       `}</style>
-      <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6 pb-24">
-        {/* Top bar removed — MainLayout renders the standard navbar */}
-
-        {/* Mode toggle (host-only actionable; all see updates) */}
-        <div className="flex flex-col items-center gap-2">
-          <div className="p-1 rounded-full bg-gradient-to-r from-cyan-400 to-cyan-500 inline-flex items-center">
-            <button
-              type="button"
-              disabled={!isHost}
-              className={`px-5 py-1.5 rounded-full text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${mode === 'sync' ? 'bg-black text-white' : 'text-black/70'}`}
-              onClick={() => { if (!isHost) return; setMode('sync'); sendMode('sync'); }}
-            >
-              <span className="inline-flex items-center gap-1"><RefreshCw className="h-4 w-4" />SYNC</span>
-            </button>
-            <button
-              type="button"
-              disabled={!isHost}
-              className={`px-5 py-1.5 rounded-full text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${mode === 'async' ? 'bg-black text-white' : 'text-black/70'}`}
-              onClick={() => { if (!isHost) return; setMode('async'); sendMode('async'); }}
-            >
-              <span className="inline-flex items-center gap-1"><Clock className="h-4 w-4" />ASYNC</span>
-            </button>
-          </div>
-
-  {/* Friends modal */}
-  <Dialog open={friendsModalOpen} onOpenChange={setFriendsModalOpen}>
-    <DialogContent className="max-w-4xl w-[92vw] max-h-[85vh] p-0 overflow-auto bg-black text-white border border-neutral-800">
-      <div className="p-4">
-        <FriendsPage />
-      </div>
-    </DialogContent>
-  </Dialog>
-          <div className="text-xs text-neutral-300 text-center max-w-xl px-3">
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 justify-center">
-              <div className="inline-flex items-center gap-1"><RefreshCw className="h-3 w-3 text-cyan-300" /><span>Sync: everyone plays the same round at the same time; host sets the timer.</span></div>
-              <div className="inline-flex items-center gap-1"><Clock className="h-3 w-3 text-cyan-300" /><span>Async: play at your own pace; timer is optional.</span></div>
-            </div>
+      <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 pb-28 pt-6">
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={handleBack}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-cyan-300 transition-colors hover:text-cyan-200"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Back
+          </button>
+          <h1 className="flex-1 text-center text-xl font-semibold">Compete</h1>
+          <div className="w-24 text-right text-xs text-neutral-400">
+            {(roster.length || players.length)} player{(roster.length || players.length) === 1 ? '' : 's'}
           </div>
         </div>
 
-        {/* Two-column layout: Left (Timer, Room Info) | Right (Friends, Players) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Left column */}
-          <div className="space-y-6">
-            {/* Timer (SYNC: always enabled; ASYNC: host can toggle) */}
-            <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/50">
-              <div className="flex items-center justify-center mb-2">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="room-timer-toggle"
-                    checked={mode === 'sync' ? true : !!timerEnabled}
-                    onCheckedChange={(checked) => {
-                      if (mode === 'sync') return; // cannot disable in SYNC
-                      setTimerEnabled(!!checked);
-                    }}
-                    disabled={!isHost || mode === 'sync'}
-                    className="mr-3 h-4 w-8 data-[state=unchecked]:bg-white data-[state=checked]:bg-white"
-                  />
-                  <Label htmlFor="room-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm text-white">
-                    <span>Round Timer</span>
-                  </Label>
-                </div>
-                {(mode === 'sync' || timerEnabled) && (
-                  <span className="text-sm font-bold text-cyan-400 ml-4">
-                    {formatTime(Number((isHost && draggingTimer) ? localTimerSec : (roundTimerSec || 0)))}
-                  </span>
-                )}
-              </div>
-              {(mode === 'sync' || timerEnabled) && (
-                <div className="relative mb-1 px-1">
-                  <div className="pt-2">
-                    <input
-                      type="range"
-                      min={5}
-                      max={300}
-                      step={5}
-                      value={Number(localTimerSec || 60)}
-                      onChange={(e) => {
-                        if (!isHost) return;
-                        setLocalTimerSec(Number(e.target.value));
-                      }}
-                      onPointerDown={() => { if (isHost) setDraggingTimer(true); }}
-                      onPointerUp={(e) => { if (isHost) commitTimerSeconds(Number((e.target as HTMLInputElement).value)); }}
-                      onBlur={(e) => { if (isHost && draggingTimer) commitTimerSeconds(Number((e.target as HTMLInputElement).value)); }}
-                      id="room-timer-range"
-                      className="w-full accent-cyan-500 disabled:opacity-50"
-                      disabled={!isHost}
-                    />
-                  </div>
-                  <div className="flex justify-between text-xs text-neutral-400">
-                    <span>5s</span>
-                    <span>5m</span>
-                  </div>
-                </div>
-              )}
-              {!isHost && (
-                <div className="text-xs text-neutral-400 mt-1">Host controls the timer</div>
-              )}
+        <section className="rounded-2xl border border-[#555555] bg-[#333333] p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-base font-semibold text-white">
+              <Clock className="h-5 w-5 text-cyan-300" />
+              <span>Round Timer</span>
             </div>
-
-            {/* Room Information */}
-            <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/50">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold">Room Information</h2>
-                <div className="flex items-center gap-2 text-xs text-neutral-400">
-                  <Users className="h-4 w-4" /> {(roster.length || players.length)} player{(roster.length || players.length) === 1 ? '' : 's'}
-                </div>
+            <span className="text-sm font-semibold text-cyan-300">
+              {formatTime(Number(isHost && draggingTimer ? localTimerSec : (roundTimerSec || 0)))}
+            </span>
+          </div>
+          {isHost && (
+            <div className="mt-4">
+              <input
+                type="range"
+                min={5}
+                max={300}
+                step={5}
+                value={Number(localTimerSec || 60)}
+                onChange={(e) => {
+                  setLocalTimerSec(Number(e.target.value));
+                }}
+                onPointerDown={() => { setDraggingTimer(true); }}
+                onPointerUp={(e) => { commitTimerSeconds(Number((e.target as HTMLInputElement).value)); }}
+                onBlur={(e) => { if (draggingTimer) commitTimerSeconds(Number((e.target as HTMLInputElement).value)); }}
+                id="room-timer-range"
+                className="w-full cursor-pointer"
+                style={sliderStyle}
+                aria-label="Round timer duration"
+              />
+              <div className="mt-2 flex justify-between text-xs text-cyan-300/70">
+                <span>5s</span>
+                <span>5m</span>
               </div>
-              <Label className="text-xs text-neutral-400">Room Code</Label>
-              <div className="mt-1 flex items-center gap-2">
-                <Input value={roomCode.toLowerCase()} readOnly className="bg-neutral-950 border-neutral-700 text-white tracking-widest" />
-                {isHost && (
-                  <Button onClick={copyCode} size="icon" className="bg-neutral-800 hover:bg-neutral-700" aria-label="Copy room code">
+            </div>
+          )}
+          {!isHost && (
+            <div className="mt-4 text-xs text-neutral-400">Host controls the timer.</div>
+          )}
+        </section>
+
+        {isHost && (
+          <section className="rounded-2xl border border-[#555555] bg-[#333333] p-6 shadow-lg">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold text-white">Invite Your Friends</h2>
+                {copied && <span className="text-xs font-semibold text-cyan-300">Copied!</span>}
+              </div>
+              <div>
+                <Label className="text-xs text-neutral-300">Share Room Code</Label>
+                <div className="mt-2 flex items-center gap-2">
+                  <Input
+                    value={roomCode.toUpperCase()}
+                    readOnly
+                    className="h-11 flex-1 rounded-lg border border-[#555555] bg-[#000000] text-lg font-semibold tracking-[0.35em] text-white"
+                  />
+                  <Button onClick={copyCode} size="icon" className="h-11 w-11 rounded-lg bg-[#22d3ee] text-black hover:bg-[#1ccbe4]" aria-label="Copy room code">
                     <Copy className="h-4 w-4" />
                   </Button>
-                )}
+                </div>
               </div>
-              {/* Share Invite removed — only Room Code is used */}
-            </div>
-
-            {/* Chat moved below Players in right column */}
-          </div>
-
-          {/* Right column */}
-          <div className="space-y-6">
-            {/* Host-only Friends management */}
-            {isHost && (
-              <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/50">
-                {/* Friends accordion with internal search + invite */}
-                {friendsLoading ? (
-                  <div className="text-xs text-neutral-400">Loading friends…</div>
-                ) : (
-                  <Accordion type="single" collapsible>
-                    <AccordionItem value="friends">
-                      <AccordionTrigger>Your Friends ({friendsList.length})</AccordionTrigger>
-                      <AccordionContent>
-                        {/* Search bar inside accordion to filter friends list */}
-                        <div className="mb-3 relative">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
-                          <Input
-                            placeholder="Filter your friends by name..."
-                            className="pl-9"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                          />
-                        </div>
-                        {/* Manage Friends link moved here */}
-                        <div className="-mt-2 mb-3 text-right">
-                          <button
-                            type="button"
-                            onClick={() => setFriendsModalOpen(true)}
-                            className="text-xs text-emerald-300 hover:text-emerald-200 inline-flex items-center gap-1"
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" /> Manage friends
-                          </button>
-                        </div>
-                        {filteredFriends.length === 0 ? (
-                          <div className="text-xs text-neutral-400">No friends match your filter.</div>
-                        ) : (
-                          <div className="space-y-2">
-                            {filteredFriends.map((f) => (
-                              <div key={f.id} className="flex items-center justify-between rounded-lg bg-neutral-800/60 border border-neutral-700 px-3 py-2">
-                                <div className="truncate text-sm">{f.display_name}</div>
-                                <Button size="sm" variant="ghost" className="text-emerald-300 hover:text-emerald-200" onClick={() => inviteFriend(f)}>
-                                  <UserPlus className="h-4 w-4" />
-                                </Button>
+              <Accordion
+                type="single"
+                collapsible
+                value={friendsAccordionOpen ? 'friends' : ''}
+                onValueChange={(val) => setFriendsAccordionOpen(val === 'friends')}
+                className="rounded-xl border border-[#555555] bg-[#333333]"
+              >
+                <AccordionItem value="friends">
+                  <AccordionTrigger className="flex items-center justify-between px-4 py-3 text-sm font-semibold text-white">
+                    <span>Send Invite</span>
+                    <div className="flex items-center gap-3 text-xs font-medium text-cyan-200">
+                      <button
+                        type="button"
+                        className="hover:text-cyan-100"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setFriendsModalOpen(true);
+                        }}
+                      >
+                        Manage Friends
+                      </button>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-3 px-4 pb-4 pt-2">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500" />
+                      <Input
+                        placeholder="Filter your friends by name..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="rounded-lg border border-[#555555] bg-[#000000] pl-9 text-sm text-white placeholder:text-neutral-500"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      {friendsLoading ? (
+                        <div className="text-xs text-neutral-300">Loading friends…</div>
+                      ) : filteredFriends.length === 0 ? (
+                        <div className="text-xs text-neutral-300">No friends match your filter.</div>
+                      ) : (
+                        filteredFriends.map((f) => (
+                          <div key={f.id} className="flex items-center justify-between rounded-lg border border-[#555555] bg-[#000000] px-3 py-2">
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0d8cd8] text-sm font-semibold text-white">
+                                {f.display_name?.[0]?.toUpperCase() || '?'}
                               </div>
-                            ))}
+                              <span className="text-sm font-semibold text-white">{f.display_name}</span>
+                            </div>
+                            <Button
+                              onClick={() => inviteFriend(f)}
+                              size="sm"
+                              className="rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 px-4 py-1 text-xs font-semibold text-black hover:from-emerald-300 hover:to-cyan-300"
+                              aria-label="Invite friend"
+                            >
+                              Invite
+                            </Button>
                           </div>
-                        )}
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                )}
-              </div>
-            )}
-
-            {/* Players grid */}
-            <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/40">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold">Players ({roster.length || players.length})</h2>
-                <div className="text-xs text-neutral-400">Room {roomCode} · Status: {status}</div>
-              </div>
-              {extendedRoster.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {extendedRoster.map((r: any, i: number) => {
-                      const isYou = r.id === ownId;
-                      return (
-                        <div key={`${r.name}-${i}`} className="rounded-lg bg-neutral-800/60 border border-neutral-700 px-3 py-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="h-8 w-8 rounded-full bg-neutral-700 flex items-center justify-center text-sm font-semibold">
-                                {r.name?.[0]?.toUpperCase() || '?' }
-                              </div>
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium truncate max-w-[160px]">{r.name}</span>
-                                  {r.host && <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-300">Host</span>}
-                                  {typeof r._inviteId === 'string' && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">Invited</span>}
-                                </div>
-                                <div className="text-xs text-neutral-400">{r.ready ? 'Ready' : (typeof r._inviteId === 'string' ? 'Waiting to join' : 'Not ready')}</div>
-                              </div>
-                            </div>
-                            <div className="ml-3 flex items-center gap-2">
-                              {typeof r._inviteId === 'string' ? (
-                                isHost && (
-                                  <Button size="icon" variant="ghost" className="h-8 w-8 text-red-300 hover:text-red-200" onClick={() => cancelInvite(r._inviteId)}>
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                )
-                              ) : isYou ? (
-                                <button onClick={toggleReady} disabled={status !== 'open'} className={`px-2.5 py-1.5 rounded-md text-xs font-medium ${ownReady ? 'bg-emerald-500/20 text-emerald-300' : 'bg-neutral-700 text-neutral-200'}`}>{ownReady ? 'Ready' : 'Ready?'}</button>
-                              ) : (
-                                <span className={`text-xs ${r.ready ? 'text-emerald-300' : 'text-neutral-400'}`}>{r.ready ? 'Ready' : 'Not ready'}</span>
-                              )}
-                              {isHost && !isYou && typeof r._inviteId !== 'string' && (
-                                <Button size="icon" variant="ghost" className="h-8 w-8 text-red-300 hover:text-red-200" onClick={() => kickPlayer(r.id)}>
-                                  <UserMinus className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                          {typeof r._inviteId !== 'string' && (
-                            <div className="mt-3 h-1.5 rounded-full bg-neutral-700 overflow-hidden">
-                              <div className={`h-full ${r.ready ? 'bg-emerald-400 w-full' : 'bg-neutral-500 w-1/5'}`}></div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                        ))
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+              {invites.length > 0 && (
+                <div className="rounded-xl border border-[#555555] bg-[#333333] p-4">
+                  <h3 className="text-sm font-semibold text-white">Pending Invites</h3>
+                  <div className="mt-3 space-y-2 text-sm">
+                    {invites.map((inv) => (
+                      <div key={inv.id} className="flex items-center justify-between rounded-lg border border-[#555555] bg-[#000000] px-3 py-2">
+                        <span className="truncate text-sm text-white">{inv.display_name || 'Friend'}</span>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-red-300 hover:text-red-200" onClick={() => cancelInvite(inv.id)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
                   </div>
-                ) : (
-                  <div className="text-sm text-neutral-500">Waiting for players...</div>
-                )}
-              {roster.length === 1 && (
-                <div className="mt-3 text-xs text-neutral-400">Share the invite link to bring friends into this room.</div>
+                </div>
               )}
             </div>
-            {/* Chat Panel (now always visible below Players) */}
-            <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/50">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-neutral-300" />
-                  <h2 className="font-semibold">Chat</h2>
-                  <div className="text-xs text-neutral-400">{chat.length} message{chat.length === 1 ? '' : 's'}</div>
+          </section>
+        )}
+
+        <section className="rounded-2xl border border-[#555555] bg-[#333333] p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-white">Players ({roster.length || players.length})</h2>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-neutral-400">Room {roomCode.toUpperCase()} · Status: {status}</span>
+              <button
+                type="button"
+                onClick={() => setPlayersCollapsed((prev) => !prev)}
+                className="text-neutral-300 hover:text-white"
+                aria-label={playersCollapsed ? 'Expand players list' : 'Collapse players list'}
+              >
+                {playersCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+          {!playersCollapsed && (
+            <>
+              {extendedRoster.length > 0 ? (
+                <div className="mt-4 space-y-3">
+                  {extendedRoster.map((r: any, index: number) => {
+                    const isYou = r.id === ownId;
+                    return (
+                      <div key={`${r.id}-${index}`} className="flex items-start justify-between gap-3 rounded-xl border border-[#555555] bg-[#000000] px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold ${r.ready ? 'bg-[#22c55e] text-black' : 'bg-[#0d8cd8] text-white'}`}>
+                            {r.name?.[0]?.toUpperCase() || '?'}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="truncate text-sm font-semibold text-white max-w-[200px]">{isYou ? `(You) ${r.name}` : r.name}</span>
+                              {r.host && <span className="rounded-full bg-[#0d8cd8]/20 px-2 py-0.5 text-[10px] font-semibold text-[#0d8cd8]">Host</span>}
+                              {typeof r._inviteId === 'string' && <span className="rounded-full bg-[#f97316]/20 px-2 py-0.5 text-[10px] font-semibold text-[#f97316]">Invited</span>}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {typeof r._inviteId === 'string' ? (
+                            isHost && (
+                              <Button size="icon" variant="ghost" className="h-8 w-8 text-red-300 hover:text-red-200" onClick={() => cancelInvite(r._inviteId)}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )
+                          ) : isYou ? (
+                            <button
+                              type="button"
+                              onClick={toggleReady}
+                              disabled={status !== 'open'}
+                              className={`rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors ${ownReady ? 'bg-[#22c55e] text-black hover:bg-[#2fe26c]' : 'bg-[#0d8cd8] text-white hover:bg-[#1197e7]'}`}
+                            >
+                              {ownReady ? 'Ready!' : 'Ready?'}
+                            </button>
+                          ) : (
+                            <span className={`text-sm font-semibold ${r.ready ? 'text-[#22c55e]' : 'text-neutral-200'}`}>
+                              {r.ready ? 'Ready!' : 'Not ready'}
+                            </span>
+                          )}
+                          {isHost && !isYou && typeof r._inviteId !== 'string' && (
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-red-300 hover:text-red-200" onClick={() => kickPlayer(r.id)}>
+                              <UserMinus className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setChatCollapsed(v => !v)}
-                  className="text-neutral-300 hover:text-white"
-                  aria-label={chatCollapsed ? 'Expand chat' : 'Collapse chat'}
-                >
-                  {chatCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-                </button>
-              </div>
-              {!chatCollapsed && (
-                <div
-                  ref={chatListRef}
-                  className="h-64 overflow-y-auto rounded-lg bg-neutral-950/40 border border-neutral-800 px-3 py-2 divide-y divide-neutral-800/60"
-                  aria-label="Chat messages"
-                >
+              ) : (
+                <div className="mt-4 text-sm text-neutral-400">Waiting for players...</div>
+              )}
+              {roster.length === 1 && (
+                <div className="mt-4 text-xs text-neutral-400">Share this room code so friends can join.</div>
+              )}
+            </>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-[#555555] bg-[#333333] p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-neutral-300" />
+              <h2 className="text-base font-semibold text-white">Chat</h2>
+              <span className="text-xs text-neutral-400">{chat.length} message{chat.length === 1 ? '' : 's'}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setChatCollapsed((v) => !v)}
+              className="text-neutral-300 hover:text-white"
+              aria-label={chatCollapsed ? 'Expand chat' : 'Collapse chat'}
+            >
+              {chatCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+            </button>
+          </div>
+          {!chatCollapsed && (
+            <>
+              <div
+                ref={chatListRef}
+                className="mt-4 h-60 overflow-y-auto rounded-xl border border-[#555555] bg-[#000000] px-4 py-3"
+                aria-label="Chat messages"
+              >
                 {chat.length === 0 ? (
-                  <div className="text-sm text-neutral-400 py-2">No messages yet…</div>
+                  <div className="text-sm text-neutral-400">No messages yet…</div>
                 ) : (
                   chat.map((c) => (
-                    <div key={c.id} className="py-2">
+                    <div key={c.id} className="pb-3 last:pb-0">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium truncate max-w-[60%]">{c.from}</span>
+                        <span className="text-sm font-semibold text-white truncate max-w-[70%]">{c.from}</span>
                         <span className="text-[10px] text-neutral-400">{formatChatTime(c.timestamp)}</span>
                       </div>
-                      <div className="text-sm text-neutral-200 break-words whitespace-pre-wrap mt-0.5">{c.message}</div>
+                      <div className="mt-1 text-sm text-neutral-200 whitespace-pre-wrap break-words">{c.message}</div>
                     </div>
                   ))
                 )}
               </div>
-              )}
-              {!chatCollapsed && (
-                <div className="mt-3 flex items-center gap-2">
-                  <Input
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        sendChat();
-                      }
-                    }}
-                    placeholder={status === 'open' ? 'Type a message…' : 'Connecting…'}
-                    className="bg-neutral-950 border-neutral-700 text-white"
-                    aria-label="Type a chat message"
-                  />
-                  <Button onClick={sendChat} disabled={!input.trim() || status !== 'open'} className="bg-neutral-800 hover:bg-neutral-700">
-                    Send
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+              <div className="mt-4 flex items-center gap-3">
+                <Input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendChat();
+                    }
+                  }}
+                  placeholder={status === 'open' ? 'Type a message…' : 'Connecting…'}
+                  className="rounded-lg border border-[#666666] bg-[#2b2b2b] text-white"
+                  aria-label="Type a chat message"
+                />
+                <Button onClick={sendChat} disabled={!input.trim() || status !== 'open'} className="rounded-lg bg-[#22d3ee] px-4 text-black hover:bg-[#1ccbe4]">
+                  Send
+                </Button>
+              </div>
+            </>
+          )}
+        </section>
       </div>
-      {/* Sticky Waiting banner at bottom */}
+
       <div className="fixed inset-x-0 bottom-0 z-40">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-4">
-          <div className="rounded-xl bg-teal-600/20 text-teal-300 border border-teal-600/40 p-3 text-center backdrop-blur">
-            <div className="font-medium">Waiting for players ({readyCount}/{roster.length || players.length} ready)</div>
-            <div className="text-xs text-neutral-300 mt-1">All players must be ready to start in Sync mode</div>
+        <div className="mx-auto max-w-4xl px-4 pb-4">
+          <div className="rounded-2xl border border-[#0f3b4a] bg-[#0d2530] px-5 py-3 text-center">
+            <div className="text-sm font-semibold text-[#22d3ee]">Waiting for players ({readyCount}/{roster.length || players.length} ready)</div>
+            <div className="mt-1 text-xs text-neutral-200">All players must be ready to start</div>
           </div>
         </div>
       </div>
+
+      <Dialog open={friendsModalOpen} onOpenChange={setFriendsModalOpen}>
+        <DialogContent className="max-w-4xl w-[92vw] max-h-[85vh] overflow-y-auto border border-neutral-800 bg-black p-0 text-white">
+          <div className="p-4">
+            <FriendsPage />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

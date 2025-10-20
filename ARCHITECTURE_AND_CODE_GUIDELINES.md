@@ -381,17 +381,21 @@
   - Behavior: On mobile (md-), the page shows two stacked cards in this order: `Join Game` then `Host Game`. On md+ the cards render side-by-side.
   - Implementation: Removed the mobile tab toggle; both cards are always visible. No functional changes to the join/create handlers.
 
-#### Compete Landing Page — UI Updates (2025-09-16)
+#### Lobby Landing Page — UI Updates (2025-10-20)
 
-- Page: `src/pages/PlayWithFriends.tsx`
-- Header: The title reads `Compete` and sits on the same line as the `← Back` button.
-- Cards: Both `Join Game` and `Host Game` sections are wrapped in grey cards using `bg-[#444]` with a subtle border `border-[#555]` and rounded corners.
-- Join button: Uses the same turquoise gradient as the Create Room button — `bg-gradient-to-r from-emerald-400 to-cyan-400 text-black hover:opacity-90` — instead of orange.
-- Inputs:
-  - Room code input widened to show the full placeholder (`w-60`) and keeps spaced uppercase tracking (`tracking-[0.4em]`).
-  - All inputs have a white background with black text in both light and dark themes: `bg-white text-black dark:bg-white dark:text-black` and a light border `border-zinc-300`.
-  - The paste invite link input follows the same white/black styling.
-- Rationale: Ensures the `ENTER CODE` placeholder is fully visible and improves contrast/legibility in dark mode while keeping primary CTAs consistent.
+- **Page**: `src/pages/PlayWithFriends.tsx`
+- **Title**: Header now reads `Lobby` to match the product terminology.
+- **Cards**: `Join Game` and `Host Game` sections remain in grey cards (`bg-[#333333]` with `border-[#3f424b]`).
+- **Buttons**: Primary CTAs (`Join`, `Create room`) use the Compete cyan (`#22d3ee` hover `#1cbfdb`) to follow mode branding.
+- **Inputs**:
+  - Room code field keeps uppercase tracking and white background (`bg-white text-[#111827]` with `border-[#d2d6dd]`).
+- **Routing**: `/compete` route now renders the renamed `Lobby` component.
+- **Rationale**: Aligns terminology across docs/UI and ensures compete-mode actions consistently use the turquoise primary color.
+
+- **Room Page Cyan Pass (2025-10-20)**
+  - **Page**: `src/pages/Room.tsx`
+  - **Changes**: Updated the Compete lobby header text, timer readout, ready status chips, ready button, chat sender names, chat send button, waiting banner, and slider accents to use the compete palette (`#22d3ee` primary, hover `#1cbfdb`). Host/Ready badges now use matching cyan backgrounds, replacing prior green/blue accents.
+  - **Outcome**: All primary interactive elements on the Room page follow the compete mode primary color.
 
 - __Variants: SYNC and ASYNC__
   - Lobby: `src/pages/Room.tsx` contains a UI toggle (`mode` state) to select between `'sync'` and `'async'`. The server emits a `start` event; the client starts the game with `startGame({ roomId, seed, timerSeconds, timerEnabled, competeVariant: mode })`.
@@ -2540,19 +2544,16 @@ Notes: UI changes are limited to the Home page and the shared `Logo` component p
 
 ## Results & Final Score UX Tweaks
 
-- Round Results page updates
-  - Files: `src/components/layouts/ResultsLayout2.tsx`, `src/pages/RoundResultsPage.tsx`
-  - Dark card background standardized to `#333333` for all primary cards on Round Results.
-  - Added slim progress bars under the badges:
-    - Time accuracy bar in the When card (width = `result.timeAccuracy%`).
-    - Location accuracy bar in the Where card (width = `result.locationAccuracy%`).
-  - Repositioned controls in the image card header row:
-    - Confidence value and Source button on the left.
-    - Compact Rate button on the right via new `rateButton` prop in `ResultsLayout2`.
-    - Removed the legacy circular Rate button from the bottom action row (`extraButtons` now null on RoundResultsPage).
-  - Text styling: "Your guess" year uses the same size emphasis as the "Correct" year (`text-lg`, orange text) for consistency.
+-### Round Results (Per-Round View)
+- Results layout lives in `src/components/layouts/ResultsLayout2.tsx`.
+- `RoundResultsPage.tsx` is the route wrapper responsible for data hydration, hint debt fetching, badge awarding, and navigation controls.
+- Hint penalties are rendered via `HintDebtsCard.tsx`; pass `hintDebts`, `yearDifference`, and `distanceKm` to surface units inline (years/km) without duplicating units in the label.
+- Leaderboard rows now mirror the in-card badges. The current player reuses the locally computed net accuracies, hint counts, and penalty totals so `Your Score` matches the `Round Leaderboard` entry exactly in solo and multiplayer rounds. Peer rows read penalties/hints from `useRoundPeers()` mini leaderboards.
+- `RoundResultsPage.mapToLayoutResultType()` supplies `accuracy`, `timeAccuracy`, and `locationAccuracy` directly from contextual data (with Supabase fallbacks) and carries the filtered hint debts used for leaderboard and penalty displays.
 
-- Final Results footer and navbar tweaks
+### Hint Modal V2 (Current)
+- `HintModalV2New.tsx` is the active modal. Legacy hint modals have been removed.
+- Hint ordering is controlled inside the component with explicit arrays for When/Where tabs. Update both order arrays and descriptions under `HINT_TYPE_DESCRIPTIONS` when adding new hints.
   - File: `src/pages/FinalResultsPage.tsx`
   - Bottom navbar background set to solid black (`bg-black`).
   - Home button height matches Play Again: both use `size="lg"` with `py-6 text-base`.

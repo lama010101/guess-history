@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { acquireChannel } from '../../integrations/supabase/realtime';
+import { makeRoundId } from '@/utils/roomState';
 
 const isDev = typeof import.meta !== 'undefined' && !!import.meta.env?.DEV;
 const devLog = (...args: unknown[]) => {
@@ -224,7 +225,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       const dbRoundIndex = Math.max(0, oneBasedRound - 1);
       const { data: rrRows, error: rrError } = await (supabase as any)
         .from('round_results')
-        .select('user_id, guess_year, distance_km, guess_lat, guess_lng, actual_lat, actual_lng, xp_where, xp_when, location_accuracy, time_accuracy, xp_total, score, accuracy, xp_debt, acc_debt, hints_used, hint_debts')
+        .select('user_id, guess_year, distance_km, guess_lat, guess_lng, actual_lat, actual_lng, xp_where, xp_when, location_accuracy, time_accuracy, xp_total, score, accuracy, xp_debt, acc_debt, hints_used')
         .eq('room_id', roomId)
         .eq('round_index', dbRoundIndex);
       devLog('Round results query', { rrRows, rrError });
@@ -236,6 +237,27 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       // 4. Unify participants: union of session_players and scoreboard rows
       const playersArr: Array<any> = Array.isArray(spRows) ? spRows : [];
       const rrByUser = new Map<string, any>((rrRows || []).map((r: any) => [r.user_id, r]));
+
+      // 3b. Fetch per-axis hint debts from round_hints for this room/round
+      const roundSessionId = makeRoundId(roomId, oneBasedRound);
+      const { data: hintRows, error: hintErr } = await (supabase as any)
+        .from('round_hints')
+        .select('user_id, hint_type, accDebt, xpDebt')
+        .eq('round_id', roundSessionId);
+      if (hintErr) {
+        console.warn('[useRoundPeers] round_hints fetch failed', hintErr);
+      }
+      const hintsByUser = new Map<string, { whenAccDebt: number; whereAccDebt: number; accDebt: number; count: number; whenCount: number; whereCount: number }>();
+      (hintRows || []).forEach((row: any) => {
+        const uid = String(row.user_id);
+        const prev = hintsByUser.get(uid) || { whenAccDebt: 0, whereAccDebt: 0, accDebt: 0, count: 0, whenCount: 0, whereCount: 0 };
+        const acc = Number(row.accDebt ?? 0) || 0;
+        const type = String(row.hint_type || '');
+        if (type === 'when') { prev.whenAccDebt += acc; prev.whenCount += 1; } else if (type === 'where') { prev.whereAccDebt += acc; prev.whereCount += 1; }
+        prev.accDebt += acc;
+        prev.count += 1;
+        hintsByUser.set(uid, prev);
+      });
       const sbByUser = new Map<string, any>((scoreboardRows || []).map((s: any) => [s.user_id, s]));
       const allUserIds = Array.from(new Set<string>([
         ...playersArr.map(p => String(p.user_id)),
@@ -292,10 +314,11 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
         const hasScoreboardEntry = !!sb && (
           sb.score != null || sb.accuracy != null || sb.xp_total != null || sb.xp_where != null || sb.xp_when != null
         );
+        const hintAgg = hintsByUser.get(uid);
         const rawHintsUsedCandidates = [
           sb?.hints_used,
           rr?.hints_used,
-          Array.isArray((rr as any)?.hint_debts) ? (rr as any).hint_debts.length : null,
+          hintAgg?.count ?? null,
         ];
         const numericHintsUsed = rawHintsUsedCandidates.reduce<number | null>((acc, val) => {
           if (acc != null && acc > 0) return acc;
@@ -307,17 +330,13 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
         const rawAccuracy = Number(sb?.accuracy ?? rr?.accuracy ?? 0);
         const rawAccDebt = Number(sb?.acc_debt ?? rr?.acc_debt ?? 0);
 
-        const hintDebtsArray = Array.isArray((rr as any)?.hint_debts) ? (rr as any).hint_debts : [];
-        const whenAccDebt = hintDebtsArray
-          .filter((d: any) => d?.hint_type === 'when')
-          .reduce((sum: number, d: any) => sum + Number(d?.accDebt ?? d?.acc_debt ?? 0), 0);
-        const whereAccDebt = hintDebtsArray
-          .filter((d: any) => d?.hint_type === 'where')
-          .reduce((sum: number, d: any) => sum + Number(d?.accDebt ?? d?.acc_debt ?? 0), 0);
-        const whenHints = hintDebtsArray.filter((d: any) => d?.hint_type === 'when').length || null;
-        const whereHints = hintDebtsArray.filter((d: any) => d?.hint_type === 'where').length || null;
+        const whenAccDebt = hintAgg?.whenAccDebt ?? 0;
+        const whereAccDebt = hintAgg?.whereAccDebt ?? 0;
+        const whenHints = hintAgg ? Math.max(0, Number(hintAgg.whenCount)) : null;
+        const whereHints = hintAgg ? Math.max(0, Number(hintAgg.whereCount)) : null;
 
-        const netAccuracy = Math.max(0, rawAccuracy - Math.max(whenAccDebt, whereAccDebt, rawAccDebt));
+        const totalDebt = Number.isFinite(rawAccDebt) && rawAccDebt != null ? Number(rawAccDebt) : (whenAccDebt + whereAccDebt);
+        const netAccuracy = Math.max(0, rawAccuracy - Math.max(0, totalDebt));
         return {
           userId: uid,
           displayName: (sp?.display_name ?? sb?.display_name ?? profile?.display_name ?? 'Unknown') as string,
@@ -389,13 +408,16 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       devLog('merged peer count', mergedPeers.length, mergedPeers.map(p => ({ id: p.userId, hasAvatar: !!p.avatarUrl })));
 
       const normalizeForSort = (value: number | null) => (typeof value === 'number' && Number.isFinite(value) ? value : -Infinity);
-      const buildLeaderboard = (extractor: (peer: PeerRoundRow) => number | null): MiniLeaderboardRow[] => {
+      const buildLeaderboard = (
+        extractor: (peer: PeerRoundRow) => number | null,
+        hintsExtractor?: (peer: PeerRoundRow) => number | null,
+      ): MiniLeaderboardRow[] => {
         const rows = mergedPeers
           .map((peer) => ({
             userId: peer.userId,
             displayName: peer.displayName,
             value: extractor(peer),
-            hintsUsed: Math.max(0, Number(peer.hintsUsed ?? 0)),
+            hintsUsed: Math.max(0, Number((hintsExtractor ? hintsExtractor(peer) : peer.hintsUsed) ?? 0)),
           }))
           .filter((row) => row.value != null && Number.isFinite(Number(row.value)));
 
@@ -413,18 +435,24 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
         setPeers(mergedPeers);
         setMiniLeaderboards({
           total: buildLeaderboard(peer => (typeof peer.netAccuracy === 'number' ? peer.netAccuracy : null)),
-          time: buildLeaderboard(peer => {
-            if (typeof peer.timeAccuracy === 'number') {
-              return Math.max(0, peer.timeAccuracy - Number(peer.accDebt ?? 0));
-            }
-            return null;
-          }),
-          location: buildLeaderboard(peer => {
-            if (typeof peer.locationAccuracy === 'number') {
-              return Math.max(0, peer.locationAccuracy - Number(peer.accDebt ?? 0));
-            }
-            return null;
-          }),
+          time: buildLeaderboard(
+            peer => {
+              if (typeof peer.timeAccuracy === 'number') {
+                return Math.max(0, peer.timeAccuracy - Number(peer.whenAccDebt ?? 0));
+              }
+              return null;
+            },
+            peer => (typeof peer.whenHints === 'number' ? peer.whenHints : null)
+          ),
+          location: buildLeaderboard(
+            peer => {
+              if (typeof peer.locationAccuracy === 'number') {
+                return Math.max(0, peer.locationAccuracy - Number(peer.whereAccDebt ?? 0));
+              }
+              return null;
+            },
+            peer => (typeof peer.whereHints === 'number' ? peer.whereHints : null)
+          ),
         });
         setError(null);
       }

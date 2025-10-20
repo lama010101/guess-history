@@ -35,6 +35,7 @@ export interface RoundResult {
   yearDifference: number | null;
   locationAccuracy: number;
   timeAccuracy: number;
+  accuracy: number;
   xpWhere: number;
   xpWhen: number;
   xpTotal: number;

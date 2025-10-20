@@ -49,18 +49,7 @@
   }
 
   .switch-thumb::after {
-    content: "";
-    position: absolute;
-    inset: -6px;
-    border-radius: 9999px;
-    background-color: hsl(var(--secondary) / 0.3);
-    opacity: 0;
-    transition: opacity 150ms ease;
-    pointer-events: none;
-  }
-
-  .switch-thumb[data-state="checked"]::after {
-    opacity: 1;
+    content: none;
   }
 
   /* Custom styles for the time slider */
@@ -231,7 +220,7 @@ html, body {
     --primary: 0 0% 20%; /* Dark gray for primary */
     --primary-foreground: 0 0% 100%;
     --secondary: 25 95% 53%; /* Orange for secondary/highlight */
-    --secondary-foreground: 0 0% 100%;
+    --secondary-foreground: 0 0% 0%;
     --muted: 0 0% 96%;
     --muted-foreground: 0 0% 45%;
     --accent: 0 0% 96%;
@@ -259,7 +248,7 @@ html, body {
     --primary: 0 0% 20%; /* Dark gray for primary */
     --primary-foreground: 0 0% 95%;
     --secondary: 25 95% 53%; /* Keep orange for secondary/highlight */
-    --secondary-foreground: 0 0% 10%;
+    --secondary-foreground: 0 0% 0%;
     --muted: 0 0% 12%; /* Darker muted background */
     --muted-foreground: 0 0% 70%;
     --accent: 0 0% 15%; /* Dark accent */
@@ -271,9 +260,9 @@ html, body {
     --ring: 0 0% 60%; /* Lighter ring for focus */
   }
 
-  /* Compete mode theme override: switch secondary to turquoise */
+  /* Compete mode theme override: switch secondary to compete cyan */
   body.mode-compete, .mode-compete {
-    --secondary: 175 66% 51%; /* #30D5C8 */
+    --secondary: 186 85% 53%; /* #21d9ed */
     --secondary-foreground: 0 0% 100%;
   }
 

@@ -122,6 +122,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   roundLeaderboardCard,
 }) => {
   const { user } = useAuth();
+  const selfUserId = user?.id || 'self';
   const distanceUnit = useSettingsStore(s => s.distanceUnit);
   const mapLabelLanguage = useSettingsStore(s => s.mapLabelLanguage);
   const [earnedBadge, setEarnedBadge] = useState<BadgeType | null>(null);
@@ -137,24 +138,40 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
     }
   }, [result]);
 
+  const whenHintDebts = result?.hintDebts?.filter(d => d.hint_type === 'when') ?? [];
+  const whereHintDebts = result?.hintDebts?.filter(d => d.hint_type === 'where') ?? [];
+
   const xpDebt = result?.hintDebts?.reduce((sum, d) => sum + d.xpDebt, 0) ?? 0;
   const accDebt = result?.hintDebts?.reduce((sum, d) => sum + d.accDebt, 0) ?? 0;
 
-  // `xpTotal` provided in `result` is already **after** hint debt has been deducted.
-  // Therefore, do NOT subtract `xpDebt` again here, otherwise we double-count
-  // the deduction and show an incorrect (often zero) score.
-  const netXP = Math.max(0, result?.xpTotal ?? 0);
-  const netAccuracy = Math.max(0, (((result?.locationAccuracy ?? 0) + (result?.timeAccuracy ?? 0)) / 2) - accDebt);
+  const xpDebtWhen = whenHintDebts.reduce((sum, d) => sum + d.xpDebt, 0);
+  const xpDebtWhere = whereHintDebts.reduce((sum, d) => sum + d.xpDebt, 0);
+  const accDebtWhen = whenHintDebts.reduce((sum, d) => sum + d.accDebt, 0);
+  const accDebtWhere = whereHintDebts.reduce((sum, d) => sum + d.accDebt, 0);
+  const totalAccDebt = accDebt;
 
-  const xpDebtWhen = result?.hintDebts?.filter(d => d.hint_type === 'when').reduce((sum, d) => sum + d.xpDebt, 0) ?? 0;
-  const accDebtWhen = result?.hintDebts?.filter(d => d.hint_type === 'when').reduce((sum, d) => sum + d.accDebt, 0) ?? 0;
   const netXpWhen = Math.max(0, (result?.xpWhen ?? 0) - xpDebtWhen);
-  const netTimeAccuracy = Math.max(0, (result?.timeAccuracy ?? 0) - accDebtWhen);
-
-  const xpDebtWhere = result?.hintDebts?.filter(d => d.hint_type === 'where').reduce((sum, d) => sum + d.xpDebt, 0) ?? 0;
   const netXpWhere = Math.max(0, (result?.xpWhere ?? 0) - xpDebtWhere);
-  const accDebtWhere = result?.hintDebts?.filter(d => d.hint_type === 'where').reduce((sum, d) => sum + d.accDebt, 0) ?? 0;
-  const netLocationAccuracy = Math.max(0, (result?.locationAccuracy ?? 0) - accDebtWhere);
+  // Compute net XP consistently from components to avoid double-subtracting when xpTotal is already net.
+  const netXP = Math.max(0, (result?.xpWhen ?? 0) + (result?.xpWhere ?? 0) - xpDebt);
+
+  const baseTimeAccuracy = Math.max(0, result?.timeAccuracy ?? 0);
+  const baseLocationAccuracy = Math.max(0, result?.locationAccuracy ?? 0);
+  const baseTotalAccuracy = Math.max(0, result?.accuracy ?? 0);
+
+  const netTimeAccuracy = Math.max(0, baseTimeAccuracy - accDebtWhen);
+  const netLocationAccuracy = Math.max(0, baseLocationAccuracy - accDebtWhere);
+  const netAccuracy = Math.max(0, baseTotalAccuracy - totalAccDebt);
+
+  // If leaderboards are present, use their self row values to display "Your Score"
+  // so both host and friend see identical numbers across devices.
+  const selfLbUserId = (leaderboards?.currentUserId ?? selfUserId) || selfUserId;
+  const lbSelfTotal = leaderboards?.total.find(r => r.userId === selfLbUserId)?.value;
+  const lbSelfWhen = leaderboards?.when.find(r => r.userId === selfLbUserId)?.value;
+  const lbSelfWhere = leaderboards?.where.find(r => r.userId === selfLbUserId)?.value;
+  const displayNetAccuracy = lbSelfTotal != null ? Math.max(0, Math.round(Number(lbSelfTotal))) : Math.round(netAccuracy);
+  const displayNetTimeAccuracy = lbSelfWhen != null ? Math.max(0, Math.round(Number(lbSelfWhen))) : Math.round(netTimeAccuracy);
+  const displayNetLocationAccuracy = lbSelfWhere != null ? Math.max(0, Math.round(Number(lbSelfWhere))) : Math.round(netLocationAccuracy);
 
   const correctLat = result?.eventLat ?? 0;
   const correctLng = result?.eventLng ?? 0;
@@ -205,7 +222,12 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
     whereHints: number;
   };
 
-  const selfUserId = user?.id || 'self';
+  const selfTotalHintsCount = whenHintDebts.length + whereHintDebts.length;
+  const selfTotalPenalty = Math.max(0, Math.round(totalAccDebt));
+  const selfWhenPenalty = Math.max(0, Math.round(accDebtWhen));
+  const selfWherePenalty = Math.max(0, Math.round(accDebtWhere));
+  const selfWhenHints = whenHintDebts.length;
+  const selfWhereHints = whereHintDebts.length;
 
   const leaderboardEntries = useMemo<LeaderboardEntry[]>(() => {
     const clampPercent = (value: number | null | undefined) => {
@@ -235,12 +257,6 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
     const entries: LeaderboardEntry[] = [];
 
-    const whenHintDebts = result?.hintDebts?.filter(d => d.hint_type === 'when') ?? [];
-    const whereHintDebts = result?.hintDebts?.filter(d => d.hint_type === 'where') ?? [];
-    const accDebtWhenTotal = whenHintDebts.reduce((sum, d) => sum + d.accDebt, 0);
-    const accDebtWhereTotal = whereHintDebts.reduce((sum, d) => sum + d.accDebt, 0);
-    const selfWhenHints = Math.max(0, whenHintDebts.length);
-    const selfWhereHints = Math.max(0, whereHintDebts.length);
     const selfTotalHints = Math.max(0, Number(result?.hintsUsed ?? (selfWhenHints + selfWhereHints)));
 
     const selfNetAccuracy = clampPercent(netAccuracy);
@@ -370,27 +386,14 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
         : metric === 'when'
           ? leaderboards.when
           : leaderboards.where).map((row) => {
-            const base = metric === 'total'
-              ? ((row as any).baseAccuracy ?? (((row as any).timeAccuracy ?? 0) + ((row as any).locationAccuracy ?? 0)) / 2)
-              : metric === 'when'
-                ? (row as any).timeAccuracy
-                : (row as any).locationAccuracy;
-            const penaltySource = (row as any).penalty ?? (metric === 'when' ? (row as any).whenPenalty : metric === 'where' ? (row as any).wherePenalty : (row as any).totalPenalty);
-            const hintsSource = metric === 'when'
-              ? (row as any).whenHints
-              : metric === 'where'
-                ? (row as any).whereHints
-                : (row as any).totalHints;
-            const penalty = penaltySource != null && Number.isFinite(Number(penaltySource))
-              ? Math.max(0, Number(penaltySource))
-              : base != null
-                ? Math.max(0, Number(base) - Number(row.value ?? 0))
-                : 0;
+            const penalty = Math.max(0, Math.round(Number((row as any).penalty ?? 0)));
+            const hintsUsed = Math.max(0, Math.round(Number((row as any).hintsUsed ?? 0)));
+            const value = Math.round(Number(row.value ?? 0));
             return {
               userId: row.userId,
               displayName: row.displayName,
-              value: row.value ?? 0,
-              hintsUsed: hintsSource ?? row.hintsUsed,
+              value,
+              hintsUsed,
               penalty,
             };
           });

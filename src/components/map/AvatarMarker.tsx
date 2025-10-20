@@ -54,7 +54,7 @@ const AvatarMarker: React.FC<AvatarMarkerProps> = React.memo(({ lat, lng, imageU
     const haloPx = avatarPx * 2; // halo twice the avatar size
 
     const wrapperStyle = `position:relative; width:${sizePx}px; height:${sizePx}px; display:flex; align-items:center; justify-content:center;`;
-    const haloStyle = `position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:${haloPx}px; height:${haloPx}px; border-radius:9999px; background:rgba(251,146,60,0.5);`;
+    const haloStyle = `position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:${haloPx}px; height:${haloPx}px; border-radius:9999px; background:hsla(var(--secondary) / 0.5);`;
     const baseImgStyle = `width:${avatarPx}px; height:${avatarPx}px; border-radius:9999px; box-shadow:0 2px 6px rgba(0,0,0,0.25);`;
 
     let inner = '';
@@ -63,7 +63,7 @@ const AvatarMarker: React.FC<AvatarMarkerProps> = React.memo(({ lat, lng, imageU
       inner = `<div aria-busy="true" aria-live="polite" style="${baseImgStyle} background:#000; opacity:0.85;" class="dark:bg-gray-200 animate-pulse"></div>`;
     } else if (hasError || !imageUrl) {
       // Error fallback – simple pin emoji within circle
-      inner = `<div style="${baseImgStyle}; background:#ea580c; color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; border:2px solid #fff;">📍</div>`;
+      inner = `<div style="${baseImgStyle}; background:hsl(var(--secondary)); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; border:2px solid #fff;">📍</div>`;
     } else {
       // Actual avatar image
       inner = `<img src="${imageUrl}" alt="Player avatar" style="${baseImgStyle}; object-fit:cover; border:2px solid #fff;" />`;

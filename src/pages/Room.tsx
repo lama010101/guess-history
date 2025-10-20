@@ -731,7 +731,7 @@ const Room: React.FC = () => {
   }, [localTimerSec]);
 
   const sliderStyle = useMemo<React.CSSProperties>(() => ({
-    background: `linear-gradient(to right, #00cfff 0%, #00cfff ${sliderPercent}%, rgba(255,255,255,0.08) ${sliderPercent}%, rgba(255,255,255,0.05) 100%)`,
+    background: `linear-gradient(to right, #22d3ee 0%, #22d3ee ${sliderPercent}%, rgba(255,255,255,0.08) ${sliderPercent}%, rgba(255,255,255,0.05) 100%)`,
   }), [sliderPercent]);
 
   return (
@@ -739,10 +739,10 @@ const Room: React.FC = () => {
       <style>{`
         #room-timer-range { -webkit-appearance: none; appearance: none; height: 10px; border-radius: 9999px; background: transparent; }
         #room-timer-range:focus { outline: none; }
-        #room-timer-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #101316; border: 3px solid #00cfff; box-shadow: 0 0 0 4px rgba(0, 207, 255, 0.25); margin-top: -3px; }
-        #room-timer-range:disabled::-webkit-slider-thumb { background: #1e293b; border-color: #00aad4; box-shadow: none; }
-        #room-timer-range::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #101316; border: 3px solid #00cfff; box-shadow: 0 0 0 4px rgba(0, 207, 255, 0.25); }
-        #room-timer-range:disabled::-moz-range-thumb { background: #1e293b; border-color: #00aad4; box-shadow: none; }
+        #room-timer-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #101316; border: 3px solid #22d3ee; box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.25); margin-top: -3px; }
+        #room-timer-range:disabled::-webkit-slider-thumb { background: #1e293b; border-color: #1cbfdb; box-shadow: none; }
+        #room-timer-range::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #101316; border: 3px solid #22d3ee; box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.25); }
+        #room-timer-range:disabled::-moz-range-thumb { background: #1e293b; border-color: #1cbfdb; box-shadow: none; }
         #room-timer-range::-webkit-slider-runnable-track { height: 10px; border-radius: 9999px; background: rgba(255,255,255,0.05); }
         #room-timer-range::-moz-range-track { height: 10px; border-radius: 9999px; background: rgba(255,255,255,0.05); }
       `}</style>
@@ -756,7 +756,7 @@ const Room: React.FC = () => {
             <ChevronLeft className="h-4 w-4" />
             Back
           </button>
-          <h1 className="flex-1 text-center text-xl font-semibold">Compete</h1>
+          <h1 className="flex-1 text-center text-2xl font-semibold text-white">Compete</h1>
           <div className="w-24 text-right text-xs text-neutral-400">
             {(roster.length || players.length)} player{(roster.length || players.length) === 1 ? '' : 's'}
           </div>
@@ -768,7 +768,7 @@ const Room: React.FC = () => {
               <Clock className="h-5 w-5 text-white" />
               <span>Round Timer</span>
             </div>
-            <span className="text-sm font-semibold text-[#00cfff]">
+            <span className="text-sm font-semibold text-[#22d3ee]">
               {formatTime(Number(isHost && draggingTimer ? localTimerSec : (roundTimerSec || 0)))}
             </span>
           </div>
@@ -791,7 +791,7 @@ const Room: React.FC = () => {
                 style={sliderStyle}
                 aria-label="Round timer duration"
               />
-              <div className="mt-2 flex justify-between text-xs text-[#7dd3fc]">
+              <div className="mt-2 flex justify-between text-xs text-white">
                 <span>5s</span>
                 <span>5m</span>
               </div>
@@ -821,7 +821,7 @@ const Room: React.FC = () => {
                   <Button
                     onClick={copyCode}
                     size="icon"
-                    className="h-11 w-11 bg-[#00cfff] px-0 text-black hover:bg-[#00b4e6]"
+                    className="h-11 w-11 bg-[#22d3ee] px-0 text-black hover:bg-[#1cbfdb]"
                     aria-label="Copy room code"
                   >
                     <Copy className="h-4 w-4" />
@@ -838,10 +838,10 @@ const Room: React.FC = () => {
                 <AccordionItem value="friends">
                   <AccordionTrigger className="flex items-center justify-between px-4 py-3 text-sm font-semibold text-white">
                     <span>Send Invite</span>
-                    <div className="flex items-center gap-3 text-xs font-medium text-cyan-200">
+                    <div className="flex items-center gap-3 text-xs font-medium text-[#22d3ee]">
                       <button
                         type="button"
-                        className="hover:text-cyan-100"
+                        className="hover:text-[#b6ecff]"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -882,7 +882,7 @@ const Room: React.FC = () => {
                             <Button
                               onClick={() => inviteFriend(f)}
                               size="sm"
-                              className="bg-[#00cfff] px-4 py-1.5 text-xs font-semibold text-black hover:bg-[#00b4e6]"
+                              className="bg-[#22d3ee] px-4 py-1.5 text-xs font-semibold text-black hover:bg-[#1cbfdb]"
                               aria-label="Invite friend"
                             >
                               Invite
@@ -949,10 +949,10 @@ const Room: React.FC = () => {
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="max-w-[220px] truncate text-sm font-semibold text-white">{isYou ? `(You) ${r.name}` : r.name}</span>
-                              {r.host && <span className="rounded-full bg-[#00b7ff]/15 px-2 py-0.5 text-[10px] font-semibold text-[#00b7ff]">Host</span>}
+                              {r.host && <span className="rounded-full bg-[#22d3ee]/20 px-2 py-0.5 text-[10px] font-semibold text-[#22d3ee]">Host</span>}
                               {typeof r._inviteId === 'string' && <span className="rounded-full bg-[#f97316]/15 px-2 py-0.5 text-[10px] font-semibold text-[#f97316]">Invited</span>}
                               {r.ready && typeof r._inviteId !== 'string' && !isYou && (
-                                <span className="rounded-full bg-[#22c55e]/15 px-2 py-0.5 text-[10px] font-semibold text-[#22c55e]">Ready</span>
+                                <span className="rounded-full bg-[#22d3ee]/20 px-2 py-0.5 text-[10px] font-semibold text-[#22d3ee]">Ready</span>
                               )}
                             </div>
                           </div>
@@ -969,12 +969,12 @@ const Room: React.FC = () => {
                               type="button"
                               onClick={toggleReady}
                               disabled={status !== 'open'}
-                              className={`rounded-xl px-4 py-1.5 text-xs font-semibold transition-colors ${ownReady ? 'bg-[#22c55e] text-white hover:bg-[#2fe26c]' : 'bg-[#00cfff] text-black hover:bg-[#00b4e6]'}`}
+                              className={`rounded-xl px-4 py-1.5 text-xs font-semibold transition-colors ${ownReady ? 'bg-[#22d3ee] text-black hover:bg-[#1cbfdb]' : 'bg-[#22d3ee] text-black hover:bg-[#1cbfdb]'}`}
                             >
                               {ownReady ? 'Ready!' : 'Ready?'}
                             </button>
                           ) : (
-                            <span className={`text-sm font-semibold ${r.ready ? 'text-[#22c55e]' : 'text-neutral-200'}`}>
+                            <span className={`text-sm font-semibold ${r.ready ? 'text-[#22d3ee]' : 'text-neutral-200'}`}>
                               {r.ready ? 'Ready!' : 'Not ready'}
                             </span>
                           )}
@@ -1027,7 +1027,7 @@ const Room: React.FC = () => {
                   chat.map((c) => (
                     <div key={c.id} className="pb-3 last:pb-0">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold text-white truncate max-w-[70%]">{c.from}</span>
+                        <span className="text-sm font-semibold text-[#22d3ee] truncate max-w-[70%]">{c.from}</span>
                         <span className="text-[10px] text-neutral-400">{formatChatTime(c.timestamp)}</span>
                       </div>
                       <div className="mt-1 text-sm text-neutral-200 whitespace-pre-wrap break-words">{c.message}</div>
@@ -1049,7 +1049,7 @@ const Room: React.FC = () => {
                   className="rounded-lg border border-[#454852] bg-[#1d2026] text-white"
                   aria-label="Type a chat message"
                 />
-                <Button onClick={sendChat} disabled={!input.trim() || status !== 'open'} className="bg-[#00cfff] px-4 text-black hover:bg-[#00b4e6] disabled:opacity-40">
+                <Button onClick={sendChat} disabled={!input.trim() || status !== 'open'} className="bg-[#22d3ee] px-4 text-black hover:bg-[#1cbfdb] disabled:opacity-40">
                   Send
                 </Button>
               </div>
@@ -1060,7 +1060,7 @@ const Room: React.FC = () => {
 
       <div className="fixed inset-x-0 bottom-0 z-40">
         <div className="mx-auto max-w-4xl px-4 pb-4">
-          <div className="rounded-2xl border border-[#144e60] bg-[#0f2f3a] px-5 py-3 text-center">
+          <div className="rounded-2xl border border-[#165f70] bg-[#0a2f3d] px-5 py-3 text-center">
             <div className="text-sm font-semibold text-[#22d3ee]">Waiting for players ({readyCount}/{roster.length || players.length} ready)</div>
             <div className="mt-1 text-xs text-neutral-200">All players must be ready to start</div>
           </div>

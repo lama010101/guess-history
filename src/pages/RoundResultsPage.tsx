@@ -17,7 +17,7 @@ import { makeRoundId } from '@/utils/roomState';
 import { GameImage } from '@/contexts/GameContext';
 import { RoundResult as ContextRoundResult } from '@/types';
 // Import the RoundResult type expected by ResultsLayout2
-import { RoundResult as LayoutRoundResultType } from '@/utils/results/types';
+import { RoundResult as LayoutRoundResultType, HintDebt } from '@/utils/results/types';
 // Import supabase client
 import { supabase } from '@/integrations/supabase/client';
 // Multiplayer peers for round results
@@ -79,7 +79,7 @@ type RoundHintRow = {
 
 const RoundResultsPage = () => {
   // ---------------------------------- Hint debts ----------------------------------
-  const [hintDebts, setHintDebts] = useState<{ hintId: string; xpDebt: number; accDebt: number; label: string; hint_type: string }[]>([]);
+  const [hintDebts, setHintDebts] = useState<HintDebt[]>([]);
 
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -168,30 +168,75 @@ const RoundResultsPage = () => {
   // --- Multiplayer peers: fetch other players' answers for this room/round ---
   const { peers: peerRows, miniLeaderboards } = useRoundPeers(roomId || null, Number.isFinite(roundNumber) ? roundNumber : null);
 
+  interface LayoutLeaderboardRow {
+    userId: string;
+    displayName: string;
+    value: number;
+    hintsUsed: number;
+    penalty: number;
+  }
+
   const layoutLeaderboards = useMemo(() => {
     if (!miniLeaderboards) return undefined;
+
+    const peerMap = new Map((peerRows || []).map((peer) => [peer.userId, peer]));
+    const normalizeCount = (value: number | null | undefined) => {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric) || numeric < 0) return 0;
+      return Math.max(0, Math.round(numeric));
+    };
+
+    const normalizePercent = (value: number | null | undefined) => {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric) || numeric <= 0) return 0;
+      return numeric > 1 ? Math.round(numeric) : Math.round(numeric * 100);
+    };
+
     return {
-      total: miniLeaderboards.total.map((row) => ({
-        userId: row.userId,
-        displayName: row.displayName,
-        value: row.value ?? 0,
-        hintsUsed: row.hintsUsed ?? 0,
-      })),
-      when: miniLeaderboards.time.map((row) => ({
-        userId: row.userId,
-        displayName: row.displayName,
-        value: row.value ?? 0,
-        hintsUsed: row.hintsUsed ?? 0,
-      })),
-      where: miniLeaderboards.location.map((row) => ({
-        userId: row.userId,
-        displayName: row.displayName,
-        value: row.value ?? 0,
-        hintsUsed: row.hintsUsed ?? 0,
-      })),
+      total: miniLeaderboards.total.map<LayoutLeaderboardRow>((row) => {
+        const peer = peerMap.get(row.userId);
+        const value = peer ? normalizePercent(peer.netAccuracy ?? peer.accuracy ?? row.value) : normalizePercent(row.value);
+        const penalty = peer ? normalizePercent(peer.accDebt) : 0;
+        const hints = peer ? normalizeCount(peer.hintsUsed) : normalizeCount(row.hintsUsed);
+        return {
+          userId: row.userId,
+          displayName: row.displayName,
+          value,
+          hintsUsed: hints,
+          penalty,
+        };
+      }),
+      when: miniLeaderboards.time.map<LayoutLeaderboardRow>((row) => {
+        const peer = peerMap.get(row.userId);
+        const base = peer ? normalizePercent(peer.timeAccuracy) : normalizePercent(row.value);
+        const penalty = peer ? normalizePercent(peer.whenAccDebt) : 0;
+        const value = Math.max(0, base - penalty);
+        const hints = peer ? normalizeCount(peer.whenHints) : normalizeCount(row.hintsUsed);
+        return {
+          userId: row.userId,
+          displayName: row.displayName,
+          value,
+          hintsUsed: hints,
+          penalty,
+        };
+      }),
+      where: miniLeaderboards.location.map<LayoutLeaderboardRow>((row) => {
+        const peer = peerMap.get(row.userId);
+        const base = peer ? normalizePercent(peer.locationAccuracy) : normalizePercent(row.value);
+        const penalty = peer ? normalizePercent(peer.whereAccDebt) : 0;
+        const value = Math.max(0, base - penalty);
+        const hints = peer ? normalizeCount(peer.whereHints) : normalizeCount(row.hintsUsed);
+        return {
+          userId: row.userId,
+          displayName: row.displayName,
+          value,
+          hintsUsed: hints,
+          penalty,
+        };
+      }),
       currentUserId: user?.id ?? null,
     };
-  }, [miniLeaderboards, user?.id]);
+  }, [miniLeaderboards, peerRows, user?.id]);
 
   // Fetch and process hint debts when user, image, and results are ready
   const fetchDebts = useCallback(async () => {
@@ -245,7 +290,7 @@ const RoundResultsPage = () => {
         return;
       }
       
-      const processedDebts = hintRecords.map((hint) => ({
+      const processedDebts: HintDebt[] = hintRecords.map((hint) => ({
         hintId: hint.hint_id,
         xpDebt: Number(hint.xpDebt) || 0,
         accDebt: Number(hint.accDebt) || 0,
@@ -343,89 +388,82 @@ const RoundResultsPage = () => {
 
   // Mapping function: Context -> Layout Type
   const mapToLayoutResultType = useCallback((
-      ctxResult: ContextRoundResult | undefined,
-      img: GameImage | null,
-      debts: typeof hintDebts
+    ctxResult: ContextRoundResult | undefined,
+    img: GameImage | null,
+    debts: HintDebt[],
   ): LayoutRoundResultType | null => {
-      if (!ctxResult || !img) return null;
+    if (!ctxResult || !img) {
+      return null;
+    }
 
-      // --- Calculations using standardized scoring system (preserve null guesses) ---
-      const distanceKm = ctxResult.distanceKm ?? null; // keep null when no location guess
-      
-      // Actual event year
-      const actualYear = img.year || 1900;
-      // Keep null guess year if no guess was made
-      const guessYear = ctxResult.guessYear ?? null;
-      const yearDifference = guessYear == null ? null : Math.abs(actualYear - guessYear);
-      
-      // Accuracy percentages: 0 when no guess
-      const locationAccuracy = distanceKm == null
-          ? 0
-          : (ctxResult.xpWhere !== undefined 
-              ? Math.round((ctxResult.xpWhere / 100) * 100)
-              : Math.round(calculateLocationAccuracy(distanceKm)));
-      
-      const timeAccuracy = guessYear == null
-          ? 0
-          : (ctxResult.xpWhen !== undefined
-              ? Math.round((ctxResult.xpWhen / 100) * 100)
-              : Math.round(calculateTimeAccuracy(guessYear, actualYear)));
-      
-      // XP values: 0 when no guess
-      const xpWhere = ctxResult.xpWhere ?? (distanceKm == null ? 0 : Math.round(calculateLocationAccuracy(distanceKm)));
-      const xpWhen = ctxResult.xpWhen ?? (guessYear == null ? 0 : Math.round(calculateTimeAccuracy(guessYear, actualYear)));
-      
-      // Get hint-related information
-      const hintsUsed = ctxResult.hintsUsed ?? 0;
-      const totalXpDebt = debts.reduce((sum, d) => sum + (d.xpDebt || 0), 0);
-      const totalAccDebt = debts.reduce((sum, d) => sum + (d.accDebt || 0), 0);
-      
-      // Calculate total XP with hint penalties / debts
-      const xpBeforePenalty = xpWhere + xpWhen;
-      const xpTotal = ctxResult.score ?? Math.max(0, xpBeforePenalty - totalXpDebt);
-      
-      // Time difference description: 'No guess' when missing
-      const timeDifferenceDesc = guessYear == null 
-        ? 'No guess' 
-        : getTimeDifferenceDescription(guessYear, actualYear);
+    const actualYear = img.year || 1900;
+    const guessYear = ctxResult.guessYear ?? null;
+    const distanceKm = ctxResult.distanceKm ?? null;
+    const yearDifference = guessYear == null ? null : Math.abs(actualYear - guessYear);
 
-      // Construct the object matching LayoutRoundResultType from utils/resultsFetching
-      const isCorrect = locationAccuracy >= 95; // Consider 95%+ as correct
-      const layoutResult: LayoutRoundResultType = {
-          // Fields identified from linter errors & ResultsLayout2 usage
-          imageId: img.id, 
-          eventLat: ctxResult.actualCoordinates.lat, // Use actual coords
-          eventLng: ctxResult.actualCoordinates.lng, // Use actual coords
-          locationName: img.location_name || 'Unknown Location',
-          timeDifferenceDesc: timeDifferenceDesc, // Add the description string
-          guessLat: ctxResult.guessCoordinates?.lat ?? null, // Use optional chaining and null default
-          guessLng: ctxResult.guessCoordinates?.lng ?? null, // Use optional chaining and null default
-          distanceKm: distanceKm == null ? null : Math.round(distanceKm),
-          locationAccuracy: locationAccuracy,
-          guessYear: guessYear == null ? null : guessYear, 
-          eventYear: actualYear, // Actual year
-          yearDifference: yearDifference,
-          timeAccuracy: timeAccuracy,
-          xpTotal: xpTotal,
-          xpWhere: xpWhere,
-          xpWhen: xpWhen,
-          // Include hint information
-          hintDebts: debts, // Pass hint debts to the layout
-          hintsUsed,
-          // Include image details if the type definition requires them
-          imageTitle: img.title || 'Untitled',
-          imageDescription: img.description || 'No description.',
-          imageUrl: img.url || 'placeholder.jpg',
-          source_citation: img.source_citation,
-          confidence: img.confidence ?? 0,
-          earnedBadges: earnedBadges,
-          isCorrect: isCorrect,
-          // Include other potential fields if defined in the imported type
-          // roundNumber: ctxResult.roundIndex + 1, // Example if needed
-          // gameId: roomId, // Example if needed
-      };
-      
-      return layoutResult;
+    const locationAccuracy = distanceKm == null
+      ? 0
+      : (ctxResult.locationAccuracy !== undefined
+          ? Math.round(ctxResult.locationAccuracy)
+          : ctxResult.xpWhere !== undefined
+            ? Math.round(ctxResult.xpWhere)
+            : Math.round(calculateLocationAccuracy(distanceKm)));
+
+    const timeAccuracy = guessYear == null
+      ? 0
+      : (ctxResult.timeAccuracy !== undefined
+          ? Math.round(ctxResult.timeAccuracy)
+          : ctxResult.xpWhen !== undefined
+            ? Math.round(ctxResult.xpWhen)
+            : Math.round(calculateTimeAccuracy(guessYear, actualYear)));
+
+    const xpWhere = ctxResult.xpWhere ?? (distanceKm == null ? 0 : Math.round(calculateLocationAccuracy(distanceKm)));
+    const xpWhen = ctxResult.xpWhen ?? (guessYear == null ? 0 : Math.round(calculateTimeAccuracy(guessYear, actualYear)));
+
+    const hintsUsed = ctxResult.hintsUsed ?? 0;
+    const totalXpDebt = debts.reduce((sum, d) => sum + (d.xpDebt || 0), 0);
+    const totalAccDebt = debts.reduce((sum, d) => sum + (d.accDebt || 0), 0);
+
+    const xpBeforePenalty = xpWhere + xpWhen;
+    const xpTotal = ctxResult.score ?? Math.max(0, xpBeforePenalty - totalXpDebt);
+    const totalAccuracy = Math.max(0, Math.round((timeAccuracy + locationAccuracy) / 2) - Math.round(totalAccDebt));
+
+    const timeDifferenceDesc = guessYear == null
+      ? 'No guess'
+      : getTimeDifferenceDescription(guessYear, actualYear);
+
+    const isCorrect = locationAccuracy >= 95;
+
+    const layoutResult: LayoutRoundResultType = {
+      imageId: img.id,
+      eventLat: ctxResult.actualCoordinates?.lat ?? img.latitude,
+      eventLng: ctxResult.actualCoordinates?.lng ?? img.longitude,
+      locationName: img.location_name || 'Unknown Location',
+      timeDifferenceDesc,
+      guessLat: ctxResult.guessCoordinates?.lat ?? null,
+      guessLng: ctxResult.guessCoordinates?.lng ?? null,
+      distanceKm: distanceKm == null ? null : Math.round(distanceKm),
+      locationAccuracy,
+      guessYear,
+      eventYear: actualYear,
+      yearDifference,
+      timeAccuracy,
+      xpTotal,
+      xpWhere,
+      xpWhen,
+      accuracy: Math.round((timeAccuracy + locationAccuracy) / 2),
+      hintDebts: debts,
+      hintsUsed,
+      imageTitle: img.title || 'Untitled',
+      imageDescription: img.description || 'No description.',
+      imageUrl: img.url || 'placeholder.jpg',
+      source_citation: img.source_citation,
+      confidence: img.confidence ?? 0,
+      earnedBadges: earnedBadges,
+      isCorrect,
+    };
+
+    return layoutResult;
   }, [earnedBadges]);
 
   // Generate the result in the format the layout expects (memoized to avoid re-creating every render)

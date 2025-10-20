@@ -2,7 +2,6 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, Gamepad2, UserPlus } from 'lucide-react';
 
 function randomCode(len = 6): string {
@@ -12,9 +11,8 @@ function randomCode(len = 6): string {
   return out;
 }
 
-const Compete: React.FC = () => {
+const Lobby: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [joinCode, setJoinCode] = useState<string>('');
 
   const validJoinCode = useMemo(() => /^[a-z0-9]{6}$/.test(joinCode), [joinCode]);
@@ -44,7 +42,7 @@ const Compete: React.FC = () => {
             <ArrowLeft className="h-4 w-4" />
             Back
           </button>
-          <h1 className="text-center text-2xl font-semibold">Compete</h1>
+          <h1 className="text-center text-2xl font-semibold text-white">Lobby</h1>
         </div>
 
         <div className="flex flex-col gap-6">
@@ -67,7 +65,7 @@ const Compete: React.FC = () => {
               <Button
                 onClick={handleJoin}
                 disabled={!validJoinCode}
-                className="h-12 min-w-[96px] bg-[#00cfff] text-base font-semibold text-black transition-transform hover:-translate-y-0.5 hover:bg-[#00b4e6] disabled:translate-y-0 disabled:opacity-40"
+                className="h-12 min-w-[96px] bg-[#22d3ee] text-base font-semibold text-black transition-transform hover:-translate-y-0.5 hover:bg-[#1cbfdb] disabled:translate-y-0 disabled:opacity-40"
               >
                 Join
               </Button>
@@ -82,7 +80,7 @@ const Compete: React.FC = () => {
             </div>
             <Button
               onClick={handleCreate}
-              className="mt-5 h-12 w-full bg-[#00cfff] text-base font-semibold text-black transition-transform hover:-translate-y-0.5 hover:bg-[#00b4e6]"
+              className="mt-5 h-12 w-full bg-[#22d3ee] text-base font-semibold text-black transition-transform hover:-translate-y-0.5 hover:bg-[#1cbfdb]"
             >
               Create room
             </Button>
@@ -96,4 +94,4 @@ const Compete: React.FC = () => {
   );
 }
 
-export default Compete;
+export default Lobby;

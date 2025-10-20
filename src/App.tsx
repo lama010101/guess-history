@@ -34,7 +34,7 @@ import AuthPage from "./pages/AuthPage";
 
 import RoundResultsPage from "./pages/RoundResultsPage";
 import CompeteRoundResultsPage from "./pages/compete/CompeteRoundResultsPage";
-import Compete from "./pages/PlayWithFriends";
+import Lobby from "./pages/PlayWithFriends";
 import Room from "./pages/Room";
 import TimerMainPage from "./timer/pages/MainPage";
 import TimerRunPage from "./timer/pages/RunPage";
@@ -155,7 +155,7 @@ const App = () => {
                         </Route>
                         <Route element={<RegisteredRoute />}>
                           <Route path="/compete" element={<MainLayout />}>
-                            <Route index element={<Compete />} />
+                            <Route index element={<Lobby />} />
                           </Route>
                           <Route path="/room/:roomCode" element={<MainLayout />}>
                             <Route index element={<Room />} />

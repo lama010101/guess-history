@@ -57,7 +57,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   };
   
   return (
-    <div className="glass-card rounded-xl p-6 mb-8">
+    <div className="glass-card rounded-xl p-6 mb-6 bg-[#333333]">
       <div className="flex flex-col sm:flex-row items-center gap-6">
         <div className="relative">
           <div className="h-24 w-24 rounded-full overflow-hidden border-4 border-history-secondary">

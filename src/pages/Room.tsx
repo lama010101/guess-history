@@ -937,22 +937,23 @@ const Room: React.FC = () => {
                 <div className="mt-4 space-y-3">
                   {extendedRoster.map((r: any, index: number) => {
                     const isYou = r.id === ownId;
+                    const showReadyTag = r.ready && typeof r._inviteId !== 'string' && !isYou;
                     return (
-                      <div key={`${r.id}-${index}`} className="flex items-start justify-between gap-3 rounded-xl border border-[#3f424b] bg-[#1d2026] px-4 py-3">
-                        <div className="flex items-center gap-3">
+                      <div key={`${r.id}-${index}`} className="flex items-center justify-between gap-3 rounded-xl border border-[#3f424b] bg-[#1d2026] px-4 py-3">
+                        <div className="flex flex-1 items-center gap-3">
                           <Avatar className="h-10 w-10 border border-[#3f424b] bg-[#262930]">
                             <AvatarImage src={r.avatarUrl ?? undefined} alt={`${r.name} avatar`} />
                             <AvatarFallback className="bg-transparent text-sm font-semibold text-white">
                               {getInitial(r.name)}
                             </AvatarFallback>
                           </Avatar>
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="max-w-[220px] truncate text-sm font-semibold text-white">{isYou ? `(You) ${r.name}` : r.name}</span>
-                              {r.host && <span className="rounded-full bg-[#22d3ee]/20 px-2 py-0.5 text-[10px] font-semibold text-[#22d3ee]">Host</span>}
-                              {typeof r._inviteId === 'string' && <span className="rounded-full bg-[#f97316]/15 px-2 py-0.5 text-[10px] font-semibold text-[#f97316]">Invited</span>}
-                              {r.ready && typeof r._inviteId !== 'string' && !isYou && (
-                                <span className="rounded-full bg-[#22d3ee]/20 px-2 py-0.5 text-[10px] font-semibold text-[#22d3ee]">Ready</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="truncate text-sm font-semibold text-white">{isYou ? `(You) ${r.name}` : r.name}</span>
+                              {r.host && <span className="flex-none rounded-full bg-[#22d3ee]/20 px-2 py-0.5 text-[10px] font-semibold text-[#22d3ee]">Host</span>}
+                              {typeof r._inviteId === 'string' && <span className="flex-none rounded-full bg-[#f97316]/15 px-2 py-0.5 text-[10px] font-semibold text-[#f97316]">Invited</span>}
+                              {showReadyTag && (
+                                <span className="ml-auto flex-none rounded-full bg-[#22d96d]/20 px-2 py-0.5 text-[10px] font-semibold text-[#22d96d]">Ready!</span>
                               )}
                             </div>
                           </div>
@@ -969,14 +970,12 @@ const Room: React.FC = () => {
                               type="button"
                               onClick={toggleReady}
                               disabled={status !== 'open'}
-                              className={`rounded-xl px-4 py-1.5 text-xs font-semibold transition-colors ${ownReady ? 'bg-[#22d3ee] text-black hover:bg-[#1cbfdb]' : 'bg-[#22d3ee] text-black hover:bg-[#1cbfdb]'}`}
+                              className={`rounded-xl px-4 py-1.5 text-xs font-semibold transition-colors ${ownReady ? 'bg-[#22d96d] text-black hover:bg-[#1fb862]' : 'bg-[#22d3ee] text-black hover:bg-[#1cbfdb]'}`}
                             >
                               {ownReady ? 'Ready!' : 'Ready?'}
                             </button>
                           ) : (
-                            <span className={`text-sm font-semibold ${r.ready ? 'text-[#22d3ee]' : 'text-neutral-200'}`}>
-                              {r.ready ? 'Ready!' : 'Not ready'}
-                            </span>
+                            !r.ready && <span className="text-sm font-semibold text-neutral-200">Not ready</span>
                           )}
                           {isHost && !isYou && typeof r._inviteId !== 'string' && (
                             <Button size="icon" variant="ghost" className="h-8 w-8 text-red-300 hover:text-red-200" onClick={() => kickPlayer(r.id)}>

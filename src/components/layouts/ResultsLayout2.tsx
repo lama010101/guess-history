@@ -3,7 +3,7 @@ import { Badge as BadgeType } from '@/utils/badges/types';
 import { BadgeEarnedPopup } from '@/components/badges/BadgeEarnedPopup';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { Fullscreen, MapPin, Calendar, Target, Zap } from 'lucide-react';
+import { Fullscreen, MapPin, Calendar, Target, Zap, Users } from 'lucide-react';
 import ResultsHeader from '@/components/results/ResultsHeader';
 import SourceModal from '@/components/modals/SourceModal';
 import HintDebtsCard from '@/components/results/HintDebtsCard';
@@ -102,6 +102,7 @@ export interface ResultsLayoutProps {
   currentUserDisplayName?: string;
   leaderboards?: RoundLeaderboardsProps;
   roundLeaderboardCard?: React.ReactNode;
+  roundLeaderboardHeaderAccessory?: React.ReactNode;
 }
 
 const ResultsLayout2: React.FC<ResultsLayoutProps> = ({ 
@@ -120,6 +121,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   currentUserDisplayName = 'You',
   leaderboards,
   roundLeaderboardCard,
+  roundLeaderboardHeaderAccessory,
 }) => {
   const { user } = useAuth();
   const selfUserId = user?.id || 'self';
@@ -334,11 +336,31 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   const renderLeaderboardTable = (
     rows: Array<{ userId: string; displayName: string; value: number; hintsUsed?: number; penalty?: number }>,
     highlightUserId: string | null,
-    metric: 'total' | 'when' | 'where'
+    metric: 'total' | 'when' | 'where',
+    variant: 'default' | 'embedded' = 'default'
   ) => {
     if (!rows.length) return null;
+    const containerClasses = variant === 'embedded'
+      ? 'rounded-xl border border-gray-200 bg-white/80 dark:border-neutral-800 dark:bg-neutral-900/40'
+      : 'mt-4 rounded-xl border border-neutral-800 bg-neutral-900/60';
+    const rowBackground = variant === 'embedded'
+      ? 'bg-white/70 dark:bg-neutral-800/50'
+      : 'bg-neutral-800/70';
+    const baseNameClass = variant === 'embedded'
+      ? 'text-gray-800 dark:text-neutral-200'
+      : 'text-neutral-200';
+    const highlightedNameClass = variant === 'embedded'
+      ? 'font-semibold text-gray-900 dark:text-white'
+      : 'font-semibold text-white';
+    const valueClass = variant === 'embedded'
+      ? 'font-medium text-gray-800 dark:text-neutral-100'
+      : 'font-medium text-neutral-200';
+    const highlightedValueClass = variant === 'embedded'
+      ? 'font-semibold text-gray-900 dark:text-white'
+      : 'font-semibold text-white';
+
     return (
-      <div className="mt-4 rounded-xl border border-neutral-800 bg-neutral-900/60">
+      <div className={cn(containerClasses)}>
         <table className="w-full text-sm">
           <tbody>
             {rows.map((entry, index) => {
@@ -357,18 +379,18 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               return (
                 <tr
                   key={`${metric}-${entry.userId}`}
-                  className={cn('bg-neutral-800/70', roundedClasses)}
+                  className={cn(rowBackground, roundedClasses, index < rows.length - 1 && variant === 'embedded' && 'border-b border-gray-200 dark:border-neutral-700')}
                 >
                   <td className="py-2 px-3">
                     <div className="flex items-baseline gap-2">
-                      <span className={cn('text-neutral-200', isHighlighted && 'font-semibold text-white')}>{rowName}</span>
+                      <span className={cn(baseNameClass, isHighlighted && highlightedNameClass)}>{rowName}</span>
                       {hintsUsed > 0 ? (
                         <span className="text-xs text-red-400 font-semibold">{`${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'} = -${penaltyValue}%`}</span>
                       ) : null}
                     </div>
                   </td>
                   <td className="py-2 px-3 text-right">
-                    <span className={cn('font-medium text-neutral-200', isHighlighted && 'font-semibold text-white')}>{`${roundedValue}%`}</span>
+                    <span className={cn(valueClass, isHighlighted && highlightedValueClass)}>{`${roundedValue}%`}</span>
                   </td>
                 </tr>
               );
@@ -379,7 +401,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
     );
   };
 
-  const renderLeaderboard = (metric: 'total' | 'when' | 'where') => {
+  const renderLeaderboard = (metric: 'total' | 'when' | 'where', variant: 'default' | 'embedded' = 'default') => {
     if (leaderboards) {
       const rows = (metric === 'total'
         ? leaderboards.total
@@ -397,7 +419,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               penalty,
             };
           });
-      return renderLeaderboardTable(rows, leaderboards.currentUserId ?? null, metric);
+      return renderLeaderboardTable(rows, leaderboards.currentUserId ?? null, metric, variant);
     }
 
     if (!hasLeaderboardPeers) return null;
@@ -440,8 +462,10 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
       };
     });
 
-    return renderLeaderboardTable(sorted, selfUserId, metric);
+    return renderLeaderboardTable(sorted, selfUserId, metric, variant);
   };
+
+  const totalLeaderboardContent = roundLeaderboardCard ?? renderLeaderboard('total', 'embedded');
 
   // Early returns after all hooks above
   if (error) {
@@ -471,7 +495,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
         round={round}
         totalRounds={totalRounds}
         currentRoundXP={netXP}
-        currentRoundAccuracy={netAccuracy}
+        currentRoundAccuracy={displayNetAccuracy}
         nextRoundButton={nextRoundButton}
       />
       
@@ -493,7 +517,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                     <div className="flex flex-col items-center justify-center">
                       <Badge variant="accuracy" className="text-base flex items-center gap-1.5">
                         <Target className="h-3.5 w-3.5" />
-                        {netAccuracy.toFixed(0)}%
+                        {displayNetAccuracy.toFixed(0)}%
                       </Badge>
                       {accDebt > 0 && <Badge variant="hint" className={cn("text-xs font-semibold mt-1", {
                         "text-red-500 dark:text-red-500": accDebt > 0
@@ -532,11 +556,26 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                     </div>
                   </div>
                 )}
-                {!roundLeaderboardCard && renderLeaderboard('total')}
+                {totalLeaderboardContent ? (
+                  <div className="w-full mt-6">
+                    <div className="w-full rounded-2xl border border-border bg-gray-50/90 p-4 text-left shadow-sm dark:border-neutral-700 dark:bg-neutral-900/40">
+                      <div className="flex items-center justify-between gap-3">
+                        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          Round Leaderboard
+                        </h3>
+                        {roundLeaderboardHeaderAccessory ? (
+                          <div className="flex-shrink-0 text-right">{roundLeaderboardHeaderAccessory}</div>
+                        ) : null}
+                      </div>
+                      <div className="mt-3">
+                        {totalLeaderboardContent}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
-
-            {roundLeaderboardCard}
 
             <div className="bg-white dark:bg-[#333333] rounded-2xl shadow-lg overflow-hidden">
               <div className="relative w-full aspect-video overflow-hidden rounded-t-lg">
@@ -601,19 +640,19 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               </div>
               <div className="mt-4">
                 <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
-                  <div className="h-1.5 rounded-full bg-history-secondary" style={{ width: `${Math.max(0, Math.min(100, Math.round(netTimeAccuracy)))}%` }} />
+                  <div className="h-1.5 rounded-full bg-history-secondary" style={{ width: `${Math.max(0, Math.min(100, Math.round(displayNetTimeAccuracy)))}%` }} />
                 </div>
                 <span className="sr-only">Time accuracy progress</span>
               </div>
               <div className="mt-3 flex justify-between items-center">
                 <Badge variant="accuracy" className="text-sm flex items-center gap-1">
                   <Target className="h-3 w-3" />
-                  {Math.round(netTimeAccuracy)}%
+                  {Math.round(displayNetTimeAccuracy)}%
 
                 </Badge>
                 <Badge variant="xp" className="text-sm flex items-center gap-1">
                   <Zap className="h-3 w-3" />
-                  +{formatInteger(result.xpWhen)} XP
+                  +{formatInteger(netXpWhen)} XP
 
                 </Badge>
               </div>
@@ -717,19 +756,19 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               </div>
               <div className="mt-4">
                 <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
-                  <div className="h-1.5 rounded-full bg-history-secondary" style={{ width: `${Math.max(0, Math.min(100, Math.round(netLocationAccuracy)))}%` }} />
+                  <div className="h-1.5 rounded-full bg-history-secondary" style={{ width: `${Math.max(0, Math.min(100, Math.round(displayNetLocationAccuracy)))}%` }} />
                 </div>
                 <span className="sr-only">Location accuracy progress</span>
               </div>
               <div className="mt-3 flex justify-between items-center">
                 <Badge variant="accuracy" className="text-sm flex items-center gap-1">
                   <Target className="h-3 w-3" />
-                  {Math.round(netLocationAccuracy)}%
+                  {Math.round(displayNetLocationAccuracy)}%
 
                 </Badge>
                 <Badge variant="xp" className="text-sm flex items-center gap-1">
                   <Zap className="h-3 w-3" />
-                  +{formatInteger(result.xpWhere)} XP
+                  +{formatInteger(netXpWhere)} XP
 
                 </Badge>
               </div>

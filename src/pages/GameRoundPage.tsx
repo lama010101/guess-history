@@ -245,13 +245,6 @@ const GameRoundPage: React.FC = () => {
       }
     }
 
-    if (roomId && totalPlayers > 0 && submittedCount >= totalPlayers && !hasNavigatedToResultsRef.current) {
-      hasNavigatedToResultsRef.current = true;
-      setWaitingForPeers(false);
-      navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
-      return;
-    }
-
     if (!hasSubmittedThisRound && currentUserId && payload.userId && payload.userId === currentUserId) {
       setHasSubmittedThisRound(true);
       setWaitingForPeers(true);
@@ -611,6 +604,7 @@ const GameRoundPage: React.FC = () => {
     expired: timerExpired,
     remainingSec,
     clampRemaining,
+    start: startLocalTimer,
   } = useGameLocalCountdown({
     timerId,
     durationSec: roundTimerSec,
@@ -672,6 +666,14 @@ const GameRoundPage: React.FC = () => {
       setIsTimerActive(roundStarted && !timerExpired);
     }
   }, [timerEnabled, timerReady, remainingSec, timerExpired, roundStarted]);
+
+  useEffect(() => {
+    if (!autoStart || timerReady) return;
+    const t = setTimeout(() => {
+      try { startLocalTimer(); } catch {}
+    }, 600);
+    return () => clearTimeout(t);
+  }, [autoStart, timerReady, startLocalTimer]);
 
   // Local timer does not require refetch/hydration
 
@@ -863,6 +865,12 @@ const GameRoundPage: React.FC = () => {
 
     const total = roundPeers.length;
     const submitted = roundPeers.filter((peer) => peer.submitted).length;
+    // Fallback: if we locally submitted but our DB row hasn't appeared yet,
+    // treat self as submitted for the purpose of progressing to results.
+    const selfId = user?.id || null;
+    const selfPeer = roundPeers.find((p) => p.userId === selfId) || null;
+    const submittedAdj = submitted + (hasSubmittedThisRound && (!selfPeer || selfPeer.submitted !== true) ? 1 : 0);
+    const allSubmitted = total > 0 && submittedAdj >= total;
     setSubmittedCounts({ submitted, total });
 
     const otherSubmitters = roundPeers.filter((peer) => {
@@ -896,10 +904,18 @@ const GameRoundPage: React.FC = () => {
     }
 
     if (!hasSubmittedThisRound) {
+      if (isCompeteMode) {
+        setWaitingForPeers(false);
+      }
       return;
     }
 
-    if (waitingForPeers && total > 0 && submitted === total && !hasNavigatedToResultsRef.current) {
+    if (isCompeteMode) {
+      setWaitingForPeers(!allSubmitted);
+      if (!allSubmitted && timerEnabledRef.current) {
+        setIsTimerActive(true);
+      }
+    } else if (allSubmitted && !hasNavigatedToResultsRef.current) {
       hasNavigatedToResultsRef.current = true;
       setWaitingForPeers(false);
       navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
@@ -923,6 +939,31 @@ const GameRoundPage: React.FC = () => {
       }
     }
   }, [roundPeers, user?.id, isCompeteMode, roomId, applyCountdownRush]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!isCompeteMode || !roomId || !hasSubmittedThisRound || !waitingForPeers) return;
+    const run = async () => {
+      try {
+        const { data: players } = await supabase
+          .from('session_players')
+          .select('user_id')
+          .eq('room_id', roomId);
+        const participantCount = Array.isArray(players) ? players.length : 0;
+        const { data: results } = await supabase
+          .from('round_results')
+          .select('user_id')
+          .eq('room_id', roomId)
+          .eq('round_index', currentRoundIndex);
+        const submittedCount = Array.isArray(results) ? new Set(results.map((r: any) => r.user_id)).size : 0;
+        if (!cancelled && participantCount > 0 && submittedCount >= participantCount) {
+          setWaitingForPeers(false);
+        }
+      } catch {}
+    };
+    const t = setTimeout(run, 1500);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [isCompeteMode, roomId, hasSubmittedThisRound, waitingForPeers, currentRoundIndex, modeBasePath, navigate, roundNumber]);
 
   const peerMarkers = useMemo(() => {
     if (!isCompeteMode) {
@@ -1165,7 +1206,9 @@ const GameRoundPage: React.FC = () => {
 
     console.log(`[GameRoundPage] Submitting guess for round ${roundNumber}, Year: ${selectedYear}, Coords:`, currentGuess);
     setIsSubmitting(true);
-    setIsTimerActive(false);
+    if (!(isCompeteMode && timerEnabled)) {
+      setIsTimerActive(false);
+    }
 
     try {
       const distance = currentGuess
@@ -1243,10 +1286,11 @@ const GameRoundPage: React.FC = () => {
       setHasSubmittedThisRound(true);
       if (isCompeteMode) {
         setWaitingForPeers(true);
-      } else {
-        if (roomId) {
-          navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
+        if (timerEnabled) {
+          setIsTimerActive(true);
         }
+      } else if (roomId) {
+        navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
       }
     } catch (error) {
       console.error('Error during guess submission:', error);
@@ -1304,7 +1348,9 @@ const GameRoundPage: React.FC = () => {
     if (!timerEnabled) return;
     console.log("Timer completed - auto submitting");
     setHasTimedOut(true);
-    setIsTimerActive(false);
+    if (!(isCompeteMode && roomId)) {
+      setIsTimerActive(false);
+    }
     setIsSubmitting(true);
 
     if (!imageForRound) {
@@ -1337,6 +1383,8 @@ const GameRoundPage: React.FC = () => {
             xpWhen: 0,
             accuracy: 0,
             hintsUsed: purchasedHints.length,
+            xpDebt,
+            accDebt,
           },
           currentRoundIndex,
         );
@@ -1348,9 +1396,11 @@ const GameRoundPage: React.FC = () => {
           variant: "info",
           className: "bg-white/70 text-black border border-gray-200",
         });
-        navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
-        setIsSubmitting(false);
-        return;
+        if (!isCompeteMode && roomId) {
+          navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
+          setIsSubmitting(false);
+          return;
+        }
       }
 
       if (selectedYear === null) {
@@ -1364,6 +1414,8 @@ const GameRoundPage: React.FC = () => {
             xpWhen: 0,
             accuracy: 0,
             hintsUsed: purchasedHints.length,
+            xpDebt,
+            accDebt,
           },
           currentRoundIndex,
         );
@@ -1375,9 +1427,11 @@ const GameRoundPage: React.FC = () => {
           variant: "info",
           className: "bg-white/70 text-black border border-gray-200",
         });
-        navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
-        setIsSubmitting(false);
-        return;
+        if (!isCompeteMode && roomId) {
+          navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
+          setIsSubmitting(false);
+          return;
+        }
       }
 
       const distance = currentGuess
@@ -1389,14 +1443,12 @@ const GameRoundPage: React.FC = () => {
           )
         : null;
 
-      const {
-        timeXP = 0,
-        locationXP = 0,
-        roundXP: finalScore = 0,
-        roundPercent = 0,
-      } = distance !== null
-        ? calculateRoundScore(distance, selectedYear, imageForRound.year, purchasedHints.length)
-        : { timeXP: 0, locationXP: 0, roundXP: 0, roundPercent: 0 };
+      const timeXP = selectedYear != null ? calculateTimeXP(selectedYear, imageForRound.year) : 0;
+      const locationXP = distance !== null ? calculateLocationXP(distance) : 0;
+      const roundXPBeforePenalty = timeXP + locationXP;
+      const finalScore = Math.max(0, roundXPBeforePenalty - xpDebt);
+      const percentBeforePenalty = (roundXPBeforePenalty / (100 + 100)) * 100;
+      const roundPercent = Math.max(0, Math.round(percentBeforePenalty - accDebt));
 
       await recordRoundResult(
         {
@@ -1408,6 +1460,8 @@ const GameRoundPage: React.FC = () => {
           xpWhen: timeXP,
           accuracy: roundPercent,
           hintsUsed: purchasedHints.length,
+          xpDebt,
+          accDebt,
         },
         currentRoundIndex,
       );
@@ -1420,10 +1474,14 @@ const GameRoundPage: React.FC = () => {
         className: "bg-white/70 text-black border border-gray-200",
       });
 
-      setTimeout(() => {
-        navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
+      if (!isCompeteMode && roomId) {
+        setTimeout(() => {
+          navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
+          setIsSubmitting(false);
+        }, 2000);
+      } else {
         setIsSubmitting(false);
-      }, 2000);
+      }
     } catch (error) {
       console.error("Error recording timeout result:", error);
       setIsSubmitting(false);

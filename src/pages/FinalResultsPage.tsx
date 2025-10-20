@@ -725,10 +725,14 @@ const FinalResultsPage = () => {
                     </div>
                     <div>
                       <div className="text-gray-300">Hint Penalties</div>
-                      <div className="font-semibold text-red-400">
-                        {totalAccDebtPercent > 0 && <span>-{totalAccDebtPercent}%</span>}
-                        <span className={totalAccDebtPercent > 0 ? "ml-2" : ""}>-{formatInteger(totalXpDebtState || 0)} XP</span>
-                      </div>
+                      {totalAccDebtPercent > 0 || (totalXpDebtState ?? 0) > 0 ? (
+                        <div className="font-semibold text-red-400 flex flex-wrap items-baseline gap-2">
+                          {totalAccDebtPercent > 0 ? <span>-{totalAccDebtPercent}%</span> : null}
+                          {(totalXpDebtState ?? 0) > 0 ? <span>-{formatInteger(totalXpDebtState || 0)} XP</span> : null}
+                        </div>
+                      ) : (
+                        <div className="font-semibold text-white">0</div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -743,7 +747,7 @@ const FinalResultsPage = () => {
 
                 {/* SYNC Compete: show final leaderboard for all participants */}
                 {isSyncCompeteRoute && effectiveRoomId ? (
-                  <div className="mt-6 bg-[#333333] rounded-lg p-4">
+                  <div className="mt-6">
                     <FinalScoreboard roomId={effectiveRoomId} />
                   </div>
                 ) : null}

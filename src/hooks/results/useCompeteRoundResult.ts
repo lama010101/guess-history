@@ -70,7 +70,10 @@ export function useCompeteRoundResult(roomId: string | null, roundNumber: number
 
   const contextResult = useMemo<ContextRoundResult | undefined>(() => {
     if (roundIndex == null) return undefined;
-    return roundResults.find((result) => result.roundIndex === roundIndex);
+    const list = Array.isArray(roundResults) ? (roundResults as Array<ContextRoundResult | null | undefined>) : [];
+    // Filter out any null/undefined entries to avoid accessing properties on undefined during render
+    const safeList: ContextRoundResult[] = list.filter((r): r is ContextRoundResult => !!r && typeof r === 'object');
+    return safeList.find((result) => result.roundIndex === roundIndex);
   }, [roundResults, roundIndex]);
 
   useEffect(() => {

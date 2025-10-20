@@ -87,20 +87,20 @@ const FinalScoreboard: React.FC<FinalScoreboardProps> = ({ roomId }) => {
 
   if (loading) {
     return (
-      <div className="mt-6 rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 text-white flex items-center gap-2">
+      <div className="mt-6 w-full rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 text-white flex items-center gap-2">
         <Loader className="h-4 w-4 animate-spin" /> <span>Loading final leaderboard…</span>
       </div>
     );
   }
   if (error) {
     return (
-      <div className="mt-6 rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 text-red-300">
+      <div className="mt-6 w-full rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 text-red-300">
         {error}
       </div>
     );
   }
   return (
-    <div className="mt-6 rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 text-white">
+    <div className="mt-6 w-full rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 text-white">
       <h3 className="font-semibold mb-3">Final Leaderboard</h3>
       {(!rows || rows.length === 0) ? (
         <div className="text-sm text-neutral-300">No results yet.</div>

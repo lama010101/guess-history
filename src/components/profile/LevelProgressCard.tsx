@@ -38,26 +38,26 @@ const LevelProgressCard: React.FC<LevelProgressCardProps> = ({ profile, stats, i
     : 0;
 
   return (
-    <div className="glass-card rounded-xl p-6 mb-6">
+    <div className="rounded-xl p-6 mb-6 bg-[#333333]">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-history-primary dark:text-history-light">Level Up Progress</h3>
         <div className="text-sm text-muted-foreground">Next: Level {nextLevel}</div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white dark:bg-gray-700 rounded-lg p-4 text-center shadow-sm">
+        <div className="rounded-lg p-4 text-center bg-[#444444]">
           <div className="text-2xl font-bold text-history-primary dark:text-history-light">Level {currentLevel}</div>
           <div className="text-sm text-muted-foreground">Current</div>
         </div>
-        <div className="bg-white dark:bg-gray-700 rounded-lg p-4 text-center shadow-sm">
+        <div className="rounded-lg p-4 text-center bg-[#444444]">
           <div className="text-2xl font-bold text-history-primary dark:text-history-light">{formatInteger(stats.total_xp || 0)}</div>
           <div className="text-sm text-muted-foreground">Total XP</div>
         </div>
-        <div className="bg-white dark:bg-gray-700 rounded-lg p-4 text-center shadow-sm">
+        <div className="rounded-lg p-4 text-center bg-[#444444]">
           <div className="text-2xl font-bold text-history-primary dark:text-history-light">{formatInteger(stats.avg_accuracy || 0)}%</div>
           <div className="text-sm text-muted-foreground">Overall Accuracy</div>
         </div>
-        <div className="bg-white dark:bg-gray-700 rounded-lg p-4 text-center shadow-sm">
+        <div className="rounded-lg p-4 text-center bg-[#444444]">
           <div className="text-2xl font-bold text-history-primary dark:text-history-light">{formatInteger(Math.max(timeAcc, locAcc))}%</div>
           <div className="text-sm text-muted-foreground">Best Axis</div>
         </div>
@@ -69,7 +69,7 @@ const LevelProgressCard: React.FC<LevelProgressCardProps> = ({ profile, stats, i
             <span>Overall Accuracy</span>
             <span className="font-medium">{formatInteger(overallAcc)}% / {constraints.requiredOverallAccuracy}%</span>
           </div>
-          <Progress value={overallProgressPct} className="h-2" />
+          <Progress value={overallProgressPct} className="h-2 bg-gray-700 dark:bg-gray-800 mode-levelup:bg-[#444444]" indicatorClassName="bg-history-secondary" />
         </div>
 
         <div>
@@ -77,7 +77,7 @@ const LevelProgressCard: React.FC<LevelProgressCardProps> = ({ profile, stats, i
             <span>{bestAxis.label} Accuracy</span>
             <span className="font-medium">{formatInteger(bestAxis.value)}% / {constraints.requiredRoundAccuracy}%</span>
           </div>
-          <Progress value={roundProgressPct} className="h-2" />
+          <Progress value={roundProgressPct} className="h-2 bg-gray-700 dark:bg-gray-800 mode-levelup:bg-[#444444]" indicatorClassName="bg-history-secondary" />
         </div>
       </div>
 

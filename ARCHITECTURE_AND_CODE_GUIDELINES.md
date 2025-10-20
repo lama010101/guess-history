@@ -1,3 +1,22 @@
+### Hint Scoring Alignment & Penalty Fallbacks (2025-10-20)
+
+- **Goal**: Ensure “Your Score” matches Round Leaderboard and prevent cases like `1 hint = 0%`.
+- **Files**:
+  - `src/hooks/useRoundPeers.ts`
+    - Aggregates per-user hint debts from `public.round_hints` (both `accDebt` and `xpDebt`).
+    - Falls back to these aggregates when snapshot fields (`acc_debt`, `xp_debt`) are missing or zero.
+    - Exposes `whenAccDebt`, `whereAccDebt`, `accDebt`, and `xpDebt` on each `PeerRoundRow` used by leaderboards.
+  - `src/hooks/useHintV2.ts`
+    - Purchases always persist non-zero costs by falling back to `getHintCostAndPenalty(type)` when `hints.cost_xp/cost_accuracy` or per-row fields are null.
+    - Legacy images-column mapping also uses the same defaults for `xp_cost` and `accuracy_penalty`.
+  - `src/components/layouts/ResultsLayout2.tsx`
+    - “Your Score” accuracy, When, and Where bars read net values aligned with the leaderboard (self row) to avoid cross-device mismatches.
+    - `ResultsHeader.currentRoundAccuracy` uses the same net accuracy value.
+- **Data sources**:
+  - Leaderboards prefer RPC snapshots; when absent, they derive penalties from `round_hints` to avoid `0%` penalties with non-zero hint counts.
+- **Result**:
+  - The top card (“Your Score”) and the leaderboard now display consistent net accuracy and non-zero penalties when hints are used.
+
 ### Multiplayer Final Scoreboard RPC (2025-10-09)
 
 - Purpose: Align the Supabase `get_final_scoreboard` RPC return types with the client expectations in `src/components/scoreboard/FinalScoreboard.tsx` for compete sync final leaderboards.

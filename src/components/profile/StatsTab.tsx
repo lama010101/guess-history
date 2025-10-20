@@ -25,7 +25,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading, badgeEvaluations 
   const hasPlayedGames = stats.games_played > 0;
   
   return (
-    <div className="glass-card rounded-xl p-6">
+    <div className="rounded-xl p-6 bg-[#333333]">
       <h3 className="text-lg font-semibold mb-6 text-history-primary dark:text-history-light">Your Statistics</h3>
       
       {!hasPlayedGames ? (
@@ -36,7 +36,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading, badgeEvaluations 
       ) : (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
-            <div className="bg-white dark:bg-gray-700 rounded-lg p-4 text-center shadow-sm">
+            <div className="rounded-lg p-4 text-center bg-[#333333] border border-[#444444]">
               <div className="text-2xl font-bold text-history-primary dark:text-history-light">
                 {formatInteger(stats.games_played)}
               </div>
@@ -44,7 +44,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading, badgeEvaluations 
             </div>
             
             {stats.avg_accuracy > 0 && (
-              <div className="bg-white dark:bg-gray-700 rounded-lg p-4 text-center shadow-sm">
+              <div className="rounded-lg p-4 text-center bg-[#333333] border border-[#444444]">
                 <div className="text-2xl font-bold text-history-primary dark:text-history-light">
                   {formatInteger(stats.avg_accuracy)}%
                 </div>
@@ -53,7 +53,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading, badgeEvaluations 
             )}
             
             {stats.best_accuracy > 0 && (
-              <div className="bg-white dark:bg-gray-700 rounded-lg p-4 text-center shadow-sm">
+              <div className="rounded-lg p-4 text-center bg-[#333333] border border-[#444444]">
                 <div className="text-2xl font-bold text-history-primary dark:text-history-light">
                   {formatInteger(stats.best_accuracy)}%
                 </div>
@@ -62,7 +62,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading, badgeEvaluations 
             )}
             
             {stats.perfect_scores > 0 && (
-              <div className="bg-white dark:bg-gray-700 rounded-lg p-4 text-center shadow-sm">
+              <div className="rounded-lg p-4 text-center bg-[#333333] border border-[#444444]">
                 <div className="text-2xl font-bold text-history-primary dark:text-history-light">
                   {formatInteger(stats.perfect_scores)}
                 </div>
@@ -71,7 +71,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading, badgeEvaluations 
             )}
             
             {stats.total_xp > 0 && (
-              <div className="bg-white dark:bg-gray-700 rounded-lg p-4 text-center shadow-sm">
+              <div className="rounded-lg p-4 text-center bg-[#333333] border border-[#444444]">
                 <div className="text-2xl font-bold text-history-primary dark:text-history-light">
                   {formatInteger(stats.total_xp)}
                 </div>
@@ -80,7 +80,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading, badgeEvaluations 
             )}
             
             {stats.global_rank > 0 && (
-              <div className="bg-white dark:bg-gray-700 rounded-lg p-4 text-center shadow-sm">
+              <div className="rounded-lg p-4 text-center bg-[#333333] border border-[#444444]">
                 <div className="text-2xl font-bold text-history-primary dark:text-history-light">
                   #{formatInteger(stats.global_rank)}
                 </div>
@@ -90,7 +90,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading, badgeEvaluations 
           </div>
           
           {(stats.time_accuracy > 0 || stats.location_accuracy > 0 || stats.challenge_accuracy > 0) && (
-            <div className="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm">
+            <div className="rounded-lg p-4 bg-[#333333] border border-[#444444]">
               <h4 className="font-medium mb-3 text-history-primary dark:text-history-light">Accuracy Breakdown</h4>
               
               <div className="space-y-3">
@@ -100,7 +100,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading, badgeEvaluations 
                       <span>Time Accuracy</span>
                       <span className="font-medium">{formatInteger(stats.time_accuracy)}%</span>
                     </div>
-                    <Progress value={stats.time_accuracy} className="h-2" />
+                    <Progress value={stats.time_accuracy} className="h-2 bg-gray-700 dark:bg-gray-800" indicatorClassName="bg-history-secondary" />
                   </div>
                 )}
                 
@@ -110,7 +110,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading, badgeEvaluations 
                       <span>Location Accuracy</span>
                       <span className="font-medium">{formatInteger(stats.location_accuracy)}%</span>
                     </div>
-                    <Progress value={stats.location_accuracy} className="h-2" />
+                    <Progress value={stats.location_accuracy} className="h-2 bg-gray-700 dark:bg-gray-800" indicatorClassName="bg-history-secondary" />
                   </div>
                 )}
                 
@@ -120,7 +120,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading, badgeEvaluations 
                       <span>Daily Challenges</span>
                       <span className="font-medium">{formatInteger(stats.challenge_accuracy)}%</span>
                     </div>
-                    <Progress value={stats.challenge_accuracy} className="h-2" />
+                    <Progress value={stats.challenge_accuracy} className="h-2 bg-gray-700 dark:bg-gray-800" indicatorClassName="bg-history-secondary" />
                   </div>
                 )}
               </div>
@@ -129,7 +129,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading, badgeEvaluations 
           
           {/* Earned badges preview */}
           {!badgesLoading && (
-            <div className="mt-8 bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm">
+            <div className="mt-8 rounded-lg p-4 bg-[#333333] border border-[#444444]">
               <h4 className="font-medium mb-3 text-history-primary dark:text-history-light">Earned Badges</h4>
               <BadgeGrid
                 badges={(badgeEvaluations || [])

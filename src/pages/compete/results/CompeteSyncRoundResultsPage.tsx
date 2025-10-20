@@ -454,52 +454,42 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
         peers={peers.filter((peer) => !user || peer.userId !== user.id)}
         currentUserDisplayName={profile?.display_name || user?.user_metadata?.display_name || 'You'}
         leaderboards={layoutLeaderboards}
+        roundLeaderboardHeaderAccessory={(
+          <div className="flex flex-col items-end text-right gap-0.5">
+            {leaderboard.isLoading && <span className="text-xs text-muted-foreground">Updating…</span>}
+            {forceRefreshingLeaderboards && <span className="text-[11px] text-muted-foreground/80">Finalizing scores…</span>}
+          </div>
+        )}
         roundLeaderboardCard={(
-          <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4 text-white shadow-md">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold flex items-center gap-2"><Users className="h-4 w-4" />Round Leaderboard</h2>
-              <div className="flex flex-col items-end text-right">
-                {leaderboard.isLoading && <span className="text-sm text-neutral-400">Updating…</span>}
-                {forceRefreshingLeaderboards && <span className="text-xs text-neutral-300">Finalizing scores…</span>}
-              </div>
-            </div>
-            {leaderboardSourceLabel && !forceRefreshingLeaderboards && (
-              <div className="text-xs text-neutral-400 mb-2">{leaderboardSourceLabel}</div>
-            )}
+          <div className="space-y-2">
+            {leaderboardSourceLabel && !forceRefreshingLeaderboards ? (
+              <div className="text-xs text-muted-foreground">{leaderboardSourceLabel}</div>
+            ) : null}
             {leaderboard.error ? (
-              <div className="text-sm text-red-300">{leaderboard.error}</div>
+              <div className="text-sm text-destructive">{leaderboard.error}</div>
             ) : leaderboard.total.length === 0 ? (
-              <div className="text-sm text-neutral-300">Waiting for players to finish this round…</div>
+              <div className="text-sm text-muted-foreground">Waiting for players to finish this round…</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <tbody>
-                    {leaderboard.total.map((row, index) => {
+                    {leaderboard.total.map((row) => {
                       const isCurrent = leaderboard.currentUserId != null && row.userId === leaderboard.currentUserId;
                       const displayName = row.displayName || 'Player';
                       const nameWithYou = isCurrent ? `(You) ${displayName}` : displayName;
                       const hintsUsed = Math.max(0, Number(row.hintsUsed ?? 0));
                       const accDebt = Math.max(0, Number((row as any).accDebt ?? 0));
-                      const roundedClasses = index === 0
-                        ? 'rounded-t-lg'
-                        : index === leaderboard.total.length - 1
-                          ? 'rounded-b-lg'
-                          : '';
-                      const textClasses = isCurrent ? 'font-semibold text-white' : 'text-neutral-200';
                       return (
-                        <tr
-                          key={`inline:${row.userId}`}
-                          className={`bg-neutral-800/70 ${roundedClasses}`.trim()}
-                        >
-                          <td className={`py-2 pr-2 ${textClasses}`}>
+                        <tr key={`inline:${row.userId}`} className="border-b border-gray-200 last:border-0 dark:border-neutral-700">
+                          <td className={`py-2 pr-2 ${isCurrent ? 'font-semibold text-foreground' : 'text-foreground/80'}`}>
                             <div className="flex items-baseline gap-2">
                               <span>{nameWithYou}</span>
                               {hintsUsed > 0 ? (
-                                <span className="text-xs font-semibold text-red-400">{`${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'} = ${accDebt}%`}</span>
+                                <span className="text-xs font-semibold text-red-500">{`${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'} = ${accDebt}%`}</span>
                               ) : null}
                             </div>
                           </td>
-                          <td className={`py-2 pr-2 text-right ${isCurrent ? 'font-semibold text-white' : 'font-medium text-neutral-200'}`}>
+                          <td className={`py-2 pr-2 text-right ${isCurrent ? 'font-semibold text-foreground' : 'font-medium text-foreground/80'}`}>
                             {Math.round(row.value)}
                           </td>
                         </tr>

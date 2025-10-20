@@ -247,14 +247,16 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       if (hintErr) {
         console.warn('[useRoundPeers] round_hints fetch failed', hintErr);
       }
-      const hintsByUser = new Map<string, { whenAccDebt: number; whereAccDebt: number; accDebt: number; count: number; whenCount: number; whereCount: number }>();
+      const hintsByUser = new Map<string, { xpDebt: number; whenAccDebt: number; whereAccDebt: number; accDebt: number; count: number; whenCount: number; whereCount: number }>();
       (hintRows || []).forEach((row: any) => {
         const uid = String(row.user_id);
-        const prev = hintsByUser.get(uid) || { whenAccDebt: 0, whereAccDebt: 0, accDebt: 0, count: 0, whenCount: 0, whereCount: 0 };
+        const prev = hintsByUser.get(uid) || { xpDebt: 0, whenAccDebt: 0, whereAccDebt: 0, accDebt: 0, count: 0, whenCount: 0, whereCount: 0 };
         const acc = Number(row.accDebt ?? 0) || 0;
+        const xp = Number(row.xpDebt ?? 0) || 0;
         const type = String(row.hint_type || '');
         if (type === 'when') { prev.whenAccDebt += acc; prev.whenCount += 1; } else if (type === 'where') { prev.whereAccDebt += acc; prev.whereCount += 1; }
         prev.accDebt += acc;
+        prev.xpDebt += xp;
         prev.count += 1;
         hintsByUser.set(uid, prev);
       });
@@ -335,7 +337,10 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
         const whenHints = hintAgg ? Math.max(0, Number(hintAgg.whenCount)) : null;
         const whereHints = hintAgg ? Math.max(0, Number(hintAgg.whereCount)) : null;
 
-        const totalDebt = Number.isFinite(rawAccDebt) && rawAccDebt != null ? Number(rawAccDebt) : (whenAccDebt + whereAccDebt);
+        const totalDebt = (Number.isFinite(rawAccDebt) && rawAccDebt > 0)
+          ? Number(rawAccDebt)
+          : (whenAccDebt + whereAccDebt);
+        const rawXpDebt = Number(sb?.xp_debt ?? 0);
         const netAccuracy = Math.max(0, rawAccuracy - Math.max(0, totalDebt));
         return {
           userId: uid,
@@ -344,8 +349,8 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
           score: Number(sb?.score ?? 0),
           accuracy: Number(sb?.accuracy ?? 0),
           xpTotal: Number(sb?.xp_total ?? 0),
-          xpDebt: Number(sb?.xp_debt ?? 0),
-          accDebt: Number(sb?.acc_debt ?? 0),
+          xpDebt: (Number.isFinite(rawXpDebt) && rawXpDebt > 0) ? rawXpDebt : (hintsByUser.get(uid)?.xpDebt ?? 0),
+          accDebt: totalDebt,
           whenAccDebt,
           whereAccDebt,
           xpWhere: sb?.xp_where != null ? Number(sb.xp_where) : (rr?.xp_where != null ? Number(rr.xp_where) : null),

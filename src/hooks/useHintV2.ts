@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { GameImage } from '@/contexts/GameContext';
 import { useLogs } from '@/contexts/LogContext';
 import { HINT_COSTS, HINT_DEPENDENCIES, HINT_TYPE_NAMES } from '@/constants/hints';
+import { getHintCostAndPenalty } from '@/utils/hintUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { makeRoundId } from '@/utils/roomState';
 import { useGameConfig } from '@/config/gameConfig';
@@ -92,19 +93,24 @@ export const useHintV2 = (
 
       if (dbHints && dbHints.length > 0) {
         // Map DB rows to Hint objects expected by the UI.
-        hints = dbHints.map((row: any) => ({
-          id: row.id,
-          type: row.type,
-          text: row.text,
-          level: row.level,
-          image_id: row.image_id,
-          xp_cost: row.cost_xp,
-          accuracy_penalty: row.cost_accuracy,
-          distance_km: row.distance_km ?? undefined,
-          time_diff_years: row.time_diff_years ?? undefined,
-          // Derive prerequisite ID from dependency map (same logic as before)
-          prerequisite: HINT_DEPENDENCIES[row.type] ? `${HINT_DEPENDENCIES[row.type]}-${imageData.id}` : undefined
-        })) as Hint[];
+        hints = dbHints.map((row: any) => {
+          const defaults = getHintCostAndPenalty(String(row.type));
+          const xp = Number(row.cost_xp ?? defaults.xp);
+          const acc = Number(row.cost_accuracy ?? defaults.acc);
+          return {
+            id: row.id,
+            type: row.type,
+            text: row.text,
+            level: row.level,
+            image_id: row.image_id,
+            xp_cost: xp,
+            accuracy_penalty: acc,
+            distance_km: row.distance_km ?? undefined,
+            time_diff_years: row.time_diff_years ?? undefined,
+            // Derive prerequisite ID from dependency map (same logic as before)
+            prerequisite: HINT_DEPENDENCIES[row.type] ? `${HINT_DEPENDENCIES[row.type]}-${imageData.id}` : undefined
+          } as Hint;
+        });
 
         addLog(`Loaded ${hints.length} hints for image ${imageData.id} from hints table`);
       } else {
@@ -144,8 +150,8 @@ export const useHintV2 = (
           .filter(([column]) => imageRow && imageRow[column] !== null && imageRow[column] !== '')
           .map(([column, costKey]) => {
             const level = parseInt(column.charAt(0), 10) || 1;
-            const xp_cost = costKey ? HINT_COSTS[costKey].xp : 0;
-            const accuracy_penalty = costKey ? HINT_COSTS[costKey].acc : 0;
+            const xp_cost = costKey ? HINT_COSTS[costKey].xp : getHintCostAndPenalty(column).xp;
+            const accuracy_penalty = costKey ? HINT_COSTS[costKey].acc : getHintCostAndPenalty(column).acc;
             const prereqType = HINT_DEPENDENCIES[column] ?? null;
 
             return {
@@ -249,8 +255,9 @@ export const useHintV2 = (
 
       // Determine costs from live config, falling back to hint defaults
       const override = config?.hints?.[hintToPurchase.type as string];
-      const xpDebtVal = (override?.xp ?? hintToPurchase.xp_cost ?? 0);
-      const accDebtVal = (override?.acc ?? hintToPurchase.accuracy_penalty ?? 0);
+      const defaults = getHintCostAndPenalty(hintToPurchase.type);
+      const xpDebtVal = Number(override?.xp ?? hintToPurchase.xp_cost ?? defaults.xp);
+      const accDebtVal = Number(override?.acc ?? hintToPurchase.accuracy_penalty ?? defaults.acc);
 
       const insertPayload = {
         id: uuidv4(),

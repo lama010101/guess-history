@@ -79,7 +79,7 @@ interface ChatMsg {
   message: string;
   timestamp: string; // ISO
 }
-type RosterEntry = { id: string; name: string; ready: boolean; host: boolean };
+type RosterEntry = { id: string; name: string; ready: boolean; host: boolean; userId?: string | null };
 type RosterMsg = { type: "roster"; players: RosterEntry[] };
 type StartMsg = { type: "start"; startedAt: string; durationSec: number; timerEnabled: boolean; seed: string };
 type SettingsMsg = { type: "settings"; timerSeconds?: number; timerEnabled?: boolean; mode?: "sync" | "async" };
@@ -501,6 +501,7 @@ export default class Lobby implements Party.Server {
       name,
       ready: this.ready.get(id) === true,
       host: this.hostId === id,
+      userId: this.playerUserIds.get(id) ?? null,
     }));
     this.broadcast({ type: "roster", players: roster });
   }

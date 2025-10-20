@@ -52,7 +52,7 @@ export type LobbyServerMessage =
   | { type: 'players'; players: string[] }
   | { type: 'full' }
   | { type: 'chat'; from: string; message: string; timestamp: string }
-  | { type: 'roster'; players: { id: string; name: string; ready: boolean; host: boolean }[] }
+  | { type: 'roster'; players: { id: string; name: string; ready: boolean; host: boolean; userId?: string | null }[] }
   | { type: 'settings'; timerSeconds?: number; timerEnabled?: boolean; mode?: 'sync' | 'async' }
   | { type: 'hello'; you: { id: string; name: string; host: boolean } }
   | { type: 'start'; startedAt: string; durationSec: number; timerEnabled: boolean; seed: string }

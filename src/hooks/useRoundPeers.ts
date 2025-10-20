@@ -18,6 +18,8 @@ export interface PeerRoundRow {
   xpTotal: number;
   xpDebt: number;
   accDebt: number;
+  whenAccDebt: number;
+  whereAccDebt: number;
   xpWhere: number | null;
   xpWhen: number | null;
   locationAccuracy: number | null;
@@ -31,6 +33,8 @@ export interface PeerRoundRow {
   submitted: boolean;
   ready: boolean;
   hintsUsed: number | null;
+  whenHints: number | null;
+  whereHints: number | null;
   netAccuracy: number | null;
 }
 
@@ -220,7 +224,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       const dbRoundIndex = Math.max(0, oneBasedRound - 1);
       const { data: rrRows, error: rrError } = await (supabase as any)
         .from('round_results')
-        .select('user_id, guess_year, distance_km, guess_lat, guess_lng, actual_lat, actual_lng, xp_where, xp_when, location_accuracy, time_accuracy, xp_total, score, accuracy, xp_debt, acc_debt, hints_used')
+        .select('user_id, guess_year, distance_km, guess_lat, guess_lng, actual_lat, actual_lng, xp_where, xp_when, location_accuracy, time_accuracy, xp_total, score, accuracy, xp_debt, acc_debt, hints_used, hint_debts')
         .eq('room_id', roomId)
         .eq('round_index', dbRoundIndex);
       devLog('Round results query', { rrRows, rrError });
@@ -302,7 +306,18 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
         }, null);
         const rawAccuracy = Number(sb?.accuracy ?? rr?.accuracy ?? 0);
         const rawAccDebt = Number(sb?.acc_debt ?? rr?.acc_debt ?? 0);
-        const netAccuracy = Math.max(0, rawAccuracy - rawAccDebt);
+
+        const hintDebtsArray = Array.isArray((rr as any)?.hint_debts) ? (rr as any).hint_debts : [];
+        const whenAccDebt = hintDebtsArray
+          .filter((d: any) => d?.hint_type === 'when')
+          .reduce((sum: number, d: any) => sum + Number(d?.accDebt ?? d?.acc_debt ?? 0), 0);
+        const whereAccDebt = hintDebtsArray
+          .filter((d: any) => d?.hint_type === 'where')
+          .reduce((sum: number, d: any) => sum + Number(d?.accDebt ?? d?.acc_debt ?? 0), 0);
+        const whenHints = hintDebtsArray.filter((d: any) => d?.hint_type === 'when').length || null;
+        const whereHints = hintDebtsArray.filter((d: any) => d?.hint_type === 'where').length || null;
+
+        const netAccuracy = Math.max(0, rawAccuracy - Math.max(whenAccDebt, whereAccDebt, rawAccDebt));
         return {
           userId: uid,
           displayName: (sp?.display_name ?? sb?.display_name ?? profile?.display_name ?? 'Unknown') as string,
@@ -312,6 +327,8 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
           xpTotal: Number(sb?.xp_total ?? 0),
           xpDebt: Number(sb?.xp_debt ?? 0),
           accDebt: Number(sb?.acc_debt ?? 0),
+          whenAccDebt,
+          whereAccDebt,
           xpWhere: sb?.xp_where != null ? Number(sb.xp_where) : (rr?.xp_where != null ? Number(rr.xp_where) : null),
           xpWhen: sb?.xp_when != null ? Number(sb.xp_when) : (rr?.xp_when != null ? Number(rr.xp_when) : null),
           locationAccuracy: sb?.location_accuracy != null ? Number(sb.location_accuracy) : (rr?.location_accuracy != null ? Number(rr.location_accuracy) : null),
@@ -325,6 +342,8 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
           submitted: hasRoundResult || hasScoreboardEntry,
           ready: sp?.ready === true,
           hintsUsed: numericHintsUsed,
+          whenHints,
+          whereHints,
           netAccuracy,
         } as PeerRoundRow;
       });
@@ -358,6 +377,10 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
             submitted: false,
             ready: sp?.ready === true,
             hintsUsed: 0,
+            whenAccDebt: 0,
+            whereAccDebt: 0,
+            whenHints: 0,
+            whereHints: 0,
             netAccuracy: 0,
           } as PeerRoundRow;
         });

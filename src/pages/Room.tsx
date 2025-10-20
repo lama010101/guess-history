@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { X, Copy, Search, UserPlus, UserMinus, ChevronDown, ChevronUp, Clock, MessageSquare, ChevronLeft } from 'lucide-react';
+import { X, Copy, Search, UserPlus, UserMinus, ChevronDown, ChevronUp, Clock, MessageSquare, ChevronLeft, Users } from 'lucide-react';
 
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import FriendsPage from '@/pages/FriendsPage';
@@ -17,6 +17,8 @@ import { toast } from '@/components/ui/use-toast';
 import { declineInviteForRoom } from '../../integrations/supabase/invites';
 import type { Tables } from '@/integrations/supabase/types';
 import { acquireChannel } from '../../integrations/supabase/realtime';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { fetchAvatarUrlsForUserIds } from '@/utils/profile/avatarLoader';
 
 interface ChatItem {
   id: string;
@@ -32,7 +34,8 @@ function isoNow() {
   return new Date().toISOString();
 }
 
-type RosterEntry = { id: string; name: string; ready: boolean; host: boolean };
+type RosterEntry = { id: string; name: string; ready: boolean; host: boolean; userId?: string | null };
+type DisplayRosterEntry = RosterEntry & { avatarUrl: string | null; _inviteId?: string };
 
 const Room: React.FC = () => {
   const { roomCode = '' } = useParams<{ roomCode: string }>();
@@ -73,7 +76,7 @@ const Room: React.FC = () => {
   const [friendsModalOpen, setFriendsModalOpen] = useState(false);
   const [localTimerSec, setLocalTimerSec] = useState<number>(Number(roundTimerSec || 60));
   const [draggingTimer, setDraggingTimer] = useState(false);
-  type FriendEntry = { id: string; display_name: string; avatar_url?: string };
+  type FriendEntry = { id: string; display_name: string; avatarUrl: string | null };
   const [friendsList, setFriendsList] = useState<FriendEntry[]>([]);
   const [friendsLoading, setFriendsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -92,6 +95,12 @@ const Room: React.FC = () => {
   const timerEnabledRef = useRef<boolean>(!!timerEnabled);
   const roundTimerSecRef = useRef<number>(Number(roundTimerSec || 0));
   const chatListRef = useRef<HTMLDivElement | null>(null);
+  const [avatarUrls, setAvatarUrls] = useState<Record<string, string | null>>({});
+
+  const getInitial = useCallback((value: string | null | undefined) => {
+    const trimmed = (value ?? '').trim();
+    return trimmed.length > 0 ? trimmed[0]!.toUpperCase() : 'U';
+  }, []);
 
   const isHost = useMemo(() => {
     return roster.some((r) => r.host && r.id === ownId);
@@ -197,7 +206,16 @@ const Room: React.FC = () => {
               break;
             case 'roster':
               if (Array.isArray(data.players)) {
-                const entries = data.players.map(p => ({ id: String(p.id), name: String(p.name), ready: !!p.ready, host: !!p.host }));
+                const entries: RosterEntry[] = data.players.map((p) => ({
+                  id: String(p.id),
+                  name: String(p.name),
+                  ready: !!p.ready,
+                  host: !!p.host,
+                  userId:
+                    typeof (p as any).userId === 'string' && (p as any).userId.trim().length > 0
+                      ? String((p as any).userId)
+                      : null,
+                }));
                 setRoster(entries);
               }
               break;
@@ -423,10 +441,18 @@ const Room: React.FC = () => {
       } else {
         const { data: profiles, error: profilesErr } = await supabase
           .from('profiles')
-          .select('id, display_name, avatar_url')
+          .select('id, display_name, avatar_image_url, avatar_url, avatar_id')
           .in('id', ids);
         if (profilesErr) throw profilesErr;
-        const mapped = (profiles || []).map((p: any) => ({ id: p.id, display_name: p.display_name || 'User', avatar_url: p.avatar_url || undefined }));
+        const avatarMap = await fetchAvatarUrlsForUserIds(ids);
+        if (avatarMap && Object.keys(avatarMap).length > 0) {
+          setAvatarUrls((prev) => ({ ...prev, ...avatarMap }));
+        }
+        const mapped = (profiles || []).map((p: any) => ({
+          id: p.id,
+          display_name: p.display_name || 'User',
+          avatarUrl: avatarMap?.[p.id] ?? null,
+        }));
         setFriendsList(mapped);
       }
     } catch (e) {
@@ -545,17 +571,63 @@ const Room: React.FC = () => {
   }, [chat]);
 
   const readyCount = useMemo(() => roster.filter(r => r.ready).length, [roster]);
+
+  const rosterWithAvatars = useMemo<DisplayRosterEntry[]>(() =>
+    roster.map((entry) => ({
+      ...entry,
+      avatarUrl: entry.userId ? avatarUrls[entry.userId] ?? null : null,
+    })),
+  [roster, avatarUrls]);
+
+  useEffect(() => {
+    const missingUserIds = Array.from(
+      new Set(
+        roster
+          .map((entry) => entry.userId)
+          .filter((id): id is string => !!id && !(id in avatarUrls)),
+      ),
+    );
+    if (missingUserIds.length === 0) return;
+    (async () => {
+      const map = await fetchAvatarUrlsForUserIds(missingUserIds);
+      if (map && Object.keys(map).length > 0) {
+        setAvatarUrls((prev) => ({ ...prev, ...map }));
+      }
+    })();
+  }, [roster, avatarUrls]);
+
+  useEffect(() => {
+    if (!user?.id || avatarUrls[user.id]) return;
+    (async () => {
+      const map = await fetchAvatarUrlsForUserIds([user.id]);
+      if (map && Object.keys(map).length > 0) {
+        setAvatarUrls((prev) => ({ ...prev, ...map }));
+      }
+    })();
+  }, [user?.id, avatarUrls]);
+
   const filteredFriends = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     if (!term) return friendsList;
     return friendsList.filter(f => (f.display_name || '').toLowerCase().includes(term));
   }, [friendsList, searchTerm]);
-  const extendedRoster = useMemo(() => {
-    const invitedExtras = invites
-      .filter((inv) => !roster.some((r) => (r.name || '').trim().toLowerCase() === (inv.display_name || '').trim().toLowerCase()))
-      .map((inv) => ({ id: `invite:${inv.id}`, name: inv.display_name, ready: false, host: false, _inviteId: inv.id } as any));
-    return [...roster, ...invitedExtras];
-  }, [invites, roster]);
+  const extendedRoster = useMemo<DisplayRosterEntry[]>(() => {
+    const rosterNameSet = new Set(
+      rosterWithAvatars.map((entry) => (entry.name || '').trim().toLowerCase()).filter((name) => name.length > 0),
+    );
+    const invitedExtras: DisplayRosterEntry[] = invites
+      .filter((inv) => !rosterNameSet.has((inv.display_name || '').trim().toLowerCase()))
+      .map((inv) => ({
+        id: `invite:${inv.id}`,
+        name: inv.display_name,
+        ready: false,
+        host: false,
+        userId: null,
+        avatarUrl: null,
+        _inviteId: inv.id,
+      }));
+    return [...rosterWithAvatars, ...invitedExtras];
+  }, [invites, rosterWithAvatars]);
 
   // Host sends current settings to server whenever they change (debounced by ref to avoid spam)
   useEffect(() => {
@@ -659,7 +731,7 @@ const Room: React.FC = () => {
   }, [localTimerSec]);
 
   const sliderStyle = useMemo<React.CSSProperties>(() => ({
-    background: `linear-gradient(to right, #22d3ee 0%, #22d3ee ${sliderPercent}%, rgba(255,255,255,0.12) ${sliderPercent}%, rgba(255,255,255,0.08) 100%)`,
+    background: `linear-gradient(to right, #00cfff 0%, #00cfff ${sliderPercent}%, rgba(255,255,255,0.08) ${sliderPercent}%, rgba(255,255,255,0.05) 100%)`,
   }), [sliderPercent]);
 
   return (
@@ -667,19 +739,19 @@ const Room: React.FC = () => {
       <style>{`
         #room-timer-range { -webkit-appearance: none; appearance: none; height: 10px; border-radius: 9999px; background: transparent; }
         #room-timer-range:focus { outline: none; }
-        #room-timer-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #0f172a; border: 3px solid #22d3ee; box-shadow: 0 0 0 6px rgba(34,211,238,0.25); margin-top: -5px; }
-        #room-timer-range:disabled::-webkit-slider-thumb { background: #1e293b; border-color: #0ea5e9; box-shadow: none; }
-        #room-timer-range::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #0f172a; border: 3px solid #22d3ee; box-shadow: 0 0 0 6px rgba(34,211,238,0.25); }
-        #room-timer-range:disabled::-moz-range-thumb { background: #1e293b; border-color: #0ea5e9; box-shadow: none; }
-        #room-timer-range::-webkit-slider-runnable-track { height: 10px; border-radius: 9999px; background: transparent; }
-        #room-timer-range::-moz-range-track { height: 10px; border-radius: 9999px; background: transparent; }
+        #room-timer-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #101316; border: 3px solid #00cfff; box-shadow: 0 0 0 4px rgba(0, 207, 255, 0.25); margin-top: -3px; }
+        #room-timer-range:disabled::-webkit-slider-thumb { background: #1e293b; border-color: #00aad4; box-shadow: none; }
+        #room-timer-range::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #101316; border: 3px solid #00cfff; box-shadow: 0 0 0 4px rgba(0, 207, 255, 0.25); }
+        #room-timer-range:disabled::-moz-range-thumb { background: #1e293b; border-color: #00aad4; box-shadow: none; }
+        #room-timer-range::-webkit-slider-runnable-track { height: 10px; border-radius: 9999px; background: rgba(255,255,255,0.05); }
+        #room-timer-range::-moz-range-track { height: 10px; border-radius: 9999px; background: rgba(255,255,255,0.05); }
       `}</style>
       <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 pb-28 pt-6">
         <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={handleBack}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-cyan-300 transition-colors hover:text-cyan-200"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-white transition-colors hover:text-neutral-200"
           >
             <ChevronLeft className="h-4 w-4" />
             Back
@@ -690,13 +762,13 @@ const Room: React.FC = () => {
           </div>
         </div>
 
-        <section className="rounded-2xl border border-[#555555] bg-[#333333] p-6 shadow-lg">
+        <section className="rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-base font-semibold text-white">
-              <Clock className="h-5 w-5 text-cyan-300" />
+              <Clock className="h-5 w-5 text-white" />
               <span>Round Timer</span>
             </div>
-            <span className="text-sm font-semibold text-cyan-300">
+            <span className="text-sm font-semibold text-[#00cfff]">
               {formatTime(Number(isHost && draggingTimer ? localTimerSec : (roundTimerSec || 0)))}
             </span>
           </div>
@@ -719,33 +791,39 @@ const Room: React.FC = () => {
                 style={sliderStyle}
                 aria-label="Round timer duration"
               />
-              <div className="mt-2 flex justify-between text-xs text-cyan-300/70">
+              <div className="mt-2 flex justify-between text-xs text-[#7dd3fc]">
                 <span>5s</span>
                 <span>5m</span>
               </div>
             </div>
           )}
-          {!isHost && (
-            <div className="mt-4 text-xs text-neutral-400">Host controls the timer.</div>
-          )}
+
         </section>
 
         {isHost && (
-          <section className="rounded-2xl border border-[#555555] bg-[#333333] p-6 shadow-lg">
+          <section className="rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold text-white">Invite Your Friends</h2>
-                {copied && <span className="text-xs font-semibold text-cyan-300">Copied!</span>}
+                <div className="flex items-center gap-2">
+                  <UserPlus className="h-4 w-4 text-white" />
+                  <h2 className="text-base font-semibold text-white">Invite Your Friends</h2>
+                </div>
+                {copied && <span className="text-xs font-semibold text-[#22d3ee]">Copied!</span>}
               </div>
               <div>
-                <Label className="text-xs text-neutral-300">Share Room Code</Label>
+                <Label className="text-xs text-neutral-200">Share Room Code</Label>
                 <div className="mt-2 flex items-center gap-2">
                   <Input
                     value={roomCode.toUpperCase()}
                     readOnly
-                    className="h-11 flex-1 rounded-lg border border-[#555555] bg-[#000000] text-lg font-semibold tracking-[0.35em] text-white"
+                    className="h-11 flex-1 rounded-[14px] border border-[#454852] bg-[#1d2026] text-lg font-semibold tracking-[0.28em] text-white"
                   />
-                  <Button onClick={copyCode} size="icon" className="h-11 w-11 rounded-lg bg-[#22d3ee] text-black hover:bg-[#1ccbe4]" aria-label="Copy room code">
+                  <Button
+                    onClick={copyCode}
+                    size="icon"
+                    className="h-11 w-11 bg-[#00cfff] px-0 text-black hover:bg-[#00b4e6]"
+                    aria-label="Copy room code"
+                  >
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
@@ -755,7 +833,7 @@ const Room: React.FC = () => {
                 collapsible
                 value={friendsAccordionOpen ? 'friends' : ''}
                 onValueChange={(val) => setFriendsAccordionOpen(val === 'friends')}
-                className="rounded-xl border border-[#555555] bg-[#333333]"
+                className="rounded-xl border border-[#3f424b] bg-[#2d2f36]"
               >
                 <AccordionItem value="friends">
                   <AccordionTrigger className="flex items-center justify-between px-4 py-3 text-sm font-semibold text-white">
@@ -781,7 +859,7 @@ const Room: React.FC = () => {
                         placeholder="Filter your friends by name..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="rounded-lg border border-[#555555] bg-[#000000] pl-9 text-sm text-white placeholder:text-neutral-500"
+                        className="rounded-lg border border-[#454852] bg-[#1d2026] pl-9 text-sm text-white placeholder:text-neutral-500"
                       />
                     </div>
                     <div className="space-y-2">
@@ -791,17 +869,20 @@ const Room: React.FC = () => {
                         <div className="text-xs text-neutral-300">No friends match your filter.</div>
                       ) : (
                         filteredFriends.map((f) => (
-                          <div key={f.id} className="flex items-center justify-between rounded-lg border border-[#555555] bg-[#000000] px-3 py-2">
-                            <div className="flex items-center gap-2">
-                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0d8cd8] text-sm font-semibold text-white">
-                                {f.display_name?.[0]?.toUpperCase() || '?'}
-                              </div>
+                          <div key={f.id} className="flex items-center justify-between rounded-lg border border-[#3f424b] bg-[#1d2026] px-3 py-2">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-9 w-9 border border-[#3f424b] bg-[#262930]">
+                                <AvatarImage src={f.avatarUrl ?? avatarUrls[f.id] ?? undefined} alt={`${f.display_name} avatar`} />
+                                <AvatarFallback className="bg-transparent text-sm font-semibold text-white">
+                                  {getInitial(f.display_name)}
+                                </AvatarFallback>
+                              </Avatar>
                               <span className="text-sm font-semibold text-white">{f.display_name}</span>
                             </div>
                             <Button
                               onClick={() => inviteFriend(f)}
                               size="sm"
-                              className="rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 px-4 py-1 text-xs font-semibold text-black hover:from-emerald-300 hover:to-cyan-300"
+                              className="bg-[#00cfff] px-4 py-1.5 text-xs font-semibold text-black hover:bg-[#00b4e6]"
                               aria-label="Invite friend"
                             >
                               Invite
@@ -814,11 +895,11 @@ const Room: React.FC = () => {
                 </AccordionItem>
               </Accordion>
               {invites.length > 0 && (
-                <div className="rounded-xl border border-[#555555] bg-[#333333] p-4">
+                <div className="rounded-xl border border-[#3f424b] bg-[#2d2f36] p-4">
                   <h3 className="text-sm font-semibold text-white">Pending Invites</h3>
                   <div className="mt-3 space-y-2 text-sm">
                     {invites.map((inv) => (
-                      <div key={inv.id} className="flex items-center justify-between rounded-lg border border-[#555555] bg-[#000000] px-3 py-2">
+                      <div key={inv.id} className="flex items-center justify-between rounded-lg border border-[#3f424b] bg-[#1d2026] px-3 py-2">
                         <span className="truncate text-sm text-white">{inv.display_name || 'Friend'}</span>
                         <Button size="icon" variant="ghost" className="h-7 w-7 text-red-300 hover:text-red-200" onClick={() => cancelInvite(inv.id)}>
                           <X className="h-4 w-4" />
@@ -832,9 +913,12 @@ const Room: React.FC = () => {
           </section>
         )}
 
-        <section className="rounded-2xl border border-[#555555] bg-[#333333] p-6 shadow-lg">
+        <section className="rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-white">Players ({roster.length || players.length})</h2>
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-white" />
+              <h2 className="text-base font-semibold text-white">Players ({roster.length || players.length})</h2>
+            </div>
             <div className="flex items-center gap-3">
               <span className="text-xs text-neutral-400">Room {roomCode.toUpperCase()} · Status: {status}</span>
               <button
@@ -854,16 +938,22 @@ const Room: React.FC = () => {
                   {extendedRoster.map((r: any, index: number) => {
                     const isYou = r.id === ownId;
                     return (
-                      <div key={`${r.id}-${index}`} className="flex items-start justify-between gap-3 rounded-xl border border-[#555555] bg-[#000000] px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold ${r.ready ? 'bg-[#22c55e] text-black' : 'bg-[#0d8cd8] text-white'}`}>
-                            {r.name?.[0]?.toUpperCase() || '?'}
-                          </div>
+                      <div key={`${r.id}-${index}`} className="flex items-start justify-between gap-3 rounded-xl border border-[#3f424b] bg-[#1d2026] px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10 border border-[#3f424b] bg-[#262930]">
+                            <AvatarImage src={r.avatarUrl ?? undefined} alt={`${r.name} avatar`} />
+                            <AvatarFallback className="bg-transparent text-sm font-semibold text-white">
+                              {getInitial(r.name)}
+                            </AvatarFallback>
+                          </Avatar>
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="truncate text-sm font-semibold text-white max-w-[200px]">{isYou ? `(You) ${r.name}` : r.name}</span>
-                              {r.host && <span className="rounded-full bg-[#0d8cd8]/20 px-2 py-0.5 text-[10px] font-semibold text-[#0d8cd8]">Host</span>}
-                              {typeof r._inviteId === 'string' && <span className="rounded-full bg-[#f97316]/20 px-2 py-0.5 text-[10px] font-semibold text-[#f97316]">Invited</span>}
+                              <span className="max-w-[220px] truncate text-sm font-semibold text-white">{isYou ? `(You) ${r.name}` : r.name}</span>
+                              {r.host && <span className="rounded-full bg-[#00b7ff]/15 px-2 py-0.5 text-[10px] font-semibold text-[#00b7ff]">Host</span>}
+                              {typeof r._inviteId === 'string' && <span className="rounded-full bg-[#f97316]/15 px-2 py-0.5 text-[10px] font-semibold text-[#f97316]">Invited</span>}
+                              {r.ready && typeof r._inviteId !== 'string' && !isYou && (
+                                <span className="rounded-full bg-[#22c55e]/15 px-2 py-0.5 text-[10px] font-semibold text-[#22c55e]">Ready</span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -879,7 +969,7 @@ const Room: React.FC = () => {
                               type="button"
                               onClick={toggleReady}
                               disabled={status !== 'open'}
-                              className={`rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors ${ownReady ? 'bg-[#22c55e] text-black hover:bg-[#2fe26c]' : 'bg-[#0d8cd8] text-white hover:bg-[#1197e7]'}`}
+                              className={`rounded-xl px-4 py-1.5 text-xs font-semibold transition-colors ${ownReady ? 'bg-[#22c55e] text-white hover:bg-[#2fe26c]' : 'bg-[#00cfff] text-black hover:bg-[#00b4e6]'}`}
                             >
                               {ownReady ? 'Ready!' : 'Ready?'}
                             </button>
@@ -902,16 +992,16 @@ const Room: React.FC = () => {
                 <div className="mt-4 text-sm text-neutral-400">Waiting for players...</div>
               )}
               {roster.length === 1 && (
-                <div className="mt-4 text-xs text-neutral-400">Share this room code so friends can join.</div>
+                <div className="mt-4 text-xs text-neutral-300">Share this room code so friends can join.</div>
               )}
             </>
           )}
         </section>
 
-        <section className="rounded-2xl border border-[#555555] bg-[#333333] p-6 shadow-lg">
+        <section className="rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-neutral-300" />
+            <div className="flex items-center gap-3">
+              <MessageSquare className="h-4 w-4 text-white" />
               <h2 className="text-base font-semibold text-white">Chat</h2>
               <span className="text-xs text-neutral-400">{chat.length} message{chat.length === 1 ? '' : 's'}</span>
             </div>
@@ -928,7 +1018,7 @@ const Room: React.FC = () => {
             <>
               <div
                 ref={chatListRef}
-                className="mt-4 h-60 overflow-y-auto rounded-xl border border-[#555555] bg-[#000000] px-4 py-3"
+                className="mt-4 h-60 overflow-y-auto rounded-xl border border-[#3f424b] bg-[#1d2026] px-4 py-3"
                 aria-label="Chat messages"
               >
                 {chat.length === 0 ? (
@@ -956,10 +1046,10 @@ const Room: React.FC = () => {
                     }
                   }}
                   placeholder={status === 'open' ? 'Type a message…' : 'Connecting…'}
-                  className="rounded-lg border border-[#666666] bg-[#2b2b2b] text-white"
+                  className="rounded-lg border border-[#454852] bg-[#1d2026] text-white"
                   aria-label="Type a chat message"
                 />
-                <Button onClick={sendChat} disabled={!input.trim() || status !== 'open'} className="rounded-lg bg-[#22d3ee] px-4 text-black hover:bg-[#1ccbe4]">
+                <Button onClick={sendChat} disabled={!input.trim() || status !== 'open'} className="bg-[#00cfff] px-4 text-black hover:bg-[#00b4e6] disabled:opacity-40">
                   Send
                 </Button>
               </div>
@@ -970,7 +1060,7 @@ const Room: React.FC = () => {
 
       <div className="fixed inset-x-0 bottom-0 z-40">
         <div className="mx-auto max-w-4xl px-4 pb-4">
-          <div className="rounded-2xl border border-[#0f3b4a] bg-[#0d2530] px-5 py-3 text-center">
+          <div className="rounded-2xl border border-[#144e60] bg-[#0f2f3a] px-5 py-3 text-center">
             <div className="text-sm font-semibold text-[#22d3ee]">Waiting for players ({readyCount}/{roster.length || players.length} ready)</div>
             <div className="mt-1 text-xs text-neutral-200">All players must be ready to start</div>
           </div>

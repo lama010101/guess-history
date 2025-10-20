@@ -194,7 +194,15 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
     totalMetric: number;
     whenMetric: number;
     whereMetric: number;
-    hintsUsed: number;
+    totalBase: number;
+    whenBase: number;
+    whereBase: number;
+    totalPenalty: number;
+    whenPenalty: number;
+    wherePenalty: number;
+    totalHints: number;
+    whenHints: number;
+    whereHints: number;
   };
 
   const selfUserId = user?.id || 'self';
@@ -221,15 +229,39 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
       return Math.round((1 - clamped / maxDist) * 100);
     };
 
+    const baseTimeAccuracy = clampPercent(result?.timeAccuracy ?? 0);
+    const baseLocationAccuracy = clampPercent(result?.locationAccuracy ?? 0);
+    const baseTotalAccuracy = clampPercent((baseTimeAccuracy + baseLocationAccuracy) / 2);
+
     const entries: LeaderboardEntry[] = [];
+
+    const whenHintDebts = result?.hintDebts?.filter(d => d.hint_type === 'when') ?? [];
+    const whereHintDebts = result?.hintDebts?.filter(d => d.hint_type === 'where') ?? [];
+    const accDebtWhenTotal = whenHintDebts.reduce((sum, d) => sum + d.accDebt, 0);
+    const accDebtWhereTotal = whereHintDebts.reduce((sum, d) => sum + d.accDebt, 0);
+    const selfWhenHints = Math.max(0, whenHintDebts.length);
+    const selfWhereHints = Math.max(0, whereHintDebts.length);
+    const selfTotalHints = Math.max(0, Number(result?.hintsUsed ?? (selfWhenHints + selfWhereHints)));
+
+    const selfNetAccuracy = clampPercent(netAccuracy);
+    const selfNetTimeAccuracy = clampPercent(netTimeAccuracy);
+    const selfNetLocationAccuracy = clampPercent(netLocationAccuracy);
 
     entries.push({
       userId: selfUserId,
       displayName: currentUserDisplayName,
-      totalMetric: clampPercent(netAccuracy),
-      whenMetric: clampPercent(netTimeAccuracy),
-      whereMetric: clampPercent(netLocationAccuracy),
-      hintsUsed: Math.max(0, Number(result?.hintsUsed ?? 0)),
+      totalMetric: selfNetAccuracy,
+      whenMetric: selfNetTimeAccuracy,
+      whereMetric: selfNetLocationAccuracy,
+      totalBase: baseTotalAccuracy,
+      whenBase: baseTimeAccuracy,
+      whereBase: baseLocationAccuracy,
+      totalPenalty: Math.max(0, baseTotalAccuracy - selfNetAccuracy),
+      whenPenalty: Math.max(0, baseTimeAccuracy - selfNetTimeAccuracy),
+      wherePenalty: Math.max(0, baseLocationAccuracy - selfNetLocationAccuracy),
+      totalHints: selfTotalHints,
+      whenHints: selfWhenHints,
+      whereHints: selfWhereHints,
     });
 
     for (const peer of peers || []) {
@@ -237,12 +269,18 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
       const normalizedWhereRaw = peer.locationAccuracy != null
         ? clampPercent(peer.locationAccuracy)
         : normalizeDistance(peer.distanceKm);
-      const accDebt = Math.max(0, Number(peer.accDebt ?? 0));
-      const normalizedTime = Math.max(0, normalizedTimeRaw - accDebt);
-      const normalizedWhere = Math.max(0, normalizedWhereRaw - accDebt);
+      const baseTime = clampPercent(normalizedTimeRaw);
+      const baseWhere = clampPercent(normalizedWhereRaw);
+      const whenAccDebt = Math.max(0, Number(peer.whenAccDebt ?? 0));
+      const whereAccDebt = Math.max(0, Number(peer.whereAccDebt ?? 0));
+      const whenPenalty = Math.min(baseTime, whenAccDebt);
+      const wherePenalty = Math.min(baseWhere, whereAccDebt);
+      const normalizedTime = Math.max(0, baseTime - whenPenalty);
+      const normalizedWhere = Math.max(0, baseWhere - wherePenalty);
       const totalNet = typeof peer.netAccuracy === 'number'
         ? clampPercent(peer.netAccuracy)
-        : Math.max(0, clampPercent(peer.accuracy) - accDebt);
+        : Math.max(0, clampPercent(peer.accuracy) - Math.max(whenPenalty, wherePenalty));
+      const baseTotal = clampPercent((baseTime + baseWhere) / 2);
 
       entries.push({
         userId: peer.userId,
@@ -250,17 +288,35 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
         totalMetric: totalNet,
         whenMetric: normalizedTime,
         whereMetric: normalizedWhere,
-        hintsUsed: Math.max(0, Number(peer.hintsUsed ?? 0)),
+        totalBase: clampPercent(baseTotal),
+        whenBase: clampPercent(baseTime),
+        whereBase: clampPercent(baseWhere),
+        totalPenalty: Math.max(0, baseTotal - totalNet),
+        whenPenalty: Math.max(0, whenPenalty),
+        wherePenalty: Math.max(0, wherePenalty),
+        totalHints: Math.max(0, Number(peer.hintsUsed ?? (peer.whenHints ?? 0) + (peer.whereHints ?? 0))),
+        whenHints: Math.max(0, Number(peer.whenHints ?? 0)),
+        whereHints: Math.max(0, Number(peer.whereHints ?? 0)),
       });
     }
 
     return entries;
-  }, [selfUserId, currentUserDisplayName, netAccuracy, netTimeAccuracy, netLocationAccuracy, peers, result?.eventYear]);
+  }, [
+    selfUserId,
+    currentUserDisplayName,
+    netAccuracy,
+    netTimeAccuracy,
+    netLocationAccuracy,
+    peers,
+    result?.eventYear,
+    result?.timeAccuracy,
+    result?.locationAccuracy,
+  ]);
 
   const hasLeaderboardPeers = leaderboardEntries.length > 1;
 
   const renderLeaderboardTable = (
-    rows: Array<{ userId: string; displayName: string; value: number; hintsUsed?: number; accDebt?: number; base?: number }>,
+    rows: Array<{ userId: string; displayName: string; value: number; hintsUsed?: number; penalty?: number }>,
     highlightUserId: string | null,
     metric: 'total' | 'when' | 'where'
   ) => {
@@ -281,10 +337,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   : '';
               const rank = index + 1;
               const hintsUsed = Math.max(0, Number(entry.hintsUsed ?? 0));
-              const accDebt = Math.max(0, Number(entry.accDebt ?? 0));
-              const base = typeof entry.base === 'number' ? Math.round(entry.base) : undefined;
-              const penaltyByDiff = base != null ? Math.max(0, base - roundedValue) : undefined;
-              const penalty = penaltyByDiff != null ? Math.max(accDebt, penaltyByDiff) : accDebt;
+              const penaltyValue = Math.max(0, Math.round(entry.penalty ?? 0));
               return (
                 <tr
                   key={`${metric}-${entry.userId}`}
@@ -294,7 +347,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                     <div className="flex items-baseline gap-2">
                       <span className={cn('text-neutral-200', isHighlighted && 'font-semibold text-white')}>{rowName}</span>
                       {hintsUsed > 0 ? (
-                        <span className="text-xs text-red-400 font-semibold">{`${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'} = ${penalty}%`}</span>
+                        <span className="text-xs text-red-400 font-semibold">{`${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'} = -${penaltyValue}%`}</span>
                       ) : null}
                     </div>
                   </td>
@@ -322,13 +375,23 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
               : metric === 'when'
                 ? (row as any).timeAccuracy
                 : (row as any).locationAccuracy;
+            const penaltySource = (row as any).penalty ?? (metric === 'when' ? (row as any).whenPenalty : metric === 'where' ? (row as any).wherePenalty : (row as any).totalPenalty);
+            const hintsSource = metric === 'when'
+              ? (row as any).whenHints
+              : metric === 'where'
+                ? (row as any).whereHints
+                : (row as any).totalHints;
+            const penalty = penaltySource != null && Number.isFinite(Number(penaltySource))
+              ? Math.max(0, Number(penaltySource))
+              : base != null
+                ? Math.max(0, Number(base) - Number(row.value ?? 0))
+                : 0;
             return {
               userId: row.userId,
               displayName: row.displayName,
               value: row.value ?? 0,
-              hintsUsed: row.hintsUsed,
-              accDebt: (row as any).accDebt ?? 0,
-              base: typeof base === 'number' ? base : undefined,
+              hintsUsed: hintsSource ?? row.hintsUsed,
+              penalty,
             };
           });
       return renderLeaderboardTable(rows, leaderboards.currentUserId ?? null, metric);
@@ -336,7 +399,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
     if (!hasLeaderboardPeers) return null;
 
-    const accMap = new Map((peers || []).map(p => [p.userId, Math.max(0, Number(p.accDebt ?? 0))]));
+    const entryMap = new Map(leaderboardEntries.map(entry => [entry.userId, entry]));
     const sorted = [...leaderboardEntries].sort((a, b) => {
       const getValue = (entry: LeaderboardEntry) => {
         if (metric === 'when') return entry.whenMetric;
@@ -348,17 +411,31 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
       const totalDiff = b.totalMetric - a.totalMetric;
       if (totalDiff !== 0) return totalDiff;
       return a.displayName.localeCompare(b.displayName);
-    }).map((entry) => ({
-      userId: entry.userId,
-      displayName: entry.displayName,
-      value: metric === 'when'
-        ? entry.whenMetric
+    }).map((entry) => {
+      const full = entryMap.get(entry.userId) ?? entry;
+      const value = metric === 'when'
+        ? full.whenMetric
         : metric === 'where'
-          ? entry.whereMetric
-          : entry.totalMetric,
-      hintsUsed: entry.hintsUsed,
-      accDebt: accMap.get(entry.userId) ?? 0,
-    }));
+          ? full.whereMetric
+          : full.totalMetric;
+      const penalty = metric === 'when'
+        ? full.whenPenalty
+        : metric === 'where'
+          ? full.wherePenalty
+          : full.totalPenalty;
+      const hintsUsed = metric === 'when'
+        ? full.whenHints
+        : metric === 'where'
+          ? full.whereHints
+          : full.totalHints;
+      return {
+        userId: entry.userId,
+        displayName: entry.displayName,
+        value,
+        hintsUsed,
+        penalty,
+      };
+    });
 
     return renderLeaderboardTable(sorted, selfUserId, metric);
   };

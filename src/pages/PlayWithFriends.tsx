@@ -38,7 +38,7 @@ const Compete: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="absolute left-0 top-1 inline-flex items-center gap-2 text-sm font-semibold text-[#23dff9] transition-colors hover:text-[#54ecff]"
+            className="absolute left-0 top-1 inline-flex items-center gap-2 text-sm font-semibold text-white transition-colors hover:text-[#f1f5f9]"
             aria-label="Back"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -53,9 +53,7 @@ const Compete: React.FC = () => {
               <UserPlus className="h-5 w-5 text-white" />
               <h2 className="text-lg font-semibold leading-none text-white">Join Game</h2>
             </div>
-            <label htmlFor="join-code" className="block text-[11px] font-semibold uppercase tracking-[0.28em] text-[#97a0b2]">
-              Room Code
-            </label>
+
             <div className="mt-3 flex items-center gap-2">
               <Input
                 id="join-code"
@@ -63,18 +61,18 @@ const Compete: React.FC = () => {
                 onChange={(e) => setJoinCode(e.target.value.toLowerCase())}
                 placeholder="enter code"
                 maxLength={6}
-                className="h-12 flex-1 rounded-lg border border-[#d2d6dd] bg-white px-4 text-base font-semibold uppercase tracking-[0.2em] text-[#111827] placeholder:tracking-[0.05em] placeholder:text-[#9ca3af]"
+                className="h-12 flex-1 rounded-[14px] border border-[#d2d6dd] bg-white px-4 text-base font-semibold uppercase tracking-[0.2em] text-[#111827] placeholder:tracking-[0.05em] placeholder:text-[#9ca3af]"
                 aria-label="Room code"
               />
               <Button
                 onClick={handleJoin}
                 disabled={!validJoinCode}
-                className="h-12 min-w-[96px] rounded-lg bg-[#00b7ff] text-base font-semibold text-white transition-transform hover:-translate-y-0.5 hover:bg-[#05a8eb] disabled:translate-y-0 disabled:opacity-40"
+                className="h-12 min-w-[96px] bg-[#00cfff] text-base font-semibold text-black transition-transform hover:-translate-y-0.5 hover:bg-[#00b4e6] disabled:translate-y-0 disabled:opacity-40"
               >
                 Join
               </Button>
             </div>
-            <p className="mt-3 text-[11px] text-[#a7afbe]">6 letters/numbers, not case sensitive.</p>
+            <p className="mt-3 text-[11px] text-[#a7afbe]">Enter the room code shared by the host.</p>
           </div>
 
           <div className="rounded-2xl border border-[#3f424b] bg-[#333333] px-6 py-6">
@@ -82,20 +80,16 @@ const Compete: React.FC = () => {
               <Gamepad2 className="h-5 w-5 text-white" />
               <h2 className="text-lg font-semibold leading-none text-white">Host Game</h2>
             </div>
-            <p className="text-sm leading-relaxed text-[#c2c9d4]">
-              Create a new room and share the code with friends. Up to 8 players.
-            </p>
             <Button
               onClick={handleCreate}
-              className="mt-5 h-12 w-full rounded-lg bg-[#00b7ff] text-base font-semibold text-white transition-transform hover:-translate-y-0.5 hover:bg-[#05a8eb]"
+              className="mt-5 h-12 w-full bg-[#00cfff] text-base font-semibold text-black transition-transform hover:-translate-y-0.5 hover:bg-[#00b4e6]"
             >
               Create room
             </Button>
+            <p className="mt-3 text-[11px] text-[#a7afbe]">
+              Create a new room and share the code with friends. Up to 8 players.
+            </p>
           </div>
-        </div>
-
-        <div className="mt-6 text-xs text-[#9aa3b3]">
-          Rooms support up to 8 players. Share the 6-character code with friends.
         </div>
       </div>
     </div>

@@ -148,13 +148,23 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
   const xpDebtWhen = whenHintDebts.reduce((sum, d) => sum + d.xpDebt, 0);
   const xpDebtWhere = whereHintDebts.reduce((sum, d) => sum + d.xpDebt, 0);
-  const accDebtWhen = whenHintDebts.reduce((sum, d) => sum + d.accDebt, 0);
-  const accDebtWhere = whereHintDebts.reduce((sum, d) => sum + d.accDebt, 0);
-  const totalAccDebt = accDebt;
+  const accDebtWhenRaw = whenHintDebts.reduce((sum, d) => sum + d.accDebt, 0);
+  const accDebtWhereRaw = whereHintDebts.reduce((sum, d) => sum + d.accDebt, 0);
+  const totalAccDebtRaw = accDebt;
 
-  const roundedAccDebtWhen = Math.max(0, Math.round(accDebtWhen));
-  const roundedAccDebtWhere = Math.max(0, Math.round(accDebtWhere));
-  const roundedTotalAccDebt = Math.max(0, Math.round(totalAccDebt));
+  const normalizeDebtValue = (value: number): number => {
+    if (!Number.isFinite(value) || value <= 0) return 0;
+    const positive = Math.abs(value);
+    return positive > 1 ? positive : positive * 100;
+  };
+
+  const accDebtWhenValue = normalizeDebtValue(accDebtWhenRaw);
+  const accDebtWhereValue = normalizeDebtValue(accDebtWhereRaw);
+  const totalAccDebtValue = normalizeDebtValue(totalAccDebtRaw);
+
+  const roundedAccDebtWhen = Math.max(0, Math.round(accDebtWhenValue));
+  const roundedAccDebtWhere = Math.max(0, Math.round(accDebtWhereValue));
+  const roundedTotalAccDebt = Math.max(0, Math.round(totalAccDebtValue));
 
   const netXpWhen = Math.max(0, (result?.xpWhen ?? 0) - xpDebtWhen);
   const netXpWhere = Math.max(0, (result?.xpWhere ?? 0) - xpDebtWhere);
@@ -165,9 +175,9 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   const baseLocationAccuracy = Math.max(0, result?.locationAccuracy ?? 0);
   const baseTotalAccuracy = Math.max(0, result?.accuracy ?? 0);
 
-  const netTimeAccuracy = Math.max(0, baseTimeAccuracy - accDebtWhen);
-  const netLocationAccuracy = Math.max(0, baseLocationAccuracy - accDebtWhere);
-  const netAccuracy = Math.max(0, baseTotalAccuracy - totalAccDebt);
+  const netTimeAccuracy = Math.max(0, baseTimeAccuracy - accDebtWhenValue);
+  const netLocationAccuracy = Math.max(0, baseLocationAccuracy - accDebtWhereValue);
+  const netAccuracy = Math.max(0, baseTotalAccuracy - totalAccDebtValue);
 
   // If leaderboards are present, use their self row values to display "Your Score"
   // so both host and friend see identical numbers across devices.

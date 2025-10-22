@@ -152,6 +152,10 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   const accDebtWhere = whereHintDebts.reduce((sum, d) => sum + d.accDebt, 0);
   const totalAccDebt = accDebt;
 
+  const roundedAccDebtWhen = Math.max(0, Math.round(accDebtWhen));
+  const roundedAccDebtWhere = Math.max(0, Math.round(accDebtWhere));
+  const roundedTotalAccDebt = Math.max(0, Math.round(totalAccDebt));
+
   const netXpWhen = Math.max(0, (result?.xpWhen ?? 0) - xpDebtWhen);
   const netXpWhere = Math.max(0, (result?.xpWhere ?? 0) - xpDebtWhere);
   // Compute net XP consistently from components to avoid double-subtracting when xpTotal is already net.
@@ -225,9 +229,9 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   };
 
   const selfTotalHintsCount = whenHintDebts.length + whereHintDebts.length;
-  const selfTotalPenalty = Math.max(0, Math.round(totalAccDebt));
-  const selfWhenPenalty = Math.max(0, Math.round(accDebtWhen));
-  const selfWherePenalty = Math.max(0, Math.round(accDebtWhere));
+  const selfTotalPenalty = roundedTotalAccDebt;
+  const selfWhenPenalty = roundedAccDebtWhen;
+  const selfWherePenalty = roundedAccDebtWhere;
   const selfWhenHints = whenHintDebts.length;
   const selfWhereHints = whereHintDebts.length;
 
@@ -656,6 +660,15 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
                 </Badge>
               </div>
+              {selfWhenHints > 0 && (
+                <div className="mt-2 flex items-center justify-between text-xs font-semibold text-red-500">
+                  <span>{`${selfWhenHints} ${selfWhenHints === 1 ? 'hint' : 'hints'}`}</span>
+                  <div className="flex items-center gap-3">
+                    {selfWhenPenalty > 0 && <span>-{formatInteger(selfWhenPenalty)}%</span>}
+                    {xpDebtWhen > 0 && <span>-{formatInteger(xpDebtWhen)} XP</span>}
+                  </div>
+                </div>
+              )}
               {renderLeaderboard('when')}
             </div>
 
@@ -772,6 +785,15 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
                 </Badge>
               </div>
+              {selfWhereHints > 0 && (
+                <div className="mt-2 flex items-center justify-between text-xs font-semibold text-red-500">
+                  <span>{`${selfWhereHints} ${selfWhereHints === 1 ? 'hint' : 'hints'}`}</span>
+                  <div className="flex items-center gap-3">
+                    {selfWherePenalty > 0 && <span>-{formatInteger(selfWherePenalty)}%</span>}
+                    {xpDebtWhere > 0 && <span>-{formatInteger(xpDebtWhere)} XP</span>}
+                  </div>
+                </div>
+              )}
               {renderLeaderboard('where')}
             </div>
 

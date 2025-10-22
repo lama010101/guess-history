@@ -1,5 +1,5 @@
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from './client';
 
 // Reference-counted realtime channel registry to dedupe channels across components.
 // Always call handle.release() in cleanup.

@@ -1,4 +1,4 @@
-import { supabase } from '../integrations/supabase/client';
+import supabase from '../src/integrations/supabase/client';
 
 // Helper: probe a public table by selecting 0 rows; treat 42P01 as non-existent
 async function tableExists(tableName: 'session_players' | 'round_results'): Promise<boolean> {

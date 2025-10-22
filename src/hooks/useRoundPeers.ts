@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { acquireChannel } from '../../integrations/supabase/realtime';
+import { acquireChannel } from '@/integrations/supabase/realtime';
 import { makeRoundId } from '@/utils/roomState';
 
 const isDev = typeof import.meta !== 'undefined' && !!import.meta.env?.DEV;

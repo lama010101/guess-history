@@ -8,7 +8,7 @@ import { getHintCostAndPenalty } from '@/utils/hintUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { makeRoundId } from '@/utils/roomState';
 import { useGameConfig } from '@/config/gameConfig';
-import { acquireChannel } from '../../integrations/supabase/realtime';
+import { acquireChannel } from '@/integrations/supabase/realtime';
 
 // Hint interface definition
 export interface Hint {

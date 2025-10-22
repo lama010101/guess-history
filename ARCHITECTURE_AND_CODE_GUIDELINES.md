@@ -1,3 +1,14 @@
+### Compete Room — Invite Card Accordion (2025-10-22)
+
+- **Component**: `src/pages/Room.tsx`
+- **Behavior**:
+  - The host-only "Invite Your Friends" card renders as a single-item accordion (`Accordion` from `@/components/ui/accordion`) with `value="invite-card"` defaulted open via `inviteAccordionOpen` state.
+  - "Share Room Code" and "Send Invite" sections share identical typography/spacing so both headers use `Label` with `text-xs text-neutral-200`.
+  - "Send Invite" contains the friends filter input plus two inline links: `View Friends` toggles the inline limited list (10 items max), while `Manage Friends` opens the full friends modal. When more than 10 entries are available, a `More` link routes to the same modal action.
+  - The friends preview list only renders when `friendsListVisible` is true and respects the current `searchTerm` filter. Loading, empty, and invite button states are unchanged stylistically.
+  - Closing the friends modal after managing friends re-fetches `loadFriends()` and `loadInvites()` and reopens the inline list so new additions appear immediately without a page refresh.
+  - The helper note "Share this room code so friends can join." now lives directly under the room code input within the invite accordion instead of the players card.
+
 ### Hint Scoring Alignment & Penalty Fallbacks (2025-10-20)
 
 - **Goal**: Ensure “Your Score” matches Round Leaderboard and prevent cases like `1 hint = 0%`.
@@ -398,6 +409,7 @@
 - __Mobile layout: Join then Host__
   - Page: `src/pages/PlayWithFriends.tsx`.
   - Behavior: On mobile (md-), the page shows two stacked cards in this order: `Join Game` then `Host Game`. On md+ the cards render side-by-side.
+  - Title/back navigation: Header now displays **Compete** while retaining the internal `Lobby` component naming, and the back button always routes to `/home` instead of relying on browser history to ensure consistent return behavior.
   - Implementation: Removed the mobile tab toggle; both cards are always visible. No functional changes to the join/create handlers.
 
 #### Lobby Landing Page — UI Updates (2025-10-20)

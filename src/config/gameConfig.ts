@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
-import { acquireChannel } from '../../integrations/supabase/realtime';
+import { acquireChannel } from '@/integrations/supabase/realtime';
 import { HINT_COSTS } from '@/constants/hints';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { defaultLevelUpTuneables } from '@/lib/levelUpConfig';

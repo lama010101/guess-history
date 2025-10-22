@@ -35,14 +35,14 @@ const Lobby: React.FC = () => {
         <div className="relative mb-8">
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/home')}
             className="absolute left-0 top-1 inline-flex items-center gap-2 text-sm font-semibold text-white transition-colors hover:text-[#f1f5f9]"
             aria-label="Back"
           >
             <ArrowLeft className="h-4 w-4" />
             Back
           </button>
-          <h1 className="text-center text-2xl font-semibold text-white">Lobby</h1>
+          <h1 className="text-center text-2xl font-semibold text-white">Compete</h1>
         </div>
 
         <div className="flex flex-col gap-6">

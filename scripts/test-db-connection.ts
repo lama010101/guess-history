@@ -1,5 +1,5 @@
-import { supabase } from '../integrations/supabase/client';
-import type { Database } from '../integrations/supabase/types';
+import supabase from '../src/integrations/supabase/client';
+import type { Database } from '../src/integrations/supabase/types';
 
 async function testConnection() {
   console.log('Testing Supabase connection...');

@@ -125,3 +125,5 @@ export const supabase = (g.__supabaseClient ||= createClient<Database>(
   SUPABASE_PUBLISHABLE_KEY,
   clientOptions as any
 ));
+
+export default supabase;

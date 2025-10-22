@@ -14,9 +14,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { v5 as uuidv5 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { declineInviteForRoom } from '../../integrations/supabase/invites';
+import { declineInviteForRoom } from '@/integrations/supabase/invites';
 import type { Tables } from '@/integrations/supabase/types';
-import { acquireChannel } from '../../integrations/supabase/realtime';
+import { acquireChannel } from '@/integrations/supabase/realtime';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { fetchAvatarUrlsForUserIds } from '@/utils/profile/avatarLoader';
 
@@ -82,7 +82,9 @@ const Room: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   type InviteEntry = { id: string; friend_id: string; display_name: string };
   const [invites, setInvites] = useState<InviteEntry[]>([]);
-  const [friendsAccordionOpen, setFriendsAccordionOpen] = useState(false);
+  const [inviteAccordionOpen, setInviteAccordionOpen] = useState(true);
+  const [friendsListVisible, setFriendsListVisible] = useState(false);
+  const friendsModalOpenedRef = useRef(false);
   const wsRef = useRef<WebSocket | null>(null);
   const retryRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -611,6 +613,8 @@ const Room: React.FC = () => {
     if (!term) return friendsList;
     return friendsList.filter(f => (f.display_name || '').toLowerCase().includes(term));
   }, [friendsList, searchTerm]);
+  const limitedFriends = useMemo(() => filteredFriends.slice(0, 10), [filteredFriends]);
+  const hasMoreFriends = useMemo(() => filteredFriends.length > 10, [filteredFriends]);
   const extendedRoster = useMemo<DisplayRosterEntry[]>(() => {
     const rosterNameSet = new Set(
       rosterWithAvatars.map((entry) => (entry.name || '').trim().toLowerCase()).filter((name) => name.length > 0),
@@ -801,74 +805,79 @@ const Room: React.FC = () => {
         </section>
 
         {isHost && (
-          <section className="rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between">
+          <Accordion
+            type="single"
+            collapsible
+            value={inviteAccordionOpen ? 'invite-card' : ''}
+            onValueChange={(val) => setInviteAccordionOpen(val === 'invite-card')}
+            className="rounded-2xl border border-[#3f424b] bg-[#333333]"
+          >
+            <AccordionItem value="invite-card" className="overflow-hidden">
+              <AccordionTrigger className="flex items-center justify-between px-6 py-5 text-base font-semibold text-white">
                 <div className="flex items-center gap-2">
                   <UserPlus className="h-4 w-4 text-white" />
-                  <h2 className="text-base font-semibold text-white">Invite Your Friends</h2>
+                  <span>Invite Your Friends</span>
                 </div>
                 {copied && <span className="text-xs font-semibold text-[#22d3ee]">Copied!</span>}
-              </div>
-              <div>
-                <Label className="text-xs text-neutral-200">Share Room Code</Label>
-                <div className="mt-2 flex items-center gap-2">
-                  <Input
-                    value={roomCode.toUpperCase()}
-                    readOnly
-                    className="h-11 flex-1 rounded-[14px] border border-[#454852] bg-[#1d2026] text-lg font-semibold tracking-[0.28em] text-white"
-                  />
-                  <Button
-                    onClick={copyCode}
-                    size="icon"
-                    className="h-11 w-11 bg-[#22d3ee] px-0 text-black hover:bg-[#1cbfdb]"
-                    aria-label="Copy room code"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-5 px-6 pb-6 pt-0">
+                <div>
+                  <Label className="text-xs text-neutral-200">Share Room Code</Label>
+                  <div className="mt-2 flex items-center gap-2">
+                    <Input
+                      value={roomCode.toUpperCase()}
+                      readOnly
+                      className="h-11 flex-1 rounded-[14px] border border-[#454852] bg-[#1d2026] text-lg font-semibold tracking-[0.28em] text-white"
+                    />
+                    <Button
+                      onClick={copyCode}
+                      size="icon"
+                      className="h-11 w-11 bg-[#22d3ee] px-0 text-black hover:bg-[#1cbfdb]"
+                      aria-label="Copy room code"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="mt-2 text-xs text-neutral-400">Share this room code so friends can join.</p>
                 </div>
-              </div>
-              <Accordion
-                type="single"
-                collapsible
-                value={friendsAccordionOpen ? 'friends' : ''}
-                onValueChange={(val) => setFriendsAccordionOpen(val === 'friends')}
-                className="rounded-xl border border-[#3f424b] bg-[#2d2f36]"
-              >
-                <AccordionItem value="friends">
-                  <AccordionTrigger className="flex items-center justify-between px-4 py-3 text-sm font-semibold text-white">
-                    <span>Send Invite</span>
-                    <div className="flex items-center gap-3 text-xs font-medium text-[#22d3ee]">
-                      <button
-                        type="button"
-                        className="hover:text-[#b6ecff]"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setFriendsModalOpen(true);
-                        }}
-                      >
-                        Manage Friends
-                      </button>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="space-y-3 px-4 pb-4 pt-2">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500" />
-                      <Input
-                        placeholder="Filter your friends by name..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="rounded-lg border border-[#454852] bg-[#1d2026] pl-9 text-sm text-white placeholder:text-neutral-500"
-                      />
-                    </div>
+                <div className="space-y-3">
+                  <Label className="text-xs text-neutral-200">Send Invite</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500" />
+                    <Input
+                      placeholder="Filter your friends by name..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="rounded-lg border border-[#454852] bg-[#1d2026] pl-9 text-sm text-white placeholder:text-neutral-500"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-xs font-medium text-[#22d3ee]">
+                    <button
+                      type="button"
+                      className="hover:text-[#b6ecff]"
+                      onClick={() => setFriendsListVisible((prev) => !prev)}
+                    >
+                      {friendsListVisible ? 'Hide Friends' : 'View Friends'}
+                    </button>
+                    <button
+                      type="button"
+                      className="hover:text-[#b6ecff]"
+                      onClick={() => {
+                        friendsModalOpenedRef.current = true;
+                        setFriendsModalOpen(true);
+                      }}
+                    >
+                      Manage Friends
+                    </button>
+                  </div>
+                  {friendsListVisible && (
                     <div className="space-y-2">
                       {friendsLoading ? (
                         <div className="text-xs text-neutral-300">Loading friends…</div>
-                      ) : filteredFriends.length === 0 ? (
+                      ) : limitedFriends.length === 0 ? (
                         <div className="text-xs text-neutral-300">No friends match your filter.</div>
                       ) : (
-                        filteredFriends.map((f) => (
+                        limitedFriends.map((f) => (
                           <div key={f.id} className="flex items-center justify-between rounded-lg border border-[#3f424b] bg-[#1d2026] px-3 py-2">
                             <div className="flex items-center gap-3">
                               <Avatar className="h-9 w-9 border border-[#3f424b] bg-[#262930]">
@@ -890,27 +899,39 @@ const Room: React.FC = () => {
                           </div>
                         ))
                       )}
+                      {hasMoreFriends && !friendsLoading && limitedFriends.length > 0 && (
+                        <button
+                          type="button"
+                          className="text-left text-xs font-semibold text-[#22d3ee] hover:text-[#b6ecff]"
+                          onClick={() => {
+                            friendsModalOpenedRef.current = true;
+                            setFriendsModalOpen(true);
+                          }}
+                        >
+                          More
+                        </button>
+                      )}
                     </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-              {invites.length > 0 && (
-                <div className="rounded-xl border border-[#3f424b] bg-[#2d2f36] p-4">
-                  <h3 className="text-sm font-semibold text-white">Pending Invites</h3>
-                  <div className="mt-3 space-y-2 text-sm">
-                    {invites.map((inv) => (
-                      <div key={inv.id} className="flex items-center justify-between rounded-lg border border-[#3f424b] bg-[#1d2026] px-3 py-2">
-                        <span className="truncate text-sm text-white">{inv.display_name || 'Friend'}</span>
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-red-300 hover:text-red-200" onClick={() => cancelInvite(inv.id)}>
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </section>
+                {invites.length > 0 && (
+                  <div className="rounded-xl border border-[#3f424b] bg-[#2d2f36] p-4">
+                    <h3 className="text-sm font-semibold text-white">Pending Invites</h3>
+                    <div className="mt-3 space-y-2 text-sm">
+                      {invites.map((inv) => (
+                        <div key={inv.id} className="flex items-center justify-between rounded-lg border border-[#3f424b] bg-[#1d2026] px-3 py-2">
+                          <span className="truncate text-sm text-white">{inv.display_name || 'Friend'}</span>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-red-300 hover:text-red-200" onClick={() => cancelInvite(inv.id)}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         )}
 
         <section className="rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
@@ -1066,7 +1087,18 @@ const Room: React.FC = () => {
         </div>
       </div>
 
-      <Dialog open={friendsModalOpen} onOpenChange={setFriendsModalOpen}>
+      <Dialog
+        open={friendsModalOpen}
+        onOpenChange={(open) => {
+          setFriendsModalOpen(open);
+          if (!open && friendsModalOpenedRef.current) {
+            loadFriends();
+            loadInvites();
+            friendsModalOpenedRef.current = false;
+            setFriendsListVisible(true);
+          }
+        }}
+      >
         <DialogContent className="max-w-4xl w-[92vw] max-h-[85vh] overflow-y-auto border border-neutral-800 bg-black p-0 text-white">
           <div className="p-4">
             <FriendsPage />

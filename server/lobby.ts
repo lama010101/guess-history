@@ -189,13 +189,18 @@ export default class Lobby implements Party.Server {
       // Treat placeholder/unset secret as disabled (common in dev)
       return true;
     }
+    // TEMPORARY: Allow joins without token until client-side token generation is implemented
+    // TODO: Generate invite tokens via Supabase Edge Function and pass in join message
     if (!token) {
-      console.warn(
-        "lobby: join missing invite token while INVITE_HMAC_SECRET is configured — permitting join for now",
-        {
-          roomId: this.room.id,
-        },
-      );
+      if (!this.devInviteBypassLogged) {
+        console.warn(
+          "lobby: join missing invite token while INVITE_HMAC_SECRET is configured — permitting join (token validation disabled)",
+          {
+            roomId: this.room.id,
+          },
+        );
+        this.devInviteBypassLogged = true;
+      }
       return true;
     }
     try {

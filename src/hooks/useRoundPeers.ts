@@ -18,6 +18,8 @@ export interface PeerRoundRow {
   accuracy: number;
   xpTotal: number;
   xpDebt: number;
+  whenXpDebt: number;
+  whereXpDebt: number;
   accDebt: number;
   whenAccDebt: number;
   whereAccDebt: number;
@@ -247,14 +249,22 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       if (hintErr) {
         console.warn('[useRoundPeers] round_hints fetch failed', hintErr);
       }
-      const hintsByUser = new Map<string, { xpDebt: number; whenAccDebt: number; whereAccDebt: number; accDebt: number; count: number; whenCount: number; whereCount: number }>();
+      const hintsByUser = new Map<string, { xpDebt: number; whenXpDebt: number; whereXpDebt: number; whenAccDebt: number; whereAccDebt: number; accDebt: number; count: number; whenCount: number; whereCount: number }>();
       (hintRows || []).forEach((row: any) => {
         const uid = String(row.user_id);
-        const prev = hintsByUser.get(uid) || { xpDebt: 0, whenAccDebt: 0, whereAccDebt: 0, accDebt: 0, count: 0, whenCount: 0, whereCount: 0 };
+        const prev = hintsByUser.get(uid) || { xpDebt: 0, whenXpDebt: 0, whereXpDebt: 0, whenAccDebt: 0, whereAccDebt: 0, accDebt: 0, count: 0, whenCount: 0, whereCount: 0 };
         const acc = Number(row.accDebt ?? 0) || 0;
         const xp = Number(row.xpDebt ?? 0) || 0;
         const type = String(row.hint_type || '');
-        if (type === 'when') { prev.whenAccDebt += acc; prev.whenCount += 1; } else if (type === 'where') { prev.whereAccDebt += acc; prev.whereCount += 1; }
+        if (type === 'when') {
+          prev.whenAccDebt += acc;
+          prev.whenXpDebt += xp;
+          prev.whenCount += 1;
+        } else if (type === 'where') {
+          prev.whereAccDebt += acc;
+          prev.whereXpDebt += xp;
+          prev.whereCount += 1;
+        }
         prev.accDebt += acc;
         prev.xpDebt += xp;
         prev.count += 1;
@@ -334,6 +344,8 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
 
         const whenAccDebt = hintAgg?.whenAccDebt ?? 0;
         const whereAccDebt = hintAgg?.whereAccDebt ?? 0;
+        const whenXpDebt = hintAgg?.whenXpDebt ?? 0;
+        const whereXpDebt = hintAgg?.whereXpDebt ?? 0;
         const whenHints = hintAgg ? Math.max(0, Number(hintAgg.whenCount)) : null;
         const whereHints = hintAgg ? Math.max(0, Number(hintAgg.whereCount)) : null;
 
@@ -350,6 +362,8 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
           accuracy: Number(sb?.accuracy ?? 0),
           xpTotal: Number(sb?.xp_total ?? 0),
           xpDebt: (Number.isFinite(rawXpDebt) && rawXpDebt > 0) ? rawXpDebt : (hintsByUser.get(uid)?.xpDebt ?? 0),
+          whenXpDebt,
+          whereXpDebt,
           accDebt: totalDebt,
           whenAccDebt,
           whereAccDebt,

@@ -16,21 +16,6 @@ function isPrivateHost(h: string): boolean {
   return false;
 }
 
-function getSupabaseAccessToken(): string | null {
-  try {
-    if (typeof window === 'undefined') return null;
-    const KEY = 'supabase.auth.token';
-    const raw = window.localStorage.getItem(KEY) ?? window.sessionStorage.getItem(KEY);
-    if (!raw) return null;
-    const parsed: any = JSON.parse(raw);
-    // Supabase v2 stores a session-like object; try common shapes defensively
-    if (parsed?.currentSession?.access_token) return String(parsed.currentSession.access_token);
-    if (parsed?.access_token) return String(parsed.access_token);
-    if (parsed?.data?.session?.access_token) return String(parsed.data.session.access_token);
-  } catch {}
-  return null;
-}
-
 export function partyUrl(party: string, roomCode: string): string {
   // Prefer explicit env override when provided
   const envHost = (import.meta as any).env?.VITE_PARTYKIT_HOST as string | undefined;
@@ -60,16 +45,7 @@ export function partyUrl(party: string, roomCode: string): string {
   }
 
   const protocol = isLocal ? 'ws' : 'wss';
-  const base = `${protocol}://${host}/parties/${encodeURIComponent(party)}/${encodeURIComponent(roomCode)}`;
-  try {
-    const token = getSupabaseAccessToken();
-    if (token) {
-      const u = new URL(base);
-      u.searchParams.set('jwt', token);
-      return u.toString();
-    }
-  } catch {}
-  return base;
+  return `${protocol}://${host}/parties/${encodeURIComponent(party)}/${encodeURIComponent(roomCode)}`;
 }
 
 export type LobbyServerMessage =

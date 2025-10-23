@@ -3,6 +3,45 @@ import type { Tables } from './types';
 
 export type RoomInviteRow = Tables<'room_invites'>;
 
+type InvitePayload = {
+  roomId: string;
+  expiresAt: number;
+  mode: 'sync' | 'async';
+};
+
+type CreateInviteResponse = {
+  payload: string;
+  signature: string;
+};
+
+const TOKEN_STORAGE_PREFIX = 'lobbyInviteToken:';
+
+function storageKey(roomId: string): string {
+  return `${TOKEN_STORAGE_PREFIX}${roomId}`;
+}
+
+function signInvitePayload(payload: InvitePayload, signature: string): string {
+  return `${payload.roomId}.${signature}`;
+}
+
+export function cacheRoomInviteToken(roomId: string, token: string): void {
+  try {
+    sessionStorage.setItem(storageKey(roomId), token);
+  } catch {
+    /* ignore storage errors */
+  }
+}
+
+export function getCachedRoomInviteToken(roomId: string | null | undefined): string | null {
+  if (!roomId) return null;
+  try {
+    const cached = sessionStorage.getItem(storageKey(roomId));
+    return cached && cached.trim().length > 0 ? cached : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Fetch incoming invites for the given user for a specific room.
  * RLS permits the invited friend (friend_id = auth.uid()) to SELECT.
@@ -20,7 +59,7 @@ export async function fetchIncomingInvites(roomId: string, userId: string) {
 }
 
 export async function createInviteToken(roomId: string, mode: 'sync' | 'async'): Promise<string> {
-  const { data, error } = await supabase.functions.invoke<{ payload: string; signature: string }>('create-invite', {
+  const { data, error } = await supabase.functions.invoke('create-invite', {
     body: { roomId, mode }
   });
   if (error) {
@@ -30,11 +69,26 @@ export async function createInviteToken(roomId: string, mode: 'sync' | 'async'):
   if (!data?.payload || !data?.signature) {
     throw new Error('create-invite function returned invalid response');
   }
-  const decoded: InvitePayload = JSON.parse(atob(data.payload));
+  const typed = data as CreateInviteResponse;
+  const decoded: InvitePayload = JSON.parse(atob(typed.payload));
   if (decoded.roomId !== roomId) {
     throw new Error('create-invite payload room mismatch');
   }
-  return signInvitePayload(decoded, data.signature);
+  const token = signInvitePayload(decoded, typed.signature);
+  cacheRoomInviteToken(roomId, token);
+  return token;
+}
+
+export async function ensureRoomInviteToken(roomId: string, mode: 'sync' | 'async' = 'sync'): Promise<string | null> {
+  const cached = getCachedRoomInviteToken(roomId);
+  if (cached) return cached;
+  try {
+    const token = await createInviteToken(roomId, mode);
+    return token;
+  } catch (error) {
+    console.error('[invite] ensureRoomInviteToken failed', error);
+    return null;
+  }
 }
 
 /**

@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { v5 as uuidv5 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { declineInviteForRoom } from '@/integrations/supabase/invites';
+import { cacheRoomInviteToken, declineInviteForRoom, ensureRoomInviteToken, getCachedRoomInviteToken } from '@/integrations/supabase/invites';
 import type { Tables } from '@/integrations/supabase/types';
 import { acquireChannel } from '@/integrations/supabase/realtime';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -86,6 +86,7 @@ const Room: React.FC = () => {
   const [friendsListVisible, setFriendsListVisible] = useState(false);
   const friendsModalOpenedRef = useRef(false);
   const wsRef = useRef<WebSocket | null>(null);
+  const inviteTokenRef = useRef<string | null>(null);
   const retryRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startedRef = useRef(false);
@@ -177,9 +178,22 @@ const Room: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     cleanupSocket();
     setStatus('connecting');
+
+    const tokenParam = params.get('token');
+    if (tokenParam && tokenParam.trim().length > 0) {
+      inviteTokenRef.current = tokenParam;
+      cacheRoomInviteToken(roomCode, tokenParam);
+    }
+
+    if (!inviteTokenRef.current) {
+      inviteTokenRef.current = getCachedRoomInviteToken(roomCode);
+    }
+    if (!inviteTokenRef.current && roomCode) {
+      inviteTokenRef.current = await ensureRoomInviteToken(roomCode, 'sync');
+    }
 
     const ws = new WebSocket(url);
     wsRef.current = ws;
@@ -188,7 +202,12 @@ const Room: React.FC = () => {
       setStatus('open');
       retryRef.current = 0; // reset backoff on success
       const joinName = (latestNameRef.current || '').trim();
-      const joinMsg: LobbyClientMessage = { type: 'join', name: joinName, userId: user?.id || undefined };
+      const joinMsg: LobbyClientMessage = {
+        type: 'join',
+        name: joinName,
+        userId: user?.id || undefined,
+        token: inviteTokenRef.current || undefined,
+      };
       ws.send(JSON.stringify(joinMsg));
       // reset ready status upon fresh connection
       setOwnReady(false);
@@ -343,7 +362,7 @@ const Room: React.FC = () => {
       ws.close();
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url, navigate, scheduleReconnect, user?.id]);
+  }, [url, navigate, scheduleReconnect, user?.id, roomCode, params]);
 
   useEffect(() => {
     if (!roomCode) {
@@ -667,15 +686,20 @@ const Room: React.FC = () => {
 
   const copyInvite = useCallback(async () => {
     try {
+      if (!inviteTokenRef.current && roomCode) {
+        inviteTokenRef.current = await ensureRoomInviteToken(roomCode, 'sync');
+      }
       // Share a clean invite URL without any query params like host=1
-      const inviteUrl = `${window.location.origin}/room/${encodeURIComponent(roomCode)}`;
+      const baseUrl = `${window.location.origin}/room/${encodeURIComponent(roomCode)}`;
+      const inviteUrl = inviteTokenRef.current ? `${baseUrl}?token=${encodeURIComponent(inviteTokenRef.current)}` : baseUrl;
       await navigator.clipboard.writeText(inviteUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch (e) {
       // Fallback: open prompt
       // eslint-disable-next-line no-alert
-      const inviteUrl = `${window.location.origin}/room/${encodeURIComponent(roomCode)}`;
+      const baseUrl = `${window.location.origin}/room/${encodeURIComponent(roomCode)}`;
+      const inviteUrl = inviteTokenRef.current ? `${baseUrl}?token=${encodeURIComponent(inviteTokenRef.current)}` : baseUrl;
       window.prompt('Copy invite link:', inviteUrl);
     }
   }, [roomCode]);

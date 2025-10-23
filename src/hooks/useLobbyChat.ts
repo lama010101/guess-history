@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { partyUrl, LobbyClientMessage, LobbyServerMessage } from '@/lib/partyClient';
+import { ensureRoomInviteToken, getCachedRoomInviteToken } from '@/integrations/supabase/invites';
 
 export interface SubmissionBroadcast {
   roundNumber: number;
@@ -78,6 +79,7 @@ export function useLobbyChat({
   });
   const pendingQueueRef = useRef<LobbyClientMessage[]>([]);
   const joinAckedRef = useRef(false);
+  const inviteTokenRef = useRef<string | null>(null);
 
   const flushPendingQueue = useCallback(() => {
     const ws = wsRef.current;
@@ -129,7 +131,7 @@ export function useLobbyChat({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, roomCode]);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     const existing = wsRef.current;
     if (existing && (existing.readyState === WebSocket.OPEN || existing.readyState === WebSocket.CONNECTING)) {
       return;
@@ -144,6 +146,14 @@ export function useLobbyChat({
 
     try {
       const url = partyUrl('lobby', roomCode);
+
+      if (!inviteTokenRef.current) {
+        inviteTokenRef.current = getCachedRoomInviteToken(roomCode);
+      }
+      if (!inviteTokenRef.current) {
+        inviteTokenRef.current = await ensureRoomInviteToken(roomCode, 'sync');
+      }
+
       const ws = new WebSocket(url);
       wsRef.current = ws;
       setStatus('connecting');
@@ -157,6 +167,7 @@ export function useLobbyChat({
           type: 'join',
           name: joinName,
           userId: latestUserIdRef.current,
+          token: inviteTokenRef.current || undefined,
         };
         try {
           ws.send(JSON.stringify(payload));

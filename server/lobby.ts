@@ -266,15 +266,20 @@ export default class Lobby implements Party.Server {
       });
       if (!res.ok) {
         let body = "";
-        try { body = await res.text(); } catch {}
+        try {
+          body = await res.text();
+        } catch (err) {
+          console.warn("lobby: startRoundTimer failed to read response body", err);
+        }
         console.warn(`lobby: startRoundTimer failed ${res.status} ${res.statusText} for ${url}`, body || "<no response body>");
         return null;
       }
-      let rows: any = null;
+      type StartTimerRow = { started_at?: string; duration_sec?: number };
+      let rows: StartTimerRow[] | null = null;
       try {
-        rows = await res.json();
-      } catch {
-        rows = null;
+        rows = (await res.json()) as StartTimerRow[];
+      } catch (err) {
+        console.warn("lobby: startRoundTimer failed to parse JSON", err);
       }
       if (!Array.isArray(rows) || rows.length === 0 || !rows[0]?.started_at) {
         console.warn("lobby: startRoundTimer returned no rows or invalid payload");
@@ -300,7 +305,8 @@ export default class Lobby implements Party.Server {
       const rows = (await res.json()) as Array<{ display_name?: string | null }>;
       const dn = rows && rows[0] && typeof rows[0].display_name === 'string' ? rows[0].display_name!.trim() : '';
       return dn && dn.length > 0 ? dn.slice(0, 32) : null;
-    } catch {
+    } catch (err) {
+      console.warn("lobby: fetchProfileDisplayName exception", err);
       return null;
     }
   }
@@ -367,7 +373,11 @@ export default class Lobby implements Party.Server {
       });
       if (!res.ok) {
         let body = "";
-        try { body = await res.text(); } catch {}
+        try {
+          body = await res.text();
+        } catch (err) {
+          console.warn("lobby: ensureSessionPlayerRow failed to read response body", err);
+        }
         console.warn("lobby: ensureSessionPlayerRow failed", res.status, res.statusText, body);
       }
     } catch (e) {
@@ -392,7 +402,11 @@ export default class Lobby implements Party.Server {
       });
       if (!res.ok) {
         let body = "";
-        try { body = await res.text(); } catch {}
+        try {
+          body = await res.text();
+        } catch (err) {
+          console.warn("lobby: patchSessionPlayerRow failed to read response body", err);
+        }
         console.warn("lobby: patchSessionPlayerRow failed", res.status, res.statusText, body);
       }
     } catch (e) {
@@ -460,7 +474,9 @@ export default class Lobby implements Party.Server {
         let body = "";
         try {
           body = await res.text();
-        } catch {}
+        } catch (err) {
+          console.warn("lobby: persistRoundStart failed to read response body", err);
+        }
         console.warn(
           `lobby: persistRoundStart failed ${res.status} ${res.statusText} at ${url}`,
           body || "<no response body>"
@@ -701,7 +717,9 @@ export default class Lobby implements Party.Server {
             if (target) {
               target.close(4000, "kicked by host");
             }
-          } catch {}
+          } catch (err) {
+            console.warn("lobby: error closing target connection during kick", err);
+          }
           // Cleanup state in case close event arrives later
           this.players.delete(targetId);
           this.ready.delete(targetId);

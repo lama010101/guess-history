@@ -77,6 +77,7 @@ interface RoundLeaderboardEntry {
   displayName: string;
   value: number;
   hintsUsed?: number;
+  penalty?: number;
 }
 
 interface RoundLeaderboardsProps {
@@ -195,13 +196,16 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   const userLng = result?.guessLng ?? null;
 
   const hasUserGuess = userLat !== null && userLng !== null;
-  const correctPosition: L.LatLngTuple = [correctLat, correctLng];
-  const userPosition: L.LatLngTuple | null = hasUserGuess ? [userLat as number, userLng as number] as L.LatLngTuple : null;
+  const correctPosition = useMemo<L.LatLngTuple>(() => [correctLat, correctLng], [correctLat, correctLng]);
+  const userPosition = useMemo<L.LatLngTuple | null>(() => {
+    if (!hasUserGuess || userLat == null || userLng == null) return null;
+    return [Number(userLat), Number(userLng)] as L.LatLngTuple;
+  }, [hasUserGuess, userLat, userLng]);
 
   const peerPositions: L.LatLngTuple[] = useMemo(() =>
     (peers || [])
       .filter(p => p.guessLat !== null && p.guessLng !== null)
-      .map(p => [p.guessLat as number, p.guessLng as number] as L.LatLngTuple)
+      .map(p => [Number(p.guessLat), Number(p.guessLng)] as L.LatLngTuple)
   , [peers]);
 
   const allPositions: L.LatLngTuple[] = useMemo(() => {
@@ -343,6 +347,11 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
     result?.eventYear,
     result?.timeAccuracy,
     result?.locationAccuracy,
+    result?.hintsUsed,
+    result?.xpWhen,
+    result?.xpWhere,
+    selfWhenHints,
+    selfWhereHints,
   ]);
 
   const hasLeaderboardPeers = leaderboardEntries.length > 1;
@@ -388,12 +397,12 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   ? 'rounded-b-xl'
                   : '';
               const rank = index + 1;
-              // Build hint text only for the current user and only for per-axis leaderboards
+              const isPerAxis = metric === 'when' || metric === 'where';
+              const rowHints = Math.max(0, Math.round(entry.hintsUsed ?? 0));
+              const rowPenalty = Math.max(0, Math.round(entry.penalty ?? 0));
               let hintText: string | null = null;
-              if (isHighlighted && metric === 'when' && selfWhenHints > 0) {
-                hintText = `${selfWhenHints} ${selfWhenHints === 1 ? 'hint' : 'hints'} = -${selfWhenPenalty}%`;
-              } else if (isHighlighted && metric === 'where' && selfWhereHints > 0) {
-                hintText = `${selfWhereHints} ${selfWhereHints === 1 ? 'hint' : 'hints'} = -${selfWherePenalty}%`;
+              if (isPerAxis && rowHints > 0) {
+                hintText = `${rowHints} ${rowHints === 1 ? 'hint' : 'hints'} = -${rowPenalty}%`;
               }
               return (
                 <tr
@@ -422,22 +431,23 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
   const renderLeaderboard = (metric: 'total' | 'when' | 'where', variant: 'default' | 'embedded' = 'default') => {
     if (leaderboards) {
-      const rows = (metric === 'total'
+      const sourceRows = metric === 'total'
         ? leaderboards.total
         : metric === 'when'
           ? leaderboards.when
-          : leaderboards.where).map((row) => {
-            const penalty = Math.max(0, Math.round(Number((row as any).penalty ?? 0)));
-            const hintsUsed = Math.max(0, Math.round(Number((row as any).hintsUsed ?? 0)));
-            const value = Math.round(Number(row.value ?? 0));
-            return {
-              userId: row.userId,
-              displayName: row.displayName,
-              value,
-              hintsUsed,
-              penalty,
-            };
-          });
+          : leaderboards.where;
+      const rows = sourceRows.map((row) => {
+        const penalty = Math.max(0, Math.round(Number(row.penalty ?? 0)));
+        const hintsUsed = Math.max(0, Math.round(Number(row.hintsUsed ?? 0)));
+        const value = Math.round(Number(row.value ?? 0));
+        return {
+          userId: row.userId,
+          displayName: row.displayName,
+          value,
+          hintsUsed,
+          penalty,
+        };
+      });
       return renderLeaderboardTable(rows, leaderboards.currentUserId ?? null, metric, variant);
     }
 

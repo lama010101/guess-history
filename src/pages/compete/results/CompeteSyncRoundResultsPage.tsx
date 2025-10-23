@@ -44,7 +44,7 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
           displayName: row.displayName,
           value: row.value,
           hintsUsed: row.hintsUsed,
-          // pass through accDebt for inline hint label (percent of penalties)
+          penalty: row.penalty ?? (row.accDebt ?? 0),
           accDebt: (row as any).accDebt ?? 0,
         }))
         .sort((a, b) => {
@@ -100,6 +100,8 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
 
   const layoutResult = useMemo(() => {
     if (!playerSummary || !contextResult || !currentImage) return null;
+    const derivedAccuracy = Math.round((Math.max(0, playerSummary.timeAccuracy) + Math.max(0, playerSummary.locationAccuracy)) / 2);
+
     return {
       imageId: currentImage.id,
       eventLat: playerSummary.eventLat,
@@ -110,6 +112,7 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
       guessLng: playerSummary.guessLng,
       distanceKm: playerSummary.distanceKm,
       locationAccuracy: playerSummary.locationAccuracy,
+      accuracy: derivedAccuracy,
       guessYear: playerSummary.guessYear,
       eventYear: playerSummary.eventYear,
       yearDifference: playerSummary.guessYear == null ? null : Math.abs(playerSummary.eventYear - playerSummary.guessYear),
@@ -490,7 +493,7 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
                             </div>
                           </td>
                           <td className={`py-2 pr-2 text-right ${isCurrent ? 'font-semibold text-foreground' : 'font-medium text-foreground/80'}`}>
-                            {Math.round(row.value)}
+                            {`${Math.round(row.value ?? 0)}%`}
                           </td>
                         </tr>
                       );

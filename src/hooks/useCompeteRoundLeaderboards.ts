@@ -16,6 +16,7 @@ export interface LeaderRow {
   accDebt?: number;
   baseAccuracy?: number;
   hintsUsed?: number;
+  penalty?: number;
 }
 
 export interface CompeteLeaderboardState {
@@ -181,7 +182,12 @@ export function useCompeteRoundLeaderboards(
       const locationAcc = pickNumber(snapshot?.locationAccuracy, fallbackLocationAcc) ?? 0;
 
       // Compute hintsUsed first so we can prefer peer accDebt when snapshot is 0 but hints were used
-      const hintsUsed = Math.max(0, Math.round(pickNumber((snapshot as any)?.hintsUsed, peer?.hintsUsed, 0) ?? 0));
+      const whenHintsValue = Math.max(0, Math.round(pickNumber((snapshot as any)?.whenHints, peer?.whenHints, 0) ?? 0));
+      const whereHintsValue = Math.max(0, Math.round(pickNumber((snapshot as any)?.whereHints, peer?.whereHints, 0) ?? 0));
+      const hintsUsed = Math.max(0, Math.round(pickNumber((snapshot as any)?.hintsUsed, peer?.hintsUsed, whenHintsValue + whereHintsValue, 0) ?? 0));
+
+      const whenAccDebtValue = Math.max(0, Math.round(pickNumber((snapshot as any)?.whenAccDebt, peer?.whenAccDebt, 0) ?? 0));
+      const whereAccDebtValue = Math.max(0, Math.round(pickNumber((snapshot as any)?.whereAccDebt, peer?.whereAccDebt, 0) ?? 0));
 
       const accDebtSnapshot = pickNumber(snapshot?.accDebt, null);
       const accDebtPeer = pickNumber(peer?.accDebt, null);
@@ -190,8 +196,8 @@ export function useCompeteRoundLeaderboards(
         accDebt = Math.max(0, Number(accDebtPeer));
       }
 
-      const netTimeAcc = Math.max(0, Math.round(pickNumber(snapshot?.netTimeAccuracy, timeAcc - accDebt) ?? (timeAcc - accDebt)));
-      const netLocationAcc = Math.max(0, Math.round(pickNumber(snapshot?.netLocationAccuracy, locationAcc - accDebt) ?? (locationAcc - accDebt)));
+      const netTimeAcc = Math.max(0, Math.round(pickNumber(snapshot?.netTimeAccuracy, timeAcc - whenAccDebtValue) ?? (timeAcc - whenAccDebtValue)));
+      const netLocationAcc = Math.max(0, Math.round(pickNumber(snapshot?.netLocationAccuracy, locationAcc - whereAccDebtValue) ?? (locationAcc - whereAccDebtValue)));
       const overallAccuracy = Math.round((timeAcc + locationAcc) / 2);
       const netAccuracy = computeRoundNetPercent(timeAcc, locationAcc, accDebt);
 
@@ -206,9 +212,27 @@ export function useCompeteRoundLeaderboards(
         accDebt,
         baseAccuracy: overallAccuracy,
         hintsUsed,
+        penalty: Math.max(0, Math.round(accDebt)),
       });
-      when.push({ userId, displayName, value: netTimeAcc, accDebt, hintsUsed, timeAccuracy: timeAcc });
-      where.push({ userId, displayName, value: netLocationAcc, accDebt, hintsUsed, locationAccuracy: locationAcc });
+
+      when.push({
+        userId,
+        displayName,
+        value: netTimeAcc,
+        accDebt,
+        hintsUsed: whenHintsValue,
+        timeAccuracy: timeAcc,
+        penalty: whenAccDebtValue,
+      });
+      where.push({
+        userId,
+        displayName,
+        value: netLocationAcc,
+        accDebt,
+        hintsUsed: whereHintsValue,
+        locationAccuracy: locationAcc,
+        penalty: whereAccDebtValue,
+      });
     });
 
     total.sort(sortDescending);

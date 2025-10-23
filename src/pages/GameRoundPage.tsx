@@ -75,7 +75,7 @@ const GameRoundPage: React.FC = () => {
       document.body.classList.remove('mode-levelup');
     };
   }, [location.pathname]);
-  const { user, isLoading: authLoading, continueAsGuest } = useAuth();
+  const { isLoading: authLoading, user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
@@ -418,16 +418,6 @@ const GameRoundPage: React.FC = () => {
       resetChat();
     };
   }, [resetChat]);
-
-  // Ensure we have an authenticated session (guest is fine) before starting timers
-  useEffect(() => {
-    if (!authLoading && !user) {
-      try { if (import.meta.env.DEV) console.debug('[GameRoundPage] No user session; signing in anonymously for timers'); } catch {}
-      continueAsGuest().catch((e) => {
-        try { console.warn('[GameRoundPage] continueAsGuest failed', e); } catch {}
-      });
-    }
-  }, [authLoading, user, continueAsGuest]);
 
   const handleNavigateHome = useCallback(() => {
     console.log("Attempting to navigate to /home");

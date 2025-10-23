@@ -23,6 +23,8 @@ export interface FinalScoreRow {
   rounds_played: number | null;
   avg_accuracy: number | null;
   net_avg_accuracy: number | null;
+  total_hints_used: number | null;
+  total_acc_debt: number | null;
 }
 
 /**

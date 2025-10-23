@@ -1,3 +1,16 @@
+### Landing Page Access Control (2025-10-23)
+
+- **Routing guard**: `src/components/RequireAuthSession.tsx`
+  - No longer auto-creates guest sessions. When `user === null`, redirects back to `/` so visitors stay on `LandingPage` until they opt to authenticate or continue as guest.
+- **Gameplay entry**: `src/pages/GameRoundPage.tsx`
+  - Drops the fallback that silently called `continueAsGuest()` when unauthenticated. Guests must now be created explicitly via `AuthModal` or other UI triggers before entering gameplay routes.
+- **Result**: Anonymous visitors stay on the marketing landing page instead of being redirected to `/home` automatically.
+
+### Compete Round Results — Leaderboard Accuracy Format (2025-10-23)
+
+- **Component**: `src/pages/compete/results/CompeteSyncRoundResultsPage.tsx`
+- **Behavior**: Inline round leaderboard rows now format net accuracy as a whole number followed by `%` (e.g., `65%`). This keeps the global leaderboard consistent with the rest of the compete UI, which already displays percentages, and avoids showing bare integers that looked like raw scores.
+
 ### Compete Room — Invite Card Accordion (2025-10-22)
 
 - **Component**: `src/pages/Room.tsx`

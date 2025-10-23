@@ -388,8 +388,13 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   ? 'rounded-b-xl'
                   : '';
               const rank = index + 1;
-              const hintsUsed = Math.max(0, Number(entry.hintsUsed ?? 0));
-              const penaltyValue = Math.max(0, Math.round(entry.penalty ?? 0));
+              // Build hint text only for the current user and only for per-axis leaderboards
+              let hintText: string | null = null;
+              if (isHighlighted && metric === 'when' && selfWhenHints > 0) {
+                hintText = `${selfWhenHints} ${selfWhenHints === 1 ? 'hint' : 'hints'} = -${selfWhenPenalty}%`;
+              } else if (isHighlighted && metric === 'where' && selfWhereHints > 0) {
+                hintText = `${selfWhereHints} ${selfWhereHints === 1 ? 'hint' : 'hints'} = -${selfWherePenalty}%`;
+              }
               return (
                 <tr
                   key={`${metric}-${entry.userId}`}
@@ -398,8 +403,8 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   <td className="py-2 px-3">
                     <div className="flex items-baseline gap-2">
                       <span className={cn(baseNameClass, isHighlighted && highlightedNameClass)}>{rowName}</span>
-                      {hintsUsed > 0 ? (
-                        <span className="text-xs text-red-400 font-semibold">{`${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'} = -${penaltyValue}%`}</span>
+                      {hintText ? (
+                        <span className="text-xs text-red-400 font-semibold">{hintText}</span>
                       ) : null}
                     </div>
                   </td>

@@ -19,6 +19,24 @@ export async function fetchIncomingInvites(roomId: string, userId: string) {
   return (data || []) as RoomInviteRow[];
 }
 
+export async function createInviteToken(roomId: string, mode: 'sync' | 'async'): Promise<string> {
+  const { data, error } = await supabase.functions.invoke<{ payload: string; signature: string }>('create-invite', {
+    body: { roomId, mode }
+  });
+  if (error) {
+    console.error('[invite] create-invite function error', error);
+    throw error;
+  }
+  if (!data?.payload || !data?.signature) {
+    throw new Error('create-invite function returned invalid response');
+  }
+  const decoded: InvitePayload = JSON.parse(atob(data.payload));
+  if (decoded.roomId !== roomId) {
+    throw new Error('create-invite payload room mismatch');
+  }
+  return signInvitePayload(decoded, data.signature);
+}
+
 /**
  * Decline a single invite by deleting it.
  * RLS allows either the inviter (owner) or the invited friend to delete their row.

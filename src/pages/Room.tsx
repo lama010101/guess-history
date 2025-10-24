@@ -238,7 +238,7 @@ const Room: React.FC = () => {
               break;
             case 'roster':
               if (Array.isArray(data.players)) {
-                const entries: RosterEntry[] = data.players.map((p) => ({
+                const raw: RosterEntry[] = data.players.map((p) => ({
                   id: String(p.id),
                   name: String(p.name),
                   ready: !!p.ready,
@@ -248,7 +248,27 @@ const Room: React.FC = () => {
                       ? String((p as any).userId)
                       : null,
                 }));
-                setRoster(entries);
+
+                const deduped = new Map<string, RosterEntry>();
+                for (const entry of raw) {
+                  const nameLc = (entry.name || '').trim().toLowerCase();
+                  const key = entry.userId
+                    ? `user:${entry.userId}`
+                    : (nameLc ? `name:${nameLc}` : `conn:${entry.id}`);
+                  const existing = deduped.get(key);
+                  if (!existing) {
+                    deduped.set(key, entry);
+                    continue;
+                  }
+                  // Prefer host over non-host, then ready over not ready, then one with a userId
+                  const pickNew = (
+                    (!existing.host && entry.host) ||
+                    (existing.host === entry.host && !existing.ready && entry.ready) ||
+                    (existing.host === entry.host && existing.ready === entry.ready && !existing.userId && !!entry.userId)
+                  );
+                  if (pickNew) deduped.set(key, entry);
+                }
+                setRoster(Array.from(deduped.values()));
               }
               break;
             case 'hello':

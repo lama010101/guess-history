@@ -175,25 +175,27 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
                       type="button"
                       onClick={onOpenChat}
                       disabled={!onOpenChat}
-                      className={`relative flex items-center justify-center w-8 h-8 rounded-full overflow-hidden border ${highlight ? 'border-emerald-400 ring-2 ring-emerald-400/80 shadow-[0_0_18px_rgba(16,185,129,0.55)]' : 'border-white/60'} bg-gradient-to-br from-orange-400 to-pink-500 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 disabled:cursor-not-allowed transition-all duration-150`}
+                      className={`relative flex items-center justify-center w-8 h-8 rounded-full border ${highlight ? 'border-emerald-400 ring-2 ring-emerald-400/80 shadow-[0_0_18px_rgba(16,185,129,0.55)]' : 'border-white/60'} flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 disabled:cursor-not-allowed transition-all duration-150`}
                       aria-label={peer.isSelf ? 'Open chat (you)' : `Open chat with ${peer.displayName ?? 'player'}`}
                     >
                       {peer.recentlySubmitted && (
-                        <span className="absolute -top-2 right-0 translate-x-1 rounded-full bg-emerald-400 text-black text-[0.55rem] font-bold px-1.5 py-0.5 shadow-[0_2px_6px_rgba(16,185,129,0.6)]">
+                        <span className="absolute -top-1.5 right-0 translate-x-1 rounded-full bg-emerald-400 text-black text-[0.55rem] font-bold px-1.5 py-0.5 shadow-[0_2px_6px_rgba(16,185,129,0.6)]">
                           GUESS
                         </span>
                       )}
-                      {peer.avatarUrl ? (
-                        <img
-                          src={peer.avatarUrl}
-                          alt={peer.displayName}
-                          className="w-full h-full object-cover rounded-full"
-                        />
-                      ) : (
-                        <span className="w-full h-full flex items-center justify-center text-sm font-semibold text-white rounded-full">
-                          {(peer.displayName || '?').slice(0, 1).toUpperCase()}
-                        </span>
-                      )}
+                      <span className="flex h-full w-full items-center justify-center rounded-full overflow-hidden bg-gradient-to-br from-orange-400 to-pink-500">
+                        {peer.avatarUrl ? (
+                          <img
+                            src={peer.avatarUrl}
+                            alt={peer.displayName}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span className="flex h-full w-full items-center justify-center text-sm font-semibold text-white">
+                            {(peer.displayName || '?').slice(0, 1).toUpperCase()}
+                          </span>
+                        )}
+                      </span>
                     </button>
                   );
                 })}

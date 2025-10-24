@@ -54,6 +54,23 @@
   - `useLobbyChat({ onRoster })` populates `peerProfileCache` directly from the `players` payload supplied by the lobby server (deduplicated roster) instead of an undefined placeholder, preventing reference errors like `spinnerRoster is not defined` during the first round render.
 - **Result**: The compete HUD’s player cluster shows each participant’s actual profile avatar instead of falling back to initials during live rounds.
 
+#### Update (2025-10-24): Avatar badge overflow fix
+
+- **Component**: `src/components/navigation/GameOverlayHUD.tsx`
+  - HUD avatar buttons wrap the image in an inner container so the "GUESS" badge sits outside the clip area.
+  - Restores full avatar visibility; previously a green bar covered the top half because the badge was clipped inside the same box.
+
+#### Update (2025-10-24): Round results peer chips removed & leaderboard avatars
+
+- **Component**: `src/components/layouts/ResultsLayout2.tsx`
+  - Removed the "Playing with" pill row from the round score card to reduce clutter.
+  - Leaderboard rows now always render avatars ahead of names by piping avatar URLs through `LeaderboardEntry`.
+
+#### Update (2025-10-24): Round results copy cleanup
+
+- **Component**: `src/pages/compete/results/CompeteSyncRoundResultsPage.tsx`
+  - Removed backend status copy like "Scores synced from Supabase snapshots" from the round leaderboard card so the UI stays player-facing.
+
 ### Compete Multiplayer Flow Review (2025-10-24)
 
 - **Round gameplay**: `src/pages/GameRoundPage.tsx`
@@ -65,6 +82,11 @@
 - **Noted risks**:
   - Lobby roster fallback depends on PartyKit-provided names when Supabase profiles lack avatars, so empty profile rows still render initials.
   - Ready signalling degrades gracefully but does not retry failed PartyKit sends; long outages may rely on the local fallback path before advancing.
+
+#### Update (2025-10-24): Round submission count authority
+- **File**: `server/lobby.ts`
+  - Each submission re-evaluates `expectedParticipants` using the maximum of historical participation, currently active connections, live lobby size, and submissions seen so far. This prevents premature `round-complete` broadcasts when someone finishes early or reconnects mid-round.
+  - Client HUD counters and waiting screens continue to rely on server-provided `totalPlayers`, keeping the displayed submission progress aligned with the authoritative participant count.
 
 ### Hint Modal — Persisted Purchases & ID Normalization (2025-10-23)
 
@@ -106,6 +128,28 @@
 - **Testing checklist**:
   - Create a room on https://guess-history.com, copy invite link, and join from another browser/profile to confirm lobby admits players.
   - Verify lobby roster/leaderboards load without console errors and timer starts broadcast correctly.
+
+#### Update (2025-10-24): Edge Function response & CORS
+
+- Function: `supabase/functions/create-invite/index.ts`
+  - Returns `{ payload, signature }` (JSON) with proper CORS headers and an `OPTIONS` preflight handler.
+  - `payload` is a base64 string encoding `{ roomId, expiresAt, mode }`.
+  - `signature` is `base64url(HMAC_SHA256(roomId))` using `INVITE_HMAC_SECRET`.
+  - Client token shape: `"<roomId>.<signature>"` (used by PartyKit lobby).
+- Clients:
+  - `src/integrations/supabase/invites.ts#createInviteToken()` now matches the function shape, decodes `payload` for validation, and caches `token`.
+  - Both `Room.tsx` and `useLobbyChat.ts` call `ensureRoomInviteToken()` and include `token` in `join` messages.
+- Ops:
+  - Deploy function: `supabase functions deploy create-invite`.
+  - Ensure `INVITE_HMAC_SECRET` is set in both Supabase and PartyKit environments. To temporarily bypass enforcement, set `ALLOW_DEV_NO_INVITE=1` for the PartyKit lobby.
+
+### Compete Rosters — Deduplication (2025-10-24)
+
+- Problem: Players appeared multiple times when they had more than one active connection or when joining under the same display name.
+- Fixes:
+  - `src/pages/Room.tsx`: Deduplicates incoming `roster` by `userId` when present, otherwise by normalized `name`. Preference order on conflicts: host > ready > has `userId`.
+  - `src/pages/GameRoundPage.tsx`: The derived `peerRoster` dedupes by stable identity (userId or normalized name) and prefers non-connection IDs, entries with avatars, and those marked submitted/recent.
+- Result: The Players panel and in-round HUD no longer show duplicate rows for the same person.
 
 ### Hint Scoring Alignment & Penalty Fallbacks (2025-10-20)
 
@@ -226,10 +270,16 @@
 - Component: `src/pages/HomePage.tsx`
   - Added a `Years` toggle under the Solo card (defaults **off**) that hides or reveals the dual-thumb slider controlling the global year bounds for solo games. The existing `Round Timer` toggle remains unchanged. Extra spacing separates the toggle pair from the slider block.
   - The selected range (`min — max`) is always visible on the same line as the toggle. Clicking either value swaps it for an inline numeric `<Input>` so players can type a new year and press Enter to commit (Escape cancels). This uses Radix `Slider` multi-thumb support from `src/components/ui/slider.tsx` when the toggle is on.
-- Store: `src/lib/useSettingsStore.ts`
-  - `setYearRange()` continues to persist the [min, max] pair to local storage and Supabase-backed settings. No schema changes were required.
-- Gameplay: `src/pages/GameRoundPage.tsx`
-  - The When card now reads the current `yearRange` from the settings store and clamps the Year selector slider to those values (unless Level Up overrides apply). This ensures solo rounds only surface images within the selected range and that the in-round slider mirrors the same bounds.
+  - Store: `src/lib/useSettingsStore.ts`
+    - `setYearRange()` continues to persist the [min, max] pair to local storage and Supabase-backed settings. No schema changes were required.
+  - Gameplay: `src/pages/GameRoundPage.tsx`
+    - The When card now reads the current `yearRange` from the settings store and clamps the Year selector slider to those values (unless Level Up overrides apply). This ensures solo rounds only surface images within the selected range and that the in-round slider mirrors the same bounds.
+
+### Home — Solo Round Timer Summary (2025-10-24)
+
+- Component: `src/pages/HomePage.tsx`
+  - The Solo card now displays a "Round Timer" summary line beneath the card only when the timer toggle is enabled. The inline timer editor beside the toggle also hides while the timer is off, keeping the card compact when the timer feature is disabled.
+
 # Guess History Multiplayer Architecture
 
 ## Canonical Architecture Overview (2025-08-17)

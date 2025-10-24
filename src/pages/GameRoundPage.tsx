@@ -1197,10 +1197,27 @@ const GameRoundPage: React.FC = () => {
     const deduped = new Map<string, typeof base[number]>();
     base.forEach((peer, index) => {
       if (peer.isSelf) return;
-      const normalizedId = (peer.id || '').trim();
-      const normalizedName = (peer.displayName || '').trim().toLowerCase();
-      const key = normalizedId || (normalizedName ? `name:${normalizedName}` : `idx:${index}`);
-      if (!deduped.has(key)) {
+      const id = (peer.id || '').trim();
+      const nameLc = (peer.displayName || '').trim().toLowerCase();
+      // For transient connection-backed entries (conn:*), dedupe by name instead of connection id
+      const key = (id.startsWith('conn:') && nameLc)
+        ? `name:${nameLc}`
+        : (id || (nameLc ? `name:${nameLc}` : `idx:${index}`));
+
+      const existing = deduped.get(key);
+      if (!existing) {
+        deduped.set(key, peer);
+        return;
+      }
+
+      // Prefer stable ids over conn ids, then prefer entries with avatar, then submitted/recent flags
+      const preferNew = (
+        (existing.id.startsWith('conn:') && !id.startsWith('conn:')) ||
+        (!existing.avatarUrl && !!peer.avatarUrl) ||
+        (!existing.submitted && !!peer.submitted) ||
+        (!existing.recentlySubmitted && !!peer.recentlySubmitted)
+      );
+      if (preferNew) {
         deduped.set(key, peer);
       }
     });

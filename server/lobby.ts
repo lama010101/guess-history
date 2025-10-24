@@ -822,7 +822,18 @@ export default class Lobby implements Party.Server {
 
           const submittedCount = submissions.size;
           const expectedFromHistory = this.expectedParticipantsByRound.get(roundNumber) ?? this.expectedParticipants;
-          const totalPlayers = Math.max(expectedFromHistory, active.size, submittedCount);
+          const totalPlayers = Math.max(
+            expectedFromHistory,
+            active.size,
+            submittedCount,
+            lobbySize,
+          );
+          this.expectedParticipantsByRound.set(
+            roundNumber,
+            Math.max(totalPlayers, this.expectedParticipantsByRound.get(roundNumber) ?? 0, this.expectedParticipants),
+          );
+          this.expectedParticipants = Math.max(this.expectedParticipants, totalPlayers, lobbySize);
+
           const submissionPayload: SubmissionBroadcastMsg = {
             type: "submission",
             roundNumber,

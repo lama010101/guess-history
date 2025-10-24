@@ -231,6 +231,13 @@ const HomePage = () => {
     );
   }, [beginTimerEdit, cancelTimerEdit, commitTimerEdit, isEditingTimer, pendingTimerValue, timerSeconds]);
 
+  const handleSoloTimerToggle = useCallback((checked: boolean) => {
+    setIsSoloTimerEnabled(checked);
+    if (!checked) {
+      cancelTimerEdit();
+    }
+  }, [cancelTimerEdit]);
+
   useEffect(() => {
     const loadUserData = async () => {
       try {
@@ -449,6 +456,11 @@ const HomePage = () => {
                 >
                   SOLO
                 </div>
+                {isSoloTimerEnabled && (
+                  <div className="w-full mt-2 text-center text-xs font-semibold text-gray-200">
+                    Round Timer: {formatTime(timerSeconds)}
+                  </div>
+                )}
                 {/* Pegged Solo Timer Controls */}
                 <div className="w-[13.5rem] mt-3">
                   <div className="flex items-center justify-between">
@@ -456,14 +468,14 @@ const HomePage = () => {
                       <Switch
                         id="solo-timer-toggle"
                         checked={isSoloTimerEnabled}
-                        onCheckedChange={setIsSoloTimerEnabled}
+                        onCheckedChange={handleSoloTimerToggle}
                         className="mr-3 h-4 w-8"
                       />
                       <Label htmlFor="solo-timer-toggle" className="flex items-center gap-1 cursor-pointer text-sm text-white">
                         <span>  Round Timer</span>
                       </Label>
                     </div>
-                    {renderTimerValue()}
+                    {isSoloTimerEnabled && renderTimerValue()}
                   </div>
                   {isSoloTimerEnabled && (
                     <div className="relative mt-[28px]">

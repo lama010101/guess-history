@@ -61,20 +61,6 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
     };
   }, [leaderboard.total, leaderboard.when, leaderboard.where, leaderboard.currentUserId]);
 
-  const leaderboardSourceLabel = useMemo(() => {
-    switch (leaderboard.source) {
-      case 'snapshots':
-        return 'Scores synced from Supabase snapshots';
-      case 'legacy':
-        return 'Scores based on live peer telemetry';
-      case 'mixed':
-        return 'Scores blended from snapshots and peer telemetry';
-      case 'empty':
-      default:
-        return null;
-    }
-  }, [leaderboard.source]);
-
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
@@ -465,9 +451,6 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
         )}
         roundLeaderboardCard={(
           <div className="space-y-2">
-            {leaderboardSourceLabel && !forceRefreshingLeaderboards ? (
-              <div className="text-xs text-muted-foreground">{leaderboardSourceLabel}</div>
-            ) : null}
             {leaderboard.error ? (
               <div className="text-sm text-destructive">{leaderboard.error}</div>
             ) : leaderboard.total.length === 0 ? (

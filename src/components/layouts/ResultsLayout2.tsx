@@ -302,6 +302,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
     totalHints: number;
     whenHints: number;
     whereHints: number;
+    avatarUrl: string | null;
   };
 
   const selfTotalHintsCount = whenHintDebts.length + whereHintDebts.length;
@@ -642,31 +643,6 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   </div>
                 </div>
                 
-                {/* Show peer avatars and names */}
-                {peers && peers.length > 0 && (
-                  <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
-                    <div className="text-sm text-muted-foreground mb-2 text-center">Playing with</div>
-                    <div className="flex justify-center items-center gap-2 flex-wrap">
-                      {peers.map((peer) => {
-                        const name = peer.displayName || 'Player';
-                        return (
-                          <div key={peer.userId} className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-full px-3 py-1.5">
-                            <Avatar className="h-7 w-7">
-                              {peer.avatarUrl ? (
-                                <AvatarImage src={peer.avatarUrl} alt={name} />
-                              ) : (
-                                <AvatarFallback>{getInitial(name)}</AvatarFallback>
-                              )}
-                            </Avatar>
-                            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                              {name}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
                 {totalLeaderboardContent ? (
                   <div className="w-full mt-6">
                     <div className="w-full rounded-2xl border border-border bg-gray-50/90 p-4 text-left shadow-sm dark:border-neutral-700 dark:bg-neutral-900/40">

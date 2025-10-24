@@ -10,7 +10,7 @@
 //
 // NOTE: This is a minimal scaffold; adjust import paths and edge runtime APIs as needed.
 
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { serve } from "https://deno.land/std@0.205.0/http/server.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -24,7 +24,13 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   },
 });
 
-// Simple in-memory rate-limit (edge runtime process). For production, use KV.
+const corsHeaders: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Content-Type": "application/json",
+};
+
 const ipCounters = new Map<string, { count: number; ts: number }>();
 
 function rateLimited(ip: string): boolean {
@@ -40,32 +46,37 @@ function rateLimited(ip: string): boolean {
   return false;
 }
 
-function hmacSign(payload: string): string {
+function toBase64Url(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  const base64 = btoa(binary);
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+async function hmacSignBase64Url(message: string): Promise<string> {
   const encoder = new TextEncoder();
   const keyData = encoder.encode(HMAC_SECRET);
-  const msgUint8 = encoder.encode(payload);
+  const msgUint8 = encoder.encode(message);
   const algo = { name: "HMAC", hash: "SHA-256" } as const;
-  return crypto.subtle.importKey("raw", keyData, algo, false, ["sign"]).then((key) =>
-    crypto.subtle.sign("HMAC", key, msgUint8)
-  ).then((sig) => {
-    const bytes = new Uint8Array(sig);
-    return Array.from(bytes)
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-  });
+  const key = await crypto.subtle.importKey("raw", keyData, algo, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, msgUint8);
+  return toBase64Url(new Uint8Array(sig));
 }
 
 serve(async (req) => {
-  if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { status: 200, headers: corsHeaders });
+  }
+  if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405, headers: corsHeaders });
 
   const ip = req.headers.get("x-forwarded-for") ?? "unknown";
   if (rateLimited(ip)) {
-    return new Response(JSON.stringify({ code: "RATE_LIMIT" }), { status: 429 });
+    return new Response(JSON.stringify({ code: "RATE_LIMIT" }), { status: 429, headers: corsHeaders });
   }
 
   const body = await req.json();
   const { roomId: maybeRoomId, mode } = body as { roomId?: string; mode: "sync" | "async" };
-  if (!mode) return new Response("mode required", { status: 400 });
+  if (!mode) return new Response("mode required", { status: 400, headers: corsHeaders });
 
   let roomId = maybeRoomId;
   if (!roomId) {
@@ -77,15 +88,13 @@ serve(async (req) => {
     });
     if (error) {
       console.error(error);
-      return new Response("db error", { status: 500 });
+      return new Response("db error", { status: 500, headers: corsHeaders });
     }
   }
 
   const expiresAt = Date.now() + 15 * 60 * 1000;
-  const payload = JSON.stringify({ roomId, expiresAt, mode });
-  const signature = await hmacSign(payload);
-
-  const inviteLink = `https://guess-history.com/join/${roomId}?payload=${btoa(payload)}&sig=${signature}`;
-
-  return new Response(JSON.stringify({ inviteLink }), { headers: { "Content-Type": "application/json" } });
+  const payloadObj = { roomId, expiresAt, mode };
+  const payload = btoa(JSON.stringify(payloadObj));
+  const signature = await hmacSignBase64Url(roomId);
+  return new Response(JSON.stringify({ payload, signature }), { status: 200, headers: corsHeaders });
 });

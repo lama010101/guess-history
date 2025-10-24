@@ -14,13 +14,20 @@
 - **Component**: `src/components/ui/dialog.tsx`
 - **Behavior**: Dialog overlay now detects `mode-compete` and applies stronger blur plus explicit `backdropFilter`/`WebkitBackdropFilter` styles so Safari renders the same glassmorphism as Chrome while keeping solo mode’s softer blur.
 
-### PartyKit Cloud-Prem Deployment (2025-10-23)
+### PartyKit Cloud-Prem Deployment (2025-10-24)
 
-- **Domain configuration**: `partykit.json` sets `"domain": "game.mydomain.com"` so managed deploys target the Cloudflare zone instead of `*.partykit.dev`.
-- **Cloudflare credentials**: export `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` (Workers edit scope) before running PartyKit deploys.
-- **Deployment command**: run `npx partykit deploy` (or `npx partykit deploy --domain <custom>` for overrides) to push the Worker + Durable Objects into the configured Cloudflare account.
-- **DNS routing**: confirm the Cloudflare zone has an active route for `game.mydomain.com/*`; the deploy usually provisions it, otherwise add a Worker Route manually.
-- **Client host resolution**: production URLs resolve via `VITE_PARTYKIT_HOST` (if set) or the `domain` value above, keeping room links like `https://game.mydomain.com/parties/lobby/<roomId>` stable for invites.
+- **Domain configuration**: `partykit.json` sets `"domain": "lobby.guess-history.com"` so managed deploys target our Cloudflare zone (`guess-history.com`).
+- **Cloudflare credentials**: export `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_ZONE_ID`, and `CLOUDFLARE_API_TOKEN` (token needs Workers edit scope) before running deploys.
+- **Durable Object (Lobby)**:
+  - Namespace creation (run once): `curl -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/durable_objects/namespaces" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" -d '{"script":"guess-history-multiplayer","class":"Lobby","name":"Lobby"}'`.
+  - Bind in Worker `guess-history-multiplayer` as variable `LOBBY` (Workers & Pages → Bindings → Durable Object namespace).
+- **Deployment command**: `npx partykit deploy --domain lobby.guess-history.com` (run in a shell with the 3 Cloudflare env vars exported).
+- **DNS routing**: confirm the Cloudflare zone has a route for `lobby.guess-history.com/*` (the deploy usually provisions it; otherwise add a Worker Route manually). If an existing external DNS record blocks deploy, delete it in DNS and redeploy.
+- **Client host resolution**: production URLs resolve via `VITE_PARTYKIT_HOST` (if set) or the `domain` value above, keeping room links like `https://lobby.guess-history.com/parties/lobby/<roomId>` stable for invites.
+- **Vercel frontend env**: set `VITE_PARTYKIT_HOST = lobby.guess-history.com` for Production and Preview in Vercel → Project → Settings → Environment Variables. Vite reads `VITE_*` at build time.
+- **Local prod env file**: `/.env.production` contains `VITE_PARTYKIT_HOST=lobby.guess-history.com` for local prod builds. To test locally with prod env: `cp .env.production .env && npm run build && npm run preview`.
+- **Vercel pnpm lockfile**: CI uses frozen lockfile. After adding deps (e.g., `wrangler`), run `pnpm install` locally and commit `pnpm-lock.yaml`; or set the Vercel Install Command to `pnpm install --no-frozen-lockfile`.
+
 ### Compete HUD & Round Leaderboards — Avatar Rendering (2025-10-23)
 
 - **Hook**: `src/hooks/useCompeteRoundLeaderboards.ts`

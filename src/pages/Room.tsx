@@ -80,6 +80,8 @@ const Room: React.FC = () => {
   const [draggingTimer, setDraggingTimer] = useState(false);
   const settings = useSettingsStore();
   const [yearRange, setYearRange] = useState<[number, number]>(settings.yearRange);
+  const [localYearRange, setLocalYearRange] = useState<[number, number] | null>(null);
+  const [draggingYear, setDraggingYear] = useState(false);
   const [editingTimer, setEditingTimer] = useState(false);
   const [timerInput, setTimerInput] = useState('');
   const [editingYearSide, setEditingYearSide] = useState<null | 'min' | 'max'>(null);
@@ -98,7 +100,7 @@ const Room: React.FC = () => {
   const retryRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startedRef = useRef(false);
-  const lastSentSettingsRef = useRef<{ sec: number; enabled: boolean } | null>(null);
+  const lastSentSettingsRef = useRef<{ sec: number; enabled: boolean; yearMin?: number; yearMax?: number } | null>(null);
   const lastSentNameRef = useRef<string>('');
   const clearedInvitesRef = useRef(false);
   const latestNameRef = useRef<string>('');
@@ -287,9 +289,15 @@ const Room: React.FC = () => {
                   typeof data.timerSeconds === 'number'
                     ? data.timerSeconds === lastSentSettingsRef.current.sec
                     : true;
-                const hasYearUpdate = typeof (data as any).yearMin === 'number' || typeof (data as any).yearMax === 'number';
-                // Only skip if there is no new info outside timer echo (e.g., no year range update)
-                if (echoEnabled && echoSeconds && !hasYearUpdate) {
+                const dm: any = data as any;
+                const echoYears =
+                  typeof dm.yearMin === 'number' &&
+                  typeof dm.yearMax === 'number' &&
+                  lastSentSettingsRef.current.yearMin !== undefined &&
+                  lastSentSettingsRef.current.yearMax !== undefined &&
+                  dm.yearMin === lastSentSettingsRef.current.yearMin &&
+                  dm.yearMax === lastSentSettingsRef.current.yearMax;
+                if (echoEnabled && echoSeconds && echoYears) {
                   break;
                 }
               }
@@ -308,7 +316,7 @@ const Room: React.FC = () => {
                 const rawMax = typeof (data as any).yearMax === 'number' ? Math.round((data as any).yearMax) : yearRangeRef.current[1];
                 const start = Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, Math.min(rawMin, rawMax)));
                 const end = Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, Math.max(rawMin, rawMax)));
-                if (start !== yearRangeRef.current[0] || end !== yearRangeRef.current[1]) {
+                if (!draggingYear && (start !== yearRangeRef.current[0] || end !== yearRangeRef.current[1])) {
                   setYearRange([start, end]);
                   try { settings.setYearRange([start, end]); } catch {}
                 }
@@ -678,6 +686,7 @@ const Room: React.FC = () => {
     const ws = wsRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     if (!isHost) return;
+    if (draggingYear) return; // do not broadcast while dragging year range
     const enabled = !!timerEnabled;
     const last = lastSentSettingsRef.current;
     let next: { sec: number; enabled: boolean } | null = null;
@@ -696,10 +705,10 @@ const Room: React.FC = () => {
     if (payload) {
       try {
         ws.send(JSON.stringify(payload));
-        lastSentSettingsRef.current = next!;
+        lastSentSettingsRef.current = { ...next!, yearMin: yearRangeRef.current[0], yearMax: yearRangeRef.current[1] };
       } catch {}
     }
-  }, [isHost, roundTimerSec, timerEnabled, yearRange[0], yearRange[1]]);
+  }, [isHost, roundTimerSec, timerEnabled, yearRange[0], yearRange[1], draggingYear]);
 
   const copyInvite = useCallback(async () => {
     try {
@@ -769,15 +778,7 @@ const Room: React.FC = () => {
     navigate('/compete');
   }, [navigate]);
 
-  const sliderPercent = useMemo(() => {
-    const value = Number(localTimerSec || 60);
-    const clamped = Math.max(5, Math.min(300, value));
-    return ((clamped - 5) / 295) * 100;
-  }, [localTimerSec]);
-
-  const sliderStyle = useMemo<React.CSSProperties>(() => ({
-    background: `linear-gradient(to right, #22d3ee 0%, #22d3ee ${sliderPercent}%, rgba(255,255,255,0.08) ${sliderPercent}%, rgba(255,255,255,0.05) 100%)`,
-  }), [sliderPercent]);
+  // Round timer now uses Radix Slider, so no manual gradient calculations are needed.
 
   const parseTimerInput = useCallback((val: string): number | null => {
     const s = (val || '').trim().toLowerCase();
@@ -828,18 +829,13 @@ const Room: React.FC = () => {
   return (
     <div className="min-h-screen w-full bg-[#0b0b0f] text-white">
       <style>{`
-        #room-timer-range { -webkit-appearance: none; appearance: none; height: 10px; border-radius: 9999px; background: transparent; }
-        #room-timer-range:focus { outline: none; }
-        #room-timer-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #101316; border: 3px solid #22d3ee; box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.25); margin-top: -3px; }
-        #room-timer-range:disabled::-webkit-slider-thumb { background: #1e293b; border-color: #1cbfdb; box-shadow: none; }
-        #room-timer-range::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #101316; border: 3px solid #22d3ee; box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.25); }
-        #room-timer-range:disabled::-moz-range-thumb { background: #1e293b; border-color: #1cbfdb; box-shadow: none; }
-        #room-timer-range::-webkit-slider-runnable-track { height: 10px; border-radius: 9999px; background: rgba(255,255,255,0.05); }
-        #room-timer-range::-moz-range-track { height: 10px; border-radius: 9999px; background: rgba(255,255,255,0.05); }
-        /* Year range slider (Radix) styling to match Round Timer look */
+        /* Radix-based sliders styling for compete theme */
         .room-year-range .slider-range { background: #22d3ee; }
         .room-year-range .slider-thumb { background: #101316; border-color: #22d3ee; box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.25); }
         .room-year-range .slider-thumb:focus-visible { outline: none; }
+        .room-timer .slider-range { background: #22d3ee; }
+        .room-timer .slider-thumb { background: #101316; border-color: #22d3ee; box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.25); }
+        .room-timer .slider-thumb:focus-visible { outline: none; }
       `}</style>
       <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 pb-28 pt-6">
         <div className="flex items-center justify-between">
@@ -892,23 +888,22 @@ const Room: React.FC = () => {
             </div>
           </div>
           {isHost && (
-            <div className="mt-4">
-              <input
-                type="range"
+            <div className="mt-4 room-timer">
+              <Slider
+                value={[Number(draggingTimer ? localTimerSec : (roundTimerSec || 60))]}
                 min={5}
                 max={300}
                 step={5}
-                value={Number(localTimerSec || 60)}
-                onChange={(e) => {
-                  setLocalTimerSec(Number(e.target.value));
+                onValueChange={(vals) => {
+                  const v = Array.isArray(vals) ? Number(vals[0]) : Number(vals as unknown as number);
+                  setDraggingTimer(true);
+                  setLocalTimerSec(v);
                 }}
-                onPointerDown={() => { setDraggingTimer(true); }}
-                onPointerUp={(e) => { commitTimerSeconds(Number((e.target as HTMLInputElement).value)); }}
-                onBlur={(e) => { if (draggingTimer) commitTimerSeconds(Number((e.target as HTMLInputElement).value)); }}
-                id="room-timer-range"
-                className="w-full cursor-pointer"
-                style={sliderStyle}
-                aria-label="Round timer duration"
+                onValueCommit={(vals) => {
+                  const v = Array.isArray(vals) ? Number(vals[0]) : Number(vals as unknown as number);
+                  commitTimerSeconds(v);
+                }}
+                className="w-full"
               />
               <div className="mt-2 flex justify-between text-xs text-white">
                 <span>5s</span>
@@ -972,7 +967,7 @@ const Room: React.FC = () => {
           {isHost && (
             <div className="mt-4 room-year-range">
               <Slider
-                value={yearRange}
+                value={(draggingYear && localYearRange) ? localYearRange : yearRange}
                 min={YEAR_RANGE_MIN}
                 max={YEAR_RANGE_MAX}
                 step={5}
@@ -980,9 +975,19 @@ const Room: React.FC = () => {
                   if (!Array.isArray(vals) || vals.length !== 2) return;
                   const a = Math.round(Number(vals[0]));
                   const b = Math.round(Number(vals[1]));
+                  if (!draggingYear) setDraggingYear(true);
+                  setLocalYearRange([a, b]);
+                }}
+                onPointerDown={() => setDraggingYear(true)}
+                onValueCommit={(vals) => {
+                  if (!Array.isArray(vals) || vals.length !== 2) return;
+                  const a = Math.round(Number(vals[0]));
+                  const b = Math.round(Number(vals[1]));
                   const start = Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, Math.min(a, b)));
                   const end = Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, Math.max(a, b)));
                   const next: [number, number] = [start, end];
+                  setDraggingYear(false);
+                  setLocalYearRange(null);
                   setYearRange(next);
                   try { settings.setYearRange(next); } catch {}
                 }}

@@ -17,6 +17,7 @@ export interface LeaderRow {
   baseAccuracy?: number;
   hintsUsed?: number;
   penalty?: number;
+  avatarUrl?: string | null;
 }
 
 export interface CompeteLeaderboardState {
@@ -162,6 +163,7 @@ export function useCompeteRoundLeaderboards(
         ?? peer?.displayName
         ?? (userId === currentUserId ? currentUserDisplayName ?? undefined : undefined);
       const displayName = rawName && rawName.trim().length > 0 ? rawName.trim() : 'Player';
+      const avatarUrl = peer?.avatarUrl ?? null;
 
       const fallbackXp = pickNumber(peer?.score, peer?.xpTotal) ?? 0;
       const xpDebt = Math.max(0, Math.round(pickNumber((snapshot as any)?.xpDebt, peer?.xpDebt) ?? 0));
@@ -213,6 +215,7 @@ export function useCompeteRoundLeaderboards(
         baseAccuracy: overallAccuracy,
         hintsUsed,
         penalty: Math.max(0, Math.round(accDebt)),
+        avatarUrl,
       });
 
       when.push({
@@ -223,6 +226,7 @@ export function useCompeteRoundLeaderboards(
         hintsUsed: whenHintsValue,
         timeAccuracy: timeAcc,
         penalty: whenAccDebtValue,
+        avatarUrl,
       });
       where.push({
         userId,
@@ -232,6 +236,7 @@ export function useCompeteRoundLeaderboards(
         hintsUsed: whereHintsValue,
         locationAccuracy: locationAcc,
         penalty: whereAccDebtValue,
+        avatarUrl,
       });
     });
 

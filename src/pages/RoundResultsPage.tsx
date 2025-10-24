@@ -174,6 +174,7 @@ const RoundResultsPage = () => {
     value: number;
     hintsUsed: number;
     penalty: number;
+    avatarUrl: string | null;
   }
 
   const layoutLeaderboards = useMemo(() => {
@@ -204,6 +205,7 @@ const RoundResultsPage = () => {
           value,
           hintsUsed: hints,
           penalty,
+          avatarUrl: peer?.avatarUrl ?? null,
         };
       }),
       when: miniLeaderboards.time.map<LayoutLeaderboardRow>((row) => {
@@ -218,6 +220,7 @@ const RoundResultsPage = () => {
           value,
           hintsUsed: hints,
           penalty,
+          avatarUrl: peer?.avatarUrl ?? null,
         };
       }),
       where: miniLeaderboards.location.map<LayoutLeaderboardRow>((row) => {
@@ -232,6 +235,7 @@ const RoundResultsPage = () => {
           value,
           hintsUsed: hints,
           penalty,
+          avatarUrl: peer?.avatarUrl ?? null,
         };
       }),
       currentUserId: user?.id ?? null,

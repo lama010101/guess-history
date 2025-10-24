@@ -1,5 +1,6 @@
 {
   "name": "guess-history-multiplayer",
+  "domain": "lobby.guess-history.com",
   "main": "server/lobby.ts",
   "compatibilityDate": "2025-08-04",
   "vars": {

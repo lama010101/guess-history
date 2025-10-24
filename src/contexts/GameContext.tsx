@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { useSettingsStore } from '@/lib/useSettingsStore';
+import { useSettingsStore, YEAR_RANGE_MIN, YEAR_RANGE_MAX } from '@/lib/useSettingsStore';
 import { v4 as uuidv4 } from 'uuid'; // For generating unique game IDs
 import { getNewImages, getOrPersistRoomImages, recordPlayedImages } from '@/utils/imageHistory';
 import { ROUNDS_PER_GAME, calculateTimeAccuracy, calculateLocationAccuracy } from '@/utils/gameCalculations';
@@ -16,6 +16,26 @@ import { setCurrentRoundInSession } from '@/utils/roomState';
 const isDev = (import.meta as any)?.env?.DEV === true;
 const devLog = (...args: any[]) => { if (isDev) console.log(...args); };
 const devDebug = (...args: any[]) => { if (isDev) console.debug(...args); };
+
+const clampYear = (value: number | null | undefined): number | null => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  const rounded = Math.round(value);
+  return Math.min(Math.max(rounded, YEAR_RANGE_MIN), YEAR_RANGE_MAX);
+};
+
+const normalizeYearRange = (
+  minValue: number | null | undefined,
+  maxValue: number | null | undefined
+): { minYear: number | null; maxYear: number | null } => {
+  let minYear = clampYear(minValue);
+  let maxYear = clampYear(maxValue);
+  if (minYear != null && maxYear != null && maxYear < minYear) {
+    const tmp = minYear;
+    minYear = maxYear;
+    maxYear = tmp;
+  }
+  return { minYear, maxYear };
+};
 
 // Define the structure of an image object based on actual schema
 export interface GameImage {
@@ -56,7 +76,7 @@ interface GameContextState {
   setHintsAllowed: (hints: number) => void;
   setRoundTimerSec: (seconds: number) => void;
   setTimerEnabled: (enabled: boolean) => void; // Function to enable/disable timer
-  startGame: (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string; seed?: string; competeVariant?: 'sync' | 'async'; useHostHistory?: boolean }) => Promise<void>; // Updated to accept settings incl. roomId + seed + competeVariant
+  startGame: (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string; seed?: string; competeVariant?: 'sync' | 'async'; useHostHistory?: boolean; minYear?: number; maxYear?: number }) => Promise<void>; // Updated to accept settings incl. roomId + seed + competeVariant
   startLevelUpGame: (level: number, settings?: { roomId?: string; seed?: string }) => Promise<void>;
   recordRoundResult: (result: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'>, currentRoundIndex: number) => void;
   handleTimeUp?: (currentRoundIndex: number) => void;
@@ -111,7 +131,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   const [hintsAllowed, setHintsAllowed] = useState<number>(3); // Default 3 hints per game
   
   // Timer defaults come from settings store (enabled by default)
-  const { timerSeconds, setTimerSeconds } = useSettingsStore();
+  const { timerSeconds, setTimerSeconds, setYearRange } = useSettingsStore();
   const [roundTimerSec, setRoundTimerSec] = useState<number>(timerSeconds || 60);
   const [timerEnabled, setTimerEnabled] = useState<boolean>(true);
   // Cache for global oldest image year (used by Level Up constraints)
@@ -195,7 +215,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     } catch (e) {
       console.warn('[GameContext] ensureSessionMembership failed', e);
     }
-  }, []);
+  }, [setHintsAllowed, setRoundTimerSec, setTimerEnabled, setYearRange]);
 
   // Backfill any NULL room_id rows for this game/user once we know the room
   const repairMissingRoomId = useCallback(async (knownRoomId: string) => {
@@ -501,6 +521,13 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           setTimerEnabled(parsed.timerEnabled);
           devLog(`Loaded timer enabled setting from localStorage: ${parsed.timerEnabled}`);
         }
+        if (parsed.yearMin !== undefined || parsed.yearMax !== undefined) {
+          const { minYear, maxYear } = normalizeYearRange(parsed.yearMin, parsed.yearMax);
+          const nextMin = minYear ?? YEAR_RANGE_MIN;
+          const nextMax = maxYear ?? YEAR_RANGE_MAX;
+          setYearRange([nextMin, nextMax]);
+          devLog(`Loaded year range from localStorage: ${nextMin} — ${nextMax}`);
+        }
       }
     } catch (error) {
       console.error('Error loading game settings from localStorage:', error);
@@ -508,16 +535,18 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   }, []);
 
   // Function to fetch images and start a new game
-  const startGame = useCallback(async (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string; seed?: string; competeVariant?: 'sync' | 'async'; useHostHistory?: boolean }) => {
+  const startGame = useCallback(async (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string; seed?: string; competeVariant?: 'sync' | 'async'; useHostHistory?: boolean; minYear?: number; maxYear?: number }) => {
     devLog("Starting new game...");
     clearSavedGameState(); // Clear any existing saved state
     setIsLoading(true);
     setError(null);
     setImages([]); // Clear previous images
     setRoundResults([]); // Clear previous results
-    
+
     // Apply game settings as provided
     applyGameSettings(settings);
+
+    const { minYear, maxYear } = normalizeYearRange(settings?.minYear, settings?.maxYear);
     
     try {
       // Multiplayer gating: require seed when a roomId is specified
@@ -562,6 +591,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           count: ROUNDS_PER_GAME,
           seed: lobbySeed,
           usePlayerHistory: isHostPlayer,
+          minYear,
+          maxYear,
         });
         preparedImages = prep.images.map((img) => ({
           id: img.id,
@@ -587,6 +618,67 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           });
         } catch {}
 
+        if (minYear != null || maxYear != null) {
+          preparedImages = (preparedImages ?? []).filter((img) => {
+            const yr = typeof img.year === 'number' ? img.year : Number(img.year);
+            if (!Number.isFinite(yr)) return false;
+            if (minYear != null && yr < minYear) return false;
+            if (maxYear != null && yr > maxYear) return false;
+            return true;
+          });
+        }
+
+        if (!preparedImages || preparedImages.length < ROUNDS_PER_GAME) {
+          console.warn('[GameContext] prepare() returned insufficient images, attempting legacy getNewImages fallback');
+          const imageBatch = await getNewImages(user?.id ?? null, ROUNDS_PER_GAME);
+          if (!imageBatch || imageBatch.length < ROUNDS_PER_GAME) {
+            console.warn('Could not fetch at least 5 images, fetched:', imageBatch?.length);
+            setIsLoading(false);
+            setError('Could not fetch at least 5 images.');
+            return;
+          }
+          preparedImages = imageBatch
+            .map((img: any) => ({
+              id: String(img.id),
+              title: img.title,
+              description: img.description,
+              source_citation: img.source_citation,
+              latitude: img.latitude,
+              longitude: img.longitude,
+              year: img.year,
+              image_url: img.image_url,
+              location_name: img.location_name,
+              url: img.url || img.image_url,
+              firebase_url: img.firebase_url,
+              confidence: img.confidence,
+            }))
+            .filter((img: GameImage) => {
+              const yr = typeof img.year === 'number' ? img.year : Number(img.year);
+              if (!Number.isFinite(yr)) return minYear == null && maxYear == null;
+              if (minYear != null && yr < minYear) return false;
+              if (maxYear != null && yr > maxYear) return false;
+              return true;
+            });
+        }
+
+        if (!preparedImages || preparedImages.length < ROUNDS_PER_GAME) {
+          console.warn('[GameContext] Insufficient images after applying year filter');
+          setIsLoading(false);
+          setError('Could not fetch enough images for the selected year range.');
+          return;
+        }
+
+        try {
+          const imageIds = preparedImages.map((i) => i.id);
+          await supabase
+            .from('game_sessions' as any)
+            .upsert(
+              { room_id: newRoomId, seed: lobbySeed ?? newRoomId, image_ids: imageIds, started_at: new Date().toISOString() },
+              { onConflict: 'room_id' }
+            );
+        } catch (e) {
+          console.warn('[GameContext] solo persist to game_sessions failed', e);
+        }
         setImages(preparedImages);
         // Mark these images as played for the current user to avoid repeats in future games
         try {
@@ -601,6 +693,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           roomId: null,
           count: ROUNDS_PER_GAME,
           seed: lobbySeed,
+          minYear,
+          maxYear,
         });
         preparedImages = prep.images.map((img) => ({
           id: img.id,
@@ -642,6 +736,24 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           }));
         }
 
+        preparedImages = preparedImages ?? [];
+        if (minYear != null || maxYear != null) {
+          preparedImages = preparedImages.filter((img) => {
+            const yr = typeof img.year === 'number' ? img.year : Number(img.year);
+            if (!Number.isFinite(yr)) return false;
+            if (minYear != null && yr < minYear) return false;
+            if (maxYear != null && yr > maxYear) return false;
+            return true;
+          });
+        }
+
+        if (preparedImages.length < ROUNDS_PER_GAME) {
+          console.warn('[GameContext] Insufficient images after applying year filter');
+          setIsLoading(false);
+          setError('Could not fetch enough images for the selected year range.');
+          return;
+        }
+
         try {
           const imageIds = preparedImages.map((i) => i.id);
           await supabase
@@ -662,7 +774,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         }
       }
       devLog("Prepared and preloaded 5 images stored in context:", preparedImages);
-      devLog(`Game settings: ${hintsAllowed} hints, ${roundTimerSec}s timer, timer enabled: ${timerEnabled}`);
+      devLog(`Game settings: ${hintsAllowed} hints, ${roundTimerSec}s timer, timer enabled: ${timerEnabled}, year range: ${minYear ?? YEAR_RANGE_MIN} — ${maxYear ?? YEAR_RANGE_MAX}`);
       
       setIsLoading(false);
       // Persist round 1 immediately so reloads know where to land

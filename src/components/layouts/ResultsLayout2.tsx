@@ -12,6 +12,7 @@ import { formatInteger, formatDistanceFromKm } from '@/utils/format';
 import { useSettingsStore } from '@/lib/useSettingsStore';
 import { HINT_TYPE_NAMES } from '@/constants/hints';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import type { PeerRoundRow } from '@/hooks/useRoundPeers';
 
@@ -23,13 +24,57 @@ import L from 'leaflet';
 import { FullscreenControl } from 'react-leaflet-fullscreen';
 
 // Custom icons
-const createUserIcon = (avatarUrl: string) => L.divIcon({
-  html: `<div style="width: 30px; height: 30px; border-radius: 50%; background-image: url(${avatarUrl}); background-size: cover; border: 2px solid white;"></div>`,
-  className: 'user-avatar-icon',
-  iconSize: [30, 30],
-  iconAnchor: [15, 30],
-  popupAnchor: [0, -30]
-});
+const getInitial = (name?: string | null) => {
+  if (!name) return '?';
+  const trimmed = name.trim();
+  if (!trimmed) return '?';
+  const initial = trimmed.charAt(0).toUpperCase();
+  return initial || '?';
+};
+
+const createUserIcon = (
+  avatarUrl: string | null | undefined,
+  label: string,
+  options: { size?: number; borderColor?: string; borderWidth?: number; ringColor?: string } = {}
+) => {
+  const size = options.size ?? 30;
+  const borderColor = options.borderColor ?? 'white';
+  const borderWidth = options.borderWidth ?? 2;
+  const ringColor = options.ringColor ?? 'rgba(148, 163, 184, 0.45)';
+  const hasImage = typeof avatarUrl === 'string' && avatarUrl.trim().length > 0;
+  const sanitizedUrl = hasImage ? avatarUrl.replace(/"/g, '%22') : '';
+  const baseStyles = [
+    `width:${size}px`,
+    `height:${size}px`,
+    'border-radius:50%',
+    'overflow:hidden',
+    'display:flex',
+    'align-items:center',
+    'justify-content:center',
+    'font-weight:600',
+    'font-size:13px',
+    'text-transform:uppercase',
+    'color:white',
+    `border:${borderWidth}px solid ${borderColor}`,
+    `box-shadow:0 0 8px ${ringColor}`,
+    'background-position:center',
+    'line-height:1'
+  ];
+  if (hasImage) {
+    baseStyles.push(`background-image:url("${sanitizedUrl}")`);
+    baseStyles.push('background-size:cover');
+  } else {
+    baseStyles.push('background:linear-gradient(135deg,#f97316,#fb7185)');
+  }
+  const labelHtml = hasImage ? '' : `<span>${label || '?'}</span>`;
+  return L.divIcon({
+    html: `<div style="${baseStyles.join(';')}">${labelHtml}</div>`,
+    className: 'user-avatar-icon',
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size],
+    popupAnchor: [0, -size + 6]
+  });
+};
 
 const correctIcon = L.divIcon({
   html: `<div style="background-color: hsl(var(--secondary)); width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px hsl(var(--secondary) / 0.6);"></div>`,
@@ -78,6 +123,7 @@ interface RoundLeaderboardEntry {
   value: number;
   hintsUsed?: number;
   penalty?: number;
+  avatarUrl?: string | null;
 }
 
 interface RoundLeaderboardsProps {
@@ -223,7 +269,23 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
   const mapCenter = bounds ? bounds.getCenter() : correctPosition;
 
-  const userIcon = useMemo(() => createUserIcon(avatarUrl), [avatarUrl]);
+  const currentUserInitial = useMemo(() => getInitial(currentUserDisplayName), [currentUserDisplayName]);
+  const userIcon = useMemo(
+    () => createUserIcon(avatarUrl, currentUserInitial, { size: 34, borderColor: '#f8fafc', ringColor: 'rgba(251, 191, 36, 0.75)' }),
+    [avatarUrl, currentUserInitial]
+  );
+  const defaultPeerIcon = useMemo(
+    () => createUserIcon(null, '?', { size: 30, borderColor: '#f8fafc', ringColor: 'rgba(96, 165, 250, 0.45)' }),
+    []
+  );
+  const peerIconMap = useMemo(() => {
+    const map = new Map<string, L.DivIcon>();
+    (peers || []).forEach(peer => {
+      const label = getInitial(peer.displayName);
+      map.set(peer.userId, createUserIcon(peer.avatarUrl, label, { size: 30, borderColor: '#f8fafc', ringColor: 'rgba(59, 130, 246, 0.55)' }));
+    });
+    return map;
+  }, [peers]);
 
   type LeaderboardEntry = {
     userId: string;
@@ -298,6 +360,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
       totalHints: selfTotalHints,
       whenHints: selfWhenHints,
       whereHints: selfWhereHints,
+      avatarUrl: avatarUrl ?? null,
     });
 
     for (const peer of peers || []) {
@@ -333,6 +396,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
         totalHints: Math.max(0, Number(peer.hintsUsed ?? (peer.whenHints ?? 0) + (peer.whereHints ?? 0))),
         whenHints: Math.max(0, Number(peer.whenHints ?? 0)),
         whereHints: Math.max(0, Number(peer.whereHints ?? 0)),
+        avatarUrl: peer.avatarUrl ?? null,
       });
     }
 
@@ -357,7 +421,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   const hasLeaderboardPeers = leaderboardEntries.length > 1;
 
   const renderLeaderboardTable = (
-    rows: Array<{ userId: string; displayName: string; value: number; hintsUsed?: number; penalty?: number }>,
+    rows: Array<{ userId: string; displayName: string; value: number; hintsUsed?: number; penalty?: number; avatarUrl?: string | null }>,
     highlightUserId: string | null,
     metric: 'total' | 'when' | 'where',
     variant: 'default' | 'embedded' = 'default'
@@ -389,8 +453,8 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
             {rows.map((entry, index) => {
               const roundedValue = Math.round(entry.value ?? 0);
               const isHighlighted = highlightUserId != null && entry.userId === highlightUserId;
-              const name = entry.displayName || 'Player';
-              const rowName = isHighlighted ? `(You) ${name}` : name;
+              const rawName = entry.displayName || 'Player';
+              const rowName = isHighlighted ? `(You) ${rawName}` : rawName;
               const roundedClasses = index === 0
                 ? 'rounded-t-xl'
                 : index === rows.length - 1
@@ -410,11 +474,20 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   className={cn(rowBackground, roundedClasses, index < rows.length - 1 && variant === 'embedded' && 'border-b border-gray-200 dark:border-neutral-700')}
                 >
                   <td className="py-2 px-3">
-                    <div className="flex items-baseline gap-2">
-                      <span className={cn(baseNameClass, isHighlighted && highlightedNameClass)}>{rowName}</span>
-                      {hintText ? (
-                        <span className="text-xs text-red-400 font-semibold">{hintText}</span>
-                      ) : null}
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-7 w-7">
+                        {entry.avatarUrl ? (
+                          <AvatarImage src={entry.avatarUrl} alt={rawName} />
+                        ) : (
+                          <AvatarFallback>{getInitial(rawName)}</AvatarFallback>
+                        )}
+                      </Avatar>
+                      <div className="flex flex-col">
+                        <span className={cn(baseNameClass, isHighlighted && highlightedNameClass)}>{rowName}</span>
+                        {hintText ? (
+                          <span className="text-xs text-red-400 font-semibold">{hintText}</span>
+                        ) : null}
+                      </div>
                     </div>
                   </td>
                   <td className="py-2 px-3 text-right">
@@ -446,6 +519,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
           value,
           hintsUsed,
           penalty,
+          avatarUrl: row.avatarUrl ?? null,
         };
       });
       return renderLeaderboardTable(rows, leaderboards.currentUserId ?? null, metric, variant);
@@ -488,6 +562,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
         value,
         hintsUsed,
         penalty,
+        avatarUrl: entry.avatarUrl ?? null,
       };
     });
 
@@ -572,16 +647,23 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                   <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
                     <div className="text-sm text-muted-foreground mb-2 text-center">Playing with</div>
                     <div className="flex justify-center items-center gap-2 flex-wrap">
-                      {peers.map((peer) => (
-                        <div key={peer.userId} className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 rounded-full px-2 py-1">
-                          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-semibold">
-                            {(peer.displayName || 'P').charAt(0).toUpperCase()}
+                      {peers.map((peer) => {
+                        const name = peer.displayName || 'Player';
+                        return (
+                          <div key={peer.userId} className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-full px-3 py-1.5">
+                            <Avatar className="h-7 w-7">
+                              {peer.avatarUrl ? (
+                                <AvatarImage src={peer.avatarUrl} alt={name} />
+                              ) : (
+                                <AvatarFallback>{getInitial(name)}</AvatarFallback>
+                              )}
+                            </Avatar>
+                            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                              {name}
+                            </span>
                           </div>
-                          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                            {peer.displayName || 'Player'}
-                          </span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -761,6 +843,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                       <Marker 
                         position={[result.guessLat, result.guessLng]} 
                         icon={userIcon}
+                        zIndexOffset={600}
                       >
                         <Popup>Your Guess</Popup>
                       </Marker>
@@ -774,7 +857,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                       {peers.map((p) => (
                         p.guessLat !== null && p.guessLng !== null ? (
                           <React.Fragment key={p.userId}>
-                            <Marker position={[p.guessLat, p.guessLng]}>
+                            <Marker position={[p.guessLat, p.guessLng]} icon={peerIconMap.get(p.userId) ?? defaultPeerIcon} zIndexOffset={500}>
                               <Popup>
                                 <div className="text-sm">
                                   <div className="font-semibold">{p.displayName || 'Peer'}</div>

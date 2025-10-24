@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import GlobalSettingsModal from '@/components/GlobalSettingsModal';
 import { AuthModal } from '@/components/AuthModal';
 import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,7 +13,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from "@/components/ui/button";
 import Logo from '@/components/Logo';
-import { useSettingsStore } from '@/lib/useSettingsStore';
+import { useSettingsStore, YEAR_RANGE_MIN, YEAR_RANGE_MAX } from '@/lib/useSettingsStore';
 
 // Dev logging guard
 const isDev = (import.meta as any)?.env?.DEV === true;
@@ -72,12 +73,19 @@ const HomePage = () => {
   devLog('[HomePage] Render', { isLoaded, user, isGuest });
   // Timer states
   const [isSoloTimerEnabled, setIsSoloTimerEnabled] = useState(false);
-  const { timerSeconds, setTimerSeconds } = useSettingsStore();
+  const [showYearRange, setShowYearRange] = useState(false);
+  const { timerSeconds, setTimerSeconds, yearRange, setYearRange } = useSettingsStore();
+  const [editingYearField, setEditingYearField] = useState<null | 'start' | 'end'>(null);
+  const [pendingYearValue, setPendingYearValue] = useState('');
+  const [isEditingTimer, setIsEditingTimer] = useState(false);
+  const [pendingTimerValue, setPendingTimerValue] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
 
   const gameContext = useGame();
   const { startGame, isLoading, startLevelUpGame } = gameContext || {};
+  const yearInputRef = useRef<HTMLInputElement | null>(null);
+  const timerInputRef = useRef<HTMLInputElement | null>(null);
 
   // Timer range in seconds with 5-second intervals from 5s to 5m (300s)
   const minTimerValue = 5; // 5 seconds
@@ -90,6 +98,138 @@ const HomePage = () => {
     const remainingSeconds = seconds % 60;
     return remainingSeconds > 0 ? `${minutes}m${remainingSeconds}s` : `${minutes}m`;
   };
+
+  const beginTimerEdit = useCallback(() => {
+    setIsEditingTimer(true);
+    setPendingTimerValue(String(timerSeconds));
+  }, [timerSeconds]);
+
+  const cancelTimerEdit = useCallback(() => {
+    setIsEditingTimer(false);
+    setPendingTimerValue('');
+  }, []);
+
+  const commitTimerEdit = useCallback((rawValue: string) => {
+    const parsed = Number.parseInt(rawValue, 10);
+    if (!Number.isFinite(parsed)) {
+      cancelTimerEdit();
+      return;
+    }
+    const clamped = Math.min(Math.max(parsed, minTimerValue), maxTimerValue);
+    const snapped = Math.round(clamped / stepSize) * stepSize;
+    const finalValue = Math.min(Math.max(snapped, minTimerValue), maxTimerValue);
+    setTimerSeconds(finalValue);
+    cancelTimerEdit();
+  }, [cancelTimerEdit, maxTimerValue, minTimerValue, setTimerSeconds, stepSize]);
+
+  useEffect(() => {
+    if (isEditingTimer && timerInputRef.current) {
+      timerInputRef.current.focus();
+      timerInputRef.current.select();
+    }
+  }, [isEditingTimer]);
+
+  const handleYearSliderChange = useCallback((value: number[]) => {
+    if (!value || value.length !== 2) return;
+    const [start, end] = value[0] <= value[1] ? value : [value[1], value[0]];
+    setYearRange([start, end]);
+  }, [setYearRange]);
+
+  const beginYearEdit = useCallback((field: 'start' | 'end') => {
+    setEditingYearField(field);
+    setPendingYearValue(String(field === 'start' ? yearRange[0] : yearRange[1]));
+  }, [yearRange]);
+
+  const cancelYearEdit = useCallback(() => {
+    setEditingYearField(null);
+    setPendingYearValue('');
+  }, []);
+
+  const commitYearEdit = useCallback((field: 'start' | 'end', rawValue: string) => {
+    const parsed = Number.parseInt(rawValue, 10);
+    if (!Number.isFinite(parsed)) {
+      cancelYearEdit();
+      return;
+    }
+    const clamped = Math.min(Math.max(parsed, YEAR_RANGE_MIN), YEAR_RANGE_MAX);
+    const nextRange: [number, number] = field === 'start'
+      ? [clamped, yearRange[1]]
+      : [yearRange[0], clamped];
+    setYearRange(nextRange);
+    cancelYearEdit();
+  }, [cancelYearEdit, setYearRange, yearRange]);
+
+  useEffect(() => {
+    if (editingYearField && yearInputRef.current) {
+      yearInputRef.current.focus();
+      yearInputRef.current.select();
+    }
+  }, [editingYearField]);
+
+  const renderYearValue = useCallback((field: 'start' | 'end', value: number) => {
+    const isEditing = editingYearField === field;
+    if (isEditing) {
+      return (
+        <Input
+          ref={yearInputRef}
+          value={pendingYearValue}
+          onChange={(event) => setPendingYearValue(event.target.value)}
+          onBlur={() => editingYearField && commitYearEdit(editingYearField, pendingYearValue)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              editingYearField && commitYearEdit(editingYearField, pendingYearValue);
+            }
+            if (event.key === 'Escape') {
+              cancelYearEdit();
+            }
+          }}
+          className="w-20 text-center text-sm font-semibold text-white bg-black/60 border border-white/40 focus-visible:ring-0 focus-visible:border-white"
+          inputMode="numeric"
+        />
+      );
+    }
+    return (
+      <button
+        type="button"
+        onClick={() => beginYearEdit(field)}
+        className="text-sm font-semibold text-[#f97316] hover:text-[#fb923c] focus:outline-none"
+      >
+        {value}
+      </button>
+    );
+  }, [beginYearEdit, cancelYearEdit, commitYearEdit, editingYearField, pendingYearValue]);
+
+  const renderTimerValue = useCallback(() => {
+    if (isEditingTimer) {
+      return (
+        <Input
+          ref={timerInputRef}
+          value={pendingTimerValue}
+          onChange={(event) => setPendingTimerValue(event.target.value)}
+          onBlur={() => commitTimerEdit(pendingTimerValue)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              commitTimerEdit(pendingTimerValue);
+            }
+            if (event.key === 'Escape') {
+              cancelTimerEdit();
+            }
+          }}
+          className="w-20 text-center text-sm font-semibold text-white bg-black/60 border border-white/40 focus-visible:ring-0 focus-visible:border-white"
+          inputMode="numeric"
+        />
+      );
+    }
+    return (
+      <button
+        type="button"
+        onClick={beginTimerEdit}
+        className="text-sm font-bold text-[#f97316] hover:text-[#fb923c] focus:outline-none"
+      >
+        {formatTime(timerSeconds)}
+      </button>
+    );
+  }, [beginTimerEdit, cancelTimerEdit, commitTimerEdit, isEditingTimer, pendingTimerValue, timerSeconds]);
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -238,6 +378,8 @@ const HomePage = () => {
               timerEnabled: isSoloTimerEnabled,
               timerSeconds: isSoloTimerEnabled ? timerSeconds : 0,
               hintsPerGame: 5, // TODO: Make hints configurable
+              minYear: yearRange[0],
+              maxYear: yearRange[1],
             }
           : {};
 
@@ -254,7 +396,7 @@ const HomePage = () => {
         setShowLoadingPopup(false);
       }
     }
-  }, [user, gameContext, startGame, startLevelUpGame, isLoading, navigate, toast, setPendingMode, setShowAuthModal, isSoloTimerEnabled, timerSeconds, isGuest]);
+  }, [user, gameContext, startGame, startLevelUpGame, isLoading, navigate, toast, setPendingMode, setShowAuthModal, isSoloTimerEnabled, timerSeconds, isGuest, yearRange]);
 
   useEffect(() => {
     if (user && pendingMode && gameContext && startGame) {
@@ -309,7 +451,7 @@ const HomePage = () => {
                 </div>
                 {/* Pegged Solo Timer Controls */}
                 <div className="w-[13.5rem] mt-3">
-                  <div className="flex items-center mb-4 justify-between">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Switch
                         id="solo-timer-toggle"
@@ -321,14 +463,10 @@ const HomePage = () => {
                         <span>  Round Timer</span>
                       </Label>
                     </div>
-                    {isSoloTimerEnabled && (
-                      <span className="text-sm font-bold text-[#f97316]">
-                        {formatTime(timerSeconds)}
-                      </span>
-                    )}
+                    {renderTimerValue()}
                   </div>
                   {isSoloTimerEnabled && (
-                    <div className="relative mb-2">
+                    <div className="relative mt-[28px]">
                       <Slider
                         value={[timerSeconds]}
                         min={minTimerValue}
@@ -343,6 +481,45 @@ const HomePage = () => {
                       </div>
                     </div>
                   )}
+                  <div className="mt-8">
+                    <div className="flex items-center justify-between text-xs font-semibold text-gray-200">
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="year-range-toggle"
+                          checked={showYearRange}
+                          onCheckedChange={setShowYearRange}
+                          className="mr-3 h-4 w-8"
+                        />
+                        <Label
+                          htmlFor="year-range-toggle"
+                          className="flex items-center gap-1 cursor-pointer text-sm text-white"
+                        >
+                          <span>Years</span>
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs font-semibold text-gray-200">
+                        {renderYearValue('start', yearRange[0])}
+                        <span>—</span>
+                        {renderYearValue('end', yearRange[1])}
+                      </div>
+                    </div>
+                    {showYearRange && (
+                      <div className="mt-[28px]">
+                        <Slider
+                          value={yearRange}
+                          min={YEAR_RANGE_MIN}
+                          max={YEAR_RANGE_MAX}
+                          step={5}
+                          onValueChange={handleYearSliderChange}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-[10px] text-gray-400 mt-2">
+                          <span>{YEAR_RANGE_MIN}</span>
+                          <span>{YEAR_RANGE_MAX}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               {/* Level Up Card */}

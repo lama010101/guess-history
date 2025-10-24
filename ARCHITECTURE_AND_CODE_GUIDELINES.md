@@ -11,6 +11,62 @@
 - **Component**: `src/pages/compete/results/CompeteSyncRoundResultsPage.tsx`
 - **Behavior**: Inline round leaderboard rows now format net accuracy as a whole number followed by `%` (e.g., `65%`). This keeps the global leaderboard consistent with the rest of the compete UI, which already displays percentages, and avoids showing bare integers that looked like raw scores.
 
+- **Component**: `src/components/ui/dialog.tsx`
+- **Behavior**: Dialog overlay now detects `mode-compete` and applies stronger blur plus explicit `backdropFilter`/`WebkitBackdropFilter` styles so Safari renders the same glassmorphism as Chrome while keeping solo mode’s softer blur.
+
+### PartyKit Cloud-Prem Deployment (2025-10-23)
+
+- **Domain configuration**: `partykit.json` sets `"domain": "game.mydomain.com"` so managed deploys target the Cloudflare zone instead of `*.partykit.dev`.
+- **Cloudflare credentials**: export `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` (Workers edit scope) before running PartyKit deploys.
+- **Deployment command**: run `npx partykit deploy` (or `npx partykit deploy --domain <custom>` for overrides) to push the Worker + Durable Objects into the configured Cloudflare account.
+- **DNS routing**: confirm the Cloudflare zone has an active route for `game.mydomain.com/*`; the deploy usually provisions it, otherwise add a Worker Route manually.
+- **Client host resolution**: production URLs resolve via `VITE_PARTYKIT_HOST` (if set) or the `domain` value above, keeping room links like `https://game.mydomain.com/parties/lobby/<roomId>` stable for invites.
+### Compete HUD & Round Leaderboards — Avatar Rendering (2025-10-23)
+
+- **Hook**: `src/hooks/useCompeteRoundLeaderboards.ts`
+  - `LeaderRow` now includes `avatarUrl`, populated from `useRoundPeers()` so leaderboard data carries resolved profile avatars.
+- **Component**: `src/components/scoreboard/CompeteRoundLeaderboards.tsx`
+  - Rows render the supplied `avatarUrl` (with initial fallback) to match the compete HUD and room roster visuals.
+- **Result**: Players see their actual profile avatars across the compete HUD and round leaderboards, keeping visual identity consistent with the lobby/room view.
+
+### Compete Round Results Map — Show All Player Guesses (2025-10-23)
+
+- **Component**: `src/components/layouts/ResultsLayout2.tsx`
+- **Behavior**:
+  - Reworked `createUserIcon()` to support avatar URLs or initial-based fallbacks with configurable sizing and highlight ring colors.
+  - Rendered the local player’s marker with a gold ring and each peer’s marker with blue accents; markers now show initials when no avatar image exists.
+  - Added `peerIconMap` memoization so each `PeerRoundRow` reuses a consistent icon, and assigned `zIndexOffset` values to ensure player markers appear above polylines.
+- **Result**: In compete mode, the Round Results map now displays every player’s guess using their avatar (or initial bubble), matching the peer list and clarifying relative positions.
+
+### Compete In-Round HUD — Avatar Synchronization (2025-10-23)
+
+- **Component**: `src/pages/GameRoundPage.tsx`
+- **Behavior**:
+  - `peerProfileCache` now captures avatar URLs emitted from PartyKit roster messages and uses them when Supabase round data lacks an image.
+  - `computedPeerRoster` prefers cached display names and avatars from `peerProfileCache`, guaranteeing HUD chips show profile pictures wherever available.
+  - `useLobbyChat({ onRoster })` populates `peerProfileCache` directly from the `players` payload supplied by the lobby server (deduplicated roster) instead of an undefined placeholder, preventing reference errors like `spinnerRoster is not defined` during the first round render.
+- **Result**: The compete HUD’s player cluster shows each participant’s actual profile avatar instead of falling back to initials during live rounds.
+
+### Compete Multiplayer Flow Review (2025-10-24)
+
+- **Round gameplay**: `src/pages/GameRoundPage.tsx`
+  - Player submission broadcasts arrive via `useLobbyChat()` callbacks and update `submittedCounts`, `peerRoster`, and HUD chips. The first peer submission triggers the countdown rush by clamping `useGameLocalCountdown` to 15 s when more than one player is still active.
+  - `peerRoster` merges live PartyKit roster data with Supabase `useRoundPeers()` aggregates so HUD avatars and counts stay aligned with the authoritative lobby size.
+- **Hint penalties**: `src/hooks/useHintV2.ts` persists XP and accuracy debt per purchase; `src/hooks/useRoundPeers.ts` rehydrates the same debts for peers so leaderboards and HUD displays reflect consistent penalties.
+- **Timer synchronization**: `buildTimerId()` and `useGameLocalCountdown()` coordinate an authoritative countdown per `roomId`/round. Peers joining late hydrate from Supabase and PartyKit, and countdown rush only fires once per round.
+- **Results readiness**: `src/pages/compete/results/CompeteSyncRoundResultsPage.tsx` listens for `results-ready` payloads from `useLobbyChat()` to auto-advance when all players acknowledge. A fallback increments `localFallbackReady` so players can still progress if PartyKit signalling fails temporarily.
+- **Noted risks**:
+  - Lobby roster fallback depends on PartyKit-provided names when Supabase profiles lack avatars, so empty profile rows still render initials.
+  - Ready signalling degrades gracefully but does not retry failed PartyKit sends; long outages may rely on the local fallback path before advancing.
+
+### Hint Modal — Persisted Purchases & ID Normalization (2025-10-23)
+
+- **Hook**: `src/hooks/useHintV2.ts`
+  - Legacy image-column hints now derive deterministic IDs (`<column>-<imageId>`) so refreshes regenerate the same identifiers instead of random UUIDs.
+  - Hydration of purchased hints normalizes Supabase rows by checking both `hint_id` and `label` against the current hint list, ensuring the modal reveals already bought hints after page reloads and prevents duplicate penalties.
+- **UI**: `src/components/HintModalV2New.tsx`
+  - Displays hydrated purchased hints immediately upon modal open after refresh because `purchasedHintIds` is consistent with stored rows.
+
 ### Compete Room — Invite Card Accordion (2025-10-22)
 
 - **Component**: `src/pages/Room.tsx`
@@ -21,6 +77,28 @@
   - The friends preview list only renders when `friendsListVisible` is true and respects the current `searchTerm` filter. Loading, empty, and invite button states are unchanged stylistically.
   - Closing the friends modal after managing friends re-fetches `loadFriends()` and `loadInvites()` and reopens the inline list so new additions appear immediately without a page refresh.
   - The helper note "Share this room code so friends can join." now lives directly under the room code input within the invite accordion instead of the players card.
+
+### Compete Room — Invite Token Enforcement (2025-10-23)
+
+- **Security requirement**: PartyKit lobby (`server/lobby.ts`) enforces HMAC-signed invite tokens in production when `INVITE_HMAC_SECRET` is configured.
+- **Client join flow**:
+  - `src/integrations/supabase/invites.ts`
+    - `ensureRoomInviteToken(roomId, mode)` fetches/creates tokens via the `create-invite` edge function and caches them in `sessionStorage` (`cacheRoomInviteToken()`).
+  - `src/pages/Room.tsx`
+    - Reads `token` query param, caches it, and always includes `token` in the lobby `join` payload.
+    - Host invite URLs generated via `copyInvite()` append `?token=<signature>` so shared links remain valid off localhost.
+  - `src/hooks/useLobbyChat.ts`
+    - Multiplayer chat connections reuse the same helper to include `token` in `join` messages, avoiding RLS rejections when loading leaderboards/results in production.
+- **Environment variables** (`partykit.json` `vars`): ensure production instance defines
+  - `SUPABASE_URL`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+  - `INVITE_HMAC_SECRET`
+  - `SUPABASE_SERVER_USER_ID`
+  - `ENABLE_AUTH_TIMER` (set to `1` for authoritative timers)
+  - `ENABLE_ROOM_ROUND_PERSIST` (set to `1` to persist round starts)
+- **Testing checklist**:
+  - Create a room on https://guess-history.com, copy invite link, and join from another browser/profile to confirm lobby admits players.
+  - Verify lobby roster/leaderboards load without console errors and timer starts broadcast correctly.
 
 ### Hint Scoring Alignment & Penalty Fallbacks (2025-10-20)
 
@@ -135,6 +213,16 @@
   - On click, Home re-fetches the latest profile to use the freshest `level_up_best_level` before starting, avoiding stale starts at Level 1 after a pass (2025-09-15).
   - `profiles.level_up_best_level` is updated on passing a level in `src/pages/FinalResultsPage.tsx` and a `profileUpdated` event is dispatched for immediate UI refresh in the navbar and profile page.
   - Home listens for `profileUpdated` and refetches the profile to update the Level badge immediately (no manual reload required).
+
+### Home — Solo Year Range Toggle (2025-10-24)
+
+- Component: `src/pages/HomePage.tsx`
+  - Added a `Years` toggle under the Solo card (defaults **off**) that hides or reveals the dual-thumb slider controlling the global year bounds for solo games. The existing `Round Timer` toggle remains unchanged. Extra spacing separates the toggle pair from the slider block.
+  - The selected range (`min — max`) is always visible on the same line as the toggle. Clicking either value swaps it for an inline numeric `<Input>` so players can type a new year and press Enter to commit (Escape cancels). This uses Radix `Slider` multi-thumb support from `src/components/ui/slider.tsx` when the toggle is on.
+- Store: `src/lib/useSettingsStore.ts`
+  - `setYearRange()` continues to persist the [min, max] pair to local storage and Supabase-backed settings. No schema changes were required.
+- Gameplay: `src/pages/GameRoundPage.tsx`
+  - The When card now reads the current `yearRange` from the settings store and clamps the Year selector slider to those values (unless Level Up overrides apply). This ensures solo rounds only surface images within the selected range and that the in-round slider mirrors the same bounds.
 # Guess History Multiplayer Architecture
 
 ## Canonical Architecture Overview (2025-08-17)

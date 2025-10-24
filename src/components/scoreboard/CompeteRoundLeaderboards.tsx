@@ -52,15 +52,30 @@ const LeaderboardCard: React.FC<LeaderboardCardProps> = ({ title, rows, currentU
                   >
                     <td className="py-2 pl-3 pr-2 text-neutral-400 font-medium">#{rank}</td>
                     <td className="py-2 pr-2">
-                      <div className="flex flex-col">
-                        <span className={isCurrent ? 'font-semibold text-white' : 'text-neutral-200'}>
-                          {nameWithYou}
-                        </span>
-                        {hintsLabel ? (
-                          <span className="text-xs text-red-400 font-semibold">{hintsLabel}</span>
-                        ) : (
-                          <span className="text-xs text-transparent">•</span>
-                        )}
+                      <div className="flex items-center gap-3">
+                        <div className="relative h-8 w-8 flex-shrink-0 overflow-hidden rounded-full border border-white/20 bg-neutral-700/70">
+                          {row.avatarUrl ? (
+                            <img
+                              src={row.avatarUrl}
+                              alt={displayName}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-white/80">
+                              {displayName.slice(0, 1).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className={isCurrent ? 'font-semibold text-white' : 'text-neutral-200'}>
+                            {nameWithYou}
+                          </span>
+                          {hintsLabel ? (
+                            <span className="text-xs text-red-400 font-semibold">{hintsLabel}</span>
+                          ) : (
+                            <span className="text-xs text-transparent">•</span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className={`py-2 pr-3 text-right ${isCurrent ? 'font-semibold text-white' : 'font-medium text-neutral-200'}`}>

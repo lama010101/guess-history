@@ -153,9 +153,10 @@ export const useHintV2 = (
             const xp_cost = costKey ? HINT_COSTS[costKey].xp : getHintCostAndPenalty(column).xp;
             const accuracy_penalty = costKey ? HINT_COSTS[costKey].acc : getHintCostAndPenalty(column).acc;
             const prereqType = HINT_DEPENDENCIES[column] ?? null;
+            const fallbackId = `${column}-${imageData.id}`;
 
             return {
-              id: uuidv4(),
+              id: fallbackId,
               type: column,
               text: String(imageRow[column]),
               level,
@@ -198,12 +199,33 @@ export const useHintV2 = (
 
         const { data: purchases, error: purchaseError } = await supabase
           .from('round_hints' as any)
-          .select('hint_id')
+          .select('hint_id,label')
           .eq('user_id', user.id)
           .eq('round_id', roundSessionId);
 
         if (purchaseError) throw purchaseError;
-        purchasedHintIdsFromDb = (purchases ?? []).map((row: any) => row.hint_id);
+        const normalizedIds = new Set<string>();
+        (purchases ?? []).forEach((row: any) => {
+          const rawId = typeof row.hint_id === 'string' ? row.hint_id : String(row.hint_id ?? '');
+          if (rawId && hints.some(hint => hint.id === rawId)) {
+            normalizedIds.add(rawId);
+            return;
+          }
+
+          const labelText = typeof row.label === 'string' ? row.label.trim() : '';
+          if (labelText) {
+            const matchedHint = hints.find(hint => hint.text.trim() === labelText);
+            if (matchedHint) {
+              normalizedIds.add(matchedHint.id);
+              return;
+            }
+          }
+
+          if (rawId) {
+            normalizedIds.add(rawId);
+          }
+        });
+        purchasedHintIdsFromDb = Array.from(normalizedIds);
         addLog(`Fetched ${purchasedHintIdsFromDb.length} purchased hints for round ${roundSessionId}`);
       } catch (error: any) {
         addLog(`Error fetching purchased hints: ${error.message || error}`);

@@ -82,7 +82,7 @@ const GameRoundPage: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const rushAudioRef = useRef<HTMLAudioElement | null>(null);
-  const { soundEnabled, vibrateEnabled } = useSettingsStore();
+  const { soundEnabled, vibrateEnabled, yearRange: settingsYearRange } = useSettingsStore();
   const avatarClusterRef = useRef<HTMLDivElement | null>(null);
   const [chatPanelStyle, setChatPanelStyle] = useState<CSSProperties | null>(null);
   const [waitingForPeers, setWaitingForPeers] = useState(false);
@@ -227,7 +227,10 @@ const GameRoundPage: React.FC = () => {
     if (!isCompeteMode) return;
     if (!Number.isFinite(roundNumber) || payload.roundNumber !== roundNumber) return;
 
-    setSubmittedCounts({ submitted: payload.submittedCount, total: payload.totalPlayers });
+    setSubmittedCounts((prev) => ({
+      submitted: Math.max(prev.submitted, payload.submittedCount),
+      total: Math.max(prev.total, payload.totalPlayers),
+    }));
 
     const totalPlayers = payload.totalPlayers;
     const submittedCount = payload.submittedCount;
@@ -266,10 +269,21 @@ const GameRoundPage: React.FC = () => {
     if (!isCompeteMode) return;
     if (!Number.isFinite(roundNumber) || payload.roundNumber !== roundNumber) return;
 
-    setSubmittedCounts({ submitted: payload.submittedCount, total: payload.totalPlayers });
-    setWaitingForPeers(false);
+    const reportedTotal = Math.max(
+      0,
+      payload.totalPlayers ?? 0,
+      payload.lobbySize ?? 0,
+    );
+    const submittedCount = payload.submittedCount ?? 0;
+    const allSubmitted = reportedTotal > 0 && submittedCount >= reportedTotal;
 
-    if (roomId && !hasNavigatedToResultsRef.current) {
+    setSubmittedCounts((prev) => ({
+      submitted: Math.max(prev.submitted, submittedCount),
+      total: Math.max(prev.total, reportedTotal),
+    }));
+    setWaitingForPeers(!allSubmitted);
+
+    if (allSubmitted && roomId && !hasNavigatedToResultsRef.current) {
       hasNavigatedToResultsRef.current = true;
       navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
     }
@@ -289,20 +303,35 @@ const GameRoundPage: React.FC = () => {
     onSubmission: handleSubmissionBroadcast,
     onRoundComplete: handleRoundCompleteBroadcast,
     onRoster: (players) => {
-      const deduped = new Map<string, { id: string; name: string; ready: boolean; host: boolean }>();
+      const deduped = new Map<string, {
+        id: string;
+        name: string;
+        ready: boolean;
+        host: boolean;
+        userId?: string | null;
+        avatarUrl?: string | null;
+      }>();
 
       (players || []).forEach((player) => {
         if (!player) return;
+        const raw = player as Record<string, unknown>;
         const id = typeof player.id === 'string' ? player.id.trim() : '';
         const name = typeof player.name === 'string' ? player.name.trim() : '';
         const normalizedKey = name.toLowerCase() || id;
         if (!normalizedKey) return;
         if (!deduped.has(normalizedKey)) {
+          const userId = typeof raw.userId === 'string' ? raw.userId.trim() : undefined;
+          const avatarPayload = typeof raw.avatar === 'string' ? raw.avatar.trim() : '';
+          const avatarUrl = avatarPayload.length > 0
+            ? avatarPayload
+            : (typeof raw.avatarUrl === 'string' ? raw.avatarUrl.trim() : undefined);
           deduped.set(normalizedKey, {
             id: id || normalizedKey,
             name,
             ready: !!player.ready,
             host: !!player.host,
+            userId,
+            avatarUrl: avatarUrl && avatarUrl.length > 0 ? avatarUrl : undefined,
           });
         }
       });
@@ -315,21 +344,42 @@ const GameRoundPage: React.FC = () => {
           let updated = prev;
           let changed = false;
 
-          nextRoster.forEach((entry) => {
-            const rawName = entry.name?.trim();
-            if (!rawName) return;
-            const cacheKey = `name:${rawName.toLowerCase()}`;
-            const existing = updated[cacheKey];
-            if (!existing || existing.displayName !== rawName) {
-              if (!changed) {
-                updated = { ...prev };
-                changed = true;
+          (players || []).forEach((player) => {
+            const raw = player as Record<string, unknown>;
+            const trimmedName = typeof player.name === 'string' ? player.name.trim() : '';
+            const rosterId = makeRosterId(
+              typeof raw.userId === 'string' ? raw.userId : null,
+              player.name || null,
+            );
+            const avatarPrimary = typeof raw.avatar === 'string' ? raw.avatar.trim() : '';
+            const avatarFallback = typeof raw.avatarUrl === 'string' ? raw.avatarUrl.trim() : '';
+            const avatarSource = avatarPrimary.length > 0
+              ? avatarPrimary
+              : (avatarFallback.length > 0 ? avatarFallback : null);
+            const cacheKeys: string[] = [];
+            if (rosterId) cacheKeys.push(rosterId);
+            if (trimmedName) cacheKeys.push(`name:${trimmedName.toLowerCase()}`);
+
+            cacheKeys.forEach((key) => {
+              const existing = updated[key];
+              const nextDisplay = trimmedName || existing?.displayName || '';
+              const nextAvatar = avatarSource ?? existing?.avatarUrl ?? null;
+
+              if (nextDisplay === '' && nextAvatar === null) {
+                return;
               }
-              updated[cacheKey] = {
-                displayName: rawName,
-                avatarUrl: existing?.avatarUrl ?? null,
-              };
-            }
+
+              if (!existing || existing.displayName !== nextDisplay || existing.avatarUrl !== nextAvatar) {
+                if (!changed) {
+                  updated = { ...prev };
+                  changed = true;
+                }
+                updated[key] = {
+                  displayName: nextDisplay,
+                  avatarUrl: nextAvatar,
+                };
+              }
+            });
           });
 
           return changed ? updated : prev;
@@ -824,6 +874,7 @@ const GameRoundPage: React.FC = () => {
     recentSubmitterIdsRef.current = {};
     awaitingSubmissionAckRef.current = false;
     setRecentSubmitterIds({});
+    setCachedPeerRoster([]);
   }, [roomId, roundNumber]);
 
   useEffect(() => {
@@ -948,6 +999,10 @@ const GameRoundPage: React.FC = () => {
         const submittedCount = Array.isArray(results) ? new Set(results.map((r: any) => r.user_id)).size : 0;
         if (!cancelled && participantCount > 0 && submittedCount >= participantCount) {
           setWaitingForPeers(false);
+          if (roomId && !hasNavigatedToResultsRef.current) {
+            hasNavigatedToResultsRef.current = true;
+            navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
+          }
         }
       } catch {}
     };
@@ -990,14 +1045,25 @@ const GameRoundPage: React.FC = () => {
         const rosterIdBase = makeRosterId(peer.userId, peer.displayName ?? null);
         const rosterId = rosterIdBase || (peer.userId ? `anon:${peer.userId}:${index}` : `anon:${index}`);
         const submitted = peer.submitted === true;
-        const isSelf = selfRosterId !== null && rosterId === selfRosterId;
+        const isSelf = (peer.userId ?? '') === (user?.id ?? '');
         const displayLabel = (peer.displayName && peer.displayName.trim().length > 0)
           ? peer.displayName
           : (peer.userId === user?.id ? displayName || 'You' : 'Player');
+
+        const cacheKeys: string[] = [];
+        if (peer.userId && peer.userId.trim().length > 0) {
+          cacheKeys.push(peer.userId.trim());
+        }
+        if (peer.displayName && peer.displayName.trim().length > 0) {
+          cacheKeys.push(`name:${peer.displayName.trim().toLowerCase()}`);
+        }
+        const cachedEntry = cacheKeys.map((key) => peerProfileCache[key]).find((entry) => !!entry);
+        const resolvedAvatar = peer.avatarUrl ?? cachedEntry?.avatarUrl ?? null;
+
         return {
           id: rosterId,
-          displayName: displayLabel,
-          avatarUrl: peer.avatarUrl ?? null,
+          displayName: cachedEntry?.displayName?.trim().length ? cachedEntry.displayName : displayLabel,
+          avatarUrl: resolvedAvatar,
           isSelf,
           submitted,
           recentlySubmitted: submitted || !!recentSubmitterIds[rosterId],
@@ -1029,33 +1095,80 @@ const GameRoundPage: React.FC = () => {
     if (mappedLobby.length > 0) return mappedLobby;
 
     // Final fallback: build roster from cached profiles (by name AND userId keys)
-    const cachedMap = new Map<string, { id: string; displayName: string; avatarUrl: string | null }>();
+    const cachedMap = new Map<string, { id: string; displayName: string; avatarUrl: string | null; isNameKey: boolean }>();
     Object.entries(peerProfileCache).forEach(([key, val]) => {
       const display = (val?.displayName ?? '').trim();
       if (!display) return;
       // Prefer userId key when possible for stable IDs, otherwise use the name key
       const isNameKey = key.startsWith('name:');
-      const id = isNameKey ? key : key; // both are valid unique keys
+      const id = key;
       if (!cachedMap.has(id)) {
-        cachedMap.set(id, { id, displayName: display, avatarUrl: val?.avatarUrl ?? null });
+        cachedMap.set(id, { id, displayName: display, avatarUrl: val?.avatarUrl ?? null, isNameKey });
       }
     });
 
-    const cachedFromProfiles = Array.from(cachedMap.values())
-      .map((row) => {
-        const nameKey = `name:${row.displayName.trim().toLowerCase()}`;
-        return {
-          id: row.id,
-          displayName: row.displayName,
-          avatarUrl: row.avatarUrl,
-          isSelf: row.id === selfRosterId || row.displayName.trim().toLowerCase() === selfNameLc,
-          submitted: false,
-          recentlySubmitted: !!recentSubmitterIds[row.id] || !!recentSubmitterIds[nameKey],
-        };
-      })
-      .filter((entry) => !entry.isSelf);
+    const activeIds = new Set<string>();
+    (roundPeers || []).forEach((peer, index) => {
+      const rosterIdBase = makeRosterId(peer.userId, peer.displayName ?? null);
+      const rosterId = rosterIdBase || (peer.userId ? `anon:${peer.userId}:${index}` : `anon:${index}`);
+      if (rosterId) activeIds.add(rosterId);
+      if (peer.userId) activeIds.add(peer.userId);
+      if (peer.displayName && peer.displayName.trim().length > 0) {
+        activeIds.add(`name:${peer.displayName.trim().toLowerCase()}`);
+      }
+    });
+    (lobbyRoster || []).forEach((player) => {
+      if (player?.id) activeIds.add(`conn:${player.id}`);
+      if (player?.name && player.name.trim().length > 0) {
+        activeIds.add(`name:${player.name.trim().toLowerCase()}`);
+      }
+    });
 
-    return cachedFromProfiles;
+    const deduped = new Map<string, { entry: {
+      id: string;
+      displayName: string;
+      avatarUrl: string | null;
+      isSelf: boolean;
+      submitted: boolean;
+      recentlySubmitted: boolean;
+    }; priority: number }>();
+
+    Array.from(cachedMap.values()).forEach((row) => {
+      if (activeIds.size > 0) {
+        const normalized = row.displayName.trim().toLowerCase();
+        const matchesId = row.id && activeIds.has(row.id);
+        const matchesName = normalized.length > 0 && activeIds.has(`name:${normalized}`);
+        if (!matchesId && !matchesName) {
+          return;
+        }
+      }
+
+      const normalizedName = row.displayName.trim().toLowerCase();
+      const nameKey = normalizedName ? `name:${normalizedName}` : '';
+      const entry = {
+        id: row.id,
+        displayName: row.displayName,
+        avatarUrl: row.avatarUrl,
+        isSelf: row.id === selfRosterId || (normalizedName.length > 0 && normalizedName === selfNameLc),
+        submitted: false,
+        recentlySubmitted: !!recentSubmitterIds[row.id] || (!!nameKey && !!recentSubmitterIds[nameKey]),
+      };
+
+      if (entry.isSelf) {
+        return;
+      }
+
+      const priority = row.isNameKey ? 0 : 1; // prefer userId-derived cache entries over name-based ones
+      const dedupeKey = priority > 0 && row.id.trim().length > 0
+        ? row.id
+        : (normalizedName.length > 0 ? normalizedName : row.id);
+      const existing = deduped.get(dedupeKey);
+      if (!existing || existing.priority < priority) {
+        deduped.set(dedupeKey, { entry, priority });
+      }
+    });
+
+    return Array.from(deduped.values()).map(({ entry }) => entry);
   }, [isCompeteMode, roundPeers, user?.id, displayName, makeRosterId, recentSubmitterIds, lobbyRoster, peerProfileCache]);
 
   useEffect(() => {
@@ -1066,24 +1179,36 @@ const GameRoundPage: React.FC = () => {
 
     if (computedPeerRoster.length > 0) {
       setCachedPeerRoster((prev) => {
-        if (prev.length === 0) {
-          return computedPeerRoster;
+        const sameLength = prev.length === computedPeerRoster.length;
+        if (sameLength) {
+          const allMatch = prev.every((entry, index) => {
+            const next = computedPeerRoster[index];
+            return next && entry.id === next.id && entry.submitted === next.submitted && entry.recentlySubmitted === next.recentlySubmitted && entry.avatarUrl === next.avatarUrl && entry.displayName === next.displayName;
+          });
+          if (allMatch) {
+            return prev;
+          }
         }
-        const nextMap = new Map<string, typeof prev[number]>();
-        // Start with previous roster to preserve players not in current snapshot
-        prev.forEach((entry) => {
-          nextMap.set(entry.id, entry);
-        });
-        // Overwrite with fresh data
-        computedPeerRoster.forEach((entry) => {
-          nextMap.set(entry.id, entry);
-        });
-        return Array.from(nextMap.values());
+        return computedPeerRoster;
       });
     }
   }, [isCompeteMode, computedPeerRoster]);
 
-  const peerRoster = computedPeerRoster.length > 0 ? computedPeerRoster : cachedPeerRoster;
+  const peerRoster = useMemo(() => {
+    if (!isCompeteMode) return [] as typeof cachedPeerRoster;
+    const base = computedPeerRoster.length > 0 ? computedPeerRoster : cachedPeerRoster;
+    const deduped = new Map<string, typeof base[number]>();
+    base.forEach((peer, index) => {
+      if (peer.isSelf) return;
+      const normalizedId = (peer.id || '').trim();
+      const normalizedName = (peer.displayName || '').trim().toLowerCase();
+      const key = normalizedId || (normalizedName ? `name:${normalizedName}` : `idx:${index}`);
+      if (!deduped.has(key)) {
+        deduped.set(key, peer);
+      }
+    });
+    return Array.from(deduped.values());
+  }, [isCompeteMode, computedPeerRoster, cachedPeerRoster]);
 
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -1373,8 +1498,6 @@ const GameRoundPage: React.FC = () => {
             xpWhen: 0,
             accuracy: 0,
             hintsUsed: purchasedHints.length,
-            xpDebt,
-            accDebt,
           },
           currentRoundIndex,
         );
@@ -1404,8 +1527,6 @@ const GameRoundPage: React.FC = () => {
             xpWhen: 0,
             accuracy: 0,
             hintsUsed: purchasedHints.length,
-            xpDebt,
-            accDebt,
           },
           currentRoundIndex,
         );
@@ -1450,8 +1571,6 @@ const GameRoundPage: React.FC = () => {
           xpWhen: timeXP,
           accuracy: roundPercent,
           hintsUsed: purchasedHints.length,
-          xpDebt,
-          accDebt,
         },
         currentRoundIndex,
       );
@@ -1547,12 +1666,19 @@ const GameRoundPage: React.FC = () => {
   }
 
   // Decide slider bounds props: Level Up uses level constraints; Solo uses global DB -> current year when available
+  const [settingsMinYear, settingsMaxYear] = settingsYearRange ?? [];
   const minYearProp = isLevelUpRoute
     ? levelUpConstraints?.levelYearRange.start
-    : (typeof globalMinYear === 'number' ? globalMinYear : undefined);
+    : (typeof settingsMinYear === 'number'
+      ? settingsMinYear
+      : (typeof globalMinYear === 'number' ? globalMinYear : undefined));
   const maxYearProp = isLevelUpRoute
     ? levelUpConstraints?.levelYearRange.end
-    : (typeof globalMinYear === 'number' ? currentYear : undefined);
+    : (typeof settingsMaxYear === 'number'
+      ? settingsMaxYear
+      : (typeof globalMinYear === 'number' ? currentYear : undefined));
+
+  const layoutGameMode = isCompeteMode ? 'compete' : (isLevelUpRoute ? 'levelup' : 'solo');
 
   // Render the layout and the separate submit button
   return (
@@ -1569,7 +1695,7 @@ const GameRoundPage: React.FC = () => {
       {/* Main game content */}
       <GameLayout1
         onComplete={handleSubmitGuess}
-        gameMode={isLevelUpRoute ? 'levelup' : 'solo'}
+        gameMode={layoutGameMode}
         currentRound={roundNumber}
         image={imageForRound}
         onMapGuess={handleMapGuess}
@@ -1578,6 +1704,8 @@ const GameRoundPage: React.FC = () => {
         remainingTime={remainingTime}
         setRemainingTime={setRemainingTime}
         isTimerActive={isTimerActive}
+        timerEnabled={timerEnabled}
+        roundTimerSec={roundTimerSec}
         onNavigateHome={handleNavigateHome}
         onConfirmNavigation={confirmNavigation}
         avatarUrl={profile?.avatar_image_url}
@@ -1594,7 +1722,7 @@ const GameRoundPage: React.FC = () => {
         levelLabel={isLevelUpRoute ? `Level ${levelUpLevel ?? 1}` : undefined}
         onOpenLevelIntro={() => { setIntroSource('hub'); setShowIntro(true); }}
         peerMarkers={peerMarkers}
-        peerRoster={peerRoster}
+        peerRoster={isCompeteMode ? peerRoster : peerRoster}
         onOpenChat={chatEnabled ? toggleChat : undefined}
         isChatOpen={chatEnabled ? isChatOpen : false}
         chatMessageCount={chatEnabled ? chatMessages.length : 0}

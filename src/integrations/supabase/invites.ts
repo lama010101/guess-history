@@ -80,6 +80,12 @@ export async function createInviteToken(roomId: string, mode: 'sync' | 'async'):
 }
 
 export async function ensureRoomInviteToken(roomId: string, mode: 'sync' | 'async' = 'sync'): Promise<string | null> {
+  const isLocalDev = typeof window !== 'undefined' && /^https?:\/\/(localhost|127\.0\.0\.1)(:\\d+)?$/.test(window.location.origin);
+  if (isLocalDev) {
+    // In local dev, PartyKit lobby bypasses invite enforcement (ALLOW_DEV_NO_INVITE or placeholder secret)
+    // Avoid calling Edge Functions to prevent noisy CORS errors
+    return null;
+  }
   const cached = getCachedRoomInviteToken(roomId);
   if (cached) return cached;
   try {

@@ -202,23 +202,6 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
                     +{peerRoster.length - 6}
                   </span>
                 )}
-                {onOpenChat && (
-                  <button
-                    type="button"
-                    onClick={onOpenChat}
-                    className={`relative flex items-center justify-center w-9 h-9 rounded-full border border-white/50 ${isChatOpen ? 'bg-emerald-500/90 text-black' : 'bg-black/55 text-white hover:bg-black/70'} focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400`}
-                    aria-label={isChatOpen ? 'Hide chat' : 'Show chat'}
-                    aria-pressed={isChatOpen}
-                    title={isChatOpen ? 'Hide chat' : 'Show chat'}
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                    {showChatCount && (
-                      <span className="absolute -top-1.5 -right-1.5 rounded-full bg-emerald-400 text-black text-[0.65rem] font-semibold px-1.5 py-0.5 shadow-lg">
-                        {formattedChatCount}
-                      </span>
-                    )}
-                  </button>
-                )}
               </div>
             </div>
           )}
@@ -255,6 +238,23 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
             >
               <Maximize className="h-5 w-5" />
             </Button>
+          )}
+          {onOpenChat && (
+            <button
+              type="button"
+              onClick={onOpenChat}
+              className={`relative flex items-center justify-center w-10 h-10 rounded-full border border-white/50 ${isChatOpen ? 'bg-emerald-500/90 text-black' : 'bg-black/55 text-white hover:bg-black/70'} focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400`}
+              aria-label={isChatOpen ? 'Hide chat' : 'Show chat'}
+              aria-pressed={isChatOpen}
+              title={isChatOpen ? 'Hide chat' : 'Show chat'}
+            >
+              <MessageCircle className="h-4 w-4" />
+              {showChatCount && (
+                <span className="absolute -top-1.5 -right-1.5 rounded-full bg-emerald-400 text-black text-[0.65rem] font-semibold px-1.5 py-0.5 shadow-lg">
+                  {formattedChatCount}
+                </span>
+              )}
+            </button>
           )}
         </div>
       </div>

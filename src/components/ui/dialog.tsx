@@ -15,16 +15,30 @@ const DialogClose = DialogPrimitive.Close
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Overlay
-    ref={ref}
-    className={cn(
-      "fixed inset-0 z-[1100] bg-black/10 backdrop-blur-md sm:backdrop-blur-xl backdrop-saturate-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className
-    )}
-    {...props}
-  />
-))
+>(({ className, style, ...props }, ref) => {
+  const isCompeteMode =
+    typeof document !== "undefined" && document.body.classList.contains("mode-compete");
+  const blurStrength = isCompeteMode ? "24px" : "16px";
+
+  return (
+    <DialogPrimitive.Overlay
+      ref={ref}
+      className={cn(
+        "fixed inset-0 z-[1100] backdrop-saturate-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        isCompeteMode
+          ? "bg-black/40 backdrop-blur-xl sm:backdrop-blur-2xl"
+          : "bg-black/10 backdrop-blur-md sm:backdrop-blur-xl",
+        className
+      )}
+      style={{
+        WebkitBackdropFilter: `blur(${blurStrength}) saturate(1.5)`,
+        backdropFilter: `blur(${blurStrength}) saturate(1.5)` ,
+        ...style,
+      }}
+      {...props}
+    />
+  );
+})
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 const DialogContent = React.forwardRef<

@@ -25,7 +25,7 @@ import { Hint } from '@/hooks/useHintV2';
 
 export interface GameLayout1Props {
   onComplete?: () => void;
-  gameMode?: string;
+  gameMode?: 'solo' | 'levelup' | 'compete';
   currentRound?: number;
   image: GameImage | null;
   onMapGuess: (lat: number, lng: number) => void;
@@ -75,6 +75,8 @@ export interface GameLayout1Props {
   submittedCount?: number;
   totalParticipants?: number;
   submissionNotice?: string | null;
+  timerEnabled?: boolean;
+  roundTimerSec?: number;
 }
 
 const GameLayout1: React.FC<GameLayout1Props> = ({
@@ -114,6 +116,8 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   submittedCount,
   totalParticipants,
   submissionNotice = null,
+  timerEnabled: overrideTimerEnabled,
+  roundTimerSec: overrideRoundTimerSec,
 }) => {
   const [isImageFullScreen, setIsImageFullScreen] = useState(true);
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
@@ -207,7 +211,14 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const game = useGame();
 
-  const { totalGameAccuracy, totalGameXP, roundTimerSec, timerEnabled } = game;
+  const { totalGameAccuracy, totalGameXP } = game;
+  const effectiveRoundTimerSec = typeof overrideRoundTimerSec === 'number'
+    ? overrideRoundTimerSec
+    : game.roundTimerSec;
+  const effectiveTimerEnabled = typeof overrideTimerEnabled === 'boolean'
+    ? overrideTimerEnabled
+    : game.timerEnabled;
+  const hudTimerEnabled = effectiveTimerEnabled;
   const parsedYear = parseInt(yearInput, 10);
   // Dynamic year bounds based on prepared images for this game session
   const dynamicMinYear = useMemo(() => {
@@ -358,8 +369,8 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
             isTimerActive={isTimerActive}
             onTimeout={onTimeout}
             setRemainingTime={setRemainingTime}
-            timerEnabled={timerEnabled}
-            roundTimerSec={roundTimerSec}
+            timerEnabled={hudTimerEnabled}
+            roundTimerSec={effectiveRoundTimerSec}
             xpDebt={xpDebt}
             accDebt={accDebt}
             levelLabel={levelLabel}

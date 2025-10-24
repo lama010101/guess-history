@@ -55,7 +55,7 @@ export type LobbyServerMessage =
   | { type: 'roster'; players: { id: string; name: string; ready: boolean; host: boolean; userId?: string | null }[] }
   | { type: 'settings'; timerSeconds?: number; timerEnabled?: boolean; mode?: 'sync' | 'async'; yearMin?: number; yearMax?: number }
   | { type: 'hello'; you: { id: string; name: string; host: boolean } }
-  | { type: 'start'; startedAt: string; durationSec: number; timerEnabled: boolean; seed: string; yearMin?: number; yearMax?: number }
+  | { type: 'start'; startedAt: string; durationSec: number; timerEnabled: boolean; seed: string; yearMin?: number; yearMax?: number; authoritativeTimer?: boolean }
   | { type: 'progress'; from: string; roundNumber: number; substep?: string }
   | { type: 'submission'; roundNumber: number; connectionId: string; from: string; userId?: string | null; submittedCount: number; totalPlayers: number; lobbySize: number }
   | { type: 'round-complete'; roundNumber: number; submittedCount: number; totalPlayers: number; lobbySize: number }

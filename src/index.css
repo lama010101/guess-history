@@ -443,6 +443,36 @@ document:has(.leaflet-fullscreen-on) .hud-element,
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4) !important;
 }
 
+.attention-pulse {
+  animation: attentionPulse 10s ease-in-out infinite;
+  --attention-pulse-shadow-color: hsla(var(--secondary), 0.35);
+}
+
+@keyframes attentionPulse {
+  0%,
+  80%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+  }
+  84% {
+    transform: scale(1.28);
+    box-shadow: 0 35px 45px -5px rgba(0, 0, 0, 0.45), 0 16px 20px -4px rgba(0, 0, 0, 0.45), 0 0 0 12px var(--attention-pulse-shadow-color, hsla(var(--secondary), 0.35));
+  }
+  88% {
+    transform: scale(1);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+  }
+  92% {
+    transform: scale(1.28);
+    box-shadow: 0 35px 45px -5px rgba(0, 0, 0, 0.45), 0 16px 20px -4px rgba(0, 0, 0, 0.45), 0 0 0 12px var(--attention-pulse-shadow-color, hsla(var(--secondary), 0.35));
+  }
+  96% {
+    transform: scale(1);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+  }
+}
+
 @layer components {
   .glass {
     @apply bg-white/30 dark:bg-black/30 backdrop-blur-md border border-white/20 dark:border-white/10;

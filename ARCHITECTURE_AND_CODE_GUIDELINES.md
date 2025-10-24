@@ -6,10 +6,19 @@
   - Drops the fallback that silently called `continueAsGuest()` when unauthenticated. Guests must now be created explicitly via `AuthModal` or other UI triggers before entering gameplay routes.
 - **Result**: Anonymous visitors stay on the marketing landing page instead of being redirected to `/home` automatically.
 
+- **File**: `public/invite-generator.html`
+  - Replaced Tailwind `@apply` utilities inside inline `<style>` with regular CSS so the standalone HTML works with the CDN Tailwind build and avoids tooling warnings about unknown at-rules.
+- **Component**: `src/pages/Room.tsx`
+  - Ready toggle now reuses the shared `.attention-pulse` animation previously used by the fullscreen exit button so the call-to-action keeps the same heartbeat highlight.
+
 ### Compete Round Results — Leaderboard Accuracy Format (2025-10-23)
 
 - **Component**: `src/pages/compete/results/CompeteSyncRoundResultsPage.tsx`
 - **Behavior**: Inline round leaderboard rows now format net accuracy as a whole number followed by `%` (e.g., `65%`). This keeps the global leaderboard consistent with the rest of the compete UI, which already displays percentages, and avoids showing bare integers that looked like raw scores.
+
+- **Component**: `src/pages/RoundResultsPage.tsx`
+- **Behavior**: Solo mode’s round results Home button reuses the compete styling—`h-12 w-12` white circular button with subtle shadow—so both modes offer the same affordance.
+- **Result**: Returning to Home from round results looks and feels identical in solo and compete variants.
 
 - **Component**: `src/components/ui/dialog.tsx`
 - **Behavior**: Dialog overlay now detects `mode-compete` and applies stronger blur plus explicit `backdropFilter`/`WebkitBackdropFilter` styles so Safari renders the same glassmorphism as Chrome while keeping solo mode’s softer blur.
@@ -87,6 +96,19 @@
 - **File**: `server/lobby.ts`
   - Each submission re-evaluates `expectedParticipants` using the maximum of historical participation, currently active connections, live lobby size, and submissions seen so far. This prevents premature `round-complete` broadcasts when someone finishes early or reconnects mid-round.
   - Client HUD counters and waiting screens continue to rely on server-provided `totalPlayers`, keeping the displayed submission progress aligned with the authoritative participant count.
+
+#### Update (2025-10-24): Multiplayer timer reset & authoritative fallback
+- **Server (`server/lobby.ts`)**
+  - On game start, the lobby now clears prior `round_results` and `sync_round_scores` rows for the room before broadcasting `start`. This prevents stale submissions from earlier sessions from triggering the 15 s "rush" clamp in new rounds.
+  - When the Supabase authoritative timer RPC fails, the lobby keeps `timerEnabled: true` but adds `authoritativeTimer: false` in the `start` payload so clients know they must run their local timer.
+  - When the RPC succeeds, `authoritativeTimer: true` is included and clients defer to the server countdown. The lobby still logs start events and persists the round start when `ENABLE_ROOM_ROUND_PERSIST=1`.
+- **Client context (`GameContext.startGame`)**
+  - Accepts an `authoritativeTimer` flag coming from the lobby `start` message. This flag is stored in context state and exposed via `useGame()` so downstream hooks/components can differentiate between server-driven and local timers.
+- **In-round HUD (`GameRoundPage.tsx`)**
+  - The local countdown now checks `authoritativeTimer`; when true the local `useGameLocalCountdown` stays idle and the HUD expects the authoritative signal via Supabase sync. When false, the local timer autostarts and behaves as before.
+  - The countdown gating debug output lists `authoritativeTimer=true` in the "missing" array when the local timer is intentionally not starting.
+
+Together these changes eliminate the ghost-submission rush and ensure every player sees a timer even if the authoritative RPC path is unavailable.
 
 ### Hint Modal — Persisted Purchases & ID Normalization (2025-10-23)
 
@@ -279,6 +301,11 @@
 
 - Component: `src/pages/HomePage.tsx`
   - The Solo card now displays a "Round Timer" summary line beneath the card only when the timer toggle is enabled. The inline timer editor beside the toggle also hides while the timer is off, keeping the card compact when the timer feature is disabled.
+
+### Home — Practice Card Rename (2025-10-24)
+
+- Component: `src/pages/HomePage.tsx`
+  - The Solo mode entry card is now branded as **Practice** across its label and alt text to better communicate the mode’s intent.
 
 # Guess History Multiplayer Architecture
 

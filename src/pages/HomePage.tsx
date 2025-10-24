@@ -447,14 +447,14 @@ const HomePage = () => {
                   onClick={() => handleStartGame('classic')}
                 >
                   <div className="flex items-center justify-center w-full h-full">
-                    <img src="/icons/solo.webp" alt="Solo" className="w-[66%] h-[66%] object-contain drop-shadow-[0_10px_18px_rgba(0,0,0,0.5)]" />
+                    <img src="/icons/solo.webp" alt="Practice" className="w-[66%] h-[66%] object-contain drop-shadow-[0_10px_18px_rgba(0,0,0,0.5)]" />
                   </div>
                 </div>
                 <div
                   className="w-[13.5rem] bg-gray-800 text-white text-center font-extrabold uppercase py-3 rounded-b-xl -mt-1 cursor-pointer"
                   onClick={() => handleStartGame('classic')}
                 >
-                  SOLO
+                  PRACTICE
                 </div>
                 {isSoloTimerEnabled && (
                   <div className="w-full mt-2 text-center text-xs font-semibold text-gray-200">

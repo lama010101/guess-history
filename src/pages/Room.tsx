@@ -385,7 +385,16 @@ const Room: React.FC = () => {
                   document.body.classList.add('mode-compete');
                   document.body.classList.remove('mode-levelup');
                 } catch {}
-                startGame({ roomId: roomCode, seed, timerSeconds: data.durationSec, timerEnabled: data.timerEnabled, competeVariant: 'sync', useHostHistory: isHost, minYear: (data as any).yearMin, maxYear: (data as any).yearMax }).catch(() => {
+                startGame({
+                  roomId: roomCode,
+                  seed,
+                  timerSeconds: data.durationSec,
+                  timerEnabled: data.timerEnabled,
+                  competeVariant: 'sync',
+                  useHostHistory: isHost,
+                  minYear: (data as any).yearMin,
+                  maxYear: (data as any).yearMax,
+                }).catch(() => {
                   startedRef.current = false;
                 });
               }
@@ -1208,17 +1217,13 @@ const Room: React.FC = () => {
                               type="button"
                               onClick={toggleReady}
                               disabled={status !== 'open'}
-                              className={`rounded-xl px-4 py-1.5 text-xs font-semibold transition-colors ${ownReady ? 'bg-[#22d96d] text-black hover:bg-[#1fb862]' : 'bg-[#22d3ee] text-black hover:bg-[#1cbfdb]'}`}
+                              className={`rounded-xl px-4 py-1.5 text-xs font-semibold transition-colors shadow-lg attention-pulse ${ownReady ? 'bg-[#22d96d] text-black hover:bg-[#1fb862]' : 'bg-[#22d3ee] text-black hover:bg-[#1cbfdb]'}`}
+                              style={{ '--attention-pulse-shadow-color': 'rgba(34, 211, 238, 0.35)' } as React.CSSProperties}
                             >
                               {ownReady ? 'Ready!' : 'Ready?'}
                             </button>
                           ) : (
                             !r.ready && <span className="text-sm font-semibold text-neutral-200">Not ready</span>
-                          )}
-                          {isHost && !isYou && typeof r._inviteId !== 'string' && (
-                            <Button size="icon" variant="ghost" className="h-8 w-8 text-red-300 hover:text-red-200" onClick={() => kickPlayer(r.id)}>
-                              <UserMinus className="h-4 w-4" />
-                            </Button>
                           )}
                         </div>
                       </div>
@@ -1229,7 +1234,7 @@ const Room: React.FC = () => {
                 <div className="mt-4 text-sm text-neutral-400">Waiting for players...</div>
               )}
               {roster.length === 1 && (
-                <div className="mt-4 text-xs text-neutral-300">Share this room code so friends can join.</div>
+                <div className="mt-4 text-xs text-neutral-300">Share the room code above so friends can join.</div>
               )}
             </>
           )}

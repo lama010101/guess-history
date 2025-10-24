@@ -68,6 +68,8 @@ interface GameContextState {
   hintsAllowed: number;
   roundTimerSec: number;
   timerEnabled: boolean; // Flag to determine if timer should be shown in HUD
+  authoritativeTimer: boolean;
+  setAuthoritativeTimer: (value: boolean) => void;
   totalGameAccuracy: number;
   totalGameXP: number;
   globalAccuracy: number;
@@ -76,7 +78,7 @@ interface GameContextState {
   setHintsAllowed: (hints: number) => void;
   setRoundTimerSec: (seconds: number) => void;
   setTimerEnabled: (enabled: boolean) => void; // Function to enable/disable timer
-  startGame: (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string; seed?: string; competeVariant?: 'sync' | 'async'; useHostHistory?: boolean; minYear?: number; maxYear?: number }) => Promise<void>; // Updated to accept settings incl. roomId + seed + competeVariant
+  startGame: (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string; seed?: string; competeVariant?: 'sync' | 'async'; useHostHistory?: boolean; minYear?: number; maxYear?: number; authoritativeTimer?: boolean }) => Promise<void>; // Updated to accept settings incl. roomId + seed + competeVariant
   startLevelUpGame: (level: number, settings?: { roomId?: string; seed?: string }) => Promise<void>;
   recordRoundResult: (result: Omit<RoundResult, 'roundIndex' | 'imageId' | 'actualCoordinates'>, currentRoundIndex: number) => void;
   handleTimeUp?: (currentRoundIndex: number) => void;
@@ -134,6 +136,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   const { timerSeconds, setTimerSeconds, setYearRange } = useSettingsStore();
   const [roundTimerSec, setRoundTimerSec] = useState<number>(timerSeconds || 60);
   const [timerEnabled, setTimerEnabled] = useState<boolean>(true);
+  const [authoritativeTimer, setAuthoritativeTimer] = useState<boolean>(false);
   // Cache for global oldest image year (used by Level Up constraints)
   const levelUpOldestYearRef = React.useRef<number | null>(null);
 
@@ -143,11 +146,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   }, [timerSeconds]);
 
   // Accept settings from startGame
-  const applyGameSettings = (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string }) => {
+  const applyGameSettings = (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string; authoritativeTimer?: boolean }) => {
     if (settings) {
       if (typeof settings.timerSeconds === 'number') setRoundTimerSec(settings.timerSeconds);
       if (typeof settings.hintsPerGame === 'number') setHintsAllowed(settings.hintsPerGame);
       if (typeof settings.timerEnabled === 'boolean') setTimerEnabled(settings.timerEnabled);
+      if (typeof settings.authoritativeTimer === 'boolean') setAuthoritativeTimer(settings.authoritativeTimer);
     }
   };
 
@@ -535,7 +539,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   }, []);
 
   // Function to fetch images and start a new game
-  const startGame = useCallback(async (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string; seed?: string; competeVariant?: 'sync' | 'async'; useHostHistory?: boolean; minYear?: number; maxYear?: number }) => {
+  const startGame = useCallback(async (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string; seed?: string; competeVariant?: 'sync' | 'async'; useHostHistory?: boolean; minYear?: number; maxYear?: number; authoritativeTimer?: boolean }) => {
     devLog("Starting new game...");
     clearSavedGameState(); // Clear any existing saved state
     setIsLoading(true);
@@ -567,7 +571,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       const newGameId = uuidv4();
       setGameId(newGameId);
       const isMultiplayer = !!settings?.roomId && !!settings?.seed;
-      devLog(`[GameContext] [GameID: ${newGameId}] Starting new game, roomId: ${newRoomId}, seed: ${settings?.seed ?? 'none'}, isMultiplayer: ${isMultiplayer}`);
+      devLog(`[GameContext] [GameID: ${newGameId}] Starting new game, roomId: ${newRoomId}, seed: ${settings?.seed ?? 'none'}, isMultiplayer: ${isMultiplayer}, authoritativeTimer: ${settings?.authoritativeTimer === true}`);
       setRoomId(newRoomId);
       try { sessionStorage.setItem('lastSyncedRoomId', newRoomId); } catch {}
       // Try deterministic selection first for multiplayer; otherwise use prepare()
@@ -1382,6 +1386,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     hintsAllowed,
     roundTimerSec,
     timerEnabled,
+    authoritativeTimer,
+    setAuthoritativeTimer,
     totalGameAccuracy,
     totalGameXP,
     globalAccuracy,

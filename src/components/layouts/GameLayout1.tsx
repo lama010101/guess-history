@@ -455,7 +455,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                         (e.currentTarget as HTMLInputElement).blur();
                       }
                     }}
-                    placeholder={showYearAlert ? 'You must guess the year' : 'Choose a year'}
+                    placeholder={showYearAlert ? 'You must guess the year' : 'Type or slide year'}
                     className={
                       cn(
                         "appearance-none pl-2 pr-1 py-0 h-6 leading-6 md:h-auto md:leading-normal bg-transparent focus:outline-none focus:ring-1 focus:ring-orange-400 rounded text-right md:shrink-0 text-base relative top-[2px] md:top-0",

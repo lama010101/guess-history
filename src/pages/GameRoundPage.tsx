@@ -499,7 +499,9 @@ const GameRoundPage: React.FC = () => {
     gameId,
     handleTimeUp,
     hydrateRoomImages,
-    syncRoomId
+    syncRoomId,
+    authoritativeTimer,
+    setAuthoritativeTimer,
   } = useGame();
   const { toast } = useToast();
 
@@ -523,6 +525,10 @@ const GameRoundPage: React.FC = () => {
   }, [isLevelUpRoute, levelUpLevel]);
   const [showIntro, setShowIntro] = useState<boolean>(false);
   const [roundStarted, setRoundStarted] = useState<boolean>(!isLevelUpRoute);
+  const authoritativeTimerRef = useRef<boolean>(false);
+  useEffect(() => {
+    authoritativeTimerRef.current = authoritativeTimer === true;
+  }, [authoritativeTimer]);
   // Track how the Level Up intro was opened: automatically (round 1) or manually from HUD
   const [introSource, setIntroSource] = useState<'auto' | 'hub'>('auto');
 
@@ -595,8 +601,9 @@ const GameRoundPage: React.FC = () => {
   }, [roomId, gameId, currentRoundIndex]);
 
   const autoStart = useMemo(() => {
-    // Start local game timer only after the round is explicitly started
-    return !!(timerEnabled && roundStarted && timerId);
+    // Start local timer when timer is enabled, round began, and we are responsible for local countdown
+    const expectsLocalTimer = !authoritativeTimerRef.current;
+    return !!(timerEnabled && roundStarted && timerId && expectsLocalTimer);
   }, [timerEnabled, roundStarted, timerId]);
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -610,6 +617,7 @@ const GameRoundPage: React.FC = () => {
     if (!timerEnabled) missing.push('timerEnabled=false');
     if (!roundStarted) missing.push('roundStarted=false');
     if (!timerId) missing.push('timerId=empty');
+    if (authoritativeTimerRef.current) missing.push('authoritativeTimer=true');
     return missing;
   }, [timerEnabled, roundStarted, timerId]);
 

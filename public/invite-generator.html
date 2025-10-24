@@ -9,13 +9,28 @@
     <style>
         body { font-family: 'Inter', sans-serif; }
         .btn {
-            @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            font-weight: 500;
+            border: none;
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
         }
         .btn-primary {
-            @apply bg-orange-500 text-white hover:bg-orange-600;
+            background-color: #f97316;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #ea580c;
         }
         .btn-secondary {
-            @apply bg-gray-200 hover:bg-gray-300 text-gray-800;
+            background-color: #e5e7eb;
+            color: #1f2937;
+        }
+        .btn-secondary:hover {
+            background-color: #d1d5db;
         }
     </style>
 </head>
@@ -51,7 +66,7 @@
                 <p class="text-green-700">✅ Invite link generated successfully!</p>
             </div>
             
-            <div class="relative
+            <div class="relative">
                 <input type="text" id="inviteLink" readonly 
                        class="w-full p-2 pr-10 border border-gray-300 rounded-lg bg-gray-50 text-sm font-mono overflow-x-auto">
                 <button onclick="copyToClipboard()" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700">

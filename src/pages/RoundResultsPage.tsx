@@ -608,9 +608,8 @@ const RoundResultsPage = () => {
         homeButton={
           <Button
             variant="outline"
-            size="sm"
             onClick={() => confirmNavigation(handleNavigateHome)}
-            className="px-2 py-1 h-auto text-xs rounded-md bg-[#444444] text-white hover:bg-[#555555] border border-[#444444] dark:bg-[#444444] dark:text-white dark:hover:bg-[#555555]"
+            className="h-12 w-12 rounded-full text-black shadow-md border-none bg-white hover:bg-gray-100"
             aria-label="Return to Home"
             title="Return to Home"
           >

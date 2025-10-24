@@ -83,7 +83,16 @@ interface ChatMsg {
 }
 type RosterEntry = { id: string; name: string; ready: boolean; host: boolean; userId?: string | null };
 type RosterMsg = { type: "roster"; players: RosterEntry[] };
-type StartMsg = { type: "start"; startedAt: string; durationSec: number; timerEnabled: boolean; seed: string; yearMin?: number; yearMax?: number };
+type StartMsg = {
+  type: "start";
+  startedAt: string;
+  durationSec: number;
+  timerEnabled: boolean;
+  seed: string;
+  yearMin?: number;
+  yearMax?: number;
+  authoritativeTimer?: boolean;
+};
 type SettingsMsg = { type: "settings"; timerSeconds?: number; timerEnabled?: boolean; mode?: "sync" | "async"; yearMin?: number; yearMax?: number };
 type HelloMsg = { type: "hello"; you: { id: string; name: string; host: boolean } };
 type ProgressMsg = { type: "progress"; from: string; roundNumber: number; substep?: string };
@@ -491,6 +500,43 @@ export default class Lobby implements Party.Server {
     }
   }
 
+  private async resetPersistedRoundState() {
+    const env = (this.room.env as unknown as Env) || {};
+    if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.warn('lobby: resetPersistedRoundState skipped due to missing Supabase credentials');
+      return;
+    }
+    const headers = this.supabaseHeaders(env);
+    if (!headers) return;
+    const baseUrl = `${env.SUPABASE_URL}/rest/v1`;
+    const roomParam = encodeURIComponent(this.room.id);
+    const targets: Array<{ table: string; query: string }> = [
+      { table: 'round_results', query: `room_id=eq.${roomParam}` },
+      { table: 'sync_round_scores', query: `room_id=eq.${roomParam}` },
+    ];
+
+    for (const { table, query } of targets) {
+      const url = `${baseUrl}/${table}?${query}`;
+      try {
+        const res = await fetch(url, {
+          method: 'DELETE',
+          headers,
+        });
+        if (!res.ok) {
+          let body = '';
+          try {
+            body = await res.text();
+          } catch (err) {
+            console.warn(`lobby: resetPersistedRoundState failed to read response for ${table}`, err);
+          }
+          console.warn(`lobby: resetPersistedRoundState failed ${res.status} ${res.statusText} at ${url}`, body || '<no response body>');
+        }
+      } catch (err) {
+        console.warn(`lobby: resetPersistedRoundState exception for ${table}`, err);
+      }
+    }
+  }
+
   // Broadcast an updated results-ready summary for a round, using the
   // currently active participant count for that round as the expected total.
   private async broadcastResultsReadyForRound(roundNumber: number) {
@@ -683,6 +729,7 @@ export default class Lobby implements Party.Server {
             const durationSec = Math.max(5, Math.min(600, this.timerSeconds || 60));
             const timerEnabled = !!this.timerEnabled;
             this.started = true;
+            await this.resetPersistedRoundState();
             this.submissionsByRound.clear();
             this.completedRounds.clear();
             this.activeByRound.clear();
@@ -696,6 +743,7 @@ export default class Lobby implements Party.Server {
             // fail to start the authoritative timer, we fall back to
             // non-authoritative local timers by setting this to false.
             let effectiveTimerEnabled = timerEnabled;
+            let authoritativeTimerStarted = false;
             if (timerEnabled) {
               const started = await this.startRoundTimer(durationSec);
               if (!started) {
@@ -703,10 +751,10 @@ export default class Lobby implements Party.Server {
                   "lobby: unable to start authoritative timer; falling back to non-authoritative start"
                 );
                 // Fallback: proceed with a start using client/local timers
-                effectiveTimerEnabled = false;
                 startedAt = new Date().toISOString();
               } else {
                 startedAt = started.startedAt;
+                authoritativeTimerStarted = true;
               }
             } else {
               // Timer disabled: still mark a start for synchronization
@@ -723,6 +771,7 @@ export default class Lobby implements Party.Server {
               startedAt,
               durationSec,
               timerEnabled: effectiveTimerEnabled,
+              authoritativeTimer: authoritativeTimerStarted,
               seed,
               yearMin: this.yearMin ?? undefined,
               yearMax: this.yearMax ?? undefined,

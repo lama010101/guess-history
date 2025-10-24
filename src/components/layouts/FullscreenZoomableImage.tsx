@@ -703,22 +703,12 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
           onMouseDown={(e) => { e.stopPropagation(); }}
           onTouchStart={(e) => { e.stopPropagation(); }}
           onTouchEnd={(e) => { e.stopPropagation(); }}
-          className="inline-flex items-center justify-center rounded-full bg-secondary/70 hover:bg-secondary/80 text-secondary-foreground w-[60px] h-[60px] shadow-lg active:brightness-[.95]"
-          style={{ animation: 'attentionPulse 10s ease-in-out infinite' }}
+          className="inline-flex items-center justify-center rounded-full bg-secondary/70 hover:bg-secondary/80 text-secondary-foreground w-[60px] h-[60px] shadow-lg active:brightness-[.95] attention-pulse"
           aria-label="Exit fullscreen"
           title="Exit fullscreen"
         >
           <Maximize className="w-[30px] h-[30px]" />
         </button>
-        <style>{`
-          @keyframes attentionPulse {
-            0%, 80%, 100% { transform: scale(1); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.30), 0 4px 6px -4px rgba(0,0,0,0.30); }
-            84% { transform: scale(1.28); box-shadow: 0 35px 45px -5px rgba(0,0,0,0.45), 0 16px 20px -4px rgba(0,0,0,0.45), 0 0 0 12px hsla(var(--secondary), 0.35); }
-            88% { transform: scale(1);   box-shadow: 0 10px 15px -3px rgba(0,0,0,0.30), 0 4px 6px -4px rgba(0,0,0,0.30); }
-            92% { transform: scale(1.28); box-shadow: 0 35px 45px -5px rgba(0,0,0,0.45), 0 16px 20px -4px rgba(0,0,0,0.45), 0 0 0 12px hsla(var(--secondary), 0.35); }
-            96% { transform: scale(1);   box-shadow: 0 10px 15px -3px rgba(0,0,0,0.30), 0 4px 6px -4px rgba(0,0,0,0.30); }
-          }
-        `}</style>
       </div>
     </div>
   );

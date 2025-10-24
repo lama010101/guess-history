@@ -356,9 +356,9 @@ const GameRoundPage: React.FC = () => {
             const avatarSource = avatarPrimary.length > 0
               ? avatarPrimary
               : (avatarFallback.length > 0 ? avatarFallback : null);
-            const cacheKeys: string[] = [];
-            if (rosterId) cacheKeys.push(rosterId);
-            if (trimmedName) cacheKeys.push(`name:${trimmedName.toLowerCase()}`);
+            const cacheKeys: string[] = rosterId
+              ? [rosterId]
+              : (trimmedName ? [`name:${trimmedName.toLowerCase()}`] : []);
 
             cacheKeys.forEach((key) => {
               const existing = updated[key];
@@ -832,15 +832,12 @@ const GameRoundPage: React.FC = () => {
       roundPeers.forEach((peer) => {
         const displayNameSafe = (peer.displayName ?? '').trim() || 'Player';
         const avatarUrl = peer.avatarUrl ?? null;
-        const keys: string[] = [];
-
-        if (typeof peer.userId === 'string' && peer.userId.trim().length > 0) {
-          keys.push(peer.userId.trim());
-        }
-
-        if (peer.displayName && peer.displayName.trim().length > 0) {
-          keys.push(`name:${peer.displayName.trim().toLowerCase()}`);
-        }
+        const keys: string[] =
+          (typeof peer.userId === 'string' && peer.userId.trim().length > 0)
+            ? [peer.userId.trim()]
+            : (peer.displayName && peer.displayName.trim().length > 0)
+              ? [`name:${peer.displayName.trim().toLowerCase()}`]
+              : [];
 
         keys.forEach((key) => {
           const existing = nextRef[key];
@@ -1514,6 +1511,12 @@ const GameRoundPage: React.FC = () => {
           setIsSubmitting(false);
           return;
         }
+        if (isCompeteMode) {
+          setHasSubmittedThisRound(true);
+          setWaitingForPeers(true);
+          setIsSubmitting(false);
+          return;
+        }
       }
 
       if (selectedYear === null) {
@@ -1589,6 +1592,10 @@ const GameRoundPage: React.FC = () => {
           setIsSubmitting(false);
         }, 2000);
       } else {
+        if (isCompeteMode) {
+          setHasSubmittedThisRound(true);
+          setWaitingForPeers(true);
+        }
         setIsSubmitting(false);
       }
     } catch (error) {

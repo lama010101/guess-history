@@ -53,9 +53,9 @@ export type LobbyServerMessage =
   | { type: 'full' }
   | { type: 'chat'; from: string; message: string; timestamp: string }
   | { type: 'roster'; players: { id: string; name: string; ready: boolean; host: boolean; userId?: string | null }[] }
-  | { type: 'settings'; timerSeconds?: number; timerEnabled?: boolean; mode?: 'sync' | 'async' }
+  | { type: 'settings'; timerSeconds?: number; timerEnabled?: boolean; mode?: 'sync' | 'async'; yearMin?: number; yearMax?: number }
   | { type: 'hello'; you: { id: string; name: string; host: boolean } }
-  | { type: 'start'; startedAt: string; durationSec: number; timerEnabled: boolean; seed: string }
+  | { type: 'start'; startedAt: string; durationSec: number; timerEnabled: boolean; seed: string; yearMin?: number; yearMax?: number }
   | { type: 'progress'; from: string; roundNumber: number; substep?: string }
   | { type: 'submission'; roundNumber: number; connectionId: string; from: string; userId?: string | null; submittedCount: number; totalPlayers: number; lobbySize: number }
   | { type: 'round-complete'; roundNumber: number; submittedCount: number; totalPlayers: number; lobbySize: number }
@@ -66,7 +66,7 @@ export type LobbyClientMessage =
   | { type: 'chat'; message: string; timestamp: string }
   | { type: 'ready'; ready: boolean }
   // Optional: host can send settings prior to start; server validates host
-  | { type: 'settings'; timerSeconds?: number; timerEnabled?: boolean; mode?: 'sync' | 'async' }
+  | { type: 'settings'; timerSeconds?: number; timerEnabled?: boolean; mode?: 'sync' | 'async'; yearMin?: number; yearMax?: number }
   | { type: 'progress'; roundNumber: number; substep?: string }
   | { type: 'submission'; roundNumber: number }
   | { type: 'results-ready'; roundNumber: number; ready: boolean }

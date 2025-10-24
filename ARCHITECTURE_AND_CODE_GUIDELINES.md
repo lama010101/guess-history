@@ -261,6 +261,36 @@
     - Client behavior (no UI changes): After a successful join is confirmed by `hello { you }`, `src/pages/Room.tsx` calls `declineInviteForRoom(roomCode, user.id)` once per mount (guarded by `clearedInvitesRef`) to silently clear any pending invites for that room/user.
     - Realtime: When invites are deleted, any listeners on `public.room_invites` receive delete events (REPLICA IDENTITY FULL).
 
+### Compete Room — Year Range Selection (2025-10-24)
+
+- **UI**: `src/pages/Room.tsx`
+  - Adds a "Year Range" card directly below the "Round Timer" card.
+  - Host sees a double-thumb slider (`@/components/ui/slider`) to pick `[min, max]` years. Non-host players see the selected range as text only.
+  - Slider bounds come from `YEAR_RANGE_MIN`/`YEAR_RANGE_MAX` in `src/lib/useSettingsStore.ts` and step by 5 years.
+- **State sync**: Host broadcasts the year range via PartyKit lobby `settings` messages; all clients update their local display and persist to the settings store (`setYearRange`).
+- **Protocol changes**: `src/lib/partyClient.ts`
+  - `settings` now optionally includes `yearMin?: number; yearMax?: number`.
+  - `start` also carries `yearMin?: number; yearMax?: number` so all clients launch with the same bounds.
+- **Server**: `server/lobby.ts`
+  - Accepts `yearMin/yearMax` on `settings`, stores them, and includes them in subsequent `settings` and `start` broadcasts.
+  - Normalizes the pair (swaps when `max < min`).
+- **Gameplay**: `src/contexts/GameContext.tsx`
+  - `startGame({ minYear, maxYear })` already applies the range to image preparation (both multiplayer and solo paths). The compete room passes the server-provided range from the `start` message into `startGame` so the 5-round set is filtered accordingly.
+
+### Final Results — Play Again Behavior (2025-10-24)
+
+- **Goal**: From the final results screen, “Play Again” preserves timer and year range in Solo and Compete, and in Compete Sync also preserves the same players (same room), while selecting different images.
+- **Solo**: `src/pages/FinalResultsPage.tsx` calls `startGame({ timerSeconds, timerEnabled, minYear, maxYear })` using the current values from `useGame()` and `useSettingsStore()`.
+- **Compete Sync**:
+  - The current room is reused to keep the same players. `FinalResultsPage` emits a lobby chat message with format `restart|<seed>|<dur>|<enabled>|<minYear>|<maxYear>` using `useLobbyChat()` so all clients receive a shared seed and settings.
+  - On receipt of a `restart|...` chat message, `FinalResultsPage` calls `startGame({ roomId, seed, competeVariant: 'sync', timerSeconds, timerEnabled, minYear, maxYear })` to launch the new game in place.
+  - The seed is freshly generated each time to produce a different 5-image set. `GameContext.startGame()` persists played images via `recordPlayedImages()` which further reduces repeats over time.
+- **Compete Async / Collaborate**: A fresh room is created but timer/year range are preserved when calling `startGame()`.
+- **Files**:
+  - `src/pages/FinalResultsPage.tsx` — handler `handlePlayAgain()` and chat listener for `restart|...` messages.
+  - `src/hooks/useLobbyChat.ts` — lightweight lobby chat used outside the Room page to coordinate restarts.
+  - `src/contexts/GameContext.tsx` — `startGame()` accepts `{ timerSeconds, timerEnabled, minYear, maxYear, roomId, seed, competeVariant }` and filters prepared images by the year bounds.
+
      ### Invitation UI (Bell & Sheet)
  
      - Component: `src/components/navigation/InvitesBell.tsx`

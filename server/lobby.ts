@@ -27,6 +27,8 @@ const SettingsMessage = z.object({
   timerSeconds: z.number().int().min(5).max(600).optional(),
   timerEnabled: z.boolean().optional(),
   mode: z.enum(["sync", "async"]).optional(),
+  yearMin: z.number().int().optional(),
+  yearMax: z.number().int().optional(),
 });
 
 const KickMessage = z.object({
@@ -81,8 +83,8 @@ interface ChatMsg {
 }
 type RosterEntry = { id: string; name: string; ready: boolean; host: boolean; userId?: string | null };
 type RosterMsg = { type: "roster"; players: RosterEntry[] };
-type StartMsg = { type: "start"; startedAt: string; durationSec: number; timerEnabled: boolean; seed: string };
-type SettingsMsg = { type: "settings"; timerSeconds?: number; timerEnabled?: boolean; mode?: "sync" | "async" };
+type StartMsg = { type: "start"; startedAt: string; durationSec: number; timerEnabled: boolean; seed: string; yearMin?: number; yearMax?: number };
+type SettingsMsg = { type: "settings"; timerSeconds?: number; timerEnabled?: boolean; mode?: "sync" | "async"; yearMin?: number; yearMax?: number };
 type HelloMsg = { type: "hello"; you: { id: string; name: string; host: boolean } };
 type ProgressMsg = { type: "progress"; from: string; roundNumber: number; substep?: string };
 type SubmissionBroadcastMsg = {
@@ -161,6 +163,8 @@ export default class Lobby implements Party.Server {
   private timerSeconds: number = 60;
   private timerEnabled: boolean = true;
   private mode: "sync" | "async" = "sync";
+  private yearMin: number | null = null;
+  private yearMax: number | null = null;
   // Track live connections for administrative actions (kick)
   private conns = new Map<string, Party.Connection>();
   private submissionsByRound = new Map<number, Set<string>>();
@@ -585,6 +589,8 @@ export default class Lobby implements Party.Server {
               timerSeconds: this.timerSeconds,
               timerEnabled: this.timerEnabled,
               mode: this.mode,
+              yearMin: this.yearMin ?? undefined,
+              yearMax: this.yearMax ?? undefined,
             } satisfies SettingsMsg)
           );
           await this.logEvent("join", { id: conn.id, name: effectiveName });
@@ -621,6 +627,16 @@ export default class Lobby implements Party.Server {
             // In sync mode, timer must be enabled; enforce here server-side
             if (this.mode === "sync") this.timerEnabled = true;
           }
+          // Year range is optional; store as provided
+          let nextMin = typeof msg.yearMin === 'number' ? Math.round(msg.yearMin) : this.yearMin;
+          let nextMax = typeof msg.yearMax === 'number' ? Math.round(msg.yearMax) : this.yearMax;
+          if (typeof nextMin === 'number' && typeof nextMax === 'number' && nextMax < nextMin) {
+            const t = nextMin;
+            nextMin = nextMax;
+            nextMax = t;
+          }
+          this.yearMin = typeof nextMin === 'number' ? nextMin : this.yearMin;
+          this.yearMax = typeof nextMax === 'number' ? nextMax : this.yearMax;
           await this.logEvent("settings", { timerSeconds: this.timerSeconds, timerEnabled: this.timerEnabled });
           // Broadcast updated settings to all participants for real-time sync
           this.broadcast({
@@ -628,6 +644,8 @@ export default class Lobby implements Party.Server {
             timerSeconds: this.timerSeconds,
             timerEnabled: this.timerEnabled,
             mode: this.mode,
+            yearMin: this.yearMin ?? undefined,
+            yearMax: this.yearMax ?? undefined,
           });
           return;
         }
@@ -699,8 +717,17 @@ export default class Lobby implements Party.Server {
               startedAt = new Date().toISOString();
             }
 
-            this.broadcast({ type: "start", startedAt, durationSec, timerEnabled: effectiveTimerEnabled, seed });
-            await this.logEvent("start", { startedAt, durationSec, timerEnabled: effectiveTimerEnabled, seed });
+            // Include year range if set
+            this.broadcast({
+              type: "start",
+              startedAt,
+              durationSec,
+              timerEnabled: effectiveTimerEnabled,
+              seed,
+              yearMin: this.yearMin ?? undefined,
+              yearMax: this.yearMax ?? undefined,
+            });
+            await this.logEvent("start", { startedAt, durationSec, timerEnabled: effectiveTimerEnabled, seed, yearMin: this.yearMin ?? undefined, yearMax: this.yearMax ?? undefined });
             // Persist authoritative round 1 start for async/refresh recovery
             await this.persistRoundStart(startedAt, durationSec);
           }

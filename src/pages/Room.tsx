@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { X, Copy, Search, UserPlus, UserMinus, ChevronDown, ChevronUp, Clock, MessageSquare, ChevronLeft, Users } from 'lucide-react';
+import { X, Copy, Search, UserPlus, UserMinus, ChevronDown, ChevronUp, Clock, MessageSquare, ChevronLeft, Users, Calendar } from 'lucide-react';
 
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import FriendsPage from '@/pages/FriendsPage';
@@ -19,6 +19,8 @@ import type { Tables } from '@/integrations/supabase/types';
 import { acquireChannel } from '@/integrations/supabase/realtime';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { fetchAvatarUrlsForUserIds } from '@/utils/profile/avatarLoader';
+import { Slider } from '@/components/ui/slider';
+import { useSettingsStore, YEAR_RANGE_MIN, YEAR_RANGE_MAX } from '@/lib/useSettingsStore';
 
 interface ChatItem {
   id: string;
@@ -76,6 +78,12 @@ const Room: React.FC = () => {
   const [friendsModalOpen, setFriendsModalOpen] = useState(false);
   const [localTimerSec, setLocalTimerSec] = useState<number>(Number(roundTimerSec || 60));
   const [draggingTimer, setDraggingTimer] = useState(false);
+  const settings = useSettingsStore();
+  const [yearRange, setYearRange] = useState<[number, number]>(settings.yearRange);
+  const [editingTimer, setEditingTimer] = useState(false);
+  const [timerInput, setTimerInput] = useState('');
+  const [editingYearSide, setEditingYearSide] = useState<null | 'min' | 'max'>(null);
+  const [yearInput, setYearInput] = useState('');
   type FriendEntry = { id: string; display_name: string; avatarUrl: string | null };
   const [friendsList, setFriendsList] = useState<FriendEntry[]>([]);
   const [friendsLoading, setFriendsLoading] = useState(false);
@@ -99,6 +107,7 @@ const Room: React.FC = () => {
   const roundTimerSecRef = useRef<number>(Number(roundTimerSec || 0));
   const chatListRef = useRef<HTMLDivElement | null>(null);
   const [avatarUrls, setAvatarUrls] = useState<Record<string, string | null>>({});
+  const yearRangeRef = useRef<[number, number]>(settings.yearRange);
 
   const getInitial = useCallback((value: string | null | undefined) => {
     const trimmed = (value ?? '').trim();
@@ -278,8 +287,9 @@ const Room: React.FC = () => {
                   typeof data.timerSeconds === 'number'
                     ? data.timerSeconds === lastSentSettingsRef.current.sec
                     : true;
-                // Only skip if mode isn't present; if mode is present we must process it
-                if (echoEnabled && echoSeconds) {
+                const hasYearUpdate = typeof (data as any).yearMin === 'number' || typeof (data as any).yearMax === 'number';
+                // Only skip if there is no new info outside timer echo (e.g., no year range update)
+                if (echoEnabled && echoSeconds && !hasYearUpdate) {
                   break;
                 }
               }
@@ -291,6 +301,16 @@ const Room: React.FC = () => {
                 const uiSec = Math.max(5, Math.min(300, Math.round(Number(data.timerSeconds) / 5) * 5));
                 if (uiSec !== roundTimerSecRef.current) {
                   setRoundTimerSec(uiSec);
+                }
+              }
+              if (typeof (data as any).yearMin === 'number' || typeof (data as any).yearMax === 'number') {
+                const rawMin = typeof (data as any).yearMin === 'number' ? Math.round((data as any).yearMin) : yearRangeRef.current[0];
+                const rawMax = typeof (data as any).yearMax === 'number' ? Math.round((data as any).yearMax) : yearRangeRef.current[1];
+                const start = Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, Math.min(rawMin, rawMax)));
+                const end = Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, Math.max(rawMin, rawMax)));
+                if (start !== yearRangeRef.current[0] || end !== yearRangeRef.current[1]) {
+                  setYearRange([start, end]);
+                  try { settings.setYearRange([start, end]); } catch {}
                 }
               }
               break;
@@ -337,7 +357,7 @@ const Room: React.FC = () => {
                   document.body.classList.add('mode-compete');
                   document.body.classList.remove('mode-levelup');
                 } catch {}
-                startGame({ roomId: roomCode, seed, timerSeconds: data.durationSec, timerEnabled: data.timerEnabled, competeVariant: 'sync', useHostHistory: isHost }).catch(() => {
+                startGame({ roomId: roomCode, seed, timerSeconds: data.durationSec, timerEnabled: data.timerEnabled, competeVariant: 'sync', useHostHistory: isHost, minYear: (data as any).yearMin, maxYear: (data as any).yearMax }).catch(() => {
                   startedRef.current = false;
                 });
               }
@@ -397,6 +417,7 @@ const Room: React.FC = () => {
   useEffect(() => { statusRef.current = status; }, [status]);
   useEffect(() => { timerEnabledRef.current = !!timerEnabled; }, [timerEnabled]);
   useEffect(() => { roundTimerSecRef.current = Number(roundTimerSec || 0); }, [roundTimerSec]);
+  useEffect(() => { yearRangeRef.current = yearRange; }, [yearRange]);
 
   // Keep local slider value in sync when not dragging
   useEffect(() => {
@@ -666,15 +687,11 @@ const Room: React.FC = () => {
       const raw = Number(roundTimerSec) || 60;
       const clamped = Math.max(5, Math.min(300, Math.round(raw / 5) * 5));
       next = { sec: clamped, enabled: true };
-      if (!last || last.sec !== clamped || last.enabled !== true) {
-        payload = { type: 'settings', timerSeconds: clamped, timerEnabled: true } as any;
-      }
+      payload = { type: 'settings', timerSeconds: clamped, timerEnabled: true, yearMin: yearRangeRef.current[0], yearMax: yearRangeRef.current[1] } as any;
     } else {
       // When disabling, omit timerSeconds to satisfy server schema (min 5)
       next = { sec: 0, enabled: false };
-      if (!last || last.enabled !== false) {
-        payload = { type: 'settings', timerEnabled: false } as any;
-      }
+      payload = { type: 'settings', timerEnabled: false, yearMin: yearRangeRef.current[0], yearMax: yearRangeRef.current[1] } as any;
     }
     if (payload) {
       try {
@@ -682,7 +699,7 @@ const Room: React.FC = () => {
         lastSentSettingsRef.current = next!;
       } catch {}
     }
-  }, [isHost, roundTimerSec, timerEnabled]);
+  }, [isHost, roundTimerSec, timerEnabled, yearRange[0], yearRange[1]]);
 
   const copyInvite = useCallback(async () => {
     try {
@@ -762,6 +779,52 @@ const Room: React.FC = () => {
     background: `linear-gradient(to right, #22d3ee 0%, #22d3ee ${sliderPercent}%, rgba(255,255,255,0.08) ${sliderPercent}%, rgba(255,255,255,0.05) 100%)`,
   }), [sliderPercent]);
 
+  const parseTimerInput = useCallback((val: string): number | null => {
+    const s = (val || '').trim().toLowerCase();
+    if (!s) return null;
+    // Support raw seconds, or formats like "90s", "2m"
+    if (s.endsWith('m')) {
+      const m = Number(s.slice(0, -1).trim());
+      if (!Number.isFinite(m)) return null;
+      return Math.round(m * 60);
+    }
+    if (s.endsWith('s')) {
+      const sec = Number(s.slice(0, -1).trim());
+      if (!Number.isFinite(sec)) return null;
+      return Math.round(sec);
+    }
+    const n = Number(s);
+    if (!Number.isFinite(n)) return null;
+    return Math.round(n);
+  }, []);
+
+  const commitTimerInput = useCallback(() => {
+    const raw = parseTimerInput(timerInput);
+    if (raw == null) {
+      setEditingTimer(false);
+      return;
+    }
+    const clamped = Math.max(5, Math.min(300, raw));
+    setEditingTimer(false);
+    setLocalTimerSec(clamped);
+    setRoundTimerSec(clamped);
+  }, [parseTimerInput, timerInput, setRoundTimerSec]);
+
+  const commitYearFromInput = useCallback((side: 'min' | 'max') => {
+    const raw = Math.round(Number((yearInput || '').trim()));
+    if (!Number.isFinite(raw)) {
+      setEditingYearSide(null);
+      return;
+    }
+    const clamped = Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, raw));
+    let next: [number, number] = [...yearRange] as [number, number];
+    if (side === 'min') next = [clamped, next[1]]; else next = [next[0], clamped];
+    if (next[1] < next[0]) next = [Math.min(...next), Math.max(...next)];
+    setEditingYearSide(null);
+    setYearRange(next);
+    try { settings.setYearRange(next); } catch {}
+  }, [yearInput, yearRange, settings]);
+
   return (
     <div className="min-h-screen w-full bg-[#0b0b0f] text-white">
       <style>{`
@@ -773,6 +836,10 @@ const Room: React.FC = () => {
         #room-timer-range:disabled::-moz-range-thumb { background: #1e293b; border-color: #1cbfdb; box-shadow: none; }
         #room-timer-range::-webkit-slider-runnable-track { height: 10px; border-radius: 9999px; background: rgba(255,255,255,0.05); }
         #room-timer-range::-moz-range-track { height: 10px; border-radius: 9999px; background: rgba(255,255,255,0.05); }
+        /* Year range slider (Radix) styling to match Round Timer look */
+        .room-year-range .slider-range { background: #22d3ee; }
+        .room-year-range .slider-thumb { background: #101316; border-color: #22d3ee; box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.25); }
+        .room-year-range .slider-thumb:focus-visible { outline: none; }
       `}</style>
       <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 pb-28 pt-6">
         <div className="flex items-center justify-between">
@@ -796,9 +863,33 @@ const Room: React.FC = () => {
               <Clock className="h-5 w-5 text-white" />
               <span>Round Timer</span>
             </div>
-            <span className="text-sm font-semibold text-[#22d3ee]">
-              {formatTime(Number(isHost && draggingTimer ? localTimerSec : (roundTimerSec || 0)))}
-            </span>
+            <div className="text-sm font-semibold text-[#22d3ee]">
+              {isHost ? (
+                editingTimer ? (
+                  <Input
+                    autoFocus
+                    value={timerInput}
+                    onChange={(e) => setTimerInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') commitTimerInput(); if (e.key === 'Escape') setEditingTimer(false); }}
+                    onBlur={() => setEditingTimer(false)}
+                    className="h-7 w-24 rounded-md border border-[#3f424b] bg-[#1d2026] px-2 text-right text-sm text-white"
+                    placeholder={`${Number(roundTimerSec || 60)}s`}
+                    aria-label="Set round timer in seconds"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => { setEditingTimer(true); setTimerInput(String(Number(roundTimerSec || localTimerSec || 60))); }}
+                    className="hover:text-[#b6ecff]"
+                    aria-label="Edit round timer"
+                  >
+                    {formatTime(Number(isHost && draggingTimer ? localTimerSec : (roundTimerSec || 0)))}
+                  </button>
+                )
+              ) : (
+                <span>{formatTime(Number(roundTimerSec || 0))}</span>
+              )}
+            </div>
           </div>
           {isHost && (
             <div className="mt-4">
@@ -826,6 +917,83 @@ const Room: React.FC = () => {
             </div>
           )}
 
+        </section>
+
+        <section className="rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-base font-semibold text-white">
+              <Calendar className="h-5 w-5 text-white" />
+              <span>Year Range</span>
+            </div>
+            <div className="text-sm font-semibold text-[#22d3ee] flex items-center gap-1">
+              {isHost && editingYearSide === 'min' ? (
+                <Input
+                  autoFocus
+                  value={yearInput}
+                  onChange={(e) => setYearInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') commitYearFromInput('min'); if (e.key === 'Escape') setEditingYearSide(null); }}
+                  onBlur={() => setEditingYearSide(null)}
+                  className="h-7 w-20 rounded-md border border-[#3f424b] bg-[#1d2026] px-2 text-right text-sm text-white"
+                  aria-label="Edit minimum year"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { if (isHost) { setEditingYearSide('min'); setYearInput(String(yearRange[0])); } }}
+                  className="hover:text-[#b6ecff]"
+                  aria-label="Edit minimum year"
+                >
+                  {yearRange[0]}
+                </button>
+              )}
+              <span className="px-1">—</span>
+              {isHost && editingYearSide === 'max' ? (
+                <Input
+                  autoFocus
+                  value={yearInput}
+                  onChange={(e) => setYearInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') commitYearFromInput('max'); if (e.key === 'Escape') setEditingYearSide(null); }}
+                  onBlur={() => setEditingYearSide(null)}
+                  className="h-7 w-20 rounded-md border border-[#3f424b] bg-[#1d2026] px-2 text-right text-sm text-white"
+                  aria-label="Edit maximum year"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { if (isHost) { setEditingYearSide('max'); setYearInput(String(yearRange[1])); } }}
+                  className="hover:text-[#b6ecff]"
+                  aria-label="Edit maximum year"
+                >
+                  {yearRange[1]}
+                </button>
+              )}
+            </div>
+          </div>
+          {isHost && (
+            <div className="mt-4 room-year-range">
+              <Slider
+                value={yearRange}
+                min={YEAR_RANGE_MIN}
+                max={YEAR_RANGE_MAX}
+                step={5}
+                onValueChange={(vals) => {
+                  if (!Array.isArray(vals) || vals.length !== 2) return;
+                  const a = Math.round(Number(vals[0]));
+                  const b = Math.round(Number(vals[1]));
+                  const start = Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, Math.min(a, b)));
+                  const end = Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, Math.max(a, b)));
+                  const next: [number, number] = [start, end];
+                  setYearRange(next);
+                  try { settings.setYearRange(next); } catch {}
+                }}
+                className="w-full"
+              />
+              <div className="mt-2 flex justify-between text-xs text-white">
+                <span>{YEAR_RANGE_MIN}</span>
+                <span>{YEAR_RANGE_MAX}</span>
+              </div>
+            </div>
+          )}
         </section>
 
         {isHost && (

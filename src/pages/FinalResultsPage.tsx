@@ -10,6 +10,8 @@ import { updateUserMetrics } from '@/utils/profile/profileService';
 import { supabase } from '@/integrations/supabase/client';
 import RoundResultCard from '@/components/RoundResultCard';
 import { useGame } from "@/contexts/GameContext";
+import { useAuth } from '@/contexts/AuthContext';
+import { useLobbyChat } from '@/hooks/useLobbyChat';
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useRef } from 'react';
 import { BadgeEarnedPopup } from '@/components/badges/BadgeEarnedPopup';
@@ -31,6 +33,7 @@ import FinalScoreboard from '@/components/scoreboard/FinalScoreboard';
 
 const FinalResultsPage = () => {
   const distanceUnit = useSettingsStore(s => s.distanceUnit);
+  const yearRange = useSettingsStore(s => s.yearRange);
   const navigate = useNavigate();
   const location = useLocation();
   const { 
@@ -47,7 +50,9 @@ const FinalResultsPage = () => {
     gameId,
     setProvisionalGlobalMetrics,
     roomId,
-    syncRoomId
+    syncRoomId,
+    roundTimerSec,
+    timerEnabled
   } = useGame();
   const { roomId: routeRoomId } = useParams<{ roomId?: string }>();
   const effectiveRoomId = React.useMemo(() => roomId || routeRoomId || null, [roomId, routeRoomId]);
@@ -56,6 +61,7 @@ const FinalResultsPage = () => {
   const awardsSubmittedRef = useRef<boolean>(false);
   // In-flight guard for starting the next level; resets on failure so user can retry
   const isContinuingRef = useRef<boolean>(false);
+  const restartSeedRef = useRef<string | null>(null);
   
   // Apply Level Up theming via body class when under /level/ routes
   useEffect(() => {
@@ -97,6 +103,13 @@ const FinalResultsPage = () => {
   // Compute Level Up route and constraints early to keep hooks order stable across renders
   const isLevelUp = location.pathname.includes('/level/');
   const isSyncCompeteRoute = React.useMemo(() => location.pathname.startsWith('/compete/sync/'), [location.pathname]);
+  const { user } = useAuth();
+  const { messages: lobbyMessages, sendMessage: sendLobbyMessage } = useLobbyChat({
+    roomCode: isSyncCompeteRoute && effectiveRoomId ? effectiveRoomId : null,
+    displayName: 'Player',
+    userId: user?.id,
+    enabled: Boolean(isSyncCompeteRoute && effectiveRoomId),
+  });
   const levelConstraints = React.useMemo(() => {
     if (!isLevelUp) return null;
     const lvl = typeof currentLevelFromPath === 'number' ? currentLevelFromPath : 1;
@@ -117,6 +130,33 @@ const FinalResultsPage = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Listen for restart messages from lobby chat to auto-start a new synced game
+  useEffect(() => {
+    if (!isSyncCompeteRoute || !effectiveRoomId) return;
+    if (!Array.isArray(lobbyMessages) || lobbyMessages.length === 0) return;
+    const last = lobbyMessages[lobbyMessages.length - 1];
+    if (!last || typeof last.message !== 'string') return;
+    if (!last.message.startsWith('restart|')) return;
+    const parts = last.message.split('|');
+    // Format: restart|seed|dur|enabled(1|0)|minYear|maxYear
+    if (parts.length < 6) return;
+    const seed = parts[1];
+    if (!seed || (restartSeedRef.current && restartSeedRef.current === seed)) return;
+    const dur = Number.parseInt(parts[2] || '0', 10);
+    const enabled = parts[3] === '1';
+    const minYear = Number.parseInt(parts[4] || '');
+    const maxYear = Number.parseInt(parts[5] || '');
+    restartSeedRef.current = seed;
+    (async () => {
+      try {
+        resetGame();
+        await startGame({ roomId: effectiveRoomId!, seed, competeVariant: 'sync', timerSeconds: Number.isFinite(dur) ? dur : undefined, timerEnabled: enabled, minYear: Number.isFinite(minYear) ? minYear : undefined, maxYear: Number.isFinite(maxYear) ? maxYear : undefined });
+      } catch (e) {
+        console.error('[FinalResultsPage] restart via chat failed', e);
+      }
+    })();
+  }, [lobbyMessages, isSyncCompeteRoute, effectiveRoomId, resetGame, startGame]);
 
   React.useEffect(() => {
     if (!isSyncCompeteRoute) return;
@@ -434,19 +474,30 @@ const FinalResultsPage = () => {
         const level = levelMatch && levelMatch[1] ? parseInt(levelMatch[1], 10) : 1;
         await startLevelUpGame(level);
       } else if (path.startsWith('/compete/')) {
-        // Compete mode - preserve variant (sync/async) and create new room
+        // Compete mode
         const variant = path.includes('/compete/async/') ? 'async' : 'sync';
-        const newRoomId = `room_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-        const seed = Date.now().toString(36);
-        await startGame({ roomId: newRoomId, seed, competeVariant: variant });
+        if (variant === 'sync' && effectiveRoomId) {
+          // Reuse same room/players. Broadcast a restart seed so all clients sync to the same images.
+          const seed = Date.now().toString(36);
+          restartSeedRef.current = seed;
+          const dur = Number(roundTimerSec || 0);
+          const [minY, maxY] = Array.isArray(yearRange) ? yearRange : [undefined, undefined];
+          try { sendLobbyMessage?.(`restart|${seed}|${dur}|${timerEnabled ? 1 : 0}|${minY ?? ''}|${maxY ?? ''}`); } catch {}
+          await startGame({ roomId: effectiveRoomId, seed, competeVariant: 'sync', timerSeconds: dur, timerEnabled, minYear: (minY as number | undefined), maxYear: (maxY as number | undefined) });
+        } else {
+          // Async or no roomId: fallback to creating a new room
+          const newRoomId = `room_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+          const seed = Date.now().toString(36);
+          await startGame({ roomId: newRoomId, seed, competeVariant: variant, timerSeconds: Number(roundTimerSec || 0), timerEnabled, minYear: (yearRange?.[0] as number | undefined), maxYear: (yearRange?.[1] as number | undefined) });
+        }
       } else if (path.startsWith('/collaborate/')) {
         // Collaborate mode - create new room with sync variant
         const newRoomId = `room_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
         const seed = Date.now().toString(36);
-        await startGame({ roomId: newRoomId, seed, competeVariant: 'sync' });
+        await startGame({ roomId: newRoomId, seed, competeVariant: 'sync', timerSeconds: Number(roundTimerSec || 0), timerEnabled, minYear: (yearRange?.[0] as number | undefined), maxYear: (yearRange?.[1] as number | undefined) });
       } else {
         // Default to starting a new solo game if no specific mode is detected
-        await startGame();
+        await startGame({ timerSeconds: Number(roundTimerSec || 0), timerEnabled, minYear: (yearRange?.[0] as number | undefined), maxYear: (yearRange?.[1] as number | undefined) });
       }
     } catch (error) {
       console.error('Error in handlePlayAgain:', error);

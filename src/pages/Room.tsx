@@ -1217,8 +1217,10 @@ const Room: React.FC = () => {
                               type="button"
                               onClick={toggleReady}
                               disabled={status !== 'open'}
-                              className={`rounded-xl px-4 py-1.5 text-xs font-semibold transition-colors shadow-lg attention-pulse ${ownReady ? 'bg-[#22d96d] text-black hover:bg-[#1fb862]' : 'bg-[#22d3ee] text-black hover:bg-[#1cbfdb]'}`}
-                              style={{ '--attention-pulse-shadow-color': 'rgba(34, 211, 238, 0.35)' } as React.CSSProperties}
+                              className={`rounded-xl px-4 py-1.5 text-xs font-semibold transition-colors shadow-lg ${ownReady ? 'bg-[#22d96d] text-black hover:bg-[#1fb862]' : 'attention-pulse bg-[#22d3ee] text-black hover:bg-[#1cbfdb]'}`}
+                              style={(!ownReady
+                                ? ({ '--attention-pulse-shadow-color': 'rgba(34, 211, 238, 0.35)' } as React.CSSProperties)
+                                : undefined)}
                             >
                               {ownReady ? 'Ready!' : 'Ready?'}
                             </button>

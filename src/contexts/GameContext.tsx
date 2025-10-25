@@ -243,13 +243,59 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     }
   }, [gameId]);
 
-  // Save game state to DB whenever it changes
+  const persistLocalGameState = useCallback((payload: { roomId: string | null; gameId: string | null; roundResults: RoundResult[]; images: GameImage[] }) => {
+    try {
+      const snapshot = {
+        roomId: payload.roomId,
+        gameId: payload.gameId,
+        roundResults: payload.roundResults,
+        images: payload.images,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem('gh_active_game', JSON.stringify(snapshot));
+    } catch (e) {
+      console.warn('[GameContext] persistLocalGameState failed', e);
+    }
+  }, []);
+
   const saveGameState = useCallback(() => {
     devLog('Game state persisted to DB via recordRoundResult');
+    persistLocalGameState({ roomId, gameId, roundResults, images });
+  }, [persistLocalGameState, roomId, gameId, roundResults, images]);
+
+  useEffect(() => {
+    if (!roomId && !gameId) return;
+    if (images.length === 0 && roundResults.length === 0) return;
+    persistLocalGameState({ roomId, gameId, roundResults, images });
+  }, [persistLocalGameState, roomId, gameId, roundResults, images]);
+
+  const hydrateLocalGameState = useCallback(() => {
+    try {
+      const raw = localStorage.getItem('gh_active_game');
+      if (!raw) return;
+      const snapshot = JSON.parse(raw);
+      if (!snapshot) return;
+      if (typeof snapshot.gameId === 'string') {
+        setGameId(snapshot.gameId);
+      }
+      if (Array.isArray(snapshot.images) && snapshot.images.length > 0) {
+        setImages(snapshot.images);
+      }
+      if (Array.isArray(snapshot.roundResults) && snapshot.roundResults.length > 0) {
+        setRoundResults(snapshot.roundResults);
+      }
+      if (typeof snapshot.roomId === 'string' && snapshot.roomId) {
+        setRoomId(snapshot.roomId);
+      }
+      devLog('[GameContext] Hydrated local snapshot');
+    } catch (e) {
+      console.warn('[GameContext] hydrateLocalGameState failed', e);
+    }
   }, []);
 
   // Load game state from DB on mount
   useEffect(() => {
+    hydrateLocalGameState();
     const loadGameState = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
@@ -298,6 +344,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           
           // Clear localStorage since we're using DB
           localStorage.removeItem('gh_current_game');
+          localStorage.removeItem('gh_active_game');
         }
       } catch (error) {
         console.error('Error loading game state from DB:', error);
@@ -305,11 +352,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     };
 
     loadGameState();
-  }, []);
+  }, [hydrateLocalGameState, gameId]);
 
   // Clear saved game state when component unmounts or game is reset
   const clearSavedGameState = useCallback(() => {
     localStorage.removeItem('gh_current_game');
+    localStorage.removeItem('gh_active_game');
   }, []);
 
   // Function to fetch global metrics from Supabase

@@ -1,4 +1,4 @@
-The code comes from Lovable AI. To work locally in VSCode clones, we can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+The codebase is maintained in this GitHub repository. Clone it locally to develop in VSCode; pushing to GitHub shares updates with collaborators.
 
 The only requirement is having Node.js & npm installed - install with nvm
 

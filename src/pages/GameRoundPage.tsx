@@ -6,7 +6,7 @@ import { Loader, MapPin, MessageCircle, X, Zap } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserProfile, fetchUserProfile } from '@/utils/profile/profileService';
 import { useToast } from "@/components/ui/use-toast";
-import { setCurrentRoundInSession, getCurrentRoundFromSession, upsertSessionProgress } from '@/utils/roomState';
+import { setCurrentRoundInSession, getCurrentRoundFromSession, upsertSessionProgress, getSessionProgress } from '@/utils/roomState';
 import { Button } from '@/components/ui/button';
 import { SegmentedProgressBar } from '@/components/ui';
 import LevelUpIntro from '@/components/levelup/LevelUpIntro';
@@ -42,6 +42,7 @@ let __globalMinYearCache: number | null = null;
 const GameRoundPage: React.FC = () => {
   // --- Hint system V2 ---
   const navigate = useNavigate();
+  const [historyLocked, setHistoryLocked] = useState(false);
   const { roomId, roundNumber: roundNumberStr } = useParams<{ roomId: string; roundNumber: string }>();
   const location = useLocation();
   // Derive base mode path (everything before '/game/') to keep navigation inside the current mode (e.g., /level, /solo, /compete/sync)
@@ -122,6 +123,117 @@ const GameRoundPage: React.FC = () => {
     }
     return '';
   }, []);
+
+  const {
+    images,
+    roundResults,
+    recordRoundResult,
+    isLoading: isContextLoading,
+    roundTimerSec,
+    timerEnabled,
+    setTimerEnabled,
+    setGameId,
+    gameId,
+    handleTimeUp,
+    hydrateRoomImages,
+    syncRoomId,
+    authoritativeTimer,
+    setAuthoritativeTimer,
+  } = useGame();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!historyLocked) return;
+    const handlePop = () => {
+      try {
+        window.history.pushState(null, '', window.location.href);
+      } catch {}
+    };
+    try {
+      window.history.pushState(null, '', window.location.href);
+    } catch {}
+    window.addEventListener('popstate', handlePop);
+    return () => {
+      window.removeEventListener('popstate', handlePop);
+    };
+  }, [historyLocked]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!roomId) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [roomId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const key = event.key || '';
+      const lower = key.toLowerCase();
+      const isF5 = key === 'F5';
+      const isSoftRefresh = (event.ctrlKey || event.metaKey) && lower === 'r';
+      const isHardRefresh = (event.ctrlKey || event.metaKey) && event.shiftKey && lower === 'r';
+      if (isF5 || isSoftRefresh || isHardRefresh) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, []);
+
+  const verifyAndResync = useCallback(async () => {
+    try {
+      if (!roomId) return;
+      await syncRoomId(roomId);
+      if (!images || images.length === 0) {
+        await hydrateRoomImages(roomId);
+      }
+
+      const [serverRound, session] = await Promise.all([
+        getCurrentRoundFromSession(roomId),
+        getSessionProgress(roomId),
+      ]);
+
+      if (typeof serverRound === 'number' && Number.isFinite(serverRound) && serverRound > 0 && serverRound !== roundNumber) {
+        navigate(`${modeBasePath}/game/room/${roomId}/round/${serverRound}`, { replace: true });
+        return;
+      }
+
+      if (session?.current_route && session.current_route !== location.pathname) {
+        navigate(session.current_route, { replace: true });
+      }
+    } catch (err) {
+      console.warn('[GameRoundPage] verifyAndResync failed', err);
+    }
+  }, [roomId, syncRoomId, hydrateRoomImages, images, roundNumber, navigate, modeBasePath, location.pathname]);
+
+  useEffect(() => {
+    void verifyAndResync();
+  }, [verifyAndResync]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handlePageShow = (event: Event) => {
+      const pageEvent = event as PageTransitionEvent;
+      if ((pageEvent as any)?.persisted) {
+        void verifyAndResync();
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => {
+      window.removeEventListener('pageshow', handlePageShow);
+    };
+  }, [verifyAndResync]);
   const registerRecentSubmitter = useCallback((userId?: string | null, fallbackName?: string | null) => {
     const rosterId = makeRosterId(userId, fallbackName);
     if (!rosterId) return;
@@ -487,24 +599,6 @@ const GameRoundPage: React.FC = () => {
     }
   }, [pendingNavigation]);
 
-  const {
-    images,
-    roundResults,
-    recordRoundResult,
-    isLoading: isContextLoading,
-    roundTimerSec,
-    timerEnabled,
-    setTimerEnabled,
-    setGameId,
-    gameId,
-    handleTimeUp,
-    hydrateRoomImages,
-    syncRoomId,
-    authoritativeTimer,
-    setAuthoritativeTimer,
-  } = useGame();
-  const { toast } = useToast();
-
   const isLevelUpRoute = useMemo(() => location.pathname.includes('/level/'), [location.pathname]);
   // Parse level from route start: "/level" or "/level/:level"
   const levelUpLevel = useMemo(() => {
@@ -771,6 +865,21 @@ const GameRoundPage: React.FC = () => {
         if (!user || !user.id) return;
         if (isNaN(currentRoundIndex)) return;
 
+        if (!roomId) {
+          setHistoryLocked(false);
+          return;
+        }
+
+        setHistoryLocked(true);
+
+        const session = await getSessionProgress(roomId);
+        if (session?.current_route && session.current_route !== location.pathname) {
+          submittedRedirectRef.done = true;
+          setHistoryLocked(false);
+          navigate(session.current_route, { replace: true });
+          return;
+        }
+
         let found = false;
         // Prefer room-scoped uniqueness
         if (roomId) {
@@ -802,14 +911,19 @@ const GameRoundPage: React.FC = () => {
             try { console.debug('[GameRoundPage] Guard: existing result found; redirecting to results', { roundNumber, roomId, gameId }); } catch {}
           }
           navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
+          setHistoryLocked(false);
         } else if (import.meta.env.DEV) {
           try { console.debug('[GameRoundPage] Guard: no existing result; allow entry', { roundNumber, roomId, gameId }); } catch {}
+        }
+
+        if (!found) {
+          setHistoryLocked(true);
         }
       } catch (e) {
         try { console.warn('[GameRoundPage] Guard check failed (proceeding without redirect):', e); } catch {}
       }
     })();
-  }, [user, roomId, gameId, currentRoundIndex, navigate, roundNumber, modeBasePath, submittedRedirectRef, isCompeteMode]);
+  }, [user, roomId, gameId, currentRoundIndex, navigate, roundNumber, modeBasePath, submittedRedirectRef, isCompeteMode, awaitingSubmissionAckRef, location.pathname]);
 
   // Persist URL-derived round to the backend session so refresh lands on same round
 
@@ -828,6 +942,73 @@ const GameRoundPage: React.FC = () => {
     isCompeteMode && roomId ? roomId : null,
     isCompeteMode ? effectiveRoundNumber : null
   );
+
+  useEffect(() => {
+    if (!isCompeteMode || !roomId) {
+      setSubmittedCounts({ submitted: 0, total: 0 });
+      return;
+    }
+
+    const currentPlayerKey = user?.id ?? (displayName ? `name:${displayName.trim().toLowerCase()}` : null);
+
+    const total = roundPeers.length;
+    const submitted = roundPeers.filter((peer) => peer.submitted).length;
+    // Fallback: if we locally submitted but our DB row hasn't appeared yet,
+    // treat self as submitted for the purpose of progressing to results.
+    const selfId = user?.id || null;
+    const selfPeer = roundPeers.find((p) => p.userId === selfId) || null;
+    const submittedAdj = submitted + (hasSubmittedThisRound && (!selfPeer || selfPeer.submitted !== true) ? 1 : 0);
+    const allSubmitted = total > 0 && submittedAdj >= total;
+    setSubmittedCounts({ submitted, total });
+
+    const otherSubmitters = roundPeers.filter((peer) => {
+      if (!peer.submitted) return false;
+      const peerKey = peer.userId ?? (peer.displayName ? `name:${peer.displayName.trim().toLowerCase()}` : null);
+      if (!peerKey) return true;
+      if (currentPlayerKey && peerKey === currentPlayerKey) return false;
+      return true;
+    });
+    const newSubmitterNames: string[] = [];
+
+    otherSubmitters.forEach((peer) => {
+      const peerKey = peer.userId
+        ?? (peer.displayName ? `name:${peer.displayName.trim().toLowerCase()}` : null)
+        ?? (peer.guessLat != null && peer.guessLng != null ? `coords:${peer.guessLat}:${peer.guessLng}` : `score:${peer.score}:${peer.accuracy}`);
+      if (!submittedPeerIdsRef.current.has(peerKey)) {
+        submittedPeerIdsRef.current.add(peerKey);
+        newSubmitterNames.push(peer.displayName?.trim() || 'Another player');
+        registerRecentSubmitter(peer.userId ?? null, peer.displayName ?? null);
+      }
+    });
+
+    if (newSubmitterNames.length > 0) {
+      const progressLabel = total > 0 ? ` (${submitted}/${total})` : '';
+      const submitterLabel = newSubmitterNames.length === 1 ? newSubmitterNames[0] : `${newSubmitterNames.length} players`;
+      showSubmissionNotice(`${submitterLabel} submitted${progressLabel}`);
+      
+      if (timerEnabledRef.current && !hasClampedThisRound.current && remainingTimeRef.current > 15) {
+        applyCountdownRush();
+      }
+    }
+
+    if (!hasSubmittedThisRound) {
+      if (isCompeteMode) {
+        setWaitingForPeers(false);
+      }
+      return;
+    }
+
+    if (isCompeteMode) {
+      setWaitingForPeers(!allSubmitted);
+      if (!allSubmitted && timerEnabledRef.current) {
+        setIsTimerActive(true);
+      }
+    } else if (allSubmitted && !hasNavigatedToResultsRef.current) {
+      hasNavigatedToResultsRef.current = true;
+      setWaitingForPeers(false);
+      navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
+    }
+  }, [roundPeers, waitingForPeers, roomId, modeBasePath, navigate, roundNumber, isCompeteMode, hasSubmittedThisRound, showSubmissionNotice, applyCountdownRush, registerRecentSubmitter]);
 
   useEffect(() => {
     if (!isCompeteMode) return;
@@ -900,73 +1081,6 @@ const GameRoundPage: React.FC = () => {
     setRoundStarted((prev) => prev || !isLevelUpRoute || roundNumber > 1);
     sendLobbyPayload?.({ type: 'progress', roundNumber, substep: 'round-start' });
   }, [isCompeteMode, roomId, roundNumber, sendLobbyPayload, isLevelUpRoute]);
-
-  useEffect(() => {
-    if (!isCompeteMode || !roomId) {
-      setSubmittedCounts({ submitted: 0, total: 0 });
-      return;
-    }
-
-    const currentPlayerKey = user?.id ?? (displayName ? `name:${displayName.trim().toLowerCase()}` : null);
-
-    const total = roundPeers.length;
-    const submitted = roundPeers.filter((peer) => peer.submitted).length;
-    // Fallback: if we locally submitted but our DB row hasn't appeared yet,
-    // treat self as submitted for the purpose of progressing to results.
-    const selfId = user?.id || null;
-    const selfPeer = roundPeers.find((p) => p.userId === selfId) || null;
-    const submittedAdj = submitted + (hasSubmittedThisRound && (!selfPeer || selfPeer.submitted !== true) ? 1 : 0);
-    const allSubmitted = total > 0 && submittedAdj >= total;
-    setSubmittedCounts({ submitted, total });
-
-    const otherSubmitters = roundPeers.filter((peer) => {
-      if (!peer.submitted) return false;
-      const peerKey = peer.userId ?? (peer.displayName ? `name:${peer.displayName.trim().toLowerCase()}` : null);
-      if (!peerKey) return true;
-      if (currentPlayerKey && peerKey === currentPlayerKey) return false;
-      return true;
-    });
-    const newSubmitterNames: string[] = [];
-
-    otherSubmitters.forEach((peer) => {
-      const peerKey = peer.userId
-        ?? (peer.displayName ? `name:${peer.displayName.trim().toLowerCase()}` : null)
-        ?? (peer.guessLat != null && peer.guessLng != null ? `coords:${peer.guessLat}:${peer.guessLng}` : `score:${peer.score}:${peer.accuracy}`);
-      if (!submittedPeerIdsRef.current.has(peerKey)) {
-        submittedPeerIdsRef.current.add(peerKey);
-        newSubmitterNames.push(peer.displayName?.trim() || 'Another player');
-        registerRecentSubmitter(peer.userId ?? null, peer.displayName ?? null);
-      }
-    });
-
-    if (newSubmitterNames.length > 0) {
-      const progressLabel = total > 0 ? ` (${submitted}/${total})` : '';
-      const submitterLabel = newSubmitterNames.length === 1 ? newSubmitterNames[0] : `${newSubmitterNames.length} players`;
-      showSubmissionNotice(`${submitterLabel} submitted${progressLabel}`);
-      
-      if (timerEnabledRef.current && !hasClampedThisRound.current && remainingTimeRef.current > 15) {
-        applyCountdownRush();
-      }
-    }
-
-    if (!hasSubmittedThisRound) {
-      if (isCompeteMode) {
-        setWaitingForPeers(false);
-      }
-      return;
-    }
-
-    if (isCompeteMode) {
-      setWaitingForPeers(!allSubmitted);
-      if (!allSubmitted && timerEnabledRef.current) {
-        setIsTimerActive(true);
-      }
-    } else if (allSubmitted && !hasNavigatedToResultsRef.current) {
-      hasNavigatedToResultsRef.current = true;
-      setWaitingForPeers(false);
-      navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
-    }
-  }, [roundPeers, waitingForPeers, roomId, modeBasePath, navigate, roundNumber, isCompeteMode, hasSubmittedThisRound, showSubmissionNotice, applyCountdownRush, registerRecentSubmitter]);
 
   useEffect(() => {
     if (!awaitingSubmissionAckRef.current) {

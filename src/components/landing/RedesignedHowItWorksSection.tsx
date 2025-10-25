@@ -8,19 +8,19 @@ const RedesignedHowItWorksSection = () => {
       icon: <Eye className="w-8 h-8 text-orange-400" />,
       title: "Observe",
       description: "Study the historical image carefully. Look for clues about time period, location, clothing, architecture, and technology.",
-      image: "/lovable-uploads/7ca6ba9c-5d3b-4177-abf6-8edb546fbcc6.png"
+      image: "/images/hero/placeholder.png"
     },
     {
       icon: <MapPin className="w-8 h-8 text-orange-400" />,
       title: "Guess",
       description: "Place your pin on the world map and select your year. The closer your guess, the higher your score.",
-      image: "/lovable-uploads/7ca6ba9c-5d3b-4177-abf6-8edb546fbcc6.png"
+      image: "/images/hero/placeholder.png"
     },
     {
       icon: <Trophy className="w-8 h-8 text-orange-400" />,
       title: "Learn",
       description: "Discover the real story behind the image. Learn fascinating historical facts and improve your knowledge.",
-      image: "/lovable-uploads/7ca6ba9c-5d3b-4177-abf6-8edb546fbcc6.png"
+      image: "/images/hero/placeholder.png"
     }
   ];
 

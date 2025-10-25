@@ -1,7 +1,6 @@
 import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-import { componentTagger } from "lovable-tagger";
 import { spawn, ChildProcess } from "child_process";
 import { createConnection } from "node:net";
 
@@ -20,7 +19,6 @@ export default defineConfig(({ mode }) => {
     server: {
       host: '::',
       port: 8080,
-      allowedHosts: ['0711bf2f-12eb-4a9e-aa93-d15dd2ef2bde.lovableproject.com'],
       proxy: {
         '/languages': {
           target: 'https://extensions.aitopia.ai',
@@ -107,7 +105,6 @@ export default defineConfig(({ mode }) => {
           },
         };
       })(),
-      mode === 'development' && componentTagger(),
     ].filter(Boolean) as Plugin[]),
     resolve: {
       alias: {

@@ -21,7 +21,7 @@ const RedesignedGameModeSection = ({ onAuthModalOpen }: RedesignedGameModeSectio
         "• Detailed explanations", 
         "• Personal progress tracking"
       ],
-      image: "/lovable-uploads/ae2cb2ad-79d5-4fa8-a623-12f5aaaf90ab.png",
+      image: "/images/hero/placeholder.png",
       indicator: "No time limit"
     },
     {
@@ -37,7 +37,7 @@ const RedesignedGameModeSection = ({ onAuthModalOpen }: RedesignedGameModeSectio
         "• Real-time challenges",
         "• Share achievements"
       ],
-      image: "/lovable-uploads/1af8968c-584c-437a-8b69-0e0994b6e7b0.png",
+      image: "/images/hero/placeholder.png",
       indicator: "2 players"
     },
     {
@@ -53,7 +53,7 @@ const RedesignedGameModeSection = ({ onAuthModalOpen }: RedesignedGameModeSectio
         "• Progressive difficulty",
         "• Exclusive achievements"
       ],
-      image: "/lovable-uploads/495ee7a1-65bb-437c-8d85-dd8a00b77df6.png",
+      image: "/images/hero/placeholder.png",
       indicator: ""
     }
   ];

@@ -34,7 +34,7 @@ const RedesignedNavbar = ({ onAuthModalOpen }: RedesignedNavbarProps) => {
       }`}>
         <div className="w-full flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <img src="/lovable-uploads/93fae02c-3982-4fa1-afd3-78d4cb9d39ae.png" alt="Target Globe" className="w-4 h-4" />
+            <img src="/images/hero/placeholder.png" alt="Target Globe" className="w-4 h-4" />
             <h1 className="text-2xl font-bold" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
               <span className="text-white">GUESS-</span>
               <span className="text-transparent bg-clip-text bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)]">HISTORY</span>
@@ -53,7 +53,7 @@ const RedesignedNavbar = ({ onAuthModalOpen }: RedesignedNavbarProps) => {
       {/* Mobile Logo - Non-sticky */}
       <div className="lg:hidden pt-4 pb-2 text-center bg-black/95">
         <div className="flex items-center justify-center gap-2">
-          <img src="/lovable-uploads/93fae02c-3982-4fa1-afd3-78d4cb9d39ae.png" alt="Target Globe" className="w-3 h-3" />
+          <img src="/images/hero/placeholder.png" alt="Target Globe" className="w-3 h-3" />
           <h1 className="text-xl font-bold" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
             <span className="text-white">GUESS-</span>
             <span className="text-transparent bg-clip-text bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)]">HISTORY</span>

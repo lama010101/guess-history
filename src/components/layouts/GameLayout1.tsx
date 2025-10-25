@@ -6,7 +6,7 @@ import GlobalSettingsModal from '@/components/settings/GlobalSettingsModal'; // 
 import HintModalV2New from '@/components/HintModalV2New';
 
 import GameOverlayHUD from '@/components/navigation/GameOverlayHUD';
-import YearSelector from '@/components/game/YearSelector';
+import ZoomYearPicker from '@/components/game/ZoomYearPicker';
 import LocationSelector from '@/components/game/LocationSelector';
 import LazyImage from '@/components/ui/LazyImage';
 import { Card, CardContent } from '@/components/ui/card';
@@ -476,18 +476,19 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
               </div>
               <div className="flex-1 flex items-center justify-center">
                 <div className="w-full">
-                  <YearSelector 
-                    selectedYear={yearInteracted ? selectedYear : null}
-                    onChange={(y) => { 
-                      // Clamp the year within the allowed range
-                      const clampedYear = Math.min(Math.max(y, effectiveMinYear), effectiveMaxYear);
-                      onYearChange(clampedYear); 
-                      setYearInteracted(true); 
+                  <ZoomYearPicker
+                    domainMin={effectiveMinYear}
+                    domainMax={effectiveMaxYear}
+                    minSpan={1}
+                    initialView={{ vMin: effectiveMinYear, vMax: effectiveMaxYear }}
+                    initialYear={selectedYear ?? effectiveMinYear}
+                    value={yearInteracted ? (selectedYear ?? null) : null}
+                    onChange={(nextYear) => {
+                      const clampedYear = Math.min(Math.max(nextYear, effectiveMinYear), effectiveMaxYear);
+                      onYearChange(clampedYear);
+                      setYearInteracted(true);
                       setYearInput(String(clampedYear));
                     }}
-                    onFirstInteract={() => setYearInteracted(true)}
-                    minYear={effectiveMinYear}
-                    maxYear={effectiveMaxYear}
                   />
                 </div>
               </div>

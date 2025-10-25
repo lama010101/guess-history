@@ -79,6 +79,52 @@ export async function setCurrentRoundInSession(roomId: string, roundNumber: numb
   }
 }
 
+export interface SessionProgressRecord {
+  current_route: string | null;
+  substep: string | null;
+  round_number: number | null;
+  timer_enabled: boolean | null;
+}
+
+export async function getSessionProgress(roomId: string): Promise<SessionProgressRecord | null> {
+  try {
+    if (!roomId) return null;
+    const { data } = await supabase.auth.getUser();
+    const user = data?.user;
+    if (!user?.id) return null;
+
+    const { data: progress, error } = await supabase
+      .from('session_progress' as any)
+      .select('current_route, substep, round_number, timer_enabled')
+      .eq('room_id', roomId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      const code = (error as any).code;
+      const message = (error as any).message || String(error);
+      if (code !== '42P01' && code !== '42703' && code !== 'PGRST116') {
+        console.warn('[roomState] getSessionProgress error', {
+          code,
+          message,
+          roomId,
+        });
+      }
+      return null;
+    }
+
+    if (!progress) return null;
+
+    return progress as SessionProgressRecord;
+  } catch (e: any) {
+    console.warn('[roomState] getSessionProgress exception', {
+      message: e?.message || String(e),
+      roomId,
+    });
+    return null;
+  }
+}
+
 function normalizeProgressPayload(payload: SessionProgressPayload, userId: string) {
   return {
     room_id: payload.roomId,

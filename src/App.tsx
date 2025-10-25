@@ -49,45 +49,54 @@ const AuthRedirectHandler = () => {
   useEffect(() => {
     // Check for hash fragment which indicates a redirect from OAuth
     const handleAuthRedirect = async () => {
-      // Get current URL hash
-      const hashParams = window.location.hash;
-      
-      if (hashParams && hashParams.includes('access_token')) {
-        console.log("Detected OAuth redirect with access token");
-        
-        try {
-          // First set the access token from URL into storage
-          const accessToken = new URLSearchParams(hashParams.substring(1)).get('access_token');
-          if (accessToken) {
-            await supabase.auth.setSession({
+      const hash = window.location.hash;
+      if (!hash || !hash.includes('access_token')) {
+        return;
+      }
+
+      console.log('Detected OAuth redirect with access token');
+
+      try {
+        const params = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+
+        if (accessToken) {
+          if (refreshToken) {
+            const { error: setError } = await supabase.auth.setSession({
               access_token: accessToken,
-              refresh_token: '',
+              refresh_token: refreshToken,
             });
+            if (setError) {
+              console.error('Error setting session after OAuth redirect:', setError);
+              return;
+            }
+          } else {
+            console.warn('OAuth redirect missing refresh_token; relying on Supabase auto-detection.');
           }
-          
-          // Then get the session which will now include the token we just set
+
           const { data, error } = await supabase.auth.getSession();
-          
+
           if (error) {
-            console.error("Error getting session after OAuth redirect:", error);
+            console.error('Error getting session after OAuth redirect:', error);
             return;
           }
-          
+
           if (data?.session) {
-            console.log("Successfully retrieved session after OAuth redirect");
+            console.log('Successfully retrieved session after OAuth redirect');
             // Scrub the hash so you don't leak tokens in your URL
             window.history.replaceState({}, document.title, window.location.pathname);
             // Navigate to home page after successful authentication
             navigate('/home', { replace: true });
           } else {
-            console.warn("No session found after OAuth redirect");
+            console.warn('No session found after OAuth redirect');
           }
-        } catch (err) {
-          console.error("Failed to process OAuth redirect:", err);
         }
+      } catch (err) {
+        console.error('Failed to process OAuth redirect:', err);
       }
     };
-    
+
     handleAuthRedirect();
   }, [navigate]);
   

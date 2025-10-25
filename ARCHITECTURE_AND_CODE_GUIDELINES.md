@@ -16,6 +16,9 @@
 - **Component**: `src/pages/compete/results/CompeteSyncRoundResultsPage.tsx`
 - **Behavior**: Inline round leaderboard rows now format net accuracy as a whole number followed by `%` (e.g., `65%`). This keeps the global leaderboard consistent with the rest of the compete UI, which already displays percentages, and avoids showing bare integers that looked like raw scores.
 
+- **Update (2025-10-24): Countdown-driven advance waits for lobby sync**
+  - When the round results countdown hits zero, we still emit the ready signal but do **not** navigate until the lobby reports every participant is ready. This preserves the manual ready button flow while preventing a single client from jumping ahead before other players’ countdowns finish. Fallback auto-advance only triggers when the ready payload fails to send (connection loss).
+
 - **Component**: `src/pages/RoundResultsPage.tsx`
 - **Behavior**: Solo mode’s round results Home button reuses the compete styling—`h-12 w-12` white circular button with subtle shadow—so both modes offer the same affordance.
 - **Result**: Returning to Home from round results looks and feels identical in solo and compete variants.
@@ -109,6 +112,20 @@
   - The countdown gating debug output lists `authoritativeTimer=true` in the "missing" array when the local timer is intentionally not starting.
 
 Together these changes eliminate the ghost-submission rush and ensure every player sees a timer even if the authoritative RPC path is unavailable.
+
+#### Update (2025-10-24): Compete Sync — Final routes & disconnect resiliency
+
+- **Routing (`App.tsx`)**
+  - Added final results routes for all compete-style modes so synchronized navigation works at game end:
+    - `/compete/sync/game/room/:roomId/final`
+    - `/compete/async/game/room/:roomId/final`
+    - `/compete/game/room/:roomId/final` (legacy alias)
+    - `/collaborate/game/room/:roomId/final`
+- **Round Results navigation**: `src/pages/compete/results/CompeteSyncRoundResultsPage.tsx` derives its `modeBasePath` from the current URL (supports both `/compete/sync` and `/compete/async`) before navigating to the next round or final.
+- **Lobby disconnect handling**: `server/lobby.ts` `onClose()` now:
+  - Removes the participant from active and submission sets for each round and recalculates `expectedParticipantsByRound` using `max(active, submissions, lobbySize)`.
+  - Broadcasts updated `results-ready` counts so clients stop waiting on disconnected players.
+  - Emits `round-complete` if, after recalculation, submitted ≥ expected for any round. This ensures remaining players advance to Round Results together when someone drops mid-round.
 
 ### Hint Modal — Persisted Purchases & ID Normalization (2025-10-23)
 

@@ -228,14 +228,11 @@ const HintModalV2New: React.FC<HintModalV2NewProps> = ({
     return { when, where };
   }, [availableHints]);
 
-  // Determine if a hint is locked based on central dependency map
+  // Determine if a hint is locked based on prerequisite id or dependency type
   const isHintLocked = (hint: Hint): boolean => {
-    const dependencyType = HINT_DEPENDENCIES[hint.type];
-    if (dependencyType) {
-      const dependencyHint = availableHints.find(h => h.type === dependencyType);
-      if (dependencyHint && !isHintPurchased(dependencyHint.id)) return true;
-    }
-    return false;
+    const prereqId = hint.prerequisite || (HINT_DEPENDENCIES[hint.type] ? availableHints.find(h => h.type === HINT_DEPENDENCIES[hint.type])?.id : undefined);
+    if (!prereqId) return false;
+    return !isHintPurchased(prereqId);
   };
 
   return (

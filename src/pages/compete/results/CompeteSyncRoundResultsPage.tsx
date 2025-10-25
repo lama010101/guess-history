@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Loader, ChevronRight, Home, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ResultsLayout2 from '@/components/layouts/ResultsLayout2';
@@ -20,9 +20,15 @@ import { useLobbyChat } from '@/hooks/useLobbyChat';
 const CompeteSyncRoundResultsPage: React.FC = () => {
   const { roomId, roundNumber } = useParams<{ roomId: string; roundNumber: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const { images, hydrateRoomImages, syncRoomId } = useGame();
+  const modeBasePath = useMemo(() => {
+    const path = location.pathname;
+    const idx = path.indexOf('/game/');
+    return idx > 0 ? path.slice(0, idx) : '/compete/sync';
+  }, [location.pathname]);
 
   const oneBasedRound = Math.max(1, Number(roundNumber || 1));
   const { isLoading, error, contextResult, currentImage, hintDebts, playerSummary } = useCompeteRoundResult(roomId ?? null, Number.isFinite(oneBasedRound) ? oneBasedRound : null);
@@ -292,11 +298,11 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
     }
 
     if (isLastRound) {
-      navigate(`/compete/sync/game/room/${roomId}/final`);
+      navigate(`${modeBasePath}/game/room/${roomId}/final`);
     } else {
-      navigate(`/compete/sync/game/room/${roomId}/round/${oneBasedRound + 1}`);
+      navigate(`${modeBasePath}/game/room/${roomId}/round/${oneBasedRound + 1}`);
     }
-  }, [navigating, roomId, toast, oneBasedRound, totalRounds, navigate]);
+  }, [navigating, roomId, toast, oneBasedRound, totalRounds, navigate, modeBasePath]);
 
   const expectedParticipants = useMemo(() => {
     const roundMatches = resultsReadySummary.roundNumber === oneBasedRound;
@@ -330,11 +336,10 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
   }, [toast, handleNext]);
 
   useEffect(() => {
-    if (allPlayersReady) {
-      autoAdvanceRef.current = true;
-      setPendingAdvance(true);
-    }
-  }, [allPlayersReady, handleNext]);
+    if (!allPlayersReady) return;
+    if (!hasConfirmedAdvanceRef.current) return;
+    setPendingAdvance(true);
+  }, [allPlayersReady]);
 
   useEffect(() => {
     if (!pendingAdvance) return;
@@ -354,6 +359,7 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
     }
 
     countdownTimerRef.current = window.setInterval(() => {
+      let shouldForceAdvance = false;
       setNextRoundCountdown((prev) => {
         if (prev == null) return null;
         if (prev <= 1) {
@@ -369,16 +375,19 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
               setHasConfirmedAdvance(true);
               setPendingReadyAck(false);
               setLocalFallbackReady(true);
+              shouldForceAdvance = true;
             }
           } else if (!pendingReadyAck) {
             setLocalFallbackReady(false);
           }
           autoAdvanceRef.current = true;
-          setPendingAdvance(true);
           return 0;
         }
         return prev - 1;
       });
+      if (shouldForceAdvance) {
+        setPendingAdvance(true);
+      }
     }, 1000);
 
     return () => {

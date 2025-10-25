@@ -965,9 +965,14 @@ export default class Lobby implements Party.Server {
       this.submissionsByRound.forEach((set) => {
         set.delete(participantKey);
       });
+      // Remove from active participants and recompute expected counts for affected rounds
       this.activeByRound.forEach((set, roundNumber) => {
         if (set.delete(participantKey)) {
-          this.expectedParticipantsByRound.set(roundNumber, Math.max(set.size, this.expectedParticipantsByRound.get(roundNumber) ?? 0));
+          const lobbySizeNow = this.uniqueParticipantCount();
+          const submissionsCount = this.submissionsByRound.get(roundNumber)?.size ?? 0;
+          // Update expected participants for this round to reflect current reality
+          const newExpected = Math.max(set.size, submissionsCount, lobbySizeNow);
+          this.expectedParticipantsByRound.set(roundNumber, newExpected);
         }
       });
       // Also remove from results-ready sets and broadcast updated counts so
@@ -978,7 +983,33 @@ export default class Lobby implements Party.Server {
         // active set shrinkage; broadcast to update client expectations.
         await this.broadcastResultsReadyForRound(roundNumber);
       }
+      // Update global expected participants floor based on current lobby size
       this.expectedParticipants = Math.max(this.uniqueParticipantCount(), this.expectedParticipants - 1);
+
+      // After recalculating expectations, check if any rounds are now complete
+      const lobbySizeNow = this.uniqueParticipantCount();
+      for (const [roundNumber, submissions] of this.submissionsByRound.entries()) {
+        const submittedCount = submissions.size;
+        const activeSize = this.activeByRound.get(roundNumber)?.size ?? 0;
+        const expectedFromHistory = this.expectedParticipantsByRound.get(roundNumber) ?? 0;
+        const totalPlayers = Math.max(expectedFromHistory, activeSize, submittedCount, lobbySizeNow);
+        if (submittedCount >= totalPlayers && !this.completedRounds.has(roundNumber)) {
+          this.completedRounds.add(roundNumber);
+          const completePayload: RoundCompleteMsg = {
+            type: "round-complete",
+            roundNumber,
+            submittedCount,
+            totalPlayers,
+            lobbySize: lobbySizeNow,
+          };
+          this.broadcast(completePayload);
+          await this.logEvent("round-complete", completePayload);
+          this.submissionsByRound.delete(roundNumber);
+          const nextExpected = Math.max(this.expectedParticipants, submittedCount);
+          this.expectedParticipants = nextExpected;
+          this.expectedParticipantsByRound.set(roundNumber + 1, nextExpected);
+        }
+      }
       // Reassign host if needed
       if (this.hostId === conn.id) {
         const previousHost = this.hostId;

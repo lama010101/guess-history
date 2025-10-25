@@ -107,9 +107,20 @@ export const useHintV2 = (
             accuracy_penalty: acc,
             distance_km: row.distance_km ?? undefined,
             time_diff_years: row.time_diff_years ?? undefined,
-            // Derive prerequisite ID from dependency map (same logic as before)
-            prerequisite: HINT_DEPENDENCIES[row.type] ? `${HINT_DEPENDENCIES[row.type]}-${imageData.id}` : undefined
+            // Wire actual prerequisite IDs in a second pass below
+            prerequisite: undefined,
           } as Hint;
+        });
+
+        // After initial creation, wire prerequisite IDs based on dependency map
+        hints.forEach(h => {
+          const prereqType = HINT_DEPENDENCIES[h.type as keyof typeof HINT_DEPENDENCIES];
+          if (prereqType) {
+            const prereqHint = hints.find(ph => ph.type === prereqType && ph.image_id === h.image_id);
+            if (prereqHint) {
+              h.prerequisite = prereqHint.id;
+            }
+          }
         });
 
         addLog(`Loaded ${hints.length} hints for image ${imageData.id} from hints table`);
@@ -386,15 +397,18 @@ export const useHintV2 = (
 
   // Hint dependency map based on PRD
   
-  // Check if user can purchase a hint (checks dependency and duplicate)
+  // Check if user can purchase a hint (checks prerequisite and duplicate)
   const canPurchaseHint = (hint: Hint): boolean => {
     if (purchasedHintIds.includes(hint.id)) return false;
-    const prereq = HINT_DEPENDENCIES[hint.type];
-    if (!prereq) return true;
-    // Find the prerequisite hint object and ensure it's purchased
-    const prereqHint = availableHints.find(h => h.type === prereq);
-    if (!prereqHint) return false; // should not happen if data complete
-    return purchasedHintIds.includes(prereqHint.id);
+    // Prefer explicit prerequisite ID from the hint when present.
+    const prereqId =
+      hint.prerequisite ||
+      (HINT_DEPENDENCIES[hint.type]
+        ? availableHints.find(h => h.type === HINT_DEPENDENCIES[hint.type])?.id
+        : undefined);
+    // If there is no resolvable prerequisite ID, treat the hint as directly purchasable.
+    if (!prereqId) return true;
+    return purchasedHintIds.includes(prereqId);
   };
 
   // Get purchased hints

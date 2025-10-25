@@ -129,14 +129,18 @@ const App = () => {
                   {/* Compete (Sync) */}
                   <Route path="/compete/sync/game/room/:roomId/round/:roundNumber" element={<CompeteGameRoundPage />} />
                   <Route path="/compete/sync/game/room/:roomId/round/:roundNumber/results" element={<CompeteRoundResultsPage />} />
+                  <Route path="/compete/sync/game/room/:roomId/final" element={<FinalResultsPage />} />
                   {/* Compete (Async) */}
                   <Route path="/compete/async/game/room/:roomId/round/:roundNumber" element={<CompeteGameRoundPage />} />
                   <Route path="/compete/async/game/room/:roomId/round/:roundNumber/results" element={<CompeteRoundResultsPage />} />
+                  <Route path="/compete/async/game/room/:roomId/final" element={<FinalResultsPage />} />
                   {/* Legacy/alias Compete path */}
                   <Route path="/compete/game/room/:roomId/round/:roundNumber" element={<CompeteGameRoundPage />} />
                   <Route path="/compete/game/room/:roomId/round/:roundNumber/results" element={<CompeteRoundResultsPage />} />
+                  <Route path="/compete/game/room/:roomId/final" element={<FinalResultsPage />} />
                   <Route path="/collaborate/game/room/:roomId/round/:roundNumber" element={<CompeteGameRoundPage />} />
                   <Route path="/collaborate/game/room/:roomId/round/:roundNumber/results" element={<CompeteRoundResultsPage />} />
+                  <Route path="/collaborate/game/room/:roomId/final" element={<FinalResultsPage />} />
 
                   {/* Main application pages */}
                   <Route path="/friends" element={<FriendsPage />} />

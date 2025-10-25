@@ -22,6 +22,7 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet.fullscreen/Control.FullScreen.css';
 import L from 'leaflet';
 import { FullscreenControl } from 'react-leaflet-fullscreen';
+import AvatarMarker from '@/components/map/AvatarMarker';
 
 // Custom icons
 const getInitial = (name?: string | null) => {
@@ -30,50 +31,6 @@ const getInitial = (name?: string | null) => {
   if (!trimmed) return '?';
   const initial = trimmed.charAt(0).toUpperCase();
   return initial || '?';
-};
-
-const createUserIcon = (
-  avatarUrl: string | null | undefined,
-  label: string,
-  options: { size?: number; borderColor?: string; borderWidth?: number; ringColor?: string } = {}
-) => {
-  const size = options.size ?? 30;
-  const borderColor = options.borderColor ?? 'white';
-  const borderWidth = options.borderWidth ?? 2;
-  const ringColor = options.ringColor ?? 'rgba(148, 163, 184, 0.45)';
-  const hasImage = typeof avatarUrl === 'string' && avatarUrl.trim().length > 0;
-  const sanitizedUrl = hasImage ? avatarUrl.replace(/"/g, '%22') : '';
-  const baseStyles = [
-    `width:${size}px`,
-    `height:${size}px`,
-    'border-radius:50%',
-    'overflow:hidden',
-    'display:flex',
-    'align-items:center',
-    'justify-content:center',
-    'font-weight:600',
-    'font-size:13px',
-    'text-transform:uppercase',
-    'color:white',
-    `border:${borderWidth}px solid ${borderColor}`,
-    `box-shadow:0 0 8px ${ringColor}`,
-    'background-position:center',
-    'line-height:1'
-  ];
-  if (hasImage) {
-    baseStyles.push(`background-image:url("${sanitizedUrl}")`);
-    baseStyles.push('background-size:cover');
-  } else {
-    baseStyles.push('background:linear-gradient(135deg,#f97316,#fb7185)');
-  }
-  const labelHtml = hasImage ? '' : `<span>${label || '?'}</span>`;
-  return L.divIcon({
-    html: `<div style="${baseStyles.join(';')}">${labelHtml}</div>`,
-    className: 'user-avatar-icon',
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size],
-    popupAnchor: [0, -size + 6]
-  });
 };
 
 const correctIcon = L.divIcon({
@@ -270,22 +227,6 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   const mapCenter = bounds ? bounds.getCenter() : correctPosition;
 
   const currentUserInitial = useMemo(() => getInitial(currentUserDisplayName), [currentUserDisplayName]);
-  const userIcon = useMemo(
-    () => createUserIcon(avatarUrl, currentUserInitial, { size: 34, borderColor: '#f8fafc', ringColor: 'rgba(251, 191, 36, 0.75)' }),
-    [avatarUrl, currentUserInitial]
-  );
-  const defaultPeerIcon = useMemo(
-    () => createUserIcon(null, '?', { size: 30, borderColor: '#f8fafc', ringColor: 'rgba(96, 165, 250, 0.45)' }),
-    []
-  );
-  const peerIconMap = useMemo(() => {
-    const map = new Map<string, L.DivIcon>();
-    (peers || []).forEach(peer => {
-      const label = getInitial(peer.displayName);
-      map.set(peer.userId, createUserIcon(peer.avatarUrl, label, { size: 30, borderColor: '#f8fafc', ringColor: 'rgba(59, 130, 246, 0.55)' }));
-    });
-    return map;
-  }, [peers]);
 
   type LeaderboardEntry = {
     userId: string;
@@ -813,16 +754,22 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                     <Popup>Correct Location</Popup>
                   </Marker>
                   
-                  {/* Show user's guess if it exists and isn't exactly on the correct location */}
-                  {result.guessLat != null && result.guessLng != null && 
-                    (result.guessLat !== result.eventLat || result.guessLng !== result.eventLng) && (
-                      <Marker 
-                        position={[result.guessLat, result.guessLng]} 
-                        icon={userIcon}
-                        zIndexOffset={600}
-                      >
-                        <Popup>Your Guess</Popup>
-                      </Marker>
+                  {/* Show user's guess with avatar marker */}
+                  {result.guessLat != null && result.guessLng != null && (
+                    <AvatarMarker
+                      key="self-guess"
+                      lat={Number(result.guessLat)}
+                      lng={Number(result.guessLng)}
+                      imageUrl={avatarUrl}
+                      fallbackLabel={currentUserInitial}
+                      sizePx={48}
+                      ringColor="rgba(251, 191, 36, 0.75)"
+                      borderColor="#f8fafc"
+                      borderWidth={3}
+                      zIndexOffset={600}
+                    >
+                      <Popup>Your Guess</Popup>
+                    </AvatarMarker>
                   )}
                   {result.guessLat != null && result.guessLng != null && (
                     <Polyline positions={[[result.guessLat, result.guessLng], [result.eventLat, result.eventLng]]} color="white" dashArray="5, 10" />
@@ -833,7 +780,17 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                       {peers.map((p) => (
                         p.guessLat !== null && p.guessLng !== null ? (
                           <React.Fragment key={p.userId}>
-                            <Marker position={[p.guessLat, p.guessLng]} icon={peerIconMap.get(p.userId) ?? defaultPeerIcon} zIndexOffset={500}>
+                            <AvatarMarker
+                              lat={Number(p.guessLat)}
+                              lng={Number(p.guessLng)}
+                              imageUrl={p.avatarUrl ?? undefined}
+                              fallbackLabel={getInitial(p.displayName)}
+                              sizePx={42}
+                              ringColor="rgba(96, 165, 250, 0.55)"
+                              borderColor="#f8fafc"
+                              borderWidth={2}
+                              zIndexOffset={500}
+                            >
                               <Popup>
                                 <div className="text-sm">
                                   <div className="font-semibold">{p.displayName || 'Peer'}</div>
@@ -841,7 +798,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                                   {p.guessYear != null && <div>Year: {p.guessYear}</div>}
                                 </div>
                               </Popup>
-                            </Marker>
+                            </AvatarMarker>
                             <Polyline positions={[[p.guessLat, p.guessLng], [result.eventLat, result.eventLng]]} color="#6EE7B7" opacity={0.7} dashArray="4,8" />
                           </React.Fragment>
                         ) : null

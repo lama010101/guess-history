@@ -1,28 +1,51 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Marker } from 'react-leaflet';
+import type { MarkerProps } from 'react-leaflet';
 import L, { DivIcon } from 'leaflet';
 
-export interface AvatarMarkerProps {
+export interface AvatarMarkerProps extends Omit<MarkerProps, 'position' | 'icon'> {
   /** Latitude */
   lat: number;
   /** Longitude */
   lng: number;
   /** URL of the avatar image */
   imageUrl?: string | null;
+  /** Optional fallback label (e.g. initials) */
+  fallbackLabel?: string | null;
   /** Size in pixels (width & height) */
   sizePx?: number;
+  /** Outer glow color (defaults to theme secondary) */
+  ringColor?: string;
+  /** Border color around avatar */
+  borderColor?: string;
+  /** Width of the avatar border */
+  borderWidth?: number;
 }
 
 /**
  * AvatarMarker – displays a pulsating placeholder until the avatar image has loaded.
- * Provides a graceful fallback on error.
+ * Provides a graceful fallback on error while supporting popups and other Marker props.
  */
-const AvatarMarker: React.FC<AvatarMarkerProps> = React.memo(({ lat, lng, imageUrl, sizePx = 40 }) => {
+const AvatarMarker: React.FC<AvatarMarkerProps> = React.memo(({
+  lat,
+  lng,
+  imageUrl,
+  fallbackLabel,
+  sizePx = 44,
+  ringColor = 'rgba(148, 163, 184, 0.45)',
+  borderColor = '#fff',
+  borderWidth = 2,
+  children,
+  ...markerProps
+}) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
 
-  // Preload the avatar
+  // Preload the avatar whenever the URL changes
   useEffect(() => {
+    setIsLoaded(false);
+    setHasError(false);
+
     if (!imageUrl) {
       setHasError(true);
       return;
@@ -42,31 +65,62 @@ const AvatarMarker: React.FC<AvatarMarkerProps> = React.memo(({ lat, lng, imageU
     return () => {
       img.removeEventListener('load', handleLoad);
       img.removeEventListener('error', handleError);
-      // Abort any in-flight image request
       img.src = '';
     };
   }, [imageUrl]);
 
   // Build Leaflet DivIcon when state changes
   const divIcon: DivIcon = useMemo(() => {
-    // Visual avatar diameter in pixels (existing code used sizePx/4)
-    const avatarPx = Math.max(8, Math.round(sizePx / 4));
-    const haloPx = avatarPx * 2; // halo twice the avatar size
+    const avatarPx = Math.max(20, Math.round(sizePx * 0.6));
+    const haloPx = Math.round(sizePx * 1.05);
 
-    const wrapperStyle = `position:relative; width:${sizePx}px; height:${sizePx}px; display:flex; align-items:center; justify-content:center;`;
-    const haloStyle = `position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:${haloPx}px; height:${haloPx}px; border-radius:9999px; background:hsla(var(--secondary) / 0.5);`;
-    const baseImgStyle = `width:${avatarPx}px; height:${avatarPx}px; border-radius:9999px; box-shadow:0 2px 6px rgba(0,0,0,0.25);`;
+    const wrapperStyle = [
+      'position:relative',
+      `width:${sizePx}px`,
+      `height:${sizePx}px`,
+      'display:flex',
+      'align-items:center',
+      'justify-content:center',
+    ].join(';');
+
+    const haloStyle = [
+      'position:absolute',
+      'left:50%',
+      'top:50%',
+      'transform:translate(-50%,-50%)',
+      `width:${haloPx}px`,
+      `height:${haloPx}px`,
+      'border-radius:9999px',
+      `box-shadow:0 0 18px ${ringColor}`,
+      `background:rgba(17, 24, 39, 0.35)`,
+    ].join(';');
+
+    const baseImgStyle = [
+      `width:${avatarPx}px`,
+      `height:${avatarPx}px`,
+      'border-radius:9999px',
+      `border:${borderWidth}px solid ${borderColor}`,
+      'box-shadow:0 4px 12px rgba(0,0,0,0.35)',
+      'display:flex',
+      'align-items:center',
+      'justify-content:center',
+      'font-weight:600',
+      'font-size:13px',
+      'text-transform:uppercase',
+      'background:#111827',
+      'color:#fff',
+      'overflow:hidden',
+    ].join(';');
 
     let inner = '';
-    if (!isLoaded && !hasError) {
-      // Placeholder – dark pulsating circle
-      inner = `<div aria-busy="true" aria-live="polite" style="${baseImgStyle} background:#000; opacity:0.85;" class="dark:bg-gray-200 animate-pulse"></div>`;
+    if (!isLoaded && !hasError && imageUrl) {
+      inner = `<div aria-busy="true" aria-live="polite" style="${baseImgStyle}; opacity:0.85;" class="animate-pulse"></div>`;
     } else if (hasError || !imageUrl) {
-      // Error fallback – simple pin emoji within circle
-      inner = `<div style="${baseImgStyle}; background:hsl(var(--secondary)); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; border:2px solid #fff;">📍</div>`;
+      const label = (fallbackLabel || '?').trim().slice(0, 2).toUpperCase();
+      inner = `<div style="${baseImgStyle}; background:linear-gradient(135deg,#fb7185,#f97316);">${label || '?'}</div>`;
     } else {
-      // Actual avatar image
-      inner = `<img src="${imageUrl}" alt="Player avatar" style="${baseImgStyle}; object-fit:cover; border:2px solid #fff;" />`;
+      const sanitizedUrl = imageUrl.replace(/"/g, '%22');
+      inner = `<img src="${sanitizedUrl}" alt="Player avatar" style="${baseImgStyle}; object-fit:cover;" />`;
     }
 
     const html = `<div style="${wrapperStyle}"><div style="${haloStyle}"></div>${inner}</div>`;
@@ -76,10 +130,19 @@ const AvatarMarker: React.FC<AvatarMarkerProps> = React.memo(({ lat, lng, imageU
       className: '',
       iconSize: [sizePx, sizePx],
       iconAnchor: [sizePx / 2, sizePx / 2],
+      popupAnchor: [0, -sizePx / 2],
     });
-  }, [isLoaded, hasError, imageUrl, sizePx]);
+  }, [borderColor, borderWidth, fallbackLabel, hasError, imageUrl, isLoaded, ringColor, sizePx]);
 
-  return <Marker position={[lat, lng]} icon={divIcon} />;
+  return (
+    <Marker
+      position={[lat, lng]}
+      icon={divIcon}
+      {...markerProps}
+    >
+      {children}
+    </Marker>
+  );
 });
 
 AvatarMarker.displayName = 'AvatarMarker';

@@ -17,7 +17,7 @@ const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value));
 
 const displayYear = (year: number) =>
-  year < 0 ? `${Math.abs(year)} BCE` : `${year} CE`;
+  `${year >= 0 ? '+' : '\u2212'}${Math.abs(year)}`;
 
 const snapYear = (value: number, prev?: number) => {
   let rounded = Math.round(value);
@@ -39,22 +39,28 @@ export default function ZoomYearPicker({
   onChange,
   onViewChange,
 }: Props) {
-  const maxSpan = domainMax - domainMin;
+  const domainSpan = Math.max(domainMax - domainMin, minSpan);
+  const maxSpan = domainMax - domainMin || domainSpan;
   const initialClampedYear = initialYear === 0 ? 1 : clamp(initialYear, domainMin, domainMax);
 
-  const containerRef = useRef<HTMLDivElement>(null);
+  const initialSpanRaw = initialView
+    ? Math.max(Math.abs(initialView.vMax - initialView.vMin), minSpan)
+    : domainSpan;
+  const initialSpan = clamp(initialSpanRaw || minSpan, minSpan, Math.max(maxSpan, minSpan));
+  const initialCenter = initialView
+    ? (initialView.vMin + initialView.vMax) / 2
+    : initialClampedYear;
+  const initialVMin = clamp(initialCenter - initialSpan / 2, domainMin, domainMax - initialSpan);
+  const initialVMax = initialVMin + initialSpan;
+
   const [measuredWidth, setMeasuredWidth] = useState<number>(() =>
     typeof width === "number" && !Number.isNaN(width) ? width : 640
   );
 
-  const [vMin, setVMin] = useState(
-    initialView ? initialView.vMin : domainMin
-  );
-  const [vMax, setVMax] = useState(
-    initialView ? initialView.vMax : domainMax
-  );
-  const [year, setYear] = useState(initialClampedYear);
+  const [vMin, setVMin] = useState(initialVMin);
+  const [vMax, setVMax] = useState(initialVMax);
 
+  const [railElement, setRailElement] = useState<HTMLDivElement | null>(null);
   const displayWidth = Math.max(1, typeof width === "number" && !Number.isNaN(width) ? width : measuredWidth);
 
   useEffect(() => {
@@ -62,79 +68,175 @@ export default function ZoomYearPicker({
       setMeasuredWidth(width);
       return;
     }
-    const node = containerRef.current;
-    if (!node) return;
+    if (!railElement) return;
     const updateWidth = () => {
-      setMeasuredWidth(Math.max(1, Math.round(node.getBoundingClientRect().width)));
+      setMeasuredWidth(Math.max(1, Math.round(railElement.getBoundingClientRect().width)));
     };
     updateWidth();
-    if (typeof ResizeObserver === "undefined") return;
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateWidth);
+      return () => {
+        window.removeEventListener("resize", updateWidth);
+      };
+    }
     const observer = new ResizeObserver(() => {
       updateWidth();
     });
-    observer.observe(node);
+    observer.observe(railElement);
     return () => {
       observer.disconnect();
     };
-  }, [width]);
-
-  const isControlled = typeof value === "number" && !Number.isNaN(value);
-
-  useEffect(() => {
-    if (!isControlled) return;
-    const next = clamp(value === 0 ? (value < 0 ? -1 : 1) : value, domainMin, domainMax);
-    setYear((prev) => (prev !== next ? next : prev));
-  }, [domainMax, domainMin, isControlled, value]);
-
-  useEffect(() => {
-    setYear((curr) => {
-      const next = clamp(curr === 0 ? 1 : curr, domainMin, domainMax);
-      return next === 0 ? 1 : next;
-    });
-  }, [domainMin, domainMax]);
+  }, [railElement, width]);
 
   const span = vMax - vMin;
+  const effectiveSpan = span === 0 ? 1 : span;
 
   const PADDING = 12;
   const innerWidth = Math.max(1, displayWidth - 2 * PADDING);
-  const railRef = useRef<HTMLDivElement>(null);
+  const CENTER_X = PADDING + innerWidth / 2;
+  const railRef = useRef<HTMLDivElement | null>(null);
+  const viewCenter = useMemo(() => vMin + span / 2, [span, vMin]);
 
   const xAt = useCallback(
-    (yVal: number) => ((yVal - vMin) / span) * innerWidth + PADDING,
-    [innerWidth, span, vMin]
+    (yearValue: number) => ((yearValue - vMin) / effectiveSpan) * innerWidth + PADDING,
+    [effectiveSpan, innerWidth, vMin]
   );
 
   const yearAt = useCallback(
     (x: number) => {
       const u = clamp((x - PADDING) / innerWidth, 0, 1);
-      return vMin + u * span;
+      return vMin + u * effectiveSpan;
     },
-    [innerWidth, span, vMin]
+    [effectiveSpan, innerWidth, vMin]
   );
 
-  const setYearRounded = useCallback((value: number) => {
-    const rounded = clamp(snapYear(value, year), domainMin, domainMax);
-    if (!isControlled) {
-      setYear(rounded);
+  const selectedYearRaw = yearAt(CENTER_X);
+  const selectedYear = useMemo(() => {
+    if (!Number.isFinite(selectedYearRaw)) {
+      return domainMin;
     }
-    if (rounded !== year || isControlled) {
-      onChange?.(rounded);
+    const rounded = snapYear(selectedYearRaw);
+    const clamped = clamp(rounded, domainMin, domainMax);
+    if (clamped === 0) {
+      return selectedYearRaw < 0 ? -1 : 1;
     }
-  }, [domainMax, domainMin, isControlled, onChange, year]);
+    return clamped;
+  }, [domainMax, domainMin, selectedYearRaw]);
 
-  const updateView = useCallback((minValue: number, maxValue: number) => {
-    const clampedMin = clamp(minValue, domainMin, domainMax - Math.max(minSpan, 1));
-    const clampedMax = clamp(maxValue, clampedMin + Math.max(minSpan, 1), domainMax);
-    if (clampedMin !== vMin || clampedMax !== vMax) {
-      setVMin(clampedMin);
-      setVMax(clampedMax);
-      onViewChange?.(clampedMin, clampedMax);
+  const hasInteractedRef = useRef(false);
+  const lastSelectedYearRef = useRef<number | null>(null);
+  const lastEmittedValueRef = useRef<number | null>(null);
+  const pendingExternalValueRef = useRef<number | null>(null);
+  const previousValueRef = useRef<number | null | undefined>(undefined);
+  const markInteracted = useCallback(() => {
+    if (!hasInteractedRef.current) {
+      hasInteractedRef.current = true;
     }
-  }, [domainMax, domainMin, minSpan, onViewChange, vMax, vMin]);
+  }, []);
+
+  useEffect(() => {
+    if (value != null && !Number.isNaN(value) && value !== 0) {
+      hasInteractedRef.current = true;
+    }
+  }, [value]);
+
+  useEffect(() => {
+    if (!Number.isFinite(selectedYear)) return;
+    if (pendingExternalValueRef.current !== null) {
+      if (Math.abs(selectedYear - pendingExternalValueRef.current) < 0.5) {
+        pendingExternalValueRef.current = null;
+        lastEmittedValueRef.current = null;
+      }
+      return;
+    }
+    if (!hasInteractedRef.current && (value == null || Number.isNaN(value) || value === 0)) {
+      return;
+    }
+    if (selectedYear === lastSelectedYearRef.current) return;
+    lastSelectedYearRef.current = selectedYear;
+    lastEmittedValueRef.current = selectedYear;
+    onChange?.(selectedYear);
+  }, [onChange, selectedYear, value]);
+
+  const updateView = useCallback(
+    (minValue: number, maxValue: number) => {
+      let spanValue = maxValue - minValue;
+      const minAllowedSpan = Math.max(minSpan, 1);
+      if (spanValue < minAllowedSpan) {
+        spanValue = minAllowedSpan;
+      }
+      const halfSpan = spanValue / 2;
+      const minBound = domainMin - halfSpan;
+      const maxBound = domainMax - halfSpan;
+      let nextMin = clamp(minValue, minBound, maxBound);
+      let nextMax = nextMin + spanValue;
+      if (nextMax - nextMin !== spanValue) {
+        nextMax = nextMin + spanValue;
+      }
+      if (nextMin !== vMin || nextMax !== vMax) {
+        setVMin(nextMin);
+        setVMax(nextMax);
+        onViewChange?.(nextMin, nextMax);
+      }
+    },
+    [domainMax, domainMin, minSpan, onViewChange, vMax, vMin]
+  );
+
+  const centerOn = useCallback(
+    (targetYear: number, targetSpan: number = Math.max(50, span)) => {
+      if (targetYear === 0) return;
+      const clampedSpan = clamp(targetSpan, minSpan, maxSpan);
+      const nm = targetYear - clampedSpan / 2;
+      updateView(nm, nm + clampedSpan);
+    },
+    [maxSpan, minSpan, span, updateView]
+  );
+
+  useEffect(() => {
+    if (previousValueRef.current === value && pendingExternalValueRef.current === null) {
+      return;
+    }
+    previousValueRef.current = value;
+
+    if (value == null || Number.isNaN(value) || value === 0) return;
+    const clampedValue = clamp(value, domainMin, domainMax);
+    pendingExternalValueRef.current = clampedValue;
+    if (selectedYear === clampedValue) {
+      lastEmittedValueRef.current = null;
+      pendingExternalValueRef.current = null;
+      return;
+    }
+    const lastEmitted = lastEmittedValueRef.current;
+    if (lastEmitted != null && Math.abs(clampedValue - lastEmitted) < 0.5) {
+      lastEmittedValueRef.current = null;
+      pendingExternalValueRef.current = null;
+      return;
+    }
+    const targetSpan = clamp(span || minSpan, minSpan, maxSpan);
+    const nextMin = clampedValue - targetSpan / 2;
+    updateView(nextMin, nextMin + targetSpan);
+  }, [domainMax, domainMin, maxSpan, minSpan, selectedYear, span, updateView, value]);
+
+  const nudge = useCallback(
+    (deltaYears: number) => {
+      if (deltaYears === 0) return;
+      markInteracted();
+      const nm = vMin + deltaYears;
+      updateView(nm, nm + span);
+    },
+    [markInteracted, span, updateView, vMin]
+  );
 
   const zoomAround = useCallback((anchorYear: number, factor: number) => {
-    const targetSpan = clamp(span * factor, minSpan, maxSpan);
-    const ratio = (anchorYear - vMin) / span;
+    const targetSpan = clamp(effectiveSpan * factor, minSpan, maxSpan);
+    const currentCenter = vMin + effectiveSpan / 2;
+    let ratio = clamp((anchorYear - vMin) / effectiveSpan, 0, 1);
+    if (!Number.isFinite(ratio)) {
+      ratio = 0.5;
+    }
+    if (Math.abs(anchorYear - currentCenter) < 0.5) {
+      ratio = 0.5;
+    }
     let nextMin = anchorYear - ratio * targetSpan;
     let nextMax = nextMin + targetSpan;
 
@@ -174,10 +276,12 @@ export default function ZoomYearPicker({
           const x = evt.clientX - rect.left;
 
           if (evt.shiftKey) {
-            const delta = (evt.deltaY + evt.deltaX) * (span / displayWidth);
-            const nextMin = clamp(vMin + delta, domainMin, domainMax - span);
-            updateView(nextMin, nextMin + span);
+            const delta = (evt.deltaY + evt.deltaX) * (effectiveSpan / displayWidth);
+            markInteracted();
+            const nextMin = vMin + delta;
+            updateView(nextMin, nextMin + effectiveSpan);
           } else {
+            markInteracted();
             const anchor = yearAt(x);
             const factor = Math.pow(1.0015, evt.deltaY);
             zoomAround(anchor, factor);
@@ -194,7 +298,9 @@ export default function ZoomYearPicker({
         wheelRAF.current = null;
       }
     };
-  }, [displayWidth, domainMax, domainMin, span, updateView, vMin, yearAt, zoomAround]);
+  }, [displayWidth, domainMax, domainMin, effectiveSpan, updateView, vMin, yearAt, zoomAround]);
+
+  const dragging = useRef<null | { startX: number; startVMin: number; startVMax: number }>(null);
 
   const pointers = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchStart = useRef<{
@@ -202,36 +308,29 @@ export default function ZoomYearPicker({
     yAnchor: number;
     span0: number;
   } | null>(null);
-  const dragging = useRef<"thumb" | "rail" | "pan" | null>(null);
 
   const onPointerDown: React.PointerEventHandler<HTMLDivElement> = useCallback((event) => {
     event.currentTarget.setPointerCapture(event.pointerId);
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
-
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const thumbX = xAt(year);
-
-    if (event.altKey) {
-      dragging.current = "pan";
-    } else {
-      dragging.current = Math.abs(x - thumbX) < 12 ? "thumb" : "rail";
-      if (dragging.current === "rail") {
-        setYearRounded(yearAt(x));
-      }
-    }
+    dragging.current = {
+      startX: event.clientX,
+      startVMin: vMin,
+      startVMax: vMax,
+    };
+    markInteracted();
 
     if (pointers.current.size === 2) {
       const [p1, p2] = Array.from(pointers.current.values());
       const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+      const rect = event.currentTarget.getBoundingClientRect();
       const midX = (p1.x + p2.x) / 2 - rect.left;
       pinchStart.current = {
         dist,
         yAnchor: yearAt(midX),
-        span0: span,
+        span0: effectiveSpan,
       };
     }
-  }, [setYearRounded, span, xAt, year, yearAt]);
+  }, [effectiveSpan, markInteracted, vMax, vMin, yearAt]);
 
   const onPointerMove: React.PointerEventHandler<HTMLDivElement> = useCallback((event) => {
     const prev = pointers.current.get(event.pointerId);
@@ -242,7 +341,7 @@ export default function ZoomYearPicker({
       const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
       const scale = dist / pinchStart.current.dist;
       const targetSpan = clamp(pinchStart.current.span0 / scale, minSpan, maxSpan);
-      const ratio = (pinchStart.current.yAnchor - vMin) / span;
+      const ratio = clamp((pinchStart.current.yAnchor - vMin) / effectiveSpan, 0, 1);
       let nextMin = pinchStart.current.yAnchor - ratio * targetSpan;
       let nextMax = nextMin + targetSpan;
 
@@ -259,18 +358,13 @@ export default function ZoomYearPicker({
       return;
     }
 
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-
-    if (dragging.current === "thumb" || dragging.current === "rail") {
-      setYearRounded(yearAt(x));
-    } else if (dragging.current === "pan" && prev) {
-      const dxPx = event.clientX - prev.x;
-      const dxYears = (dxPx / innerWidth) * span;
-      const nextMin = clamp(vMin - dxYears, domainMin, domainMax - span);
-      updateView(nextMin, nextMin + span);
-    }
-  }, [domainMax, domainMin, innerWidth, span, updateView, yearAt, setYearRounded, vMin]);
+    if (!dragging.current || !prev) return;
+    const dxPx = event.clientX - dragging.current.startX;
+    const dxYears = (dxPx / innerWidth) * effectiveSpan;
+    markInteracted();
+    const nextMin = dragging.current.startVMin - dxYears;
+    updateView(nextMin, nextMin + effectiveSpan);
+  }, [effectiveSpan, innerWidth, markInteracted, updateView]);
 
   const onPointerUp: React.PointerEventHandler<HTMLDivElement> = useCallback((event) => {
     event.currentTarget.releasePointerCapture(event.pointerId);
@@ -282,45 +376,54 @@ export default function ZoomYearPicker({
   }, []);
 
   const onKeyDown: React.KeyboardEventHandler<HTMLDivElement> = useCallback((event) => {
-    switch (event.key) {
-      case "ArrowLeft":
-        event.preventDefault();
-        setYearRounded(year - (event.metaKey || event.ctrlKey ? 10 : 1));
-        break;
-      case "ArrowRight":
-        event.preventDefault();
-        setYearRounded(year + (event.metaKey || event.ctrlKey ? 10 : 1));
-        break;
-      case "PageUp":
-        event.preventDefault();
-        setYearRounded(year + 10);
-        break;
-      case "PageDown":
-        event.preventDefault();
-        setYearRounded(year - 10);
-        break;
-      case "Home":
-        event.preventDefault();
-        setYearRounded(domainMin < 0 ? -1 : domainMin);
-        break;
-      case "End":
-        event.preventDefault();
-        setYearRounded(domainMax);
-        break;
-      case "-":
-      case "_":
-        event.preventDefault();
-        zoomAround(year, 1.15);
-        break;
-      case "=":
-      case "+":
-        event.preventDefault();
-        zoomAround(year, 1 / 1.15);
-        break;
-      default:
-        break;
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      markInteracted();
+      nudge(-(event.metaKey || event.ctrlKey ? 10 : 1));
+      return;
     }
-  }, [domainMax, domainMin, setYearRounded, year, zoomAround]);
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      markInteracted();
+      nudge(event.metaKey || event.ctrlKey ? 10 : 1);
+      return;
+    }
+    if (event.key === "PageDown" || ((event.metaKey || event.ctrlKey) && event.key === "ArrowLeft")) {
+      event.preventDefault();
+      markInteracted();
+      nudge(-10);
+      return;
+    }
+    if (event.key === "PageUp" || ((event.metaKey || event.ctrlKey) && event.key === "ArrowRight")) {
+      event.preventDefault();
+      markInteracted();
+      nudge(10);
+      return;
+    }
+    if (event.key === "Home") {
+      event.preventDefault();
+      markInteracted();
+      centerOn(domainMin, effectiveSpan);
+      return;
+    }
+    if (event.key === "End") {
+      event.preventDefault();
+      markInteracted();
+      centerOn(domainMax, effectiveSpan);
+      return;
+    }
+    if (event.key === "-" || event.key === "_") {
+      event.preventDefault();
+      markInteracted();
+      zoomAround(viewCenter, 1.15);
+      return;
+    }
+    if (event.key === "=" || event.key === "+") {
+      event.preventDefault();
+      markInteracted();
+      zoomAround(viewCenter, 1 / 1.15);
+    }
+  }, [centerOn, domainMax, domainMin, effectiveSpan, markInteracted, nudge, viewCenter, zoomAround]);
 
   const tickStep = useMemo(() => {
     if (span > 600) return 100;
@@ -328,169 +431,174 @@ export default function ZoomYearPicker({
     return 1;
   }, [span]);
 
-  const ticks = useMemo(() => {
-    const start = Math.ceil(vMin / tickStep) * tickStep;
+  const majorTicks = useMemo(() => {
+    const visibleMin = Math.max(vMin, domainMin);
+    const visibleMax = Math.min(vMax, domainMax);
+    const start = Math.ceil(visibleMin / tickStep) * tickStep;
     const values: number[] = [];
-    for (let t = start; t <= vMax; t += tickStep) {
+    for (let t = start; t <= visibleMax; t += tickStep) {
       if (t === 0) continue;
       values.push(t);
     }
     return values;
-  }, [tickStep, vMin, vMax]);
+  }, [domainMin, domainMax, tickStep, vMin, vMax]);
 
-  const onNumericChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const parsed = Number.parseInt(event.target.value, 10);
-    if (!Number.isFinite(parsed)) return;
-    const next = parsed === 0 ? (year < 0 ? -1 : 1) : parsed;
-    const clamped = clamp(next, domainMin, domainMax);
-    setYearRounded(clamped);
-    if (clamped < vMin || clamped > vMax) {
-      const targetSpan = Math.max(50, span);
-      const nextMin = clamp(clamped - targetSpan / 2, domainMin, domainMax - targetSpan);
-      updateView(nextMin, nextMin + targetSpan);
+  const minorTickStep = useMemo(() => {
+    if (tickStep <= 1) return null;
+    const approx = Math.max(1, Math.round(tickStep / 5));
+    return approx >= tickStep ? null : approx;
+  }, [tickStep]);
+
+  const minorTicks = useMemo(() => {
+    if (!minorTickStep) return [] as number[];
+    const visibleMin = Math.max(vMin, domainMin);
+    const visibleMax = Math.min(vMax, domainMax);
+    const start = Math.floor(visibleMin / minorTickStep) * minorTickStep;
+    const values: number[] = [];
+    for (let t = start; t <= visibleMax; t += minorTickStep) {
+      if (t === 0 || (t % tickStep === 0)) continue;
+      if (t < domainMin || t > domainMax) continue;
+      values.push(t);
     }
-  }, [domainMax, domainMin, setYearRounded, span, updateView, vMax, vMin, year]);
+    return values;
+  }, [domainMax, domainMin, minorTickStep, tickStep, vMax, vMin]);
 
   const labeledTicks = useMemo(() => {
     const out: { x: number; year: number }[] = [];
     let lastX = -Infinity;
-    for (const tick of ticks) {
+    for (const tick of majorTicks) {
       const x = xAt(tick);
-      const isMajor = tickStep === 1 || tick % (tickStep * 10) === 0;
-      if (isMajor && x - lastX >= 48) {
+      if (x - lastX >= 48) {
         out.push({ x, year: tick });
         lastX = x;
       }
     }
     return out;
-  }, [tickStep, ticks, vMin, vMax, innerWidth, span]);
+  }, [majorTicks, xAt]);
+
+  const handleZoom = useCallback(
+    (factor: number) => {
+      markInteracted();
+      zoomAround(viewCenter, factor);
+    },
+    [markInteracted, viewCenter, zoomAround]
+  );
 
   return (
     <div
-      ref={containerRef}
-      className="flex flex-col gap-2 select-none"
+      className="flex items-center gap-3 select-none"
       style={{ width: typeof width === "number" && !Number.isNaN(width) ? width : "100%" }}
     >
-      <div className="flex items-center justify-between text-sm">
-        <span>{displayYear(Math.round(vMin))}</span>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => zoomAround(year, 1.15)}
-            aria-label="Zoom out"
-            className="px-2 py-1 border rounded"
-          >
-            −
-          </button>
-          <div aria-live="polite" aria-atomic="true">
-            <b>{displayYear(year)}</b>
-          </div>
-          <input
-            type="number"
-            inputMode="numeric"
-            value={year}
-            onChange={onNumericChange}
-            className="w-24 px-1 py-1 border rounded"
-            aria-label="Enter exact year"
-            aria-describedby="year-input-hint"
-            min={domainMin}
-            max={domainMax}
-          />
-          <span id="year-input-hint" className="sr-only">
-            Type exact year. Use negative for BCE. Year zero is not valid.
-          </span>
-          <button
-            type="button"
-            onClick={() => zoomAround(year, 1 / 1.15)}
-            aria-label="Zoom in"
-            className="px-2 py-1 border rounded"
-          >
-            +
-          </button>
-        </div>
-        <span>{displayYear(Math.round(vMax))}</span>
-      </div>
-
-      <div
-        ref={railRef}
-        role="slider"
-        aria-orientation="horizontal"
-        aria-valuemin={domainMin}
-        aria-valuemax={domainMax}
-        aria-valuenow={year}
-        aria-valuetext={displayYear(year)}
-        tabIndex={0}
-        onKeyDown={onKeyDown}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-        className="relative border rounded bg-white"
-        style={{ height, touchAction: "none" }}
+      <button
+        type="button"
+        onClick={() => handleZoom(1.15)}
+        aria-label="Zoom out"
+        className="px-2 py-1 border border-[#555] rounded bg-[#222] text-white"
       >
-        <svg width={displayWidth} height={height} className="absolute left-0 top-0">
-          <line
-            x1={PADDING}
-            x2={displayWidth - PADDING}
-            y1={height / 2}
-            y2={height / 2}
-            stroke="currentColor"
-            strokeWidth={2}
-          />
-          {ticks.map((tick) => {
-            const x = xAt(tick);
-            return (
-              <line
-                key={`tick-${tick}`}
-                x1={x}
-                x2={x}
-                y1={height / 2 - 10}
-                y2={height / 2 + 10}
-                stroke="currentColor"
-                strokeWidth={1}
-              />
-            );
-          })}
-          {labeledTicks.map(({ x, year: tickYear }) => (
-            <text
-              key={`label-${tickYear}`}
-              x={x}
-              y={height / 2 - 24}
-              textAnchor="middle"
-              fontSize="10"
-            >
-              {displayYear(tickYear)}
-            </text>
-          ))}
-          <g transform={`translate(${xAt(year)}, 0)`}>
-            <circle cy={height / 2} r={10} fill="black">
-              <title>{displayYear(year)}</title>
-            </circle>
-          </g>
-        </svg>
-      </div>
-
-      <div className="flex items-center gap-2 text-xs">
-        <button
-          type="button"
-          className="px-2 py-1 border rounded"
-          onClick={() => updateView(domainMin, domainMax)}
-        >
-          Reset view
-        </button>
-        <button
-          type="button"
-          className="px-2 py-1 border rounded"
-          onClick={() => {
-            const targetSpan = Math.max(50, Math.min(span, maxSpan));
-            let nextMin = clamp(year - targetSpan / 2, domainMin, domainMax - targetSpan);
-            updateView(nextMin, nextMin + targetSpan);
+        −
+      </button>
+      <div className="flex-1">
+        <div
+          ref={(node) => {
+            setRailElement(node);
+            railRef.current = node;
+          }}
+          role="slider"
+          aria-orientation="horizontal"
+          aria-valuemin={domainMin}
+          aria-valuemax={domainMax}
+          aria-valuenow={selectedYear}
+          aria-valuetext={displayYear(selectedYear)}
+          tabIndex={0}
+          onKeyDown={onKeyDown}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          className="relative"
+          style={{
+            height,
+            touchAction: "none",
+            background: "#333",
+            color: "#fff",
           }}
         >
-          Center on {displayYear(year)}
-        </button>
-        <span className="opacity-70">Shift+Wheel = pan, Alt+Drag = pan</span>
+          <svg width={displayWidth} height={height} className="absolute left-0 top-0">
+            <line
+              x1={PADDING}
+              x2={displayWidth - PADDING}
+              y1={height / 2}
+              y2={height / 2}
+              stroke="#4b5563"
+              strokeWidth={2}
+            />
+            {minorTicks.map((tick) => {
+              const x = xAt(tick);
+              const tickHeight = Math.min(12, height * 0.28);
+              return (
+                <line
+                  key={`minor-${tick}`}
+                  x1={x}
+                  x2={x}
+                  y1={height / 2 - tickHeight}
+                  y2={height / 2}
+                  stroke="#9ca3af"
+                  strokeWidth={1}
+                  strokeLinecap="round"
+                />
+              );
+            })}
+            {majorTicks.map((tick) => {
+              const x = xAt(tick);
+              const tickHeight = Math.min(18, height * 0.4);
+              return (
+                <line
+                  key={`major-${tick}`}
+                  x1={x}
+                  x2={x}
+                  y1={height / 2 - tickHeight}
+                  y2={height / 2}
+                  stroke="#f97316"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                />
+              );
+            })}
+            {labeledTicks.map(({ x, year: tickYear }) => (
+              <text
+                key={`label-${tickYear}`}
+                x={x}
+                y={height / 2 + 18}
+                textAnchor="middle"
+                fontSize="10"
+                fill="#f3f4f6"
+              >
+                {displayYear(tickYear)}
+              </text>
+            ))}
+            <g transform={`translate(${CENTER_X}, 0)`}>
+              <line
+                x1={0}
+                x2={0}
+                y1={height / 2 - Math.min(26, height * 0.6)}
+                y2={height / 2 + Math.min(14, height * 0.25)}
+                stroke="#f97316"
+                strokeWidth={4}
+                strokeLinecap="round"
+              />
+              <title>{displayYear(selectedYear)}</title>
+            </g>
+          </svg>
+        </div>
       </div>
+      <button
+        type="button"
+        onClick={() => handleZoom(1 / 1.15)}
+        aria-label="Zoom in"
+        className="px-2 py-1 border border-[#555] rounded bg-[#222] text-white"
+      >
+        +
+      </button>
     </div>
   );
 }

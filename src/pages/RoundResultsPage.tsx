@@ -80,6 +80,8 @@ type RoundHintRow = {
 const RoundResultsPage = () => {
   // ---------------------------------- Hint debts ----------------------------------
   const [hintDebts, setHintDebts] = useState<HintDebt[]>([]);
+  const [snapshotResult, setSnapshotResult] = useState<ContextRoundResult | null>(null);
+  const [snapshotImage, setSnapshotImage] = useState<GameImage | null>(null);
 
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -162,8 +164,58 @@ const RoundResultsPage = () => {
   }, [roomId, images, hydrateRoomImages, syncRoomId]);
 
   // Find the context result and image data
-  const contextResult = roundResults.find(r => r.roundIndex === currentRoundIndex);
+  const contextResult = roundResults.find(r => r?.roundIndex === currentRoundIndex);
   const currentImage = images.length > currentRoundIndex ? images[currentRoundIndex] : null;
+
+  const [pendingImage, setPendingImage] = useState<GameImage | null>(null);
+
+  useEffect(() => {
+    if (currentImage) {
+      setPendingImage(null);
+      return;
+    }
+    if (!contextResult) return;
+    if (!roomId) return;
+    const stored = hydrateSnapshotImage(roomId, currentRoundIndex);
+    if (stored) {
+      setPendingImage((prev) => (prev && prev.id === stored.id ? prev : stored));
+    }
+  }, [currentImage, contextResult, roomId, currentRoundIndex]);
+
+  useEffect(() => {
+    if (contextResult && currentImage) {
+      setSnapshotResult(null);
+      setSnapshotImage(null);
+      return;
+    }
+
+    try {
+      const raw = localStorage.getItem('gh_active_game');
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!parsed || parsed.roomId !== roomId) return;
+
+      const storedResults = Array.isArray(parsed.roundResults) ? parsed.roundResults : [];
+      if (!contextResult && storedResults.length > 0) {
+        const match = storedResults.find((entry: any) => entry && Number(entry.roundIndex) === currentRoundIndex);
+        if (match) {
+          setSnapshotResult((prev) => (prev && prev.roundIndex === match.roundIndex ? prev : match as ContextRoundResult));
+        }
+      }
+
+      if (!currentImage && Array.isArray(parsed.images) && parsed.images.length > currentRoundIndex) {
+        const storedImage = parsed.images[currentRoundIndex];
+        if (storedImage) {
+          setSnapshotImage((prev) => (prev && prev.id === storedImage.id ? prev : storedImage as GameImage));
+        }
+      }
+    } catch (err) {
+      console.warn('RoundResultsPage: failed to hydrate from snapshot', err);
+    }
+  }, [contextResult, currentImage, roomId, currentRoundIndex]);
+
+  const effectiveResult = contextResult ?? snapshotResult ?? undefined;
+  const effectiveImage = currentImage ?? pendingImage ?? snapshotImage;
 
   // --- Multiplayer peers: fetch other players' answers for this room/round ---
   const isSyncCompeteRoute = useMemo(() => location.pathname.startsWith('/compete/sync/'), [location.pathname]);
@@ -248,18 +300,18 @@ const RoundResultsPage = () => {
 
   // Fetch and process hint debts when user, image, and results are ready
   const fetchDebts = useCallback(async () => {
-    if (!user || !currentImage || !contextResult) {
+    if (!user || !effectiveImage || !effectiveResult) {
       console.log('Debug: Missing required data for fetchDebts', { 
         hasUser: !!user, 
-        hasCurrentImage: !!currentImage, 
-        hasContextResult: !!contextResult 
+        hasCurrentImage: !!effectiveImage, 
+        hasContextResult: !!effectiveResult 
       });
       setHintDebts([]);
       return;
     }
 
-    console.groupCollapsed(`Debug: Fetching Hint Debts for Round ${currentImage.id}`);
-    console.log('currentImage.id:', currentImage.id, 'Type:', typeof currentImage.id);
+    console.groupCollapsed(`Debug: Fetching Hint Debts for Round ${effectiveImage.id}`);
+    console.log('currentImage.id:', effectiveImage.id, 'Type:', typeof effectiveImage.id);
     // Build composite round session ID using centralized helper
     const roundSessionId = makeRoundId(roomId as string, roundNumber);
     console.log('Query Params:', { userId: user.id, roundSessionId });
@@ -316,13 +368,13 @@ const RoundResultsPage = () => {
       console.error('A critical error occurred in fetchDebts:', e);
     }
     console.groupEnd();
-  }, [user, currentImage, contextResult, roomId, roundNumber]);
+  }, [user, effectiveImage, effectiveResult, roomId, roundNumber]);
 
   useEffect(() => {
     fetchDebts();
   }, [fetchDebts]);
 
-  const totalRounds = images.length > 0 ? images.length : 5; // Default to 5 if images not loaded yet
+  const totalRounds = (images.length > 0 ? images.length : (snapshotImage ? currentRoundIndex + 1 : 0)) || 5; // Default fallback to 5
 
   // State for navigation loading indicator
   const [navigating, setNavigating] = useState(false);
@@ -332,7 +384,7 @@ const RoundResultsPage = () => {
   // Award badges when results are viewed
   useEffect(() => {
     const awardBadges = async () => {
-      if (!contextResult || !currentImage || !roomId) return;
+      if (!effectiveResult || !effectiveImage || !roomId) return;
       if (awardsSubmittedRef.current) return; // dedupe within this page lifecycle
 
       try {
@@ -351,8 +403,8 @@ const RoundResultsPage = () => {
         if (!authUser) return;
 
         // Get the year accuracy and location accuracy to check for perfect scores
-        const actualYear = currentImage.year || 1900;
-        const guessYear = contextResult.guessYear ?? actualYear;
+        const actualYear = effectiveImage.year || 1900;
+        const guessYear = effectiveResult.guessYear ?? actualYear;
         const yearDifference = Math.abs(actualYear - guessYear);
 
         // Check for perfect year (exact match)
@@ -360,7 +412,7 @@ const RoundResultsPage = () => {
 
         // Check for perfect location (95%+ accuracy)
         const maxDistKm = 2000;
-        const clampedDist = Math.min(contextResult.distanceKm ?? maxDistKm, maxDistKm);
+        const clampedDist = Math.min(effectiveResult.distanceKm ?? maxDistKm, maxDistKm);
         const locationAccuracy = Math.round(100 * (1 - clampedDist / maxDistKm));
 
         // Award badges based on performance
@@ -392,7 +444,7 @@ const RoundResultsPage = () => {
     };
 
     awardBadges();
-  }, [contextResult, currentImage, roomId, currentRoundIndex]);
+  }, [effectiveResult, effectiveImage, roomId, currentRoundIndex]);
 
   // Mapping function: Context -> Layout Type
   const mapToLayoutResultType = useCallback((
@@ -476,21 +528,36 @@ const RoundResultsPage = () => {
 
   // Generate the result in the format the layout expects (memoized to avoid re-creating every render)
   const resultForLayout = useMemo(() => {
-    return mapToLayoutResultType(contextResult, currentImage, hintDebts);
-  }, [mapToLayoutResultType, contextResult, currentImage, hintDebts]);
+    return mapToLayoutResultType(effectiveResult, effectiveImage, hintDebts);
+  }, [mapToLayoutResultType, effectiveResult, effectiveImage, hintDebts]);
+
+  useEffect(() => {
+    console.log('[RoundResultsPage] Hydration state', {
+      contextResultPresent: Boolean(contextResult),
+      snapshotResultPresent: Boolean(snapshotResult),
+      effectiveResultPresent: Boolean(effectiveResult),
+      currentImagePresent: Boolean(currentImage),
+      snapshotImagePresent: Boolean(snapshotImage),
+      effectiveImagePresent: Boolean(effectiveImage),
+      roundNumber,
+      currentRoundIndex,
+      roundResultsLength: roundResults?.length ?? 0,
+      imagesLength: images?.length ?? 0,
+    });
+  }, [contextResult, snapshotResult, effectiveResult, currentImage, snapshotImage, effectiveImage, roundNumber, currentRoundIndex, roundResults, images]);
 
   // --- Level Up per-round net percent (for progress card) ---
   const isLevelUpRoute = useMemo(() => location.pathname.includes('/level/'), [location.pathname]);
   const roundNetPercent = useMemo(() => {
-    if (!contextResult || !currentImage) return 0;
-    const actualYear = currentImage.year || 1900;
-    const guessYear = contextResult.guessYear ?? null;
+    if (!effectiveResult || !effectiveImage) return 0;
+    const actualYear = effectiveImage.year || 1900;
+    const guessYear = effectiveResult.guessYear ?? null;
     const timeAcc = guessYear == null ? 0 : calculateTimeAccuracy(guessYear, actualYear);
-    const distanceKm = contextResult.distanceKm ?? null;
+    const distanceKm = effectiveResult.distanceKm ?? null;
     const locAcc = distanceKm == null ? 0 : calculateLocationAccuracy(distanceKm);
     const totalAccDebt = hintDebts.reduce((sum, d) => sum + (Number(d.accDebt) || 0), 0);
     return computeRoundNetPercent(timeAcc, locAcc, totalAccDebt);
-  }, [contextResult, currentImage, hintDebts]);
+  }, [effectiveResult, effectiveImage, hintDebts]);
 
   // Handle navigation to next round or end of game
   const handleNext = () => {
@@ -565,6 +632,20 @@ const RoundResultsPage = () => {
   // Handle case where results for this specific round aren't found in context yet OR image is missing
   // Show an intermediate loading state while results are being prepared.
   if (!resultForLayout) {
+    console.warn('[RoundResultsPage] resultForLayout missing - rendering fallback', {
+      contextResultPresent: Boolean(contextResult),
+      snapshotResultPresent: Boolean(snapshotResult),
+      effectiveResultPresent: Boolean(effectiveResult),
+      currentImagePresent: Boolean(currentImage),
+      snapshotImagePresent: Boolean(snapshotImage),
+      effectiveImagePresent: Boolean(effectiveImage),
+      hintDebtCount: hintDebts.length,
+      isContextLoading,
+      roundNumber,
+      currentRoundIndex,
+      roundResultsLength: roundResults?.length ?? 0,
+      imagesLength: images?.length ?? 0,
+    });
     return (
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
         <div className="flex flex-col items-center space-y-3 p-4 bg-background rounded shadow">

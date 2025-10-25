@@ -45,6 +45,8 @@ const GameRoundPage: React.FC = () => {
   const [historyLocked, setHistoryLocked] = useState(false);
   const { roomId, roundNumber: roundNumberStr } = useParams<{ roomId: string; roundNumber: string }>();
   const location = useLocation();
+  const historyLockIdRef = useRef(0);
+  const lockedUrlRef = useRef<string | null>(null);
   // Derive base mode path (everything before '/game/') to keep navigation inside the current mode (e.g., /level, /solo, /compete/sync)
   const modeBasePath = useMemo(() => {
     const path = location.pathname;
@@ -145,19 +147,53 @@ const GameRoundPage: React.FC = () => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!historyLocked) return;
-    const handlePop = () => {
+
+    const lockId = ++historyLockIdRef.current;
+    lockedUrlRef.current = window.location.href;
+
+    const restoreLockedUrl = () => {
+      if (historyLockIdRef.current !== lockId) return;
+      const targetUrl = lockedUrlRef.current ?? window.location.href;
       try {
-        window.history.pushState(null, '', window.location.href);
+        if (window.location.href !== targetUrl) {
+          window.history.replaceState(null, '', targetUrl);
+        } else {
+          window.history.pushState(null, '', targetUrl);
+        }
       } catch {}
     };
+
+    // Prime the history stack so the first back press keeps the user on the page.
     try {
-      window.history.pushState(null, '', window.location.href);
+      window.history.pushState(null, '', lockedUrlRef.current);
     } catch {}
+
+    const handlePop = (event: PopStateEvent) => {
+      if (historyLockIdRef.current !== lockId) return;
+      event.preventDefault?.();
+      event.stopImmediatePropagation?.();
+      // Restore immediately to prevent rapid back presses from slipping through,
+      // then schedule a follow-up to outlast router updates.
+      restoreLockedUrl();
+      setTimeout(restoreLockedUrl, 0);
+    };
+
     window.addEventListener('popstate', handlePop);
+
     return () => {
+      historyLockIdRef.current += 1;
       window.removeEventListener('popstate', handlePop);
     };
   }, [historyLocked]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!historyLocked) return;
+    lockedUrlRef.current = window.location.href;
+    try {
+      window.history.replaceState(null, '', lockedUrlRef.current);
+    } catch {}
+  }, [historyLocked, location.pathname, location.search, location.hash]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -583,7 +619,7 @@ const GameRoundPage: React.FC = () => {
 
   const handleNavigateHome = useCallback(() => {
     console.log("Attempting to navigate to /home");
-    navigate('/home');
+    navigate('/home', { replace: true });
     console.log("Called navigate('/home')");
   }, [navigate]);
 
@@ -595,7 +631,11 @@ const GameRoundPage: React.FC = () => {
   const handleConfirmNavigation = useCallback(() => {
     setShowConfirmDialog(false);
     if (pendingNavigation) {
-      pendingNavigation();
+      setHistoryLocked(false);
+      lockedUrlRef.current = null;
+      setTimeout(() => {
+        pendingNavigation();
+      }, 0);
     }
   }, [pendingNavigation]);
 
@@ -951,15 +991,20 @@ const GameRoundPage: React.FC = () => {
 
     const currentPlayerKey = user?.id ?? (displayName ? `name:${displayName.trim().toLowerCase()}` : null);
 
-    const total = roundPeers.length;
+    const expectedTotal = Math.max(
+      roundPeers.length,
+      submittedCounts.total,
+      submittedCounts.submitted,
+      lobbyRoster.length,
+    );
     const submitted = roundPeers.filter((peer) => peer.submitted).length;
     // Fallback: if we locally submitted but our DB row hasn't appeared yet,
     // treat self as submitted for the purpose of progressing to results.
     const selfId = user?.id || null;
     const selfPeer = roundPeers.find((p) => p.userId === selfId) || null;
     const submittedAdj = submitted + (hasSubmittedThisRound && (!selfPeer || selfPeer.submitted !== true) ? 1 : 0);
-    const allSubmitted = total > 0 && submittedAdj >= total;
-    setSubmittedCounts({ submitted, total });
+    const allSubmitted = expectedTotal > 0 && submittedAdj >= expectedTotal;
+    setSubmittedCounts({ submitted, total: expectedTotal });
 
     const otherSubmitters = roundPeers.filter((peer) => {
       if (!peer.submitted) return false;
@@ -982,7 +1027,7 @@ const GameRoundPage: React.FC = () => {
     });
 
     if (newSubmitterNames.length > 0) {
-      const progressLabel = total > 0 ? ` (${submitted}/${total})` : '';
+      const progressLabel = expectedTotal > 0 ? ` (${submitted}/${expectedTotal})` : '';
       const submitterLabel = newSubmitterNames.length === 1 ? newSubmitterNames[0] : `${newSubmitterNames.length} players`;
       showSubmissionNotice(`${submitterLabel} submitted${progressLabel}`);
       
@@ -1008,7 +1053,21 @@ const GameRoundPage: React.FC = () => {
       setWaitingForPeers(false);
       navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
     }
-  }, [roundPeers, waitingForPeers, roomId, modeBasePath, navigate, roundNumber, isCompeteMode, hasSubmittedThisRound, showSubmissionNotice, applyCountdownRush, registerRecentSubmitter]);
+  }, [
+    roundPeers,
+    waitingForPeers,
+    roomId,
+    modeBasePath,
+    navigate,
+    roundNumber,
+    isCompeteMode,
+    hasSubmittedThisRound,
+    showSubmissionNotice,
+    applyCountdownRush,
+    registerRecentSubmitter,
+    submittedCounts,
+    lobbyRoster,
+  ]);
 
   useEffect(() => {
     if (!isCompeteMode) return;

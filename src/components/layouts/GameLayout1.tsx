@@ -234,6 +234,10 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   // Effective bounds: use Level Up overrides when provided, otherwise fall back to dynamic dataset bounds
   const effectiveMinYear = typeof minYear === 'number' ? minYear : dynamicMinYear;
   const effectiveMaxYear = typeof maxYear === 'number' ? maxYear : dynamicMaxYear;
+  const defaultPickerYear = useMemo(() => {
+    if (typeof selectedYear === 'number' && !isNaN(selectedYear)) return selectedYear;
+    return Math.round((effectiveMinYear + effectiveMaxYear) / 2);
+  }, [effectiveMaxYear, effectiveMinYear, selectedYear]);
 
   // Log the year range constraints for debugging
   
@@ -481,7 +485,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                     domainMax={effectiveMaxYear}
                     minSpan={1}
                     initialView={{ vMin: effectiveMinYear, vMax: effectiveMaxYear }}
-                    initialYear={selectedYear ?? effectiveMinYear}
+                    initialYear={defaultPickerYear}
                     value={yearInteracted ? (selectedYear ?? null) : null}
                     onChange={(nextYear) => {
                       const clampedYear = Math.min(Math.max(nextYear, effectiveMinYear), effectiveMaxYear);

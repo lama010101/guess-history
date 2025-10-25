@@ -13,8 +13,8 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
 const ZOOM_STEP = 0.2;
 const WHEEL_ZOOM_FACTOR = 0.1; // Smaller factor for smoother wheel zooming
-// Disable all zoom interactions in fullscreen mode
-const ZOOM_ENABLED = false;
+// Master toggle for pinch/scroll zoom inside fullscreen view
+const ZOOM_ENABLED = true;
 
 // Track whether we've already auto-panned for a given image/round key during this page session
 const __autoPanRegistry = new Set<string>();
@@ -634,6 +634,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
+      data-allow-zoom
     >
       {/* Loading Spinner */}
       {isLoading && (

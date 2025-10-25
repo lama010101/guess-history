@@ -1,5 +1,11 @@
 ### Landing Page Access Control (2025-10-23)
 
+### Zoom Controls Locked for Gameplay (2025-10-25)
+
+- **HTML**: `index.html` sets `<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">` so mobile browsers do not auto-scale the canvas.
+- **CSS**: `index.css` constrains `touch-action` to `pan-x pan-y` on `html, body` and ensures form controls default to `font-size: 16px;` to suppress iOS focus zoom.
+- **JS**: `main.tsx` registers global listeners that block pinch zoom, Ctrl/⌘ zoom shortcuts, and double-tap magnification. The guard only attaches once per session, applies to Chromium, iOS Safari, and desktop keyboard shortcuts, and respects `data-allow-zoom` containers so feature surfaces (e.g., fullscreen viewer) can opt-in to native gestures.
+
 - **Routing guard**: `src/components/RequireAuthSession.tsx`
   - No longer auto-creates guest sessions. When `user === null`, redirects back to `/` so visitors stay on `LandingPage` until they opt to authenticate or continue as guest.
   - **Gameplay entry**: `src/pages/GameRoundPage.tsx`
@@ -18,8 +24,11 @@
 - **Component**: `src/pages/GameRoundPage.tsx`
   - Locks the browser history stack while a round is active by pushing a no-op state and intercepting `popstate` so the Back button cannot roll the user to a previous route mid-round.
   - On mount, the guard consults `getSessionProgress()` (Supabase `session_progress`) and redirects to any persisted route (e.g., results) before enabling the lock. This ensures refreshes or back-navigation land on the authoritative location instead of replaying a finished round.
+  - History locking now tracks the exact locked URL and restores it synchronously and with a queued follow-up to withstand rapid double back presses. The guard also synchronizes the locked URL when route segments change so the lock follows router-driven updates.
   - Lock releases automatically when the player is redirected out of the round (e.g., to `/results`) and cleans up the listener on unmount.
   - **Server contract**: `session_progress` rows are upserted via `upsertSessionProgress()` when a round completes so the guard knows the latest safe destination.
+  - Confirming a navigation request explicitly clears the lock before performing the router transition, preventing the interceptor from immediately rewinding the user after they confirm.
+  - Confirmation dialog copy defaults to "Leave Page?" to match browser terminology in the `beforeunload` prompt.
 
 ### GameRoundPage Hook Ordering (2025-10-25)
 
@@ -42,6 +51,7 @@
 - **Context**: `src/contexts/GameContext.tsx`
   - Persists the active game snapshot to `localStorage` (`gh_active_game`) whenever room/game IDs, images, or round results change.
   - Hydrates stored snapshots on mount before falling back to Supabase, then clears local storage after authoritative data loads.
+- **Update (2025-10-25)**: Solo submissions now attempt an anonymous Supabase session when no user is present so `recordRoundResult()` can persist results. If all auth attempts fail, the round result still lands in local state (`roundResults` + `gh_active_game`) so the Round Results page doesn’t stall on “Preparing results…”. Remote persistence and achievements resume automatically once a session exists.
 - **Styles**: `index.css`
   - Applies `overscroll-behavior: contain` + `touch-action: manipulation` globally to reduce mobile pull-to-refresh and accidental gestures.
 
@@ -181,6 +191,12 @@ Together these changes eliminate the ghost-submission rush and ensure every play
   - Removes the participant from active and submission sets for each round and recalculates `expectedParticipantsByRound` using `max(active, submissions, lobbySize)`.
   - Broadcasts updated `results-ready` counts so clients stop waiting on disconnected players.
   - Emits `round-complete` if, after recalculation, submitted ≥ expected for any round. This ensures remaining players advance to Round Results together when someone drops mid-round.
+
+#### Update (2025-10-25): Compete submission wait state regression fix
+
+- **Component**: `src/pages/GameRoundPage.tsx`
+  - The in-round HUD now derives its expected participant count from the maximum of PartyKit submission broadcasts, the live peer roster, and locally observed submissions before deciding everyone is done. This prevents the submitting player from jumping to Round Results when other participants are still guessing.
+  - Submission notices reuse the same expected total so the `(submitted/total)` label matches the server’s authoritative counts.
 
 ### Hint Modal — Persisted Purchases & ID Normalization (2025-10-23)
 

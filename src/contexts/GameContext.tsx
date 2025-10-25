@@ -1149,230 +1149,286 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     };
 
     console.log(`[GameContext] [GameID: ${gameId || 'N/A'}] Recording result for round ${currentRoundIndex + 1}:`, fullResult);
-    
-    // Persist to DB
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.error('No user found, cannot persist round result');
-        return;
-      }
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('display_name')
-        .eq('id', user.id)
-        .maybeSingle();
-      const displayName = profile?.display_name ?? null;
-      // Derive effective room id: prefer context, then URL, then sessionStorage
-      let effectiveRoomId: string | null = roomId;
-      if (!effectiveRoomId && typeof window !== 'undefined') {
-        const path = window.location.pathname || '';
-        const match = path.match(/\/room\/([^/]+)/);
-        effectiveRoomId = (match && match[1]) ? match[1] : null;
-        if (!effectiveRoomId) {
-          const last = sessionStorage.getItem('lastSyncedRoomId');
-          effectiveRoomId = last && last.length > 0 ? last : null;
-        }
-        if (effectiveRoomId) {
-          setRoomId(effectiveRoomId);
-          await ensureSessionMembership(effectiveRoomId, user.id);
-          await repairMissingRoomId(effectiveRoomId);
-        }
-      }
-      console.log('[GameContext] recordRoundResult effectiveRoomId:', effectiveRoomId ?? 'null');
 
-      // Build full payload (preferred schema)
-      const xpTotal = fullResult.xpTotal ?? ((fullResult.xpWhere ?? 0) + (fullResult.xpWhen ?? 0));
-      const timeAccuracy = Number.isFinite(fullResult.timeAccuracy) ? Number(fullResult.timeAccuracy) : (Number.isFinite(computedTimeAccuracy) ? computedTimeAccuracy : 0);
-      const locationAccuracy = Number.isFinite(fullResult.locationAccuracy) ? Number(fullResult.locationAccuracy) : (Number.isFinite(computedLocationAccuracy) ? computedLocationAccuracy : 0);
-      const averageAccuracy = Number(resultData.accuracy ?? ((timeAccuracy + locationAccuracy) / 2));
-      const xpDebtValue = Number.isFinite(Number(resultData.xpDebt)) ? Number(resultData.xpDebt) : 0;
-      const accDebtValue = Number.isFinite(Number(resultData.accDebt)) ? Number(resultData.accDebt) : 0;
-
-      const payloadFull = {
-        user_id: user.id,
-        game_id: gameId,
-        room_id: effectiveRoomId ?? null,
-        round_index: currentRoundIndex,
-        image_id: currentImage.id,
-        score: fullResult.score,
-        accuracy: averageAccuracy,
-        xp_total: xpTotal,
-        xp_where: fullResult.xpWhere,
-        xp_when: fullResult.xpWhen,
-        hints_used: fullResult.hintsUsed,
-        xp_debt: xpDebtValue,
-        acc_debt: accDebtValue,
-        distance_km: fullResult.distanceKm,
-        guess_year: fullResult.guessYear,
-        guess_lat: fullResult.guessCoordinates?.lat ?? null,
-        guess_lng: fullResult.guessCoordinates?.lng ?? null,
-        actual_lat: fullResult.actualCoordinates.lat,
-        actual_lng: fullResult.actualCoordinates.lng,
-      } as const;
-
-      // Choose the correct conflict target backed by a UNIQUE index
-      // - Multiplayer: (room_id, user_id, round_index)
-      // - Solo/legacy: (user_id, game_id, round_index)
-      const conflictTarget = (payloadFull.room_id && payloadFull.room_id.length > 0)
-        ? 'room_id,user_id,round_index'
-        : 'user_id,game_id,round_index';
-
-      let upsertData: any = null;
-      let upsertError: any = null;
-
-      // Attempt 1: full payload
-      {
-        const { data, error } = await supabase
-          .from('round_results')
-          .upsert(payloadFull, { onConflict: conflictTarget });
-        upsertData = data;
-        upsertError = error;
-        if (error) {
-          console.error('[GameContext] recordRoundResult upsert failed (primary payload)', {
-            roomId: payloadFull.room_id,
-            roundIndex: payloadFull.round_index,
-            conflictTarget,
-            error,
-          });
-        }
-      }
-
-      // Fallbacks for schema drift
-      if (upsertError) {
+    setRoundResults((prev) => {
+      const next = [...prev];
+      next[currentRoundIndex] = fullResult;
+      try {
+        let effRoomId: string | null = roomId;
         try {
-          const msg: string = String(upsertError.message || '');
-          console.warn('[GameContext] recordRoundResult: primary upsert failed, applying fallbacks', {
-            code: upsertError.code,
-            message: upsertError.message,
-          });
-
-          // Attempt 2: remove xp_total if missing
-          if (msg.includes("'xp_total'") || msg.toLowerCase().includes('xp_total')) {
-            const { xp_total, ...payloadNoXp } = payloadFull as any;
-            const { data, error } = await supabase
-              .from('round_results')
-              .upsert(payloadNoXp, { onConflict: conflictTarget });
-            upsertData = data;
-            upsertError = error;
+          if (!effRoomId && typeof window !== 'undefined') {
+            const path = window.location.pathname || '';
+            const m = path.match(/\/room\/([^/]+)/);
+            effRoomId = (m && m[1]) ? m[1] : null;
+            if (!effRoomId) {
+              const last = sessionStorage.getItem('lastSyncedRoomId');
+              effRoomId = last && last.length > 0 ? last : null;
+            }
           }
+        } catch {}
+        persistLocalGameState({ roomId: effRoomId, gameId, roundResults: next, images });
+      } catch {}
+      return next;
+    });
 
-          // Attempt 3: if still error and room_id appears missing, remove room_id
-          if (upsertError) {
-            const msg2: string = String(upsertError.message || msg || '');
-            if (msg2.includes("'room_id'") || msg2.toLowerCase().includes('room_id')) {
-              const { room_id, ...payloadNoRoom } = payloadFull as any;
+    const xpDebtValue = Number.isFinite(Number(resultData.xpDebt)) ? Number(resultData.xpDebt) : 0;
+    const accDebtValue = Number.isFinite(Number(resultData.accDebt)) ? Number(resultData.accDebt) : 0;
+
+    let resolvedUserId: string | null = null;
+    let displayName: string | null = null;
+
+    try {
+      let { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        try {
+          const { data, error } = await supabase.auth.signInAnonymously();
+          if (error) {
+            console.warn('[GameContext] recordRoundResult: anonymous sign-in failed', error);
+          } else {
+            user = data?.user ?? null;
+          }
+        } catch (anonErr) {
+          console.warn('[GameContext] recordRoundResult: anonymous sign-in threw', anonErr);
+        }
+      }
+
+      if (user?.id) {
+        resolvedUserId = user.id;
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('id', user.id)
+            .maybeSingle();
+          displayName = profile?.display_name ?? null;
+        } catch (profileErr) {
+          console.warn('[GameContext] recordRoundResult: profile lookup failed', profileErr);
+        }
+      }
+    } catch (authErr) {
+      console.warn('[GameContext] recordRoundResult: failed to resolve Supabase user', authErr);
+    }
+
+    // Derive effective room id: prefer context, then URL, then sessionStorage
+    let effectiveRoomId: string | null = roomId;
+    if (!effectiveRoomId && typeof window !== 'undefined') {
+      const path = window.location.pathname || '';
+      const match = path.match(/\/room\/([^/]+)/);
+      effectiveRoomId = (match && match[1]) ? match[1] : null;
+      if (!effectiveRoomId) {
+        const last = sessionStorage.getItem('lastSyncedRoomId');
+        effectiveRoomId = last && last.length > 0 ? last : null;
+      }
+    }
+
+    if (effectiveRoomId && effectiveRoomId !== roomId) {
+      setRoomId(effectiveRoomId);
+    }
+
+    if (effectiveRoomId && resolvedUserId) {
+      try {
+        await ensureSessionMembership(effectiveRoomId, resolvedUserId);
+        await repairMissingRoomId(effectiveRoomId);
+      } catch (membershipErr) {
+        console.warn('[GameContext] recordRoundResult: membership sync failed', membershipErr);
+      }
+    }
+
+    console.log('[GameContext] recordRoundResult effectiveRoomId:', effectiveRoomId ?? 'null');
+
+    if (resolvedUserId) {
+      try {
+        // Build full payload (preferred schema)
+        const xpTotal = fullResult.xpTotal ?? ((fullResult.xpWhere ?? 0) + (fullResult.xpWhen ?? 0));
+        const timeAccuracy = Number.isFinite(fullResult.timeAccuracy) ? Number(fullResult.timeAccuracy) : (Number.isFinite(computedTimeAccuracy) ? computedTimeAccuracy : 0);
+        const locationAccuracy = Number.isFinite(fullResult.locationAccuracy) ? Number(fullResult.locationAccuracy) : (Number.isFinite(computedLocationAccuracy) ? computedLocationAccuracy : 0);
+        const averageAccuracy = Number(resultData.accuracy ?? ((timeAccuracy + locationAccuracy) / 2));
+
+        const payloadFull = {
+          user_id: resolvedUserId,
+          game_id: gameId,
+          room_id: effectiveRoomId ?? null,
+          round_index: currentRoundIndex,
+          image_id: currentImage.id,
+          score: fullResult.score,
+          accuracy: averageAccuracy,
+          xp_total: xpTotal,
+          xp_where: fullResult.xpWhere,
+          xp_when: fullResult.xpWhen,
+          hints_used: fullResult.hintsUsed,
+          xp_debt: xpDebtValue,
+          acc_debt: accDebtValue,
+          distance_km: fullResult.distanceKm,
+          guess_year: fullResult.guessYear,
+          guess_lat: fullResult.guessCoordinates?.lat ?? null,
+          guess_lng: fullResult.guessCoordinates?.lng ?? null,
+          actual_lat: fullResult.actualCoordinates.lat,
+          actual_lng: fullResult.actualCoordinates.lng,
+        } as const;
+
+        // Choose the correct conflict target backed by a UNIQUE index
+        // - Multiplayer: (room_id, user_id, round_index)
+        // - Solo/legacy: (user_id, game_id, round_index)
+        const conflictTarget = (payloadFull.room_id && payloadFull.room_id.length > 0)
+          ? 'room_id,user_id,round_index'
+          : 'user_id,game_id,round_index';
+
+        let upsertData: any = null;
+        let upsertError: any = null;
+
+        // Attempt 1: full payload
+        {
+          const { data, error } = await supabase
+            .from('round_results')
+            .upsert(payloadFull, { onConflict: conflictTarget });
+          upsertData = data;
+          upsertError = error;
+          if (error) {
+            console.error('[GameContext] recordRoundResult upsert failed (primary payload)', {
+              roomId: payloadFull.room_id,
+              roundIndex: payloadFull.round_index,
+              conflictTarget,
+              error,
+            });
+          }
+        }
+
+        // Fallbacks for schema drift
+        if (upsertError) {
+          try {
+            const msg: string = String(upsertError.message || '');
+            console.warn('[GameContext] recordRoundResult: primary upsert failed, applying fallbacks', {
+              code: upsertError.code,
+              message: upsertError.message,
+            });
+
+            // Attempt 2: remove xp_total if missing
+            if (msg.includes("'xp_total'") || msg.toLowerCase().includes('xp_total')) {
+              const { xp_total, ...payloadNoXp } = payloadFull as any;
               const { data, error } = await supabase
                 .from('round_results')
-                .upsert(payloadNoRoom, { onConflict: conflictTarget });
+                .upsert(payloadNoXp, { onConflict: conflictTarget });
               upsertData = data;
               upsertError = error;
             }
-          }
 
-          // Attempt 4: ultimate legacy-minimal payload
-          if (upsertError) {
-            const payloadLegacy: any = {
-              user_id: user.id,
-              game_id: gameId,
-              round_index: currentRoundIndex,
-              image_id: currentImage.id,
-              score: fullResult.score,
-              accuracy: Number(resultData.accuracy ?? 0),
-              xp_where: fullResult.xpWhere,
-              xp_when: fullResult.xpWhen,
-              hints_used: fullResult.hintsUsed,
-              xp_debt: xpDebtValue,
-              acc_debt: accDebtValue,
-              distance_km: fullResult.distanceKm,
-              guess_year: fullResult.guessYear,
-              guess_lat: fullResult.guessCoordinates?.lat ?? null,
-              guess_lng: fullResult.guessCoordinates?.lng ?? null,
-              actual_lat: fullResult.actualCoordinates.lat,
-              actual_lng: fullResult.actualCoordinates.lng,
-            };
-            const { data, error } = await supabase
-              .from('round_results')
-              .upsert(payloadLegacy, { onConflict: conflictTarget });
-            upsertData = data;
-            upsertError = error;
-            if (!error) {
-              console.warn('[GameContext] recordRoundResult: persisted via legacy payload (without xp_total/room_id)');
+            // Attempt 3: if still error and room_id appears missing, remove room_id
+            if (upsertError) {
+              const msg2: string = String(upsertError.message || msg || '');
+              if (msg2.includes("'room_id'") || msg2.toLowerCase().includes('room_id')) {
+                const { room_id, ...payloadNoRoom } = payloadFull as any;
+                const { data, error } = await supabase
+                  .from('round_results')
+                  .upsert(payloadNoRoom, { onConflict: conflictTarget });
+                upsertData = data;
+                upsertError = error;
+              }
+            }
+
+            // Attempt 4: ultimate legacy-minimal payload
+            if (upsertError) {
+              const payloadLegacy: any = {
+                user_id: resolvedUserId,
+                game_id: gameId,
+                round_index: currentRoundIndex,
+                image_id: currentImage.id,
+                score: fullResult.score,
+                accuracy: Number(resultData.accuracy ?? 0),
+                xp_where: fullResult.xpWhere,
+                xp_when: fullResult.xpWhen,
+                hints_used: fullResult.hintsUsed,
+                xp_debt: xpDebtValue,
+                acc_debt: accDebtValue,
+                distance_km: fullResult.distanceKm,
+                guess_year: fullResult.guessYear,
+                guess_lat: fullResult.guessCoordinates?.lat ?? null,
+                guess_lng: fullResult.guessCoordinates?.lng ?? null,
+                actual_lat: fullResult.actualCoordinates.lat,
+                actual_lng: fullResult.actualCoordinates.lng,
+              };
+              const { data, error } = await supabase
+                .from('round_results')
+                .upsert(payloadLegacy, { onConflict: conflictTarget });
+              upsertData = data;
+              upsertError = error;
+              if (!error) {
+                console.warn('[GameContext] recordRoundResult: persisted via legacy payload (without xp_total/room_id)');
+              }
+            }
+          } catch (fallbackErr) {
+            console.warn('[GameContext] recordRoundResult: fallback handling threw', fallbackErr);
+          }
+        }
+        // Upsert sync room membership (new table)
+        try {
+          if (effectiveRoomId) {
+            const { error: syncMemberErr } = await supabase
+              .from('sync_room_players')
+              .upsert({
+                room_id: effectiveRoomId,
+                user_id: resolvedUserId,
+                display_name: displayName,
+              }, { onConflict: 'room_id,user_id' });
+            if (syncMemberErr) {
+              console.warn('[GameContext] sync_room_players upsert failed', syncMemberErr);
             }
           }
-        } catch (fallbackErr) {
-          console.warn('[GameContext] recordRoundResult: fallback handling threw', fallbackErr);
+        } catch (syncMembershipError) {
+          console.warn('[GameContext] sync_room_players persistence error', syncMembershipError);
         }
-      }
-      // Upsert sync room membership (new table)
-      try {
-        if (effectiveRoomId) {
-          const { error: syncMemberErr } = await supabase
-            .from('sync_room_players')
-            .upsert({
-              room_id: effectiveRoomId,
-              user_id: user.id,
-              display_name: displayName,
-            }, { onConflict: 'room_id,user_id' });
-          if (syncMemberErr) {
-            console.warn('[GameContext] sync_room_players upsert failed', syncMemberErr);
-          }
-        }
-      } catch (syncMembershipError) {
-        console.warn('[GameContext] sync_room_players persistence error', syncMembershipError);
-      }
 
-      // Persist snapshot to sync scoreboard table for Compete Sync mode
-      try {
-        if (effectiveRoomId) {
-          const path = typeof window !== 'undefined' ? (window.location.pathname || '') : '';
-          const isSyncRoute = path.startsWith('/compete/sync/');
-          if (isSyncRoute) {
-            const roundNumber = currentRoundIndex + 1;
-            const snapshotPayload = {
-              room_id: effectiveRoomId,
-              round_number: roundNumber,
-              user_id: user.id,
-              display_name: displayName,
-              xp_total: xpTotal,
-              time_accuracy: timeAccuracy,
-              location_accuracy: locationAccuracy,
-              hints_used: fullResult.hintsUsed,
-              distance_km: fullResult.distanceKm,
-              year_difference: (fullResult.guessYear != null ? (fullResult.guessYear - currentImage.year) : null),
-              guess_year: fullResult.guessYear,
-              guess_lat: fullResult.guessCoordinates?.lat ?? null,
-              guess_lng: fullResult.guessCoordinates?.lng ?? null,
-              xp_debt: xpDebtValue,
-              acc_debt: accDebtValue,
-            } as const;
+        // Persist snapshot to sync scoreboard table for Compete Sync mode
+        try {
+          if (effectiveRoomId) {
+            const path = typeof window !== 'undefined' ? (window.location.pathname || '') : '';
+            const isSyncRoute = path.startsWith('/compete/sync/');
+            if (isSyncRoute) {
+              const roundNumber = currentRoundIndex + 1;
+              const snapshotPayload = {
+                room_id: effectiveRoomId,
+                round_number: roundNumber,
+                user_id: resolvedUserId,
+                display_name: displayName,
+                xp_total: xpTotal,
+                time_accuracy: timeAccuracy,
+                location_accuracy: locationAccuracy,
+                hints_used: fullResult.hintsUsed,
+                distance_km: fullResult.distanceKm,
+                year_difference: (fullResult.guessYear != null ? (fullResult.guessYear - currentImage.year) : null),
+                guess_year: fullResult.guessYear,
+                guess_lat: fullResult.guessCoordinates?.lat ?? null,
+                guess_lng: fullResult.guessCoordinates?.lng ?? null,
+                xp_debt: xpDebtValue,
+                acc_debt: accDebtValue,
+              } as const;
 
-            const { error: syncError } = await supabase
-              .from('sync_round_scores')
-              .upsert(snapshotPayload, { onConflict: 'room_id,round_number,user_id' });
+              const { error: syncError } = await supabase
+                .from('sync_round_scores')
+                .upsert(snapshotPayload, { onConflict: 'room_id,round_number,user_id' });
 
-            if (syncError) {
-              console.warn('[GameContext] sync_round_scores upsert failed', syncError);
+              if (syncError) {
+                console.warn('[GameContext] sync_round_scores upsert failed', syncError);
+              }
             }
           }
+        } catch (snapshotErr) {
+          console.warn('[GameContext] sync_round_scores persistence error', snapshotErr);
         }
-      } catch (snapshotErr) {
-        console.warn('[GameContext] sync_round_scores persistence error', snapshotErr);
+      } catch (persistErr) {
+        console.error('[GameContext] Error persisting round result', persistErr);
       }
+    } else {
+      console.warn('[GameContext] recordRoundResult: no Supabase user available, skipping remote persistence for this round');
+    }
 
-      // Update local state after persistence attempts (regardless of fallback path)
-      setRoundResults((prev) => {
-        const next = [...prev];
-        next[currentRoundIndex] = fullResult;
-        return next;
-      });
-      saveGameState();
+    
 
+    if (resolvedUserId) {
       // Award round-level achievements (deduped per context)
       try {
         const contextIdForAchievements = effectiveRoomId ?? gameId;
         await awardRoundAchievements({
-          userId: user.id,
+          userId: resolvedUserId,
           contextId: contextIdForAchievements,
           actualYear: currentImage.year,
           result: fullResult,
@@ -1380,8 +1436,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       } catch (achErr) {
         console.warn('[GameContext] awardRoundAchievements failed', achErr);
       }
-    } catch (persistErr) {
-      console.error('[GameContext] Error persisting round result', persistErr);
     }
   }, [gameId, images, roomId, ensureSessionMembership, repairMissingRoomId, saveGameState]);
 

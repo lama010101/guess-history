@@ -22,7 +22,7 @@ export function ConfirmNavigationDialog({
   isOpen,
   onClose,
   onConfirm,
-  title = "Leave Game?",
+  title = "Leave Page?",
   description = "Are you sure? Your progress will be lost.",
   confirmText = "Leave",
   cancelText = "Cancel",

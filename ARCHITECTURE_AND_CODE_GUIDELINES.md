@@ -16,6 +16,12 @@
 - **Component**: `src/pages/compete/results/CompeteSyncRoundResultsPage.tsx`
 - **Behavior**: Inline round leaderboard rows now format net accuracy as a whole number followed by `%` (e.g., `65%`). This keeps the global leaderboard consistent with the rest of the compete UI, which already displays percentages, and avoids showing bare integers that looked like raw scores.
 
+- **Update (2025-10-25): Feedback modal UI refresh**
+  - Modal: `src/components/rating/ImageRatingModal.tsx`
+  - Replaced yes/no accuracy toggles with 1–10 sliders labelled “Poor”/“Excellent” for image, description, location, and date accuracy so players can give graded feedback.
+  - Primary action button now uses the theme’s primary color, stacks full-width underneath Cancel on mobile, and applies spacing between buttons for clearer tap targets.
+  - Submit keeps existing Supabase upsert workflow and closes the dialog after success; cancel remains available via the outline button.
+
 - **Update (2025-10-24): Countdown-driven advance waits for lobby sync**
   - When the round results countdown hits zero, we still emit the ready signal but do **not** navigate until the lobby reports every participant is ready. This preserves the manual ready button flow while preventing a single client from jumping ahead before other players’ countdowns finish. Fallback auto-advance only triggers when the ready payload fails to send (connection loss).
 
@@ -48,14 +54,23 @@
   - Rows render the supplied `avatarUrl` (with initial fallback) to match the compete HUD and room roster visuals.
 - **Result**: Players see their actual profile avatars across the compete HUD and round leaderboards, keeping visual identity consistent with the lobby/room view.
 
-### Compete Round Results Map — Show All Player Guesses (2025-10-23)
+### Compete Round Results Map — Avatar Markers (2025-10-25)
 
 - **Component**: `src/components/layouts/ResultsLayout2.tsx`
+- **Shared UI**: `src/components/map/AvatarMarker.tsx`
 - **Behavior**:
-  - Reworked `createUserIcon()` to support avatar URLs or initial-based fallbacks with configurable sizing and highlight ring colors.
-  - Rendered the local player’s marker with a gold ring and each peer’s marker with blue accents; markers now show initials when no avatar image exists.
-  - Added `peerIconMap` memoization so each `PeerRoundRow` reuses a consistent icon, and assigned `zIndexOffset` values to ensure player markers appear above polylines.
-- **Result**: In compete mode, the Round Results map now displays every player’s guess using their avatar (or initial bubble), matching the peer list and clarifying relative positions.
+  - Replaced bespoke `createUserIcon()` markers with the shared `<AvatarMarker>` component so round results reuse the same avatar rendering used elsewhere.
+  - Local player guesses render with a golden halo; peer guesses use blue accents. Both fall back to initials when no avatar image is available.
+  - Markers accept popups and inherit z-index props, keeping guess-to-answer polylines visible while avatars remain on top.
+- **Result**: Round results now show each guess directly on the map with the player’s avatar bubble, matching the roster visuals and improving recognition at a glance.
+
+### Compete Leaderboards — Inline Avatars (2025-10-25)
+
+- **Component**: `src/pages/compete/results/CompeteSyncRoundResultsPage.tsx`
+- **Behavior**:
+  - Inline round leaderboard entries now render `Avatar` alongside each display name, falling back to initials when no image is present.
+  - Keeps the "(You)" label and hint penalty summary while ensuring avatars are visible for all players to match the Compete branding requirement.
+- **Result**: Every player row in compete round results shows their avatar next to their name, improving quick recognition across the leaderboard summary.
 
 ### Compete In-Round HUD — Avatar Synchronization (2025-10-23)
 
@@ -1842,10 +1857,13 @@ The app provides a clean, accessible PWA install flow with an offline-first shel
   - Includes `name`, `short_name`, `start_url`, `scope`, `display: standalone`, `background_color`, `theme_color`, and icons (192/512, including maskable) sourced from `public/images/logo.png`.
 
 - **Service Worker**: `public/sw.js`
-  - Minimal app-shell cache: `/`, `/index.html`, `/manifest.webmanifest`.
-  - Navigate fallback to cached `index.html` when offline.
+  - Build-aware cache naming: `gh-static-<buildId>` where `buildId` defaults to the Vercel/Git commit SHA exposed as `VITE_BUILD_ID`.
+  - App shell cached: `/`, `/index.html`, `/manifest.webmanifest`.
+  - On activate, old `gh-static-*` caches are pruned, preventing stale bundles.
+  - Listens for `SKIP_WAITING` message so the newly installed worker activates immediately.
   - Registered in production in `src/main.tsx`:
-    - `if (import.meta.env.PROD && 'serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js')` on window `load`.
+    - Attaches query param: `navigator.serviceWorker.register('/sw.js?build=${encodeURIComponent(import.meta.env.VITE_BUILD_ID)}`) when window `load` fires.
+    - Forces reload on `controllerchange`, giving all users fresh assets post-deploy.
 
 - **Install UI Hook**: `src/pwa/usePWAInstall.ts`
   - Captures `beforeinstallprompt`, listens to `appinstalled`.

@@ -284,7 +284,7 @@ const HomeMap: React.FC<HomeMapProps> = ({
               lat={markerPosition[0]} 
               lng={markerPosition[1]} 
               imageUrl={avatarUrl ?? undefined} 
-              sizePx={100} 
+              sizePx={50} 
             />
           )}
 
@@ -298,7 +298,7 @@ const HomeMap: React.FC<HomeMapProps> = ({
                 lat={peer.lat}
                 lng={peer.lng}
                 imageUrl={peer.avatarUrl ?? undefined}
-                sizePx={80}
+                sizePx={40}
               />
             );
           })}

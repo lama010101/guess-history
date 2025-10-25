@@ -166,7 +166,11 @@ const RoundResultsPage = () => {
   const currentImage = images.length > currentRoundIndex ? images[currentRoundIndex] : null;
 
   // --- Multiplayer peers: fetch other players' answers for this room/round ---
-  const { peers: peerRows, miniLeaderboards } = useRoundPeers(roomId || null, Number.isFinite(roundNumber) ? roundNumber : null);
+  const isSyncCompeteRoute = useMemo(() => location.pathname.startsWith('/compete/sync/'), [location.pathname]);
+  const { peers: peerRows, miniLeaderboards } = useRoundPeers(
+    isSyncCompeteRoute ? roomId || null : null,
+    isSyncCompeteRoute && Number.isFinite(roundNumber) ? roundNumber : null
+  );
 
   interface LayoutLeaderboardRow {
     userId: string;
@@ -178,7 +182,7 @@ const RoundResultsPage = () => {
   }
 
   const layoutLeaderboards = useMemo(() => {
-    if (!miniLeaderboards) return undefined;
+    if (!isSyncCompeteRoute || !miniLeaderboards) return undefined;
 
     const peerMap = new Map((peerRows || []).map((peer) => [peer.userId, peer]));
     const normalizeCount = (value: number | null | undefined) => {
@@ -240,7 +244,7 @@ const RoundResultsPage = () => {
       }),
       currentUserId: user?.id ?? null,
     };
-  }, [miniLeaderboards, peerRows, user?.id]);
+  }, [isSyncCompeteRoute, miniLeaderboards, peerRows, user?.id]);
 
   // Fetch and process hint debts when user, image, and results are ready
   const fetchDebts = useCallback(async () => {
@@ -477,7 +481,6 @@ const RoundResultsPage = () => {
 
   // --- Level Up per-round net percent (for progress card) ---
   const isLevelUpRoute = useMemo(() => location.pathname.includes('/level/'), [location.pathname]);
-  const isSyncCompeteRoute = useMemo(() => location.pathname.startsWith('/compete/sync/'), [location.pathname]);
   const roundNetPercent = useMemo(() => {
     if (!contextResult || !currentImage) return 0;
     const actualYear = currentImage.year || 1900;
@@ -590,7 +593,7 @@ const RoundResultsPage = () => {
         loading={navigating}
         error={null} 
         avatarUrl={profile?.avatar_image_url || profile?.avatar_url || '/assets/default-avatar.png'}
-        peers={(peerRows || []).filter(p => !user || p.userId !== user.id)}
+        peers={isSyncCompeteRoute ? (peerRows || []).filter(p => !user || p.userId !== user.id) : []}
         leaderboards={layoutLeaderboards}
         currentUserDisplayName={profile?.display_name || 'You'}
         nextRoundButton={

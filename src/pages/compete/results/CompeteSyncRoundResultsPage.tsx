@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Loader, ChevronRight, Home, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import ResultsLayout2 from '@/components/layouts/ResultsLayout2';
 import ImageRatingModal from '@/components/rating/ImageRatingModal';
 import { ConfirmNavigationDialog } from '@/components/game/ConfirmNavigationDialog';
@@ -16,6 +17,11 @@ import { Badge } from '@/utils/badges/types';
 import { awardRoundBadges } from '@/utils/badges/badgeService';
 import { supabase } from '@/integrations/supabase/client';
 import { useLobbyChat } from '@/hooks/useLobbyChat';
+
+const getInitial = (value?: string | null) => {
+  const trimmed = (value ?? '').trim();
+  return trimmed.length > 0 ? trimmed[0]!.toUpperCase() : '?';
+};
 
 const CompeteSyncRoundResultsPage: React.FC = () => {
   const { roomId, roundNumber } = useParams<{ roomId: string; roundNumber: string }>();
@@ -477,11 +483,20 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
                       return (
                         <tr key={`inline:${row.userId}`} className="border-b border-gray-200 last:border-0 dark:border-neutral-700">
                           <td className={`py-2 pr-2 ${isCurrent ? 'font-semibold text-foreground' : 'text-foreground/80'}`}>
-                            <div className="flex items-baseline gap-2">
-                              <span>{nameWithYou}</span>
-                              {hintsUsed > 0 ? (
-                                <span className="text-xs font-semibold text-red-500">{`${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'} = ${accDebt}%`}</span>
-                              ) : null}
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-7 w-7">
+                                {row.avatarUrl ? (
+                                  <AvatarImage src={row.avatarUrl} alt={displayName} />
+                                ) : (
+                                  <AvatarFallback>{getInitial(displayName)}</AvatarFallback>
+                                )}
+                              </Avatar>
+                              <div className="flex items-baseline gap-2">
+                                <span>{nameWithYou}</span>
+                                {hintsUsed > 0 ? (
+                                  <span className="text-xs font-semibold text-red-500">{`${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'} = ${accDebt}%`}</span>
+                                ) : null}
+                              </div>
                             </div>
                           </td>
                           <td className={`py-2 pr-2 text-right ${isCurrent ? 'font-semibold text-foreground' : 'font-medium text-foreground/80'}`}>

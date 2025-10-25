@@ -14,7 +14,7 @@ export interface AvatarMarkerProps extends Omit<MarkerProps, 'position' | 'icon'
   fallbackLabel?: string | null;
   /** Size in pixels (width & height) */
   sizePx?: number;
-  /** Outer glow color (defaults to theme secondary) */
+  /** Halo color (defaults to mode primary/secondary color) */
   ringColor?: string;
   /** Border color around avatar */
   borderColor?: string;
@@ -32,7 +32,7 @@ const AvatarMarker: React.FC<AvatarMarkerProps> = React.memo(({
   imageUrl,
   fallbackLabel,
   sizePx = 44,
-  ringColor = 'rgba(148, 163, 184, 0.45)',
+  ringColor = 'hsla(var(--secondary) / 0.45)',
   borderColor = '#fff',
   borderWidth = 2,
   children,
@@ -91,8 +91,11 @@ const AvatarMarker: React.FC<AvatarMarkerProps> = React.memo(({
       `width:${haloPx}px`,
       `height:${haloPx}px`,
       'border-radius:9999px',
-      `box-shadow:0 0 18px ${ringColor}`,
-      `background:rgba(17, 24, 39, 0.35)`,
+      `background:${ringColor}`,
+      'opacity:0.65',
+      `box-shadow:0 0 22px ${ringColor}`,
+      'z-index:0',
+      'pointer-events:none',
     ].join(';');
 
     const baseImgStyle = [
@@ -110,6 +113,8 @@ const AvatarMarker: React.FC<AvatarMarkerProps> = React.memo(({
       'background:#111827',
       'color:#fff',
       'overflow:hidden',
+      'position:relative',
+      'z-index:1',
     ].join(';');
 
     let inner = '';

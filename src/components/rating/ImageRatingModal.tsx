@@ -13,20 +13,19 @@ interface ImageRatingModalProps {
   onFeedbackSubmitted?: () => void;
 }
 
-const ImageRatingModal: React.FC<ImageRatingModalProps> = ({ isOpen, onClose, imageId, roundId, onFeedbackSubmitted }) => {
+const ImageRatingModal: React.FC<ImageRatingModalProps> = ({ isOpen, onClose, imageId, onFeedbackSubmitted }) => {
   const [imageAccuracy, setImageAccuracy] = useState<number>(5);
-  const [descriptionAccurate, setDescriptionAccurate] = useState<string | null>(null);
-  const [locationAccurate, setLocationAccurate] = useState<string | null>(null);
-  const [dateAccurate, setDateAccurate] = useState<string | null>(null);
+  const [descriptionAccuracy, setDescriptionAccuracy] = useState<number>(5);
+  const [locationAccuracy, setLocationAccuracy] = useState<number>(5);
+  const [dateAccuracy, setDateAccuracy] = useState<number>(5);
   const [additionalComments, setAdditionalComments] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isFormValid = imageAccuracy !== undefined;
 
-  const getBooleanValue = (value: string | null): boolean | null => {
-    if (value === 'yes') return true;
-    if (value === 'no') return false;
-    return null;
+  const getBooleanValue = (value: number | null): boolean | null => {
+    if (value === null || value === undefined) return null;
+    return value >= 6;
   };
 
   const handleSubmit = async () => {
@@ -48,9 +47,9 @@ const ImageRatingModal: React.FC<ImageRatingModalProps> = ({ isOpen, onClose, im
         image_id: imageId,
         user_id: user.id, // Included authenticated user's ID
         image_accuracy: imageAccuracy,
-        description_accurate: getBooleanValue(descriptionAccurate),
-        location_accurate: getBooleanValue(locationAccurate),
-        date_accurate: getBooleanValue(dateAccurate),
+        description_accurate: getBooleanValue(descriptionAccuracy),
+        location_accurate: getBooleanValue(locationAccuracy),
+        date_accurate: getBooleanValue(dateAccuracy),
         additional_comments: additionalComments.trim() || null,
       };
 
@@ -91,7 +90,7 @@ const ImageRatingModal: React.FC<ImageRatingModalProps> = ({ isOpen, onClose, im
           <div className="flex flex-col gap-2">
             <label>Image</label>
             <Slider
-              defaultValue={[5]}
+              value={[imageAccuracy]}
               min={1}
               max={10}
               step={1}
@@ -105,25 +104,46 @@ const ImageRatingModal: React.FC<ImageRatingModalProps> = ({ isOpen, onClose, im
           
           <div className="flex flex-col gap-2">
             <label>Title and Description</label>
-            <div className="flex gap-2">
-              <Button variant={descriptionAccurate === 'yes' ? 'default' : 'outline'} onClick={() => setDescriptionAccurate('yes')}>Yes</Button>
-              <Button variant={descriptionAccurate === 'no' ? 'default' : 'outline'} onClick={() => setDescriptionAccurate('no')}>No</Button>
+            <Slider
+              value={[descriptionAccuracy]}
+              min={1}
+              max={10}
+              step={1}
+              onValueChange={(value) => setDescriptionAccuracy(value[0])}
+            />
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>Poor</span>
+              <span>Excellent</span>
             </div>
           </div>
           
           <div className="flex flex-col gap-2">
             <label>Location</label>
-            <div className="flex gap-2">
-              <Button variant={locationAccurate === 'yes' ? 'default' : 'outline'} onClick={() => setLocationAccurate('yes')}>Yes</Button>
-              <Button variant={locationAccurate === 'no' ? 'default' : 'outline'} onClick={() => setLocationAccurate('no')}>No</Button>
+            <Slider
+              value={[locationAccuracy]}
+              min={1}
+              max={10}
+              step={1}
+              onValueChange={(value) => setLocationAccuracy(value[0])}
+            />
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>Poor</span>
+              <span>Excellent</span>
             </div>
           </div>
 
           <div className="flex flex-col gap-2">
             <label>Date</label>
-            <div className="flex gap-2">
-              <Button variant={dateAccurate === 'yes' ? 'default' : 'outline'} onClick={() => setDateAccurate('yes')}>Yes</Button>
-              <Button variant={dateAccurate === 'no' ? 'default' : 'outline'} onClick={() => setDateAccurate('no')}>No</Button>
+            <Slider
+              value={[dateAccuracy]}
+              min={1}
+              max={10}
+              step={1}
+              onValueChange={(value) => setDateAccuracy(value[0])}
+            />
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>Poor</span>
+              <span>Excellent</span>
             </div>
           </div>
 
@@ -137,9 +157,15 @@ const ImageRatingModal: React.FC<ImageRatingModalProps> = ({ isOpen, onClose, im
             />
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting || !isFormValid}>
+        <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting || !isFormValid}
+            className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90"
+          >
             {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
           </Button>
         </DialogFooter>

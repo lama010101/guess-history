@@ -95,7 +95,7 @@ export async function getSessionProgress(roomId: string): Promise<SessionProgres
 
     const { data: progress, error } = await supabase
       .from('session_progress' as any)
-      .select('current_route, substep, round_number, timer_enabled')
+      .select('round_number')
       .eq('room_id', roomId)
       .eq('user_id', user.id)
       .maybeSingle();
@@ -103,7 +103,7 @@ export async function getSessionProgress(roomId: string): Promise<SessionProgres
     if (error) {
       const code = (error as any).code;
       const message = (error as any).message || String(error);
-      if (code !== '42P01' && code !== '42703' && code !== 'PGRST116') {
+      if (code !== '42P01' && code !== '42703' && code !== 'PGRST116' && code !== 'PGRST204') {
         console.warn('[roomState] getSessionProgress error', {
           code,
           message,
@@ -115,7 +115,12 @@ export async function getSessionProgress(roomId: string): Promise<SessionProgres
 
     if (!progress) return null;
 
-    return progress as SessionProgressRecord;
+    return {
+      current_route: null,
+      substep: null,
+      round_number: progress.round_number ?? null,
+      timer_enabled: null,
+    } as SessionProgressRecord;
   } catch (e: any) {
     console.warn('[roomState] getSessionProgress exception', {
       message: e?.message || String(e),
@@ -130,45 +135,15 @@ function normalizeProgressPayload(payload: SessionProgressPayload, userId: strin
     room_id: payload.roomId,
     user_id: userId,
     round_number: payload.roundNumber,
-    current_route: payload.currentRoute ?? null,
-    substep: payload.substep ?? null,
-    round_started_at: payload.startedAt ?? null,
-    duration_sec: payload.durationSec ?? null,
-    timer_enabled: payload.timerEnabled ?? null,
+    // Only include fields guaranteed to exist in all deployed environments
+    // current_route, substep, duration_sec, timer_enabled may be missing in older schemas
   };
 }
 
 export async function upsertSessionProgress(payload: SessionProgressPayload): Promise<void> {
-  try {
-    if (!payload.roomId || Number.isNaN(payload.roundNumber)) return;
-    const { data } = await supabase.auth.getUser();
-    const user = data?.user;
-    if (!user?.id) return;
-
-    const upsertPayload = normalizeProgressPayload(payload, user.id);
-    const { error } = await supabase
-      .from('session_progress' as any)
-      .upsert(upsertPayload, { onConflict: 'room_id,user_id' } as any);
-
-    if (error) {
-      const code = (error as any).code;
-      const message = (error as any).message || String(error);
-      if (code !== '42P01' && code !== '42703') {
-        console.warn('[roomState] upsertSessionProgress error', {
-          code,
-          message,
-          roomId: payload.roomId,
-          roundNumber: payload.roundNumber,
-        });
-      }
-    }
-  } catch (e: any) {
-    console.warn('[roomState] upsertSessionProgress exception', {
-      message: e?.message || String(e),
-      roomId: payload.roomId,
-      roundNumber: payload.roundNumber,
-    });
-  }
+  // Disabled for now: production schema does not have the required constraints/columns.
+  // Keep this stub so callers can continue invoking without network churn or console noise.
+  return;
 }
 
 /**

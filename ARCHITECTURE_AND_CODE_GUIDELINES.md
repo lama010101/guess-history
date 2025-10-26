@@ -1,3 +1,21 @@
+### Round Image Alt Text Scrubbing (2025-10-25)
+
+- **Components**: `src/components/layouts/GameLayout1.tsx`, `src/components/layouts/FullscreenZoomableImage.tsx`
+  - Both the gameplay `LazyImage` preview and the fullscreen zoom viewer now use neutral alt labels ("Round image", "Round image placeholder").
+  - Prevents partially loaded images from revealing the historical title/answer via native alt text overlays when the asset fails to fill the screen on slower connections.
+
+### Preparation Cancel Guard (2025-10-26)
+
+- **Hook**: `src/hooks/useGamePreparation.ts`
+  - After cancelling the preparation overlay, the hook now checks the abort flag again once preloading finishes and throws a "Preparation aborted" error. This prevents `startGame()` from navigating into the round after the user taps Cancel on the "Preparing images" screen.
+
+### Year Picker Discrete Zoom Levels (2025-10-26)
+
+- **Component**: `src/components/game/ZoomYearPicker.tsx`
+  - Timeline zoom now snaps to three spans: 1) default 1,800-year overview, 2) 200-year decade view, 3) 20-year detailed view.
+  - Wheel, keyboard, button, and pinch gestures advance between these fixed levels while keeping the viewport centered on the anchor year and clamping to allowed bounds.
+  - The centered tick now renders the active zoom label (“Century”, “Decade”, “Year”), and slider aria text mirrors the same label for assistive tech.
+
 ### Landing Page Access Control (2025-10-23)
 
 ### Zoom Controls Locked for Gameplay (2025-10-25)
@@ -11,6 +29,11 @@
   - **Gameplay entry**: `src/pages/GameRoundPage.tsx`
   - Drops the fallback that silently called `continueAsGuest()` when unauthenticated. Guests must now be created explicitly via `AuthModal` or other UI triggers before entering gameplay routes.
   - **Result**: Anonymous visitors stay on the marketing landing page instead of being redirected to `/home` automatically.
+
+### Year Selector Tick Color Update (2025-10-25)
+
+- **Component**: `src/components/game/ZoomYearPicker.tsx`
+  - Major vertical tick lines now render in white (`#fff`) to maintain contrast against the dark rail background after adopting the year range slider styling.
 
 ### OAuth Redirect Refresh Token Persistence (2025-10-25)
 
@@ -27,8 +50,9 @@
   - History locking now tracks the exact locked URL and restores it synchronously and with a queued follow-up to withstand rapid double back presses. The guard also synchronizes the locked URL when route segments change so the lock follows router-driven updates.
   - Lock releases automatically when the player is redirected out of the round (e.g., to `/results`) and cleans up the listener on unmount.
   - **Server contract**: `session_progress` rows are upserted via `upsertSessionProgress()` when a round completes so the guard knows the latest safe destination.
-  - Confirming a navigation request explicitly clears the lock before performing the router transition, preventing the interceptor from immediately rewinding the user after they confirm.
-  - Confirmation dialog copy defaults to "Leave Page?" to match browser terminology in the `beforeunload` prompt.
+- Confirming a navigation request explicitly clears the lock before performing the router transition, preventing the interceptor from immediately rewinding the user after they confirm.
+- Confirmation dialog copy defaults to "Leave Page?" to match browser terminology in the `beforeunload` prompt.
+- Confirmed exits set `leavingRef.current = true` before running the pending navigation so the `beforeunload` handler returns early, keeping the custom confirmation modal as the only prompt players see when leaving mid-round.
 
 ### GameRoundPage Hook Ordering (2025-10-25)
 
@@ -130,6 +154,13 @@
   - `computedPeerRoster` prefers cached display names and avatars from `peerProfileCache`, guaranteeing HUD chips show profile pictures wherever available.
   - `useLobbyChat({ onRoster })` populates `peerProfileCache` directly from the `players` payload supplied by the lobby server (deduplicated roster) instead of an undefined placeholder, preventing reference errors like `spinnerRoster is not defined` during the first round render.
 - **Result**: The compete HUD’s player cluster shows each participant’s actual profile avatar instead of falling back to initials during live rounds.
+
+#### Update (2025-10-25): Compete waiting overlay copy & roster
+- **Components**: `src/components/navigation/GameOverlayHUD.tsx`, `src/components/layouts/GameLayout1.tsx`
+- **Behavior**:
+  - Removed the amber "Waiting for players" pill from the HUD score cluster. Waiting state is now confined to the full-screen overlay shown after you submit.
+  - Overlay headline reads "Waiting for:" and lists remaining participants derived from the peer roster (non-submitted players). When roster data is incomplete, a "+N more" line appears based on the submission counters.
+  - Keeps the spinner + glass backdrop but replaces the generic "Waiting for other players…" copy with the roster list so hosts can see exactly who is outstanding.
 
 #### Update (2025-10-24): Avatar badge overflow fix
 
@@ -2527,7 +2558,7 @@ curl -X POST https://your-project.supabase.co/functions/v1/create-invite \
       - Triggers `onGuestContinue()` asynchronously (without `await`) so `PreparationOverlay` can appear instantly.
       - Fallback (no `onGuestContinue`): SPA navigation using `useNavigate()` to `'/test'` (replaces `window.location.replace`).
   - `src/pages/LandingPage.tsx`
-    - Passes `onGuestContinue={() => startGame?.()}` to `AuthModal`; `startGame()` handles prep and navigation internally.
+    - **Update (2025-10-26)**: `onGuestContinue` now routes to `/home` after anonymous sign-in so guests land on the hub and choose a mode manually instead of auto-starting a round.
     - Uses React Router SPA navigation (`useNavigate`) for redirects in `onAuthSuccess` and the authenticated guard effect.
     - Authenticated redirect guard: only redirects to `/test` when `user` is set, the auth modal is closed, `images.length === 0`, and `isLoading` is false to avoid racing with `startGame()`.
   - `src/App.tsx`

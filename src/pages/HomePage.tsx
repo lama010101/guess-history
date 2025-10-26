@@ -537,9 +537,13 @@ const HomePage = () => {
               {/* Level Up Card */}
               <div ref={levelUpCardRef} className="relative flex flex-col items-center justify-center gap-0 py-2 md:py-4 shrink-0 snap-center">
                 {isGuest && (
-                  <div className="pointer-events-none absolute top-2 right-2 z-20 flex items-center gap-2 rounded-full bg-black/80 px-3 py-1 text-xs font-semibold text-white">
-                    <img src="/icons/lock.webp" alt="Locked" className="h-4 w-4" />
-                    <span>Sign up to unlock</span>
+                  <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+                    <div className="flex items-center gap-2 rounded-full bg-black/80 px-3 py-1 text-xs font-semibold text-white">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-100">
+                        <img src="/icons/lock.webp" alt="Locked" className="h-3.5 w-3.5" />
+                      </div>
+                      <span>Sign up to unlock</span>
+                    </div>
                   </div>
                 )}
                 <div
@@ -566,9 +570,13 @@ const HomePage = () => {
                 onClick={() => handleStartGame('friends')}
               >
                 {isGuest && (
-                  <div className="pointer-events-none absolute top-2 right-2 z-20 flex items-center gap-2 rounded-full bg-black/80 px-3 py-1 text-xs font-semibold text-white">
-                    <img src="/icons/lock.webp" alt="Locked" className="h-4 w-4" />
-                    <span>Sign up to unlock</span>
+                  <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+                    <div className="flex items-center gap-2 rounded-full bg-black/80 px-3 py-1 text-xs font-semibold text-white">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-100">
+                        <img src="/icons/lock.webp" alt="Locked" className="h-3.5 w-3.5" />
+                      </div>
+                      <span>Sign up to unlock</span>
+                    </div>
                   </div>
                 )}
                 <div className="w-[13.5rem] h-[13.5rem] rounded-t-xl overflow-hidden flex items-center justify-center bg-[linear-gradient(180deg,_#45fff0_0%,_#00adc1_100%)]">

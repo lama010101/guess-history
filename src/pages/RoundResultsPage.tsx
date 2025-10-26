@@ -174,13 +174,60 @@ const RoundResultsPage = () => {
       setPendingImage(null);
       return;
     }
-    if (!contextResult) return;
+    // Rely on snapshot hydration effect below to populate image when context is empty.
+  }, [currentImage]);
+
+  // If image is missing for this round (e.g., after refresh or partial context), rehydrate from room session
+  useEffect(() => {
     if (!roomId) return;
-    const stored = hydrateSnapshotImage(roomId, currentRoundIndex);
-    if (stored) {
-      setPendingImage((prev) => (prev && prev.id === stored.id ? prev : stored));
+    if (currentImage) return;
+    hydrateRoomImages(roomId);
+  }, [roomId, currentImage, hydrateRoomImages]);
+
+  // If we have a result with imageId but currentImage is missing, try to resolve from context images immediately
+  useEffect(() => {
+    if (currentImage) return;
+    const targetId = (contextResult ?? snapshotResult)?.imageId;
+    if (!targetId) return;
+    const match = images.find(img => img.id === targetId);
+    if (match) {
+      setPendingImage(prev => (prev && prev.id === match.id ? prev : match));
     }
-  }, [currentImage, contextResult, roomId, currentRoundIndex]);
+  }, [currentImage, images, contextResult, snapshotResult]);
+
+  // Final fallback: if we have imageId but no image in context/snapshot, fetch it from Supabase
+  useEffect(() => {
+    if (currentImage || pendingImage || snapshotImage) return;
+    const targetId = (contextResult ?? snapshotResult)?.imageId;
+    if (!targetId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('images')
+          .select('id, title, description, source_citation, latitude, longitude, year, image_url, location_name, url, firebase_url, confidence')
+          .eq('id', targetId)
+          .maybeSingle();
+        if (error || !data || cancelled) return;
+        const img: GameImage = {
+          id: data.id,
+          title: data.title || 'Untitled',
+          description: data.description || 'No description.',
+          source_citation: data.source_citation,
+          latitude: data.latitude || 0,
+          longitude: data.longitude || 0,
+          year: data.year || 0,
+          image_url: data.image_url,
+          location_name: data.location_name || 'Unknown Location',
+          url: data.url || data.firebase_url || data.image_url || '',
+          firebase_url: data.firebase_url,
+          confidence: data.confidence,
+        };
+        setPendingImage(img);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [currentImage, pendingImage, snapshotImage, contextResult, snapshotResult]);
 
   useEffect(() => {
     if (contextResult && currentImage) {
@@ -214,8 +261,78 @@ const RoundResultsPage = () => {
     }
   }, [contextResult, currentImage, roomId, currentRoundIndex]);
 
+  // Remote fallback: if we still don't have a result, fetch from Supabase for this room/user/round
+  useEffect(() => {
+    if (contextResult) return; // prefer context
+    if (snapshotResult) return; // already hydrated from snapshot
+    if (!roomId) return;
+    if (currentRoundIndex == null || Number.isNaN(currentRoundIndex)) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        let { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) {
+          try {
+            const { data, error } = await supabase.auth.signInAnonymously();
+            if (!error) authUser = data?.user ?? null;
+          } catch {}
+        }
+        if (!authUser) return;
+
+        const { data, error } = await supabase
+          .from('round_results')
+          .select('image_id, score, accuracy, xp_total, xp_where, xp_when, hints_used, distance_km, guess_year, guess_lat, guess_lng, actual_lat, actual_lng, time_accuracy, location_accuracy')
+          .eq('room_id', roomId)
+          .eq('user_id', authUser.id)
+          .eq('round_index', currentRoundIndex)
+          .maybeSingle();
+        if (error || !data) return;
+        if (cancelled) return;
+
+        const mapped: ContextRoundResult = {
+          roundIndex: currentRoundIndex,
+          imageId: data.image_id,
+          guessCoordinates: data.guess_lat != null && data.guess_lng != null
+            ? { lat: Number(data.guess_lat), lng: Number(data.guess_lng) }
+            : undefined,
+          actualCoordinates: data.actual_lat != null && data.actual_lng != null
+            ? { lat: Number(data.actual_lat), lng: Number(data.actual_lng) }
+            : undefined,
+          distanceKm: data.distance_km != null ? Number(data.distance_km) : null,
+          score: data.score != null ? Number(data.score) : null,
+          guessYear: data.guess_year != null ? Number(data.guess_year) : null,
+          xpWhen: data.xp_when != null ? Number(data.xp_when) : undefined,
+          xpWhere: data.xp_where != null ? Number(data.xp_where) : undefined,
+          accuracy: data.accuracy != null ? Number(data.accuracy) : undefined,
+          hintsUsed: data.hints_used != null ? Number(data.hints_used) : undefined,
+          xpTotal: data.xp_total != null ? Number(data.xp_total) : undefined,
+          timeAccuracy: data.time_accuracy != null ? Number(data.time_accuracy) : undefined,
+          locationAccuracy: data.location_accuracy != null ? Number(data.location_accuracy) : undefined,
+        };
+        setSnapshotResult(mapped);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [contextResult, snapshotResult, roomId, currentRoundIndex]);
+
   const effectiveResult = contextResult ?? snapshotResult ?? undefined;
   const effectiveImage = currentImage ?? pendingImage ?? snapshotImage;
+
+  // Debug: log hydration state to diagnose "Preparing results..." hang
+  useEffect(() => {
+    console.log('[RoundResultsPage] Hydration state', {
+      effectiveResultPresent: !!effectiveResult,
+      effectiveImagePresent: !!effectiveImage,
+      contextResultPresent: !!contextResult,
+      snapshotResultPresent: !!snapshotResult,
+      currentImagePresent: !!currentImage,
+      pendingImagePresent: !!pendingImage,
+      snapshotImagePresent: !!snapshotImage,
+      roomId,
+      currentRoundIndex,
+      imagesLength: images.length,
+    });
+  }, [effectiveResult, effectiveImage, contextResult, snapshotResult, currentImage, pendingImage, snapshotImage, roomId, currentRoundIndex, images.length]);
 
   // --- Multiplayer peers: fetch other players' answers for this room/round ---
   const isSyncCompeteRoute = useMemo(() => location.pathname.startsWith('/compete/sync/'), [location.pathname]);

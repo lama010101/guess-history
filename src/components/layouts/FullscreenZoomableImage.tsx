@@ -1,7 +1,7 @@
-import React, { useRef, useState, useEffect, WheelEvent } from "react";
-import { Maximize } from "lucide-react";
-import { useAuth } from '@/contexts/AuthContext';
-import { fetchUserSettings, UserSettings } from '@/utils/profile/profileService';
+import React, { useEffect, useRef, useState } from "react";
+import { Maximize, Minus, Plus } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { fetchUserSettings, UserSettings } from "@/utils/profile/profileService";
 
 interface FullscreenZoomableImageProps {
   image: { url: string; placeholderUrl: string; title: string };
@@ -662,7 +662,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
         {/* Placeholder Image */}
         <img
           src={image.placeholderUrl}
-          alt={`${image.title} placeholder`}
+          alt="Round image placeholder"
           className={`absolute inset-0 filter blur-lg transition-opacity duration-300`}
           style={{ height: '100%', width: 'auto', opacity: isLoading ? 1 : 0, display: 'block', maxWidth: 'none', objectFit: 'cover', objectPosition: 'center' }}
           aria-hidden="true"
@@ -671,7 +671,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
         <img
           ref={imgRef}
           src={imgSrc}
-          alt={image.title}
+          alt="Round image"
           className={`cursor-grab transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
           style={{
             background: "black",

@@ -394,6 +394,7 @@ const Room: React.FC = () => {
                   useHostHistory: isHost,
                   minYear: (data as any).yearMin,
                   maxYear: (data as any).yearMax,
+                  authoritativeTimer: !!(data as any).authoritativeTimer,
                 }).catch(() => {
                   startedRef.current = false;
                 });

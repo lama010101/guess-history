@@ -82,6 +82,8 @@ const GameRoundPage: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+  const leavingRef = useRef(false);
+  const homeRedirectTimeoutRef = useRef<number | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const rushAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -199,6 +201,7 @@ const GameRoundPage: React.FC = () => {
     if (typeof window === 'undefined') return;
     if (!roomId) return;
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (leavingRef.current) return;
       event.preventDefault();
       event.returnValue = '';
     };
@@ -228,6 +231,7 @@ const GameRoundPage: React.FC = () => {
   }, []);
 
   const verifyAndResync = useCallback(async () => {
+    if (leavingRef.current) return;
     try {
       if (!roomId) return;
       await syncRoomId(roomId);
@@ -251,7 +255,7 @@ const GameRoundPage: React.FC = () => {
     } catch (err) {
       console.warn('[GameRoundPage] verifyAndResync failed', err);
     }
-  }, [roomId, syncRoomId, hydrateRoomImages, images, roundNumber, navigate, modeBasePath, location.pathname]);
+  }, [roomId, syncRoomId, hydrateRoomImages, images, roundNumber, navigate, modeBasePath, location.pathname, leavingRef]);
 
   useEffect(() => {
     void verifyAndResync();
@@ -614,16 +618,33 @@ const GameRoundPage: React.FC = () => {
   useEffect(() => {
     return () => {
       resetChat();
+      if (homeRedirectTimeoutRef.current && typeof window !== 'undefined') {
+        window.clearTimeout(homeRedirectTimeoutRef.current);
+        homeRedirectTimeoutRef.current = null;
+      }
     };
   }, [resetChat]);
 
   const handleNavigateHome = useCallback(() => {
+    leavingRef.current = true;
+    setHistoryLocked(false);
     console.log("Attempting to navigate to /home");
     navigate('/home', { replace: true });
     console.log("Called navigate('/home')");
+    if (homeRedirectTimeoutRef.current && typeof window !== 'undefined') {
+      window.clearTimeout(homeRedirectTimeoutRef.current);
+    }
+    if (typeof window !== 'undefined') {
+      homeRedirectTimeoutRef.current = window.setTimeout(() => {
+        if (leavingRef.current) {
+          window.location.replace('/home');
+        }
+      }, 250);
+    }
   }, [navigate]);
 
   const confirmNavigation = useCallback((navigateTo: () => void) => {
+    leavingRef.current = false;
     setPendingNavigation(() => navigateTo);
     setShowConfirmDialog(true);
   }, []);
@@ -631,10 +652,12 @@ const GameRoundPage: React.FC = () => {
   const handleConfirmNavigation = useCallback(() => {
     setShowConfirmDialog(false);
     if (pendingNavigation) {
+      leavingRef.current = true;
       setHistoryLocked(false);
       lockedUrlRef.current = null;
       setTimeout(() => {
         pendingNavigation();
+        setPendingNavigation(null);
       }, 0);
     }
   }, [pendingNavigation]);
@@ -711,6 +734,8 @@ const GameRoundPage: React.FC = () => {
 
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
+  useEffect(() => { isSubmittingRef.current = isSubmitting; }, [isSubmitting]);
   // Year is not selected by default; becomes a number only after user interaction
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   // Initialize timer with roundTimerSec if timer is enabled, otherwise use 0 (will be hidden)
@@ -787,6 +812,7 @@ const GameRoundPage: React.FC = () => {
     remainingSec,
     clampRemaining,
     start: startLocalTimer,
+    reset: resetLocalTimer,
   } = useGameLocalCountdown({
     timerId,
     durationSec: roundTimerSec,
@@ -819,35 +845,25 @@ const GameRoundPage: React.FC = () => {
   useEffect(() => {
     if (!timerEnabled) {
       setRemainingTime(0);
-      return;
-    }
-    if (!timerReady) {
-      setRemainingTime(roundTimerSec);
-    }
-  }, [roundTimerSec, timerEnabled, timerReady]);
-
-  useEffect(() => {
-    if (import.meta.env.DEV) {
-      try { console.debug('[GameRoundPage] timer:state', { timerReady, timerExpired, remainingSec }); } catch {}
-    }
-  }, [timerReady, timerExpired, remainingSec]);
-
-  // Reflect server timer into UI state without changing UI contract
-  useEffect(() => {
-    if (!timerEnabled) {
-      setRemainingTime(0);
       setIsTimerActive(false);
       return;
     }
-    // Keep local state in sync with server countdown, but only run when round has started
-    if (timerReady) {
-      if (import.meta.env.DEV) {
-        try { console.debug('[GameRoundPage] timer:sync', { remainingSec, timerExpired, roundStarted }); } catch {}
-      }
-      setRemainingTime(remainingSec);
-      setIsTimerActive(roundStarted && !timerExpired);
+
+    if (!timerReady) {
+      setRemainingTime(roundTimerSec);
+      setIsTimerActive(false);
+      return;
     }
-  }, [timerEnabled, timerReady, remainingSec, timerExpired, roundStarted]);
+
+    if (!isCompeteMode) {
+      setRemainingTime((prev) => (prev !== remainingSec ? remainingSec : prev));
+      setIsTimerActive(roundStarted && !timerExpired);
+      return;
+    }
+
+    setRemainingTime(remainingSec);
+    setIsTimerActive(roundStarted && !timerExpired);
+  }, [timerEnabled, timerReady, roundTimerSec, remainingSec, timerExpired, roundStarted, isCompeteMode]);
 
   useEffect(() => {
     if (!autoStart || timerReady) return;
@@ -910,7 +926,9 @@ const GameRoundPage: React.FC = () => {
           return;
         }
 
-        setHistoryLocked(true);
+        if (!leavingRef.current) {
+          setHistoryLocked(true);
+        }
 
         const session = await getSessionProgress(roomId);
         if (session?.current_route && session.current_route !== location.pathname) {
@@ -956,7 +974,7 @@ const GameRoundPage: React.FC = () => {
           try { console.debug('[GameRoundPage] Guard: no existing result; allow entry', { roundNumber, roomId, gameId }); } catch {}
         }
 
-        if (!found) {
+        if (!found && !leavingRef.current) {
           setHistoryLocked(true);
         }
       } catch (e) {
@@ -991,10 +1009,10 @@ const GameRoundPage: React.FC = () => {
 
     const currentPlayerKey = user?.id ?? (displayName ? `name:${displayName.trim().toLowerCase()}` : null);
 
+    // Determine expected participants using current sources only to prevent sticky inflation
     const expectedTotal = Math.max(
+      hasSubmittedThisRound ? 1 : 0,
       roundPeers.length,
-      submittedCounts.total,
-      submittedCounts.submitted,
       lobbyRoster.length,
     );
     const submitted = roundPeers.filter((peer) => peer.submitted).length;
@@ -1004,7 +1022,7 @@ const GameRoundPage: React.FC = () => {
     const selfPeer = roundPeers.find((p) => p.userId === selfId) || null;
     const submittedAdj = submitted + (hasSubmittedThisRound && (!selfPeer || selfPeer.submitted !== true) ? 1 : 0);
     const allSubmitted = expectedTotal > 0 && submittedAdj >= expectedTotal;
-    setSubmittedCounts({ submitted, total: expectedTotal });
+    setSubmittedCounts({ submitted: submittedAdj, total: expectedTotal });
 
     const otherSubmitters = roundPeers.filter((peer) => {
       if (!peer.submitted) return false;
@@ -1044,9 +1062,16 @@ const GameRoundPage: React.FC = () => {
     }
 
     if (isCompeteMode) {
-      setWaitingForPeers(!allSubmitted);
-      if (!allSubmitted && timerEnabledRef.current) {
-        setIsTimerActive(true);
+      // In Compete mode, automatically navigate to the results page once everyone has submitted
+      if (allSubmitted && !hasNavigatedToResultsRef.current) {
+        hasNavigatedToResultsRef.current = true;
+        setWaitingForPeers(false);
+        navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
+      } else {
+        setWaitingForPeers(!allSubmitted);
+        if (!allSubmitted && timerEnabledRef.current) {
+          setIsTimerActive(true);
+        }
       }
     } else if (allSubmitted && !hasNavigatedToResultsRef.current) {
       hasNavigatedToResultsRef.current = true;
@@ -1120,6 +1145,13 @@ const GameRoundPage: React.FC = () => {
     awaitingSubmissionAckRef.current = false;
     setRecentSubmitterIds({});
     setCachedPeerRoster([]);
+    setCurrentGuess(null);
+    setHasGuessedLocation(false);
+    setHasTimedOut(false);
+    if (timerEnabled) {
+      setRemainingTime(roundTimerSec);
+      setIsTimerActive(false);
+    }
   }, [roomId, roundNumber]);
 
   useEffect(() => {
@@ -1486,12 +1518,13 @@ const GameRoundPage: React.FC = () => {
       return;
     }
 
-    // Require WebSocket connection + user ID so PartyKit receives submission
-    if (!sendLobbyPayload || !user?.id) {
-      console.warn('[GameRoundPage] Submission aborted: missing lobby connection or user ID');
+    const hasUserId = !!user?.id;
+    const canSendLobbyPayload = typeof sendLobbyPayload === 'function';
+    if (isCompeteMode && !hasUserId) {
+      console.warn('[GameRoundPage] Submission aborted: missing user ID in compete mode');
       toast({
-        title: 'Connection issue',
-        description: 'Waiting for lobby connection. Please try again in a moment.',
+        title: 'Account issue',
+        description: 'We need to confirm your identity before saving this guess. Please rejoin the room.',
         variant: 'destructive',
       });
       return;
@@ -1516,6 +1549,7 @@ const GameRoundPage: React.FC = () => {
 
     console.log(`[GameRoundPage] Submitting guess for round ${roundNumber}, Year: ${selectedYear}, Coords:`, currentGuess);
     setIsSubmitting(true);
+    setRoundStarted(false);
     if (!(isCompeteMode && timerEnabled)) {
       setIsTimerActive(false);
     }
@@ -1560,7 +1594,7 @@ const GameRoundPage: React.FC = () => {
 
       console.log('[GameRoundPage] About to call recordRoundResult with:', resultData, currentRoundIndex);
       await recordRoundResult(resultData, currentRoundIndex);
-      if (isCompeteMode && roomId) {
+      if (isCompeteMode && roomId && canSendLobbyPayload) {
         awaitingSubmissionAckRef.current = true;
         const sent = sendLobbyPayload({ type: 'submission', roundNumber });
         if (!sent) {
@@ -1578,17 +1612,32 @@ const GameRoundPage: React.FC = () => {
       }
       console.log('[GameRoundPage] recordRoundResult resolved, navigating to results');
 
-      setCurrentGuess(null);
+      // Unlock navigation and stop local countdown to prevent timeout double-submit
+      try { setHistoryLocked(false); } catch {}
+      try { (leavingRef as any).current = true; } catch {}
+      try { resetLocalTimer?.(); } catch {}
+
       if (roomId) {
         try {
-          await upsertSessionProgress({
-            roomId,
-            roundNumber,
-            currentRoute: `${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`,
-            substep: 'results',
-            timerEnabled,
-            durationSec: timerEnabled ? roundTimerSec : null,
-          });
+          if (isCompeteMode) {
+            await upsertSessionProgress({
+              roomId,
+              roundNumber,
+              currentRoute: `${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`,
+              substep: 'results',
+              timerEnabled,
+              durationSec: timerEnabled ? roundTimerSec : null,
+            });
+          } else {
+            upsertSessionProgress({
+              roomId,
+              roundNumber,
+              currentRoute: `${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`,
+              substep: 'results',
+              timerEnabled,
+              durationSec: timerEnabled ? roundTimerSec : null,
+            }).catch(() => {});
+          }
         } catch (error) {
           console.error('Error during session progress upsert:', error);
         }
@@ -1656,11 +1705,14 @@ const GameRoundPage: React.FC = () => {
   // Handle timer completion
   const handleTimeComplete = useCallback(async () => {
     if (!timerEnabled) return;
+    if (leavingRef.current) return;
+    if (isSubmittingRef.current || hasSubmittedThisRound) return;
     console.log("Timer completed - auto submitting");
     setHasTimedOut(true);
     if (!(isCompeteMode && roomId)) {
       setIsTimerActive(false);
     }
+    setRoundStarted(false);
     setIsSubmitting(true);
 
     if (!imageForRound) {
@@ -1705,6 +1757,9 @@ const GameRoundPage: React.FC = () => {
           className: "bg-white/70 text-black border border-gray-200",
         });
         if (!isCompeteMode && roomId) {
+          try { setHistoryLocked(false); } catch {}
+          try { (leavingRef as any).current = true; } catch {}
+          try { resetLocalTimer?.(); } catch {}
           navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
           setIsSubmitting(false);
           return;
@@ -1785,10 +1840,13 @@ const GameRoundPage: React.FC = () => {
       });
 
       if (!isCompeteMode && roomId) {
+        try { setHistoryLocked(false); } catch {}
+        try { (leavingRef as any).current = true; } catch {}
+        try { resetLocalTimer?.(); } catch {}
         setTimeout(() => {
           navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
           setIsSubmitting(false);
-        }, 2000);
+        }, 500);
       } else {
         if (isCompeteMode) {
           setHasSubmittedThisRound(true);

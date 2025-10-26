@@ -85,13 +85,6 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
   const formattedChatCount = chatMessageCount > 99 ? '99+' : String(chatMessageCount ?? 0);
   const showChatCount = (chatMessageCount ?? 0) > 0;
   const hasPeers = peerRoster.length > 0;
-  const waitingLabel = waitingForPeers
-    ? (
-      typeof submittedCount === 'number' && typeof totalParticipants === 'number' && totalParticipants > 0
-        ? `Waiting for players… ${submittedCount}/${totalParticipants}`
-        : 'Waiting for other players…'
-    )
-    : null;
   
   return (
     <div className={`absolute inset-0 z-[1000] flex flex-col justify-between p-4 pointer-events-none game-overlay-hud ${className || ''}`}>
@@ -131,13 +124,6 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
               <span>{formatInteger(currentScore)}</span>
             </Badge>
           </div>
-          {waitingLabel && (
-            <div className="mt-2 px-3 py-1 rounded-full bg-amber-300/90 text-black text-xs font-semibold shadow">
-              {waitingLabel}
-            </div>
-          )}
-          
-
         </div>
 
         {/* Right side - Level Up Button (optional) */}

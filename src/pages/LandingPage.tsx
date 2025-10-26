@@ -216,10 +216,10 @@ const LandingPage: React.FC = () => {
           setAuthOpen(false);
           navigate("/home", { replace: true });
         }}
-        onGuestContinue={async () => {
+        onGuestContinue={() => {
           // AuthModal already performed continueAsGuest before invoking this callback.
-          // Start a solo game programmatically; navigation is handled inside startGame.
-          await startGame?.();
+          // Simply send the guest to the home hub without auto-starting a round.
+          navigate('/home', { replace: true });
         }}
       />
     </div>

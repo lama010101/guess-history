@@ -401,6 +401,12 @@ export function useGamePreparation() {
       }
 
       await runPreload();
+      if (abortRef.current) {
+        setStatus('error');
+        const abortMessage = 'Preparation aborted';
+        setError(abortMessage);
+        throw new Error(abortMessage);
+      }
       if (status === 'error') {
         throw new Error(error || 'Preparation aborted');
       }
@@ -414,7 +420,6 @@ export function useGamePreparation() {
   }, []);
 
   const reset = useCallback(() => {
-    abortRef.current = false;
     setStatus('idle');
     setError(null);
     setLoaded(0);

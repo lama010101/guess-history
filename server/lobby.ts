@@ -740,8 +740,9 @@ export default class Lobby implements Party.Server {
             let startedAt: string | null = null;
             const seed = randomUUID();
             // Effective timer flag that we will advertise to clients. If we
-            // fail to start the authoritative timer, we fall back to
-            // non-authoritative local timers by setting this to false.
+            // fail to start the authoritative timer, we still advertise the
+            // timer as enabled but rely on clients to run their own local
+            // countdown (`authoritativeTimer=false`).
             let effectiveTimerEnabled = timerEnabled;
             let authoritativeTimerStarted = false;
             if (timerEnabled) {

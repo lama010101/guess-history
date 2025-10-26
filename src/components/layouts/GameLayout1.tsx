@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { YEAR_RANGE_MIN, YEAR_RANGE_MAX } from '@/lib/useSettingsStore';
 import { cn } from '@/lib/utils';
 import FullscreenZoomableImage from './FullscreenZoomableImage';
 import ImmersiveCylViewer from '@/components/ImmersiveCylViewer';
@@ -24,7 +25,7 @@ import { GuessCoordinates } from '@/types';
 import { Hint } from '@/hooks/useHintV2';
 
 export interface GameLayout1Props {
-  onComplete?: () => void;
+  onComplete?: () => void | Promise<void>;
   gameMode?: 'solo' | 'levelup' | 'compete';
   currentRound?: number;
   image: GameImage | null;
@@ -220,6 +221,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
     : game.timerEnabled;
   const hudTimerEnabled = effectiveTimerEnabled;
   const parsedYear = parseInt(yearInput, 10);
+  const typedYear = Number.isNaN(parsedYear) ? null : parsedYear;
   // Dynamic year bounds based on prepared images for this game session
   const dynamicMinYear = useMemo(() => {
     const ys = (game?.images || []).map((img) => img.year).filter((y) => typeof y === 'number' && !isNaN(y));
@@ -261,9 +263,11 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
     }
     prevBoundsRef.current = curr;
   }, [effectiveMinYear, effectiveMaxYear, gameMode, minYear, maxYear, dynamicMinYear, dynamicMaxYear]);
-  const isYearValid = !isNaN(parsedYear) && parsedYear >= effectiveMinYear && parsedYear <= effectiveMaxYear;
-  const isYearSelected = isYearValid; // only valid numeric year counts as selected
-  const isSubmitEnabled = !!currentGuess && isYearSelected;
+  const resolvedYear = typeof selectedYear === 'number' && !Number.isNaN(selectedYear)
+    ? selectedYear
+    : (typedYear != null && typedYear >= effectiveMinYear && typedYear <= effectiveMaxYear ? typedYear : null);
+  const isYearSelected = resolvedYear != null;
+  const isSubmitEnabled = !!currentGuess && isYearSelected && !isSubmitting;
 
   // Clear the submit guidance when inputs become valid
   useEffect(() => {
@@ -301,12 +305,17 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
     console.log("Map coordinates selected:", lat, lng);
   };
 
-  const handleSubmitGuess = () => {
+  const handleSubmitGuess = async () => {
     // With disabled overlay, this should only run when enabled
     // Call the parent's onComplete if it exists
-    if (onComplete) {
-      setIsSubmitting(true);
-      onComplete();
+    if (!onComplete) return;
+    setIsSubmitting(true);
+    try {
+      await onComplete();
+    } catch (error) {
+      console.error('[GameLayout1] onComplete handler threw during submission', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -329,6 +338,25 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
     }
   };
 
+  const waitingPeersList = useMemo(() => {
+    if (!waitingForPeers) {
+      return [] as Array<{ id: string; name: string }>;
+    }
+    return peerRoster
+      .filter((peer) => !peer.submitted)
+      .map((peer) => ({
+        id: peer.id,
+        name: (peer.displayName || 'Player').trim() || 'Player',
+      }));
+  }, [waitingForPeers, peerRoster]);
+
+  const waitingUnknownCount = useMemo(() => {
+    if (!waitingForPeers) return 0;
+    if (typeof totalParticipants !== 'number' || typeof submittedCount !== 'number') return 0;
+    const remaining = Math.max(totalParticipants - submittedCount, 0);
+    return Math.max(remaining - waitingPeersList.length, 0);
+  }, [waitingForPeers, totalParticipants, submittedCount, waitingPeersList]);
+
   if (!image) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-history-light dark:bg-history-dark">
@@ -346,7 +374,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       <div className="w-full h-[40vh] lg:w-1/2 lg:h-screen relative">
         <LazyImage
           src={image.firebase_url || image.url}
-          alt={image.title}
+          alt="Round image"
           className="w-full h-full object-cover"
           skeletonClassName="w-full h-full"
         />
@@ -420,7 +448,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
         <div className="max-w-5xl mx-auto w-full space-y-2 flex flex-col h-full">
           <Card className={cn("overflow-hidden dark:bg-[#333333] transition-all", (highlightInputs || highlightWhen) && "ring-2 ring-orange-500 animate-pulse")}> 
             <CardContent className="px-4 pt-3 pb-1 flex flex-col min-h-[7.5rem] md:min-h-[9rem]">
-              <div className="flex flex-wrap items-center justify-between mb-1 gap-x-2 gap-y-1">
+              <div className="flex flex-wrap items-center justify-between mb-2 gap-x-2 gap-y-1">
                 <h2 className={cn("font-normal text-base flex items-center min-w-0 h-6 leading-6 md:h-auto md:leading-normal", titlesAnimating ? "text-orange-400" : "text-gray-900 dark:text-white") }>
                   <Calendar className="mr-2 h-4 w-4 text-gray-400 flex-shrink-0" />
                   <span>{titlesAnimating ? whenFull.slice(0, whenAnimIndex) : whenFull}</span>
@@ -443,7 +471,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                     onBlur={() => {
                       const parsed = parseInt(yearInput, 10);
                       if (!isNaN(parsed)) {
-                        const clamped = Math.max(effectiveMinYear, Math.min(effectiveMaxYear, parsed));
+                        const clamped = Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, parsed));
                         if (clamped !== selectedYear) onYearChange(clamped);
                         setYearInput(String(clamped));
                       } else {
@@ -459,13 +487,13 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                         (e.currentTarget as HTMLInputElement).blur();
                       }
                     }}
-                    placeholder={showYearAlert ? 'You must guess the year' : 'Type or slide year'}
+                    placeholder={showYearAlert ? 'You must guess the year' : 'Type or slide a year'}
                     className={
                       cn(
                         "appearance-none pl-2 pr-1 py-0 h-6 leading-6 md:h-auto md:leading-normal bg-transparent focus:outline-none focus:ring-1 focus:ring-orange-400 rounded text-right md:shrink-0 text-base relative top-[2px] md:top-0",
                         showYearAlert
                           ? "w-full md:w-[26ch]"
-                          : (yearInteracted ? "w-[10ch] sm:w-[12ch] md:w-[14ch]" : "w-full md:w-[14ch]"),
+                          : (yearInteracted ? "w-[18ch] sm:w-[20ch] md:w-[22ch]" : "w-full md:w-[22ch]"),
                         yearInteracted && yearInput !== ''
                           ? "text-orange-400 font-semibold"
                           : "text-gray-400 italic font-normal",
@@ -481,14 +509,14 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
               <div className="flex-1 flex items-center justify-center">
                 <div className="w-full">
                   <ZoomYearPicker
-                    domainMin={effectiveMinYear}
-                    domainMax={effectiveMaxYear}
+                    domainMin={YEAR_RANGE_MIN}
+                    domainMax={YEAR_RANGE_MAX}
                     minSpan={1}
                     initialView={{ vMin: effectiveMinYear, vMax: effectiveMaxYear }}
                     initialYear={defaultPickerYear}
                     value={yearInteracted ? (selectedYear ?? null) : null}
                     onChange={(nextYear) => {
-                      const clampedYear = Math.min(Math.max(nextYear, effectiveMinYear), effectiveMaxYear);
+                      const clampedYear = Math.min(Math.max(nextYear, YEAR_RANGE_MIN), YEAR_RANGE_MAX);
                       onYearChange(clampedYear);
                       setYearInteracted(true);
                       setYearInput(String(clampedYear));
@@ -688,9 +716,27 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
         <div className="fixed inset-0 z-[10000] bg-black/60 flex items-center justify-center">
           <div className="flex flex-col items-center">
             <div className="h-10 w-10 rounded-full border-4 border-white/30 border-t-white animate-spin mb-3" />
-            <div className="text-white text-sm">
-              {waitingForPeers ? 'Waiting for other players…' : 'Preparing results...'}
-            </div>
+            {waitingForPeers ? (
+              <div className="text-white text-sm text-center">
+                <div className="uppercase tracking-[0.2em] text-xs text-white/60 font-semibold">Waiting for:</div>
+                <ul className="mt-2 space-y-1">
+                  {waitingPeersList.map((peer) => (
+                    <li key={peer.id} className="flex items-center justify-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full bg-amber-300 animate-pulse" aria-hidden="true" />
+                      <span className="font-medium">{peer.name}</span>
+                    </li>
+                  ))}
+                  {waitingPeersList.length === 0 && waitingUnknownCount === 0 && (
+                    <li className="text-white/80 font-medium">Other players…</li>
+                  )}
+                  {waitingUnknownCount > 0 && (
+                    <li className="text-white/80 font-medium">+{waitingUnknownCount} more</li>
+                  )}
+                </ul>
+              </div>
+            ) : (
+              <div className="text-white text-sm">Preparing results...</div>
+            )}
           </div>
         </div>
       )}

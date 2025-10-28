@@ -10,6 +10,18 @@ const devLog = (...args: unknown[]) => {
   }
 };
 
+const pickFirstString = (...candidates: Array<string | null | undefined>): string | null => {
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string') {
+      const trimmed = candidate.trim();
+      if (trimmed.length > 0) {
+        return trimmed;
+      }
+    }
+  }
+  return null;
+};
+
 export interface PeerRoundRow {
   userId: string;
   displayName: string;
@@ -236,9 +248,21 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
         console.warn('[useRoundPeers] round_results fetch failed', rrError);
       }
 
+      const { data: syncRows, error: syncErr } = await (supabase as any)
+        .from('sync_round_scores')
+        .select('user_id, display_name, xp_total, time_accuracy, location_accuracy, distance_km, guess_year, guess_lat, guess_lng')
+        .eq('room_id', roomId)
+        .eq('round_number', oneBasedRound);
+      devLog('sync_round_scores query', { syncRows, syncErr });
+
+      if (syncErr) {
+        console.warn('[useRoundPeers] sync_round_scores fetch failed', syncErr);
+      }
+
       // 4. Unify participants: union of session_players and scoreboard rows
       const playersArr: Array<any> = Array.isArray(spRows) ? spRows : [];
-      const rrByUser = new Map<string, any>((rrRows || []).map((r: any) => [r.user_id, r]));
+      const rrByUser = new Map<string, any>((rrRows || []).map((r: any) => [String(r.user_id), r]));
+      const syncByUser = new Map<string, any>((syncRows || []).map((r: any) => [String(r.user_id), r]));
 
       // 3b. Fetch per-axis hint debts from round_hints for this room/round
       const roundSessionId = makeRoundId(roomId, oneBasedRound);
@@ -270,10 +294,10 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
         prev.count += 1;
         hintsByUser.set(uid, prev);
       });
-      const sbByUser = new Map<string, any>((scoreboardRows || []).map((s: any) => [s.user_id, s]));
+      const sbByUser = new Map<string, any>((scoreboardRows || []).map((s: any) => [String(s.user_id), s]));
       const allUserIds = Array.from(new Set<string>([
-        ...playersArr.map(p => String(p.user_id)),
-        ...scoreboardRows.map(s => String(s.user_id)),
+        ...playersArr.map((p) => String(p.user_id)),
+        ...scoreboardRows.map((s) => String(s.user_id)),
       ]));
 
       let profilesArr: Array<any> = [];
@@ -318,14 +342,18 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
         const sp = playersArr.find(p => String(p.user_id) === uid);
         const sb = sbByUser.get(uid);
         const rr = rrByUser.get(uid);
+        const sync = syncByUser.get(uid);
         const profile = profileByUser.get(uid);
-        const resolvedAvatar = profile?.avatar_image_url
-          ?? profile?.avatar_url
-          ?? (profile?.avatar_id ? avatarById.get(String(profile.avatar_id)) ?? null : null);
+        const resolvedAvatar = pickFirstString(
+          profile?.avatar_image_url,
+          profile?.avatar_url,
+          profile?.avatar_id ? avatarById.get(String(profile.avatar_id)) ?? null : null,
+        );
         const hasRoundResult = !!rr;
         const hasScoreboardEntry = !!sb && (
           sb.score != null || sb.accuracy != null || sb.xp_total != null || sb.xp_where != null || sb.xp_when != null
         );
+        const hasSyncSnapshot = !!sync;
         const hintAgg = hintsByUser.get(uid);
         const rawHintsUsedCandidates = [
           sb?.hints_used,
@@ -339,8 +367,38 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
           if (!Number.isFinite(parsed) || parsed < 0) return acc;
           return Math.max(acc ?? 0, parsed);
         }, null);
-        const rawAccuracy = Number(sb?.accuracy ?? rr?.accuracy ?? 0);
+        const rawAccuracy = Number(
+          sb?.accuracy ?? rr?.accuracy ?? (
+            sync?.location_accuracy != null && sync?.time_accuracy != null
+              ? (Number(sync.location_accuracy) + Number(sync.time_accuracy)) / 2
+              : 0
+          )
+        );
         const rawAccDebt = Number(sb?.acc_debt ?? rr?.acc_debt ?? 0);
+
+        const resolvedDistanceKm = rr?.distance_km != null
+          ? Number(rr.distance_km)
+          : (sync?.distance_km != null ? Number(sync.distance_km) : null);
+        const resolvedGuessYear = rr?.guess_year != null
+          ? Number(rr.guess_year)
+          : (sync?.guess_year != null ? Number(sync.guess_year) : null);
+        const resolvedGuessLat = rr?.guess_lat != null
+          ? Number(rr.guess_lat)
+          : (sync?.guess_lat != null ? Number(sync.guess_lat) : null);
+        const resolvedGuessLng = rr?.guess_lng != null
+          ? Number(rr.guess_lng)
+          : (sync?.guess_lng != null ? Number(sync.guess_lng) : null);
+        const resolvedLocationAccuracy = rr?.location_accuracy != null
+          ? Number(rr.location_accuracy)
+          : (sync?.location_accuracy != null ? Number(sync.location_accuracy) : null);
+        const resolvedTimeAccuracy = rr?.time_accuracy != null
+          ? Number(rr.time_accuracy)
+          : (sync?.time_accuracy != null ? Number(sync.time_accuracy) : null);
+        const resolvedXpTotal = sb?.xp_total != null
+          ? Number(sb.xp_total)
+          : (rr?.xp_total != null
+            ? Number(rr.xp_total)
+            : (sync?.xp_total != null ? Number(sync.xp_total) : 0));
 
         const whenAccDebt = hintAgg?.whenAccDebt ?? 0;
         const whereAccDebt = hintAgg?.whereAccDebt ?? 0;
@@ -356,11 +414,13 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
         const netAccuracy = Math.max(0, rawAccuracy - Math.max(0, totalDebt));
         return {
           userId: uid,
-          displayName: (sp?.display_name ?? sb?.display_name ?? profile?.display_name ?? 'Unknown') as string,
+          displayName: (sp?.display_name ?? sb?.display_name ?? profile?.display_name ?? sync?.display_name ?? 'Unknown') as string,
           avatarUrl: resolvedAvatar,
           score: Number(sb?.score ?? 0),
-          accuracy: Number(sb?.accuracy ?? 0),
-          xpTotal: Number(sb?.xp_total ?? 0),
+          accuracy: Number(sb?.accuracy ?? (resolvedLocationAccuracy != null && resolvedTimeAccuracy != null
+            ? (resolvedLocationAccuracy + resolvedTimeAccuracy) / 2
+            : 0)),
+          xpTotal: resolvedXpTotal,
           xpDebt: (Number.isFinite(rawXpDebt) && rawXpDebt > 0) ? rawXpDebt : (hintsByUser.get(uid)?.xpDebt ?? 0),
           whenXpDebt,
           whereXpDebt,
@@ -369,15 +429,15 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
           whereAccDebt,
           xpWhere: sb?.xp_where != null ? Number(sb.xp_where) : (rr?.xp_where != null ? Number(rr.xp_where) : null),
           xpWhen: sb?.xp_when != null ? Number(sb.xp_when) : (rr?.xp_when != null ? Number(rr.xp_when) : null),
-          locationAccuracy: sb?.location_accuracy != null ? Number(sb.location_accuracy) : (rr?.location_accuracy != null ? Number(rr.location_accuracy) : null),
-          timeAccuracy: sb?.time_accuracy != null ? Number(sb.time_accuracy) : (rr?.time_accuracy != null ? Number(rr.time_accuracy) : null),
-          distanceKm: (sb?.distance_km != null ? Number(sb.distance_km) : (rr?.distance_km ?? null)),
-          guessYear: (sb?.guess_year != null ? Number(sb.guess_year) : (rr?.guess_year ?? null)),
-          guessLat: rr?.guess_lat ?? null,
-          guessLng: rr?.guess_lng ?? null,
+          locationAccuracy: sb?.location_accuracy != null ? Number(sb.location_accuracy) : (resolvedLocationAccuracy != null ? resolvedLocationAccuracy : null),
+          timeAccuracy: sb?.time_accuracy != null ? Number(sb.time_accuracy) : (resolvedTimeAccuracy != null ? resolvedTimeAccuracy : null),
+          distanceKm: resolvedDistanceKm,
+          guessYear: resolvedGuessYear,
+          guessLat: resolvedGuessLat,
+          guessLng: resolvedGuessLng,
           actualLat: rr?.actual_lat ?? null,
           actualLng: rr?.actual_lng ?? null,
-          submitted: hasRoundResult || hasScoreboardEntry,
+          submitted: hasRoundResult || hasScoreboardEntry || hasSyncSnapshot,
           ready: sp?.ready === true,
           hintsUsed: numericHintsUsed,
           whenHints,

@@ -99,11 +99,16 @@ export function useGameLocalCountdown(options: UseGameLocalCountdownOptions): Us
   const [expired, setExpired] = useState(false);
   const [startAt, setStartAt] = useState<number | null>(null);
   const [durationMs, setDurationMs] = useState<number>(() => Math.max(0, durationSec * 1000));
+  const [virtualStartAt, setVirtualStartAt] = useState<number>(() => Date.now() + Math.max(0, durationSec * 1000));
 
-  // Keep duration up to date if the prop changes
+  // Keep duration in sync with props ONLY when no active session exists yet.
+  // If a session is already running (startAt != null) or has ended, do not overwrite
+  // the persisted duration mid-round to avoid rewinding after refresh.
   useEffect(() => {
-    setDurationMs(Math.max(0, durationSec * 1000));
-  }, [durationSec]);
+    if (startAt == null && !expired) {
+      setDurationMs(Math.max(0, durationSec * 1000));
+    }
+  }, [durationSec, startAt, expired]);
 
   // Hydrate existing session or start a new one when autoStart becomes true
   useEffect(() => {
@@ -173,9 +178,24 @@ export function useGameLocalCountdown(options: UseGameLocalCountdownOptions): Us
   }, [timerId]);
 
   // Local ticking using the shared /timer countdown hook
+  useEffect(() => {
+    if (startAt != null) {
+      setVirtualStartAt(startAt);
+      return;
+    }
+
+    if (expired) {
+      // Keep display at zero once the timer has expired until reset/next round
+      setVirtualStartAt(Date.now() - durationMs);
+      return;
+    }
+
+    setVirtualStartAt(Date.now() + durationMs);
+  }, [startAt, expired, durationMs]);
+
   const { remainingMs } = useCountdown({
     durationMs,
-    startAt: startAt ?? Date.now() + durationMs, // if not started, show full remaining
+    startAt: virtualStartAt,
     onFinished: () => {
       if (expired) return;
       writeEnded(timerId);

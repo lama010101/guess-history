@@ -36,7 +36,7 @@ export default function PreparationOverlay() {
       case 'selecting':
         return 'Selecting 5 random images…';
       case 'fetching':
-        return 'Fetching related information…';
+        return 'Fetching events…';
       case 'preloading':
         return 'Images are generated using AI.';
       case 'done':

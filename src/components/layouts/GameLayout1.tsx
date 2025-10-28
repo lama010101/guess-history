@@ -148,6 +148,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const [hasAnimatedTitles, setHasAnimatedTitles] = useState(false);
   // Ref to focus the year input programmatically
   const yearInputRef = useRef<HTMLInputElement>(null);
+  const submitButtonDebugRef = useRef<string>('');
   useEffect(() => {
     // Only sync input from selectedYear after interaction; keep empty initially
     if (yearInteracted) {
@@ -269,6 +270,33 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const isYearSelected = resolvedYear != null;
   const isSubmitEnabled = !!currentGuess && isYearSelected && !isSubmitting;
 
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const reasons: string[] = [];
+    if (!currentGuess) reasons.push('missing-location');
+    if (!isYearSelected) reasons.push('missing-year');
+    if (isSubmitting) reasons.push('layout-submitting');
+    const signature = JSON.stringify({
+      reasons,
+      hasLocation: !!currentGuess,
+      hasYear: isYearSelected,
+      isSubmitEnabled,
+      isSubmitting,
+    });
+    if (submitButtonDebugRef.current === signature) return;
+    submitButtonDebugRef.current = signature;
+    try {
+      console.debug('[GameLayout1][SubmitDebug] state update', {
+        canSubmit: reasons.length === 0,
+        reasons,
+        isSubmitEnabled,
+        isSubmitting,
+        hasLocation: !!currentGuess,
+        hasYear: isYearSelected,
+      });
+    } catch {}
+  }, [currentGuess, isYearSelected, isSubmitEnabled, isSubmitting]);
+
   // Clear the submit guidance when inputs become valid
   useEffect(() => {
     if (isSubmitEnabled) setSubmitPrompt(null);
@@ -309,12 +337,45 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
     // With disabled overlay, this should only run when enabled
     // Call the parent's onComplete if it exists
     if (!onComplete) return;
+    if (import.meta.env.DEV) {
+      try {
+        console.debug('[GameLayout1] handleSubmitGuess invoked', {
+          hasOnComplete: typeof onComplete === 'function',
+          isSubmitEnabled,
+          isSubmitting,
+          hasLocation: !!currentGuess,
+          hasYear: isYearSelected,
+        });
+      } catch {}
+    }
     setIsSubmitting(true);
     try {
+      if (import.meta.env.DEV) {
+        try {
+          console.debug('[GameLayout1] Calling onComplete from handleSubmitGuess');
+        } catch {}
+      }
       await onComplete();
+      if (import.meta.env.DEV) {
+        try {
+          console.debug('[GameLayout1] onComplete resolved');
+        } catch {}
+      }
     } catch (error) {
+      if (import.meta.env.DEV) {
+        try {
+          console.error('[GameLayout1] onComplete threw during submission', error);
+        } catch {}
+      } else {
+        console.error('[GameLayout1] onComplete handler threw during submission', error);
+      }
       console.error('[GameLayout1] onComplete handler threw during submission', error);
     } finally {
+      if (import.meta.env.DEV) {
+        try {
+          console.debug('[GameLayout1] Resetting layout submitting state');
+        } catch {}
+      }
       setIsSubmitting(false);
     }
   };
@@ -324,6 +385,12 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
     if (isSubmitEnabled) return;
     const missingLocation = !currentGuess;
     const missingYear = !isYearSelected;
+
+    if (import.meta.env.DEV) {
+      try {
+        console.debug('[GameLayout1] Disabled submit clicked', { missingLocation, missingYear, currentGuess, isYearSelected });
+      } catch {}
+    }
 
     // Trigger targeted highlights and inline red alerts
     if (missingYear) {
@@ -448,7 +515,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
         <div className="max-w-5xl mx-auto w-full space-y-2 flex flex-col h-full">
           <Card className={cn("overflow-hidden dark:bg-[#333333] transition-all", (highlightInputs || highlightWhen) && "ring-2 ring-orange-500 animate-pulse")}> 
             <CardContent className="px-4 pt-3 pb-1 flex flex-col min-h-[7.5rem] md:min-h-[9rem]">
-              <div className="flex flex-wrap items-center justify-between mb-2 gap-x-2 gap-y-1">
+              <div className="flex flex-wrap items-center justify-between mb-[0.1875rem] gap-x-2 gap-y-1">
                 <h2 className={cn("font-normal text-base flex items-center min-w-0 h-6 leading-6 md:h-auto md:leading-normal", titlesAnimating ? "text-orange-400" : "text-gray-900 dark:text-white") }>
                   <Calendar className="mr-2 h-4 w-4 text-gray-400 flex-shrink-0" />
                   <span>{titlesAnimating ? whenFull.slice(0, whenAnimIndex) : whenFull}</span>
@@ -464,9 +531,18 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                     value={yearInteracted ? yearInput : ''}
                     onChange={(e) => setYearInput(e.target.value)}
                     ref={yearInputRef}
-                    onFocus={() => {
+                    onFocus={(event) => {
                       // Ensure yearInteracted is set when input is focused
                       setYearInteracted(true);
+                      if (!yearInteracted && typeof selectedYear === 'number') {
+                        setYearInput(String(selectedYear));
+                      }
+                      const input = event.currentTarget;
+                      setTimeout(() => {
+                        if (document.activeElement === input) {
+                          input.select();
+                        }
+                      }, 0);
                     }}
                     onBlur={() => {
                       const parsed = parseInt(yearInput, 10);
@@ -487,13 +563,13 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                         (e.currentTarget as HTMLInputElement).blur();
                       }
                     }}
-                    placeholder={showYearAlert ? 'You must guess the year' : 'Type or slide a year'}
+                    placeholder={showYearAlert ? 'You must guess the year' : 'Type here or slide the year'}
                     className={
                       cn(
                         "appearance-none pl-2 pr-1 py-0 h-6 leading-6 md:h-auto md:leading-normal bg-transparent focus:outline-none focus:ring-1 focus:ring-orange-400 rounded text-right md:shrink-0 text-base relative top-[2px] md:top-0",
                         showYearAlert
                           ? "w-full md:w-[26ch]"
-                          : (yearInteracted ? "w-[18ch] sm:w-[20ch] md:w-[22ch]" : "w-full md:w-[22ch]"),
+                          : (yearInteracted ? "w-[22ch] sm:w-[22ch] md:w-[22ch]" : "w-full md:w-[22ch]"),
                         yearInteracted && yearInput !== ''
                           ? "text-orange-400 font-semibold"
                           : "text-gray-400 italic font-normal",
@@ -680,37 +756,6 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
         
       </div>
 
-      {/* Mobile bottom navbar (duplicate section): Settings + Hints + Submit (unified styles) */}
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-[#1f1f1f]/95 backdrop-blur border-t border-gray-200 dark:border-gray-700 p-2 flex items-center gap-2">
-        <Button
-          onClick={() => setIsSettingsModalOpen(true)}
-          variant="outline"
-          className="h-12 rounded-md px-4 bg-white text-black hover:bg-gray-100 border-none text-base font-semibold"
-          aria-label="Open Settings"
-          title="Open Settings"
-        >
-          <SettingsIcon className="h-5 w-5" />
-        </Button>
-        <Button
-          onClick={handleHintClick}
-          className="flex-1 h-12 rounded-md bg-[linear-gradient(45deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] text-black hover:opacity-90 text-base font-semibold"
-        >
-          <span>Hints</span>
-          <span className="ml-2 inline-flex items-center rounded-full bg-black text-white text-xs px-2 py-0.5">{purchasedHintIds.length}/14</span>
-        </Button>
-        <div className="relative flex-[2]">
-          <Button
-            onClick={handleSubmitGuess}
-            disabled={!isSubmitEnabled}
-            className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-[#444444] cursor-not-allowed'} h-12 w-full rounded-md !text-white text-base font-semibold flex items-center justify-center disabled:opacity-100 disabled:!text-white`}
-          >
-            <Send className="h-5 w-5 mr-2" /> Make Guess
-          </Button>
-          {!isSubmitEnabled && (
-            <div className="absolute inset-0" onClick={handleDisabledSubmitClick} aria-hidden="true" />
-          )}
-        </div>
-      </div>
       {/* Submitting overlay */}
       {(isSubmitting || waitingForPeers) && (
         <div className="fixed inset-0 z-[10000] bg-black/60 flex items-center justify-center">

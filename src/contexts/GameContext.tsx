@@ -140,10 +140,13 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   // Cache for global oldest image year (used by Level Up constraints)
   const levelUpOldestYearRef = React.useRef<number | null>(null);
 
-  // Keep roundTimerSec in sync with timerSeconds from settings store
+  // Keep roundTimerSec in sync with timerSeconds from settings store for Solo/Home.
+  // Do not overwrite when an authoritative timer (Compete or Level Up controller) is active.
   useEffect(() => {
-    setRoundTimerSec(timerSeconds);
-  }, [timerSeconds]);
+    if (!authoritativeTimer) {
+      setRoundTimerSec(timerSeconds);
+    }
+  }, [timerSeconds, authoritativeTimer]);
 
   // Accept settings from startGame
   const applyGameSettings = (settings?: { timerSeconds?: number; hintsPerGame?: number; timerEnabled?: boolean; roomId?: string; authoritativeTimer?: boolean }) => {
@@ -151,7 +154,15 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       if (typeof settings.timerSeconds === 'number') setRoundTimerSec(settings.timerSeconds);
       if (typeof settings.hintsPerGame === 'number') setHintsAllowed(settings.hintsPerGame);
       if (typeof settings.timerEnabled === 'boolean') setTimerEnabled(settings.timerEnabled);
-      if (typeof settings.authoritativeTimer === 'boolean') setAuthoritativeTimer(settings.authoritativeTimer);
+      if (typeof settings.authoritativeTimer === 'boolean') {
+        setAuthoritativeTimer(settings.authoritativeTimer);
+      } else if (typeof settings.roomId === 'string' && settings.roomId.trim().length > 0) {
+        // Multiplayer defaults to authoritative timer unless explicitly disabled
+        setAuthoritativeTimer(true);
+      } else {
+        // Solo runs on local timer each round
+        setAuthoritativeTimer(false);
+      }
     }
   };
 
@@ -898,6 +909,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     const maxYear = c.levelYearRange.end;
     const timerSeconds = c.timerSec;
     setTimerEnabled(true);
+    setAuthoritativeTimer(true);
     handleSetRoundTimerSec(timerSeconds);
 
     try {

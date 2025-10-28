@@ -8,6 +8,7 @@ import ImageRatingModal from '@/components/rating/ImageRatingModal';
 import { ConfirmNavigationDialog } from '@/components/game/ConfirmNavigationDialog';
 import { useCompeteRoundResult } from '@/hooks/results/useCompeteRoundResult';
 import { useCompetePeers } from '@/hooks/results/useCompetePeers';
+import type { PeerRoundRow } from '@/hooks/useRoundPeers';
 import { useCompeteRoundLeaderboards } from '@/hooks/useCompeteRoundLeaderboards';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
@@ -17,6 +18,7 @@ import { Badge } from '@/utils/badges/types';
 import { awardRoundBadges } from '@/utils/badges/badgeService';
 import { supabase } from '@/integrations/supabase/client';
 import { useLobbyChat } from '@/hooks/useLobbyChat';
+import { useSyncRoundScores } from '@/hooks/useSyncRoundScores';
 
 const getInitial = (value?: string | null) => {
   const trimmed = (value ?? '').trim();
@@ -39,6 +41,7 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
   const oneBasedRound = Math.max(1, Number(roundNumber || 1));
   const { isLoading, error, contextResult, currentImage, hintDebts, playerSummary } = useCompeteRoundResult(roomId ?? null, Number.isFinite(oneBasedRound) ? oneBasedRound : null);
   const { peers, refresh: refreshPeers } = useCompetePeers(roomId ?? null, Number.isFinite(oneBasedRound) ? oneBasedRound : null);
+  const { entries: snapshotEntries } = useSyncRoundScores(roomId ?? null, Number.isFinite(oneBasedRound) ? oneBasedRound : null);
   const leaderboard = useCompeteRoundLeaderboards(roomId ?? null, Number.isFinite(oneBasedRound) ? oneBasedRound : null);
 
   useEffect(() => {
@@ -47,6 +50,88 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
       document.body.classList.remove('mode-compete');
     };
   }, []);
+
+  const { roster: lobbyRoster } = useLobbyChat(roomId ?? null);
+
+  const avatarByUserId = useMemo(() => {
+    const map = new Map<string, string | null>();
+    if (Array.isArray(lobbyRoster)) {
+      lobbyRoster.forEach((entry) => {
+        if (entry.userId) {
+          map.set(entry.userId, entry.avatarUrl ?? null);
+        }
+      });
+    }
+    return map;
+  }, [lobbyRoster]);
+
+  const combinedPeers = useMemo<PeerRoundRow[]>(() => {
+    const peerMap = new Map<string, PeerRoundRow>((peers || []).map((p) => [p.userId, p]));
+    const mergedById = new Map<string, PeerRoundRow>();
+
+    snapshotEntries.forEach((snap) => {
+      const base = peerMap.get(snap.userId);
+      const merged: PeerRoundRow = base
+        ? {
+            ...base,
+            displayName: base.displayName || snap.displayName || 'Player',
+            xpTotal: Number.isFinite(base.xpTotal) ? base.xpTotal : snap.xpTotal,
+            xpDebt: Number.isFinite(base.xpDebt) ? base.xpDebt : snap.xpDebt,
+            accDebt: Number.isFinite(base.accDebt) ? base.accDebt : snap.accDebt,
+            timeAccuracy: base.timeAccuracy ?? snap.timeAccuracy ?? null,
+            locationAccuracy: base.locationAccuracy ?? snap.locationAccuracy ?? null,
+            distanceKm: base.distanceKm ?? snap.distanceKm ?? null,
+            guessYear: base.guessYear ?? snap.guessYear ?? null,
+            guessLat: base.guessLat ?? snap.guessLat ?? null,
+            guessLng: base.guessLng ?? snap.guessLng ?? null,
+            hintsUsed: base.hintsUsed ?? snap.hintsUsed ?? null,
+            submitted: true,
+            avatarUrl: base.avatarUrl ?? avatarByUserId.get(snap.userId) ?? null,
+          }
+        : {
+            userId: snap.userId,
+            displayName: snap.displayName || 'Player',
+            avatarUrl: avatarByUserId.get(snap.userId) ?? null,
+            score: 0,
+            accuracy: Math.round((snap.timeAccuracy + snap.locationAccuracy) / 2),
+            xpTotal: snap.xpTotal,
+            xpDebt: snap.xpDebt,
+            whenXpDebt: 0,
+            whereXpDebt: 0,
+            accDebt: snap.accDebt,
+            whenAccDebt: 0,
+            whereAccDebt: 0,
+            xpWhere: null,
+            xpWhen: null,
+            locationAccuracy: snap.locationAccuracy,
+            timeAccuracy: snap.timeAccuracy,
+            distanceKm: snap.distanceKm,
+            guessYear: snap.guessYear,
+            guessLat: snap.guessLat,
+            guessLng: snap.guessLng,
+            actualLat: null,
+            actualLng: null,
+            submitted: true,
+            ready: false,
+            hintsUsed: snap.hintsUsed,
+            whenHints: null,
+            whereHints: null,
+            netAccuracy: null,
+          };
+
+      mergedById.set(snap.userId, merged);
+    });
+
+    // Include any remaining peer rows (e.g., observers or entries without snapshot yet)
+    peerMap.forEach((peer, uid) => {
+      if (!mergedById.has(uid)) {
+        const avatarUrl = peer.avatarUrl ?? avatarByUserId.get(uid) ?? null;
+        mergedById.set(uid, avatarUrl === peer.avatarUrl ? peer : { ...peer, avatarUrl });
+      }
+    });
+
+    return Array.from(mergedById.values());
+  }, [peers, snapshotEntries, avatarByUserId]);
 
   const layoutLeaderboards = useMemo(() => {
     const mapper = (rows: typeof leaderboard.total) =>
@@ -455,7 +540,7 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
         error={null}
         result={layoutResult}
         avatarUrl={profile?.avatar_image_url || profile?.avatar_url || '/assets/default-avatar.png'}
-        peers={peers.filter((peer) => !user || peer.userId !== user.id)}
+        peers={combinedPeers.filter((peer) => !user || peer.userId !== user.id)}
         currentUserDisplayName={profile?.display_name || user?.user_metadata?.display_name || 'You'}
         leaderboards={layoutLeaderboards}
         roundLeaderboardHeaderAccessory={(

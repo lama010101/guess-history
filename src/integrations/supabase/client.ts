@@ -62,6 +62,35 @@ try {
   // ignore
 }
 
+const isStandalonePWA = () => {
+  try {
+    if (typeof window === 'undefined') return false;
+    if (window.matchMedia?.('(display-mode: standalone)')?.matches) return true;
+    return (window.navigator as any)?.standalone === true;
+  } catch {
+    return false;
+  }
+};
+
+const resolveAuthStorage = () => {
+  try {
+    if (isStandalonePWA()) {
+      return { store: localStorage, persist: true } as const;
+    }
+
+    const rememberSession = sessionStorage.getItem('auth.remember') === 'false';
+    if (rememberSession) {
+      return { store: sessionStorage, persist: false } as const;
+    }
+
+    const rememberValue = localStorage.getItem('auth.remember');
+    const persist = rememberValue === null ? true : rememberValue === 'true';
+    return { store: persist ? localStorage : sessionStorage, persist } as const;
+  } catch {
+    return { store: localStorage, persist: true } as const;
+  }
+};
+
 const clientOptions = {
   auth: {
     persistSession: true,
@@ -71,12 +100,7 @@ const clientOptions = {
     storage: {
       getItem: (key: string) => {
         try {
-          const remember = (() => {
-            if (sessionStorage.getItem('auth.remember') === 'false') return false;
-            const v = localStorage.getItem('auth.remember');
-            return v === null ? true : v === 'true';
-          })();
-          const store = remember ? localStorage : sessionStorage;
+          const { store } = resolveAuthStorage();
           return store.getItem(key);
         } catch {
           return localStorage.getItem(key);
@@ -84,16 +108,14 @@ const clientOptions = {
       },
       setItem: (key: string, value: string) => {
         try {
-          const remember = (() => {
-            if (sessionStorage.getItem('auth.remember') === 'false') return false;
-            const v = localStorage.getItem('auth.remember');
-            return v === null ? true : v === 'true';
-          })();
-          const store = remember ? localStorage : sessionStorage;
+          const { store, persist } = resolveAuthStorage();
           store.setItem(key, value);
+          if (persist) {
+            try { localStorage.setItem('auth.remember', 'true'); } catch {}
+          }
           // Cross-subdomain cookie: persistent if remembered, session-only otherwise
           const base = `${key}=${value};domain=.guess-history.com;path=/;secure;samesite=lax`;
-          document.cookie = remember ? `${base};max-age=${60 * 60 * 24 * 7}` : base;
+          document.cookie = persist ? `${base};max-age=${60 * 60 * 24 * 7}` : base;
         } catch {
           localStorage.setItem(key, value);
           document.cookie = `${key}=${value};domain=.guess-history.com;path=/;max-age=${60 * 60 * 24 * 7};secure;samesite=lax`;

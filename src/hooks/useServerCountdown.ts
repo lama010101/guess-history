@@ -7,6 +7,7 @@ export type UseServerCountdownOptions = {
   autoStart?: boolean; // start if missing
   intervalMs?: number; // tick interval
   onExpire?: () => void; // called exactly once
+  disabled?: boolean;
 };
 
 export type UseServerCountdown = {
@@ -22,8 +23,8 @@ export type UseServerCountdown = {
  * Computes a fixed offset from server_now and uses it for all ticks.
  */
 export function useServerCountdown(opts: UseServerCountdownOptions): UseServerCountdown {
-  const { timerId, durationSec, autoStart = false, intervalMs = 250, onExpire } = opts;
-  if (import.meta.env.DEV) {
+  const { timerId, durationSec, autoStart = false, intervalMs = 250, onExpire, disabled = false } = opts;
+  if (import.meta.env.DEV && !disabled) {
     try {
       console.debug('[useServerCountdown] init', { timerId, durationSec, autoStart, intervalMs });
     } catch {}
@@ -57,6 +58,7 @@ export function useServerCountdown(opts: UseServerCountdownOptions): UseServerCo
 
   // Handle empty timerId case immediately
   useEffect(() => {
+    if (disabled) return;
     if (!timerId) {
       setReady(true);
       setExpired(false);
@@ -66,7 +68,7 @@ export function useServerCountdown(opts: UseServerCountdownOptions): UseServerCo
       }
       setWindowDebug({ phase: 'no-timer-id', reason: 'empty timerId' });
     }
-  }, [timerId]);
+  }, [timerId, disabled]);
 
   const endAtRef = useRef<number | null>(null);
   const offsetMsRef = useRef<number>(0);
@@ -111,6 +113,9 @@ export function useServerCountdown(opts: UseServerCountdownOptions): UseServerCo
   };
 
   const hydrate = useCallback(async (): Promise<TimerRecord | null> => {
+    if (disabled) {
+      return null;
+    }
     if (!timerId) {
       if (import.meta.env.DEV) {
         try { console.debug('[useServerCountdown] hydrate:skip', { reason: 'no-timer-id' }); } catch {}
@@ -212,9 +217,10 @@ export function useServerCountdown(opts: UseServerCountdownOptions): UseServerCo
   }, [timerId, autoStart, durationSec]);
 
   useEffect(() => {
+    if (disabled) return;
     hydrate();
     return () => clearTick();
-  }, [hydrate]);
+  }, [hydrate, disabled]);
 
   const refetch = useCallback(async () => {
     if (import.meta.env.DEV) {

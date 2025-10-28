@@ -260,6 +260,13 @@ export default function ZoomYearPicker({
       ? clamp(end, PADDING, PADDING + innerWidth)
       : PADDING + innerWidth;
   }, [domainVisibleMax, innerWidth, xAt]);
+  const zeroTickX = useMemo(() => {
+    if (domainVisibleMin > 0 || domainVisibleMax < 0) {
+      return null;
+    }
+    const x = xAt(0);
+    return Number.isFinite(x) ? x : null;
+  }, [domainVisibleMax, domainVisibleMin, xAt]);
 
   const selectedYearRaw = yearAt(CENTER_X);
   const selectedYear = useMemo(() => {
@@ -413,9 +420,10 @@ export default function ZoomYearPicker({
 
   const pointers = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchStart = useRef<{
-    dist: number;
+    baseDist: number;
     yAnchor: number;
     span0: number;
+    index: number;
   } | null>(null);
 
   const onPointerDown: React.PointerEventHandler<HTMLDivElement> = useCallback((event) => {
@@ -434,9 +442,10 @@ export default function ZoomYearPicker({
       const rect = event.currentTarget.getBoundingClientRect();
       const midX = (p1.x + p2.x) / 2 - rect.left;
       pinchStart.current = {
-        dist,
+        baseDist: dist,
         yAnchor: yearAt(midX),
         span0: effectiveSpan,
+        index: zoomIndex,
       };
     }
   }, [effectiveSpan, markInteracted, vMax, vMin, yearAt]);
@@ -448,16 +457,45 @@ export default function ZoomYearPicker({
     if (pointers.current.size === 2 && pinchStart.current) {
       const [p1, p2] = Array.from(pointers.current.values());
       const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
-      const scale = dist / pinchStart.current.dist;
-      const desiredSpan = clamp(
-        pinchStart.current.span0 / scale,
-        Math.max(minSpan, 1),
-        Math.max(maxSpan, minSpan)
-      );
-      const targetIndex = getBestZoomIndex(desiredSpan);
-      if (targetIndex !== zoomIndex) {
-        setZoomToIndex(targetIndex, pinchStart.current.yAnchor);
+      const start = pinchStart.current;
+      if (!start.baseDist || !Number.isFinite(dist)) {
+        return;
       }
+
+      const scale = dist / start.baseDist;
+      const OUT_THRESHOLD = 0.9;
+      const IN_THRESHOLD = 1 / OUT_THRESHOLD;
+
+      if (scale <= OUT_THRESHOLD && zoomIndex < zoomPresets.length - 1) {
+        const nextIndex = Math.min(zoomPresets.length - 1, zoomIndex + 1);
+        if (nextIndex !== zoomIndex) {
+          setZoomToIndex(nextIndex, start.yAnchor);
+          const nextSpan = zoomPresets[nextIndex]?.span ?? start.span0;
+          pinchStart.current = {
+            baseDist: dist,
+            yAnchor: start.yAnchor,
+            span0: nextSpan,
+            index: nextIndex,
+          };
+        }
+        return;
+      }
+
+      if (scale >= IN_THRESHOLD && zoomIndex > 0) {
+        const nextIndex = Math.max(0, zoomIndex - 1);
+        if (nextIndex !== zoomIndex) {
+          setZoomToIndex(nextIndex, start.yAnchor);
+          const nextSpan = zoomPresets[nextIndex]?.span ?? start.span0;
+          pinchStart.current = {
+            baseDist: dist,
+            yAnchor: start.yAnchor,
+            span0: nextSpan,
+            index: nextIndex,
+          };
+        }
+        return;
+      }
+
       return;
     }
 
@@ -549,41 +587,25 @@ export default function ZoomYearPicker({
     return values;
   }, [domainMin, domainMax, tickStep, vMin, vMax]);
 
-  const minorTickStep = useMemo(() => {
-    if (typeof currentPreset?.minorTick === "number") {
-      return currentPreset.minorTick > 0 ? currentPreset.minorTick : null;
-    }
-    if (tickStep <= 1) return null;
-    const approx = Math.max(1, Math.round(tickStep / 5));
-    return approx >= tickStep ? null : approx;
-  }, [currentPreset?.minorTick, tickStep]);
-
-  const minorTicks = useMemo(() => {
-    if (!minorTickStep) return [] as number[];
-    const visibleMin = Math.max(vMin, domainMin);
-    const visibleMax = Math.min(vMax, domainMax);
-    const start = Math.floor(visibleMin / minorTickStep) * minorTickStep;
-    const values: number[] = [];
-    for (let t = start; t <= visibleMax; t += minorTickStep) {
-      if (t === 0 || (t % tickStep === 0)) continue;
-      if (t < domainMin || t > domainMax) continue;
-      values.push(t);
-    }
-    return values;
-  }, [domainMax, domainMin, minorTickStep, tickStep, vMax, vMin]);
-
   const labeledTicks = useMemo(() => {
     const out: { x: number; year: number }[] = [];
-    let lastX = -Infinity;
+    if (majorTicks.length === 0) return out;
+
+    const patternStep = tickStep > 0 ? tickStep * 2 : tickStep;
+    const offset = tickStep;
+    const shouldLabel = (tick: number) => {
+      if (!patternStep) return true;
+      const modVal = ((tick - offset) % patternStep + patternStep) % patternStep;
+      return modVal === 0;
+    };
+
     for (const tick of majorTicks) {
+      if (!shouldLabel(tick)) continue;
       const x = xAt(tick);
-      if (x - lastX >= 48) {
-        out.push({ x, year: tick });
-        lastX = x;
-      }
+      out.push({ x, year: tick });
     }
     return out;
-  }, [majorTicks, xAt]);
+  }, [majorTicks, tickStep, xAt]);
 
   const handleZoom = useCallback(
     (delta: number) => {
@@ -640,25 +662,21 @@ export default function ZoomYearPicker({
               stroke="#4b5563"
               strokeWidth={2}
             />
-            {minorTicks.map((tick) => {
-              const x = xAt(tick);
-              const tickHeight = Math.min(12, height * 0.28);
-              return (
-                <line
-                  key={`minor-${tick}`}
-                  x1={x}
-                  x2={x}
-                  y1={height / 2 - tickHeight}
-                  y2={height / 2}
-                  stroke="#9ca3af"
-                  strokeWidth={1}
-                  strokeLinecap="round"
-                />
-              );
-            })}
+            {zeroTickX != null && (
+              <line
+                x1={zeroTickX}
+                x2={zeroTickX}
+                y1={height / 2 - Math.min(9, height * 0.2)}
+                y2={height / 2}
+                stroke="#9ca3af"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeDasharray="2 4"
+              />
+            )}
             {majorTicks.map((tick) => {
               const x = xAt(tick);
-              const tickHeight = Math.min(18, height * 0.4);
+              const tickHeight = Math.min(9, height * 0.2);
               return (
                 <line
                   key={`major-${tick}`}
@@ -698,7 +716,7 @@ export default function ZoomYearPicker({
             </g>
           </svg>
         </div>
-        <div className="mt-1.5 flex items-center justify-center gap-5 text-[11px] font-medium text-[#d1d5db] pointer-events-auto">
+        <div className="mt-[0.14rem] flex items-center justify-center gap-5 text-[11px] font-medium text-[#d1d5db] pointer-events-auto">
           <button
             type="button"
             onClick={() => handleZoom(1)}

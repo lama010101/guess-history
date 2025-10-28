@@ -18,6 +18,7 @@ export type UseUnifiedCountdown = {
   remainingSec: number;
   refetch: () => Promise<unknown | null>;
   mode: 'server' | 'local';
+  clamp: (seconds: number) => void;
 };
 
 // Local persistent session helpers scoped to a dynamic key per timerId
@@ -93,9 +94,10 @@ export function useUnifiedCountdown(options: UseUnifiedCountdownOptions): UseUni
   const server = useServerCountdown({
     timerId,
     durationSec,
-    autoStart: chosenMode === 'server' && autoStart,
+    autoStart: (chosenMode === 'server' && autoStart) || (shouldUseServer && !autoStart),
     intervalMs,
     onExpire,
+    disabled: chosenMode !== 'server',
   });
 
   // LOCAL MODE (persistent per timerId)
@@ -219,5 +221,32 @@ export function useUnifiedCountdown(options: UseUnifiedCountdownOptions): UseUni
     return null;
   }, [chosenMode, server, timerId]);
 
-  return { ready, expired, remainingSec, refetch, mode: chosenMode };
+  const clamp = useCallback((seconds: number) => {
+    const secs = Math.max(0, Math.floor(seconds));
+    if (chosenMode === 'server') {
+      return;
+    }
+
+    const ms = secs * 1000;
+    if (ms <= 0) {
+      try { localStorage.removeItem(localKeyFor(timerId)); } catch {}
+      try { localStorage.setItem(endedKeyFor(timerId), String(Date.now())); } catch {}
+      setLocalStartAt(null);
+      setLocalDurationMs(0);
+      setLocalExpired(true);
+      setLocalReady(true);
+      return;
+    }
+
+    const startAt = Date.now();
+    const sess: LocalSessionV1 = { version: 1, startAt, durationMs: ms };
+    writeLocal(timerId, sess);
+    try { localStorage.removeItem(endedKeyFor(timerId)); } catch {}
+    setLocalStartAt(startAt);
+    setLocalDurationMs(ms);
+    setLocalExpired(false);
+    setLocalReady(true);
+  }, [chosenMode, timerId]);
+
+  return { ready, expired, remainingSec, refetch, mode: chosenMode, clamp };
 }

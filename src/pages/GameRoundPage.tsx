@@ -1,4 +1,4 @@
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { Navigate, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { useEffect, useLayoutEffect, useState, useCallback, useMemo, useRef, type CSSProperties } from 'react';
 import GameLayout1 from "@/components/layouts/GameLayout1";
@@ -26,6 +26,7 @@ import {
   calculateLocationXP,
   ROUNDS_PER_GAME 
 } from '@/utils/gameCalculations';
+import { useUnifiedCountdown } from '@/hooks/useUnifiedCountdown';
 import { useGameLocalCountdown } from '@/gameTimer/useGameLocalCountdown';
 import { buildTimerId } from '@/lib/timerId';
 import { getLevelUpConstraints, setLevelUpOldestYear } from '@/lib/levelUpConfig';
@@ -45,6 +46,8 @@ const GameRoundPage: React.FC = () => {
   const [historyLocked, setHistoryLocked] = useState(false);
   const { roomId, roundNumber: roundNumberStr } = useParams<{ roomId: string; roundNumber: string }>();
   const location = useLocation();
+  const roundNumber = Number.parseInt(roundNumberStr ?? '1', 10);
+  const currentRoundIndex = roundNumber - 1;
   const historyLockIdRef = useRef(0);
   const lockedUrlRef = useRef<string | null>(null);
   // Derive base mode path (everything before '/game/') to keep navigation inside the current mode (e.g., /level, /solo, /compete/sync)
@@ -54,6 +57,25 @@ const GameRoundPage: React.FC = () => {
     return idx > 0 ? path.slice(0, idx) : '/solo';
   }, [location.pathname]);
   const isCompeteMode = useMemo(() => modeBasePath.startsWith('/compete'), [modeBasePath]);
+
+  const resultsPath = useMemo(() => {
+    if (!roomId) return null;
+    return `${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`;
+  }, [modeBasePath, roomId, roundNumber]);
+  const leavingRef = useRef(false);
+  const hasNavigatedToResultsRef = useRef(false);
+  const [hasSubmittedThisRound, setHasSubmittedThisRound] = useState(false);
+  const [hasTimedOut, setHasTimedOut] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (isCompeteMode) return;
+    if (!resultsPath) return;
+    if (!(hasSubmittedThisRound || hasTimedOut)) return;
+    if (leavingRef.current || hasNavigatedToResultsRef.current) return;
+    hasNavigatedToResultsRef.current = true;
+    leavingRef.current = true;
+    navigate(resultsPath, { replace: true });
+  }, [isCompeteMode, resultsPath, hasSubmittedThisRound, hasTimedOut, navigate]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -66,8 +88,6 @@ const GameRoundPage: React.FC = () => {
       document.body.classList.remove('mode-compete');
     };
   }, [isCompeteMode]);
-  const roundNumber = parseInt(roundNumberStr || '1', 10);
-  const currentRoundIndex = roundNumber - 1;
   // Detect Level Up routes and apply theming
   useEffect(() => {
     const isLevelUp = location.pathname.includes('/level/');
@@ -82,7 +102,6 @@ const GameRoundPage: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
-  const leavingRef = useRef(false);
   const homeRedirectTimeoutRef = useRef<number | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -92,8 +111,6 @@ const GameRoundPage: React.FC = () => {
   const [chatPanelStyle, setChatPanelStyle] = useState<CSSProperties | null>(null);
   const [waitingForPeers, setWaitingForPeers] = useState(false);
   const [submittedCounts, setSubmittedCounts] = useState<{ submitted: number; total: number }>({ submitted: 0, total: 0 });
-  const [hasSubmittedThisRound, setHasSubmittedThisRound] = useState(false);
-  const hasNavigatedToResultsRef = useRef(false);
   const [submissionNotice, setSubmissionNotice] = useState<string | null>(null);
   const submissionNoticeTimeoutRef = useRef<number | null>(null);
   const [flashActive, setFlashActive] = useState(false);
@@ -718,6 +735,7 @@ const GameRoundPage: React.FC = () => {
       // No auto modal beyond round 1; ensure round is considered started
       setRoundStarted(true);
     }
+    setHistoryLocked(true);
   }, [isLevelUpRoute, roundNumber]);
 
   // If intro is visible, always pause the round timer. Resume only if timers are enabled and the round has started.
@@ -735,35 +753,83 @@ const GameRoundPage: React.FC = () => {
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
+  const submitDebugSignatureRef = useRef<string>('');
   useEffect(() => { isSubmittingRef.current = isSubmitting; }, [isSubmitting]);
+
   // Year is not selected by default; becomes a number only after user interaction
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   // Initialize timer with roundTimerSec if timer is enabled, otherwise use 0 (will be hidden)
   const [remainingTime, setRemainingTime] = useState<number>(timerEnabled ? roundTimerSec : 0);
   const [isTimerActive, setIsTimerActive] = useState<boolean>(timerEnabled);
-  const [hasTimedOut, setHasTimedOut] = useState<boolean>(false);
   const [hasGuessedLocation, setHasGuessedLocation] = useState<boolean>(false);
   // Global year bounds for Solo mode (min from DB, max = current year)
   const [globalMinYear, setGlobalMinYear] = useState<number | null>(null);
   const currentYear = useMemo(() => new Date().getFullYear(), []);
 
-  // Server-authoritative countdown integration
-  const timerId = useMemo(() => {
-    // Prefer roomId for stability across refresh: gh:{roomId}:{roundIndex}; fallback to gameId
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const reasons: string[] = [];
+    if (!currentGuess) reasons.push('missing-location');
+    if (selectedYear == null) reasons.push('missing-year');
+    if (isSubmitting) reasons.push('isSubmitting');
+    if (hasTimedOut) reasons.push('hasTimedOut');
+    if (showIntro) reasons.push('intro-visible');
+    if (!roundStarted) reasons.push('round-not-started');
+    if (timerEnabled && !isTimerActive) reasons.push('timer-paused');
+    const signature = JSON.stringify({
+      reasons,
+      hasGuess: !!currentGuess,
+      hasYear: selectedYear != null,
+      isSubmitting,
+      hasTimedOut,
+      roundStarted,
+      remainingTime,
+    });
+    if (submitDebugSignatureRef.current === signature) return;
+    submitDebugSignatureRef.current = signature;
     try {
-      const baseId = roomId || gameId;
-      if (!baseId || isNaN(currentRoundIndex)) return '';
-      return buildTimerId(baseId, currentRoundIndex);
+      console.debug('[GameRoundPage][SubmitDebug] state update', {
+        canSubmit: reasons.length === 0,
+        reasons,
+        selectedYear,
+        hasGuessedLocation,
+        hasTimedOut,
+        isSubmitting,
+        roundStarted,
+        showIntro,
+        timer: {
+          enabled: timerEnabled,
+          active: isTimerActive,
+          remainingTime,
+        },
+      });
+    } catch {}
+  }, [currentGuess, selectedYear, hasGuessedLocation, isSubmitting, hasTimedOut, showIntro, roundStarted, remainingTime, isTimerActive, timerEnabled]);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    try {
+      console.debug('[GameRoundPage][SubmitDebug] isSubmitting changed', { isSubmitting });
+    } catch {}
+  }, [isSubmitting]);
+
+  // Server/local countdown integration: build a stable timerId immediately from roomId/gameId
+  const timerId = useMemo(() => {
+    try {
+      const base = roomId || gameId;
+      if (!base || isNaN(currentRoundIndex)) return '';
+      return buildTimerId(base, currentRoundIndex);
     } catch {
       return '';
     }
   }, [roomId, gameId, currentRoundIndex]);
 
   const autoStart = useMemo(() => {
-    // Start local timer when timer is enabled, round began, and we are responsible for local countdown
-    const expectsLocalTimer = !authoritativeTimerRef.current;
-    return !!(timerEnabled && roundStarted && timerId && expectsLocalTimer);
+    return !!(timerEnabled && roundStarted && timerId);
   }, [timerEnabled, roundStarted, timerId]);
+  const unifiedAutoStart = useMemo(() => {
+    return isCompeteMode ? autoStart : false;
+  }, [isCompeteMode, autoStart]);
   useEffect(() => {
     if (import.meta.env.DEV) {
       try { console.debug('[GameRoundPage] timer:config', { timerId, roundTimerSec, timerEnabled, showIntro, autoStart }); } catch {}
@@ -810,18 +876,35 @@ const GameRoundPage: React.FC = () => {
     ready: timerReady,
     expired: timerExpired,
     remainingSec,
-    clampRemaining,
-    start: startLocalTimer,
-    reset: resetLocalTimer,
-  } = useGameLocalCountdown({
+    refetch: refetchTimer,
+    mode: timerMode,
+    clamp,
+  } = useUnifiedCountdown({
     timerId,
     durationSec: roundTimerSec,
-    autoStart,
+    autoStart: unifiedAutoStart,
+    hasUser: !!user?.id,
+    useServerPreferred: authoritativeTimerRef.current,
     onExpire: () => {
       if (import.meta.env.DEV) console.debug('[GameRoundPage] Timer expired');
       handleTimeComplete();
     },
   });
+
+  const soloCountdown = useGameLocalCountdown({
+    timerId,
+    durationSec: roundTimerSec,
+    autoStart: !isCompeteMode && timerEnabled && roundStarted && !showIntro && !!timerId,
+    onExpire: () => handleTimeComplete(),
+  });
+
+  const startLocalTimer = useCallback(() => {
+    if (isCompeteMode) {
+      void refetchTimer();
+    } else {
+      try { soloCountdown.start(); } catch {}
+    }
+  }, [refetchTimer, isCompeteMode, soloCountdown]);
 
   useEffect(() => {
     timerEnabledRef.current = timerEnabled;
@@ -836,42 +919,67 @@ const GameRoundPage: React.FC = () => {
   }, [remainingTime]);
 
   useEffect(() => {
-    clampRemainingRef.current = clampRemaining;
-  }, [clampRemaining]);
+    clampRemainingRef.current = (seconds: number) => {
+      const next = Math.max(0, Math.floor(seconds));
+      setRemainingTime(next);
+      if (isCompeteMode) {
+        if (timerMode === 'server') {
+          void refetchTimer();
+        } else {
+          try { clamp(seconds); } catch {}
+        }
+      } else {
+        try { soloCountdown.clampRemaining(seconds); } catch {}
+      }
+    };
+  }, [isCompeteMode, timerMode, refetchTimer, clamp, soloCountdown]);
 
   // When duration changes from Level Up constraints, reflect it in the local UI state
   // only before the server timer hydrates. Once hydrated, server values take over
   // even if the Level Up intro is visible (timer runs under the overlay).
   useEffect(() => {
+    if (!isCompeteMode) return;
     if (!timerEnabled) {
       setRemainingTime(0);
       setIsTimerActive(false);
       return;
     }
-
     if (!timerReady) {
+      if (hasTimedOut || timerExpired || hasSubmittedThisRound || isSubmittingRef.current) {
+        setIsTimerActive(false);
+        return;
+      }
       setRemainingTime(roundTimerSec);
       setIsTimerActive(false);
       return;
     }
-
-    if (!isCompeteMode) {
-      setRemainingTime((prev) => (prev !== remainingSec ? remainingSec : prev));
-      setIsTimerActive(roundStarted && !timerExpired);
-      return;
-    }
-
     setRemainingTime(remainingSec);
     setIsTimerActive(roundStarted && !timerExpired);
-  }, [timerEnabled, timerReady, roundTimerSec, remainingSec, timerExpired, roundStarted, isCompeteMode]);
+  }, [isCompeteMode, timerEnabled, timerReady, roundTimerSec, remainingSec, timerExpired, roundStarted, hasTimedOut, hasSubmittedThisRound]);
 
   useEffect(() => {
-    if (!autoStart || timerReady) return;
-    const t = setTimeout(() => {
-      try { startLocalTimer(); } catch {}
-    }, 600);
-    return () => clearTimeout(t);
-  }, [autoStart, timerReady, startLocalTimer]);
+    if (isCompeteMode) return;
+    if (!timerEnabled) {
+      setRemainingTime(0);
+      setIsTimerActive(false);
+      return;
+    }
+    setRemainingTime(soloCountdown.remainingSec);
+    setIsTimerActive(roundStarted && !soloCountdown.expired && !showIntro);
+  }, [isCompeteMode, timerEnabled, soloCountdown.remainingSec, soloCountdown.expired, roundStarted, showIntro]);
+
+  // If the page is refreshed and the solo timer was already expired, auto-complete the round once.
+  useEffect(() => {
+    if (isCompeteMode) return;
+    if (!timerEnabled) return;
+    if (soloCountdown.expired && !hasTimedOut && !hasSubmittedThisRound && !isSubmittingRef.current) {
+      handleTimeComplete();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCompeteMode, timerEnabled, soloCountdown.expired, hasTimedOut, hasSubmittedThisRound]);
+
+  
+
 
   // Local timer does not require refetch/hydration
 
@@ -1062,8 +1170,31 @@ const GameRoundPage: React.FC = () => {
     }
 
     if (isCompeteMode) {
+      if (import.meta.env.DEV) {
+        try {
+          console.debug('[GameRoundPage][CompeteSubmit] peer status', {
+            roundNumber,
+            expectedTotal,
+            submittedAdj,
+            lobbySize: lobbyRoster.length,
+            peerCount: roundPeers.length,
+            hasSubmittedThisRound,
+            allSubmitted,
+            hasNavigated: hasNavigatedToResultsRef.current,
+          });
+        } catch {}
+      }
+
       // In Compete mode, automatically navigate to the results page once everyone has submitted
       if (allSubmitted && !hasNavigatedToResultsRef.current) {
+        if (import.meta.env.DEV) {
+          try {
+            console.debug('[GameRoundPage][CompeteSubmit] navigating to results', {
+              roundNumber,
+              roomId,
+            });
+          } catch {}
+        }
         hasNavigatedToResultsRef.current = true;
         setWaitingForPeers(false);
         navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
@@ -1149,10 +1280,14 @@ const GameRoundPage: React.FC = () => {
     setHasGuessedLocation(false);
     setHasTimedOut(false);
     if (timerEnabled) {
-      setRemainingTime(roundTimerSec);
+      // On round entry, do not overwrite Solo's persisted timer. Solo will hydrate via soloCountdown effect.
+      // Only seed the UI in Compete mode where server/unified countdown hydrates separately.
+      if (isCompeteMode) {
+        setRemainingTime(roundTimerSec);
+      }
       setIsTimerActive(false);
     }
-  }, [roomId, roundNumber]);
+  }, [roomId, roundNumber, isCompeteMode, timerEnabled, roundTimerSec]);
 
   useEffect(() => {
     if (!timerEnabled) {
@@ -1549,6 +1684,7 @@ const GameRoundPage: React.FC = () => {
 
     console.log(`[GameRoundPage] Submitting guess for round ${roundNumber}, Year: ${selectedYear}, Coords:`, currentGuess);
     setIsSubmitting(true);
+    setHasSubmittedThisRound(true);
     setRoundStarted(false);
     if (!(isCompeteMode && timerEnabled)) {
       setIsTimerActive(false);
@@ -1615,7 +1751,6 @@ const GameRoundPage: React.FC = () => {
       // Unlock navigation and stop local countdown to prevent timeout double-submit
       try { setHistoryLocked(false); } catch {}
       try { (leavingRef as any).current = true; } catch {}
-      try { resetLocalTimer?.(); } catch {}
 
       if (roomId) {
         try {
@@ -1759,7 +1894,6 @@ const GameRoundPage: React.FC = () => {
         if (!isCompeteMode && roomId) {
           try { setHistoryLocked(false); } catch {}
           try { (leavingRef as any).current = true; } catch {}
-          try { resetLocalTimer?.(); } catch {}
           navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
           setIsSubmitting(false);
           return;
@@ -1842,7 +1976,6 @@ const GameRoundPage: React.FC = () => {
       if (!isCompeteMode && roomId) {
         try { setHistoryLocked(false); } catch {}
         try { (leavingRef as any).current = true; } catch {}
-        try { resetLocalTimer?.(); } catch {}
         setTimeout(() => {
           navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
           setIsSubmitting(false);

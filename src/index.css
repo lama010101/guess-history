@@ -221,6 +221,8 @@ html, body {
     --primary-foreground: 0 0% 100%;
     --secondary: 25 95% 53%; /* Orange for secondary/highlight */
     --secondary-foreground: 0 0% 0%;
+    --success: 142 72% 29%; /* Green for success elements */
+    --success-foreground: 0 0% 100%;
     --muted: 0 0% 96%;
     --muted-foreground: 0 0% 45%;
     --accent: 0 0% 96%;
@@ -249,6 +251,8 @@ html, body {
     --primary-foreground: 0 0% 95%;
     --secondary: 25 95% 53%; /* Keep orange for secondary/highlight */
     --secondary-foreground: 0 0% 0%;
+    --success: 142 70% 45%;
+    --success-foreground: 0 0% 100%;
     --muted: 0 0% 12%; /* Darker muted background */
     --muted-foreground: 0 0% 70%;
     --accent: 0 0% 15%; /* Dark accent */
@@ -449,25 +453,27 @@ document:has(.leaflet-fullscreen-on) .hud-element,
 }
 
 @keyframes attentionPulse {
-  0%,
-  80%,
+  0% {
+    transform: scale(1);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+  }
+  4% {
+    transform: scale(1.28);
+    box-shadow: 0 35px 45px -5px rgba(0, 0, 0, 0.45), 0 16px 20px -4px rgba(0, 0, 0, 0.45), 0 0 0 12px var(--attention-pulse-shadow-color, hsla(var(--secondary), 0.35));
+  }
+  8% {
+    transform: scale(1);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+  }
+  12% {
+    transform: scale(1.28);
+    box-shadow: 0 35px 45px -5px rgba(0, 0, 0, 0.45), 0 16px 20px -4px rgba(0, 0, 0, 0.45), 0 0 0 12px var(--attention-pulse-shadow-color, hsla(var(--secondary), 0.35));
+  }
+  16% {
+    transform: scale(1);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+  }
   100% {
-    transform: scale(1);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
-  }
-  84% {
-    transform: scale(1.28);
-    box-shadow: 0 35px 45px -5px rgba(0, 0, 0, 0.45), 0 16px 20px -4px rgba(0, 0, 0, 0.45), 0 0 0 12px var(--attention-pulse-shadow-color, hsla(var(--secondary), 0.35));
-  }
-  88% {
-    transform: scale(1);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
-  }
-  92% {
-    transform: scale(1.28);
-    box-shadow: 0 35px 45px -5px rgba(0, 0, 0, 0.45), 0 16px 20px -4px rgba(0, 0, 0, 0.45), 0 0 0 12px var(--attention-pulse-shadow-color, hsla(var(--secondary), 0.35));
-  }
-  96% {
     transform: scale(1);
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
   }

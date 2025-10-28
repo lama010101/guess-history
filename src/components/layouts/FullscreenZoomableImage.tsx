@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Maximize, Minus, Plus } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { fetchUserSettings, UserSettings } from "@/utils/profile/profileService";
+import React, { useRef, useState, useEffect, WheelEvent } from "react";
+import { Maximize, ZoomIn, ZoomOut } from "lucide-react";
+import { useAuth } from '@/contexts/AuthContext';
+import { fetchUserSettings, UserSettings } from '@/utils/profile/profileService';
 
 interface FullscreenZoomableImageProps {
   image: { url: string; placeholderUrl: string; title: string };
@@ -99,8 +99,27 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
 
 
   // Zoom controls
-  const zoomIn = () => setZoom(z => Math.min(MAX_ZOOM, +(z + ZOOM_STEP).toFixed(2)));
-  const zoomOut = () => setZoom(z => Math.max(MIN_ZOOM, +(z - ZOOM_STEP).toFixed(2)));
+  const zoomAtCenter = (targetZoom: number) => {
+    if (!containerRef.current) {
+      setZoom(() => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, targetZoom)));
+      return;
+    }
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    zoomAtPoint(targetZoom, centerX, centerY);
+  };
+
+  const handleZoomStep = (delta: number) => {
+    if (!ZOOM_ENABLED) return;
+    const targetZoom = +(zoom + delta).toFixed(2);
+    zoomAtCenter(targetZoom);
+    if (showHint) setShowHint(false);
+  };
+
+  const zoomIn = () => handleZoomStep(ZOOM_STEP);
+  const zoomOut = () => handleZoomStep(-ZOOM_STEP);
   
   // Calculate zoom centered on mouse position
   const zoomAtPoint = (newZoom: number, clientX: number, clientY: number) => {
@@ -128,6 +147,9 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
     setZoom(newZoom);
     setOffset({ x: newOffsetX, y: newOffsetY });
   };
+
+  const zoomAtMax = zoom >= MAX_ZOOM - 0.001;
+  const zoomAtMin = zoom <= MIN_ZOOM + 0.001;
 
   // Pointer-based drag with velocity tracking
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -696,6 +718,30 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
           }}
         />
       </div>
+      {/* Zoom controls */}
+      <div className="fixed bottom-6 right-6 z-[10000] flex flex-col gap-3">
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); zoomIn(); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          disabled={zoomAtMax}
+          className={`inline-flex items-center justify-center rounded-full w-12 h-12 shadow-lg transition ${zoomAtMax ? 'bg-white/30 text-gray-400 cursor-not-allowed' : 'bg-black/70 text-white hover:bg-black/80 active:scale-[0.97]'}`}
+          aria-label="Zoom in"
+        >
+          <ZoomIn className="w-5 h-5" />
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); zoomOut(); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          disabled={zoomAtMin}
+          className={`inline-flex items-center justify-center rounded-full w-12 h-12 shadow-lg transition ${zoomAtMin ? 'bg-white/30 text-gray-400 cursor-not-allowed' : 'bg-black/70 text-white hover:bg-black/80 active:scale-[0.97]'}`}
+          aria-label="Zoom out"
+        >
+          <ZoomOut className="w-5 h-5" />
+        </button>
+      </div>
+
       {/* Close Fullscreen button (bottom-center, themed by --secondary to follow mode highlight) */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000]">
         <button

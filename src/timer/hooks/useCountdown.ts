@@ -13,8 +13,12 @@ export function useCountdown({ durationMs, startAt, onFinished, tickMs = 200 }: 
   const finishedRef = useRef(false);
 
   const remainingMs = useMemo(() => {
-    const rem = Math.max(0, durationMs - (now - startAt));
-    return rem;
+    const elapsed = now - startAt;
+    if (!Number.isFinite(elapsed)) {
+      return durationMs;
+    }
+    const clampedElapsed = Math.max(0, elapsed);
+    return Math.max(0, durationMs - clampedElapsed);
   }, [durationMs, startAt, now]);
 
   const percentageLeft = useMemo(() => {

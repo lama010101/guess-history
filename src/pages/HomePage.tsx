@@ -539,7 +539,7 @@ const HomePage = () => {
                 {isGuest && (
                   <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
                     <div className="flex items-center gap-2 rounded-full bg-black/80 px-3 py-1 text-xs font-semibold text-white">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-100">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-400">
                         <img src="/icons/lock.webp" alt="Locked" className="h-3.5 w-3.5" />
                       </div>
                       <span>Sign up to unlock</span>
@@ -572,7 +572,7 @@ const HomePage = () => {
                 {isGuest && (
                   <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
                     <div className="flex items-center gap-2 rounded-full bg-black/80 px-3 py-1 text-xs font-semibold text-white">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-100">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-400">
                         <img src="/icons/lock.webp" alt="Locked" className="h-3.5 w-3.5" />
                       </div>
                       <span>Sign up to unlock</span>

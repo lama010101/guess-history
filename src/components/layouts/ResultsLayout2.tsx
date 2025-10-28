@@ -34,7 +34,7 @@ const getInitial = (name?: string | null) => {
 };
 
 const correctIcon = L.divIcon({
-  html: `<div style="background-color: hsl(var(--secondary)); width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px hsl(var(--secondary) / 0.6);"></div>`,
+  html: `<div style="background-color: hsl(var(--success)); width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px hsl(var(--success) / 0.6);"></div>`,
   className: 'correct-marker',
   iconSize: [30, 30],
   iconAnchor: [15, 30],
@@ -205,11 +205,71 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
     return [Number(userLat), Number(userLng)] as L.LatLngTuple;
   }, [hasUserGuess, userLat, userLng]);
 
+  const primaryRingColor = 'hsla(var(--secondary) / 0.75)';
+
+  const peerDisplayMarkers = useMemo(() => {
+    const items = (peers || [])
+      .filter((p) => typeof p.guessLat === 'number' && Number.isFinite(p.guessLat) && typeof p.guessLng === 'number' && Number.isFinite(p.guessLng))
+      .map((p) => ({
+        userId: p.userId,
+        displayName: p.displayName,
+        avatarUrl: p.avatarUrl ?? undefined,
+        distanceKm: p.distanceKm ?? null,
+        guessYear: p.guessYear ?? null,
+        baseLat: Number(p.guessLat),
+        baseLng: Number(p.guessLng),
+        lat: Number(p.guessLat),
+        lng: Number(p.guessLng),
+      }));
+
+    if (items.length === 0) return items;
+
+    const keyOf = (lat: number, lng: number) => `${lat.toFixed(5)},${lng.toFixed(5)}`;
+    const groups = new Map<string, number[]>();
+    for (let i = 0; i < items.length; i++) {
+      const k = keyOf(items[i].lat, items[i].lng);
+      const arr = groups.get(k) || [];
+      arr.push(i);
+      groups.set(k, arr);
+    }
+
+    const selfKey = userPosition ? keyOf(userPosition[0], userPosition[1]) : null;
+    if (selfKey) {
+      const arr = groups.get(selfKey) || [];
+      if (arr.length > 0) groups.set(selfKey, arr);
+    }
+
+    const adjustGroup = (indices: number[], centerLat: number, centerLng: number, includeSelf: boolean) => {
+      const count = indices.length + (includeSelf ? 1 : 0);
+      if (count <= 1) return;
+      const radius = 0.015 + Math.min(0.03, (indices.length - 1) * 0.005);
+      const latRad = (centerLat * Math.PI) / 180;
+      // When the self marker occupies a slot, rotate peers 180° away from it to avoid overlap
+      const baseOffset = includeSelf && indices.length === 1 ? Math.PI : 0;
+      for (let j = 0; j < indices.length; j++) {
+        const idx = indices[j]!;
+        const theta = (2 * Math.PI * (j + (includeSelf ? 1 : 0)) / count) + baseOffset;
+        const dLat = radius * Math.cos(theta);
+        const dLng = (radius * Math.sin(theta)) / Math.max(0.2, Math.cos(latRad));
+        items[idx]!.lat = centerLat + dLat;
+        items[idx]!.lng = centerLng + dLng;
+      }
+    };
+
+    for (const [k, idxs] of groups.entries()) {
+      const [latStr, lngStr] = k.split(',');
+      const clat = Number(latStr);
+      const clng = Number(lngStr);
+      const sameAsSelf = selfKey === k;
+      adjustGroup(idxs, clat, clng, sameAsSelf);
+    }
+
+    return items;
+  }, [peers, userPosition]);
+
   const peerPositions: L.LatLngTuple[] = useMemo(() =>
-    (peers || [])
-      .filter(p => p.guessLat !== null && p.guessLng !== null)
-      .map(p => [Number(p.guessLat), Number(p.guessLng)] as L.LatLngTuple)
-  , [peers]);
+    peerDisplayMarkers.map((m) => [m.lat, m.lng] as L.LatLngTuple)
+  , [peerDisplayMarkers]);
 
   const allPositions: L.LatLngTuple[] = useMemo(() => {
     const arr: L.LatLngTuple[] = [correctPosition];
@@ -763,7 +823,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                       imageUrl={avatarUrl}
                       fallbackLabel={currentUserInitial}
                       sizePx={48}
-                      ringColor="rgba(251, 191, 36, 0.75)"
+                      ringColor={primaryRingColor}
                       borderColor="#f8fafc"
                       borderWidth={3}
                       zIndexOffset={600}
@@ -775,33 +835,31 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                     <Polyline positions={[[result.guessLat, result.guessLng], [result.eventLat, result.eventLng]]} color="white" dashArray="5, 10" />
                   )}
                   {/* Show peers' guesses */}
-                  {peers && peers.length > 0 && (
+                  {peerDisplayMarkers && peerDisplayMarkers.length > 0 && (
                     <>
-                      {peers.map((p) => (
-                        p.guessLat !== null && p.guessLng !== null ? (
-                          <React.Fragment key={p.userId}>
-                            <AvatarMarker
-                              lat={Number(p.guessLat)}
-                              lng={Number(p.guessLng)}
-                              imageUrl={p.avatarUrl ?? undefined}
-                              fallbackLabel={getInitial(p.displayName)}
+                      {peerDisplayMarkers.map((p) => (
+                        <React.Fragment key={p.userId}>
+                          <AvatarMarker
+                            lat={p.lat}
+                            lng={p.lng}
+                            imageUrl={p.avatarUrl}
+                            fallbackLabel={getInitial(p.displayName)}
                               sizePx={42}
-                              ringColor="rgba(96, 165, 250, 0.55)"
+                              ringColor={primaryRingColor}
                               borderColor="#f8fafc"
                               borderWidth={2}
                               zIndexOffset={500}
-                            >
-                              <Popup>
-                                <div className="text-sm">
-                                  <div className="font-semibold">{p.displayName || 'Peer'}</div>
-                                  {p.distanceKm != null && (() => { const d = formatDistanceFromKm(p.distanceKm, distanceUnit); return <div>{d.value} {d.unitLabel} away</div>; })()}
-                                  {p.guessYear != null && <div>Year: {p.guessYear}</div>}
-                                </div>
-                              </Popup>
-                            </AvatarMarker>
-                            <Polyline positions={[[p.guessLat, p.guessLng], [result.eventLat, result.eventLng]]} color="#6EE7B7" opacity={0.7} dashArray="4,8" />
-                          </React.Fragment>
-                        ) : null
+                          >
+                            <Popup>
+                              <div className="text-sm">
+                                <div className="font-semibold">{p.displayName || 'Peer'}</div>
+                                {p.distanceKm != null && (() => { const d = formatDistanceFromKm(p.distanceKm, distanceUnit); return <div>{d.value} {d.unitLabel} away</div>; })()}
+                                {p.guessYear != null && <div>Year: {p.guessYear}</div>}
+                              </div>
+                            </Popup>
+                          </AvatarMarker>
+                          <Polyline positions={[[p.lat, p.lng], [result.eventLat, result.eventLng]]} color="hsla(var(--secondary) / 0.6)" opacity={0.7} dashArray="4,8" />
+                        </React.Fragment>
                       ))}
                     </>
                   )}

@@ -1,8 +1,51 @@
+### GameRoundPage Selected Year Hook Ordering (2025-10-27)
+
+- **Component**: `src/pages/GameRoundPage.tsx`
+  - Keep the `selectedYear` state declaration before any DEV-only submit debug effects that reference it. If those effects run while hooks are still being initialized, React throws "Cannot access 'selectedYear' before initialization" and the first round fails to render.
+  - The debug effects can sit immediately after the state block (e.g., after `selectedYear`, `remainingTime`, `hasGuessedLocation` etc.) so they always read defined values.
+
+### Solo Submit Flow Debug Instrumentation (2025-10-27)
+
+- **Components**: `src/pages/GameRoundPage.tsx`, `src/components/layouts/GameLayout1.tsx`
+  - Added DEV-only `[SubmitDebug]` console diagnostics that summarize why the Make Guess button is disabled, current timer state, and whether the solo round is already submitting.
+  - Logs fire only when state changes to avoid noise and are guarded by `import.meta.env.DEV` so production builds remain clean.
+  - Use the new logs to trace `isSubmitting`, `hasTimedOut`, year/location selection, and timer gating when investigating stuck buttons or repeated submissions.
+
+### Year Input Focus Selection (2025-10-28)
+
+- **Component**: `src/components/layouts/GameLayout1.tsx`
+  - When players focus the year input, the current value is auto-selected via `input.select()` and the state sync mirrors the latest `selectedYear` if it hadn’t been typed yet.
+  - Ensures tapping the displayed year immediately highlights the full number so it can be overwritten without manual selection.
+
+### Solo Submit Button Consolidation (2025-10-28)
+
+- **Change**: Removed the legacy `src/components/game/SubmitGuessButton.tsx` in favor of the in-layout submit controls inside `GameLayout1`.
+- **Reason**: The standalone component duplicated submission logic and navigation, but the active flow now routes through `GameLayout1` → `GameRoundPage.handleSubmitGuess`. Keeping a single path avoids drift in validation, toasts, and multiplayer sync.
+- **Guidance**: Add future submit UI changes directly in `GameLayout1` and keep `handleSubmitGuess` in `GameRoundPage` as the sole submission handler.
+
 ### Round Image Alt Text Scrubbing (2025-10-25)
 
 - **Components**: `src/components/layouts/GameLayout1.tsx`, `src/components/layouts/FullscreenZoomableImage.tsx`
   - Both the gameplay `LazyImage` preview and the fullscreen zoom viewer now use neutral alt labels ("Round image", "Round image placeholder").
   - Prevents partially loaded images from revealing the historical title/answer via native alt text overlays when the asset fails to fill the screen on slower connections.
+
+### Fullscreen Viewer Zoom Controls (2025-10-27)
+
+- **Component**: `src/components/layouts/FullscreenZoomableImage.tsx`
+  - Added floating zoom buttons (ZoomIn/ZoomOut) anchored bottom-right when fullscreen is open.
+  - Buttons adjust the existing zoom state, keep focus within the viewer, and disable at min/max bounds while stopping propagation so drags aren’t disrupted.
+  - Uses existing `handleZoomStep` logic, keeping pinch/wheel gestures and hint dismissal intact.
+
+### Fullscreen Button Attention Pulse Timing (2025-10-27)
+
+- **Styles**: `src/index.css`
+  - `attentionPulse` keyframes now trigger the enlarged pulse within the first 4% of the cycle so the fullscreen button animates immediately when it appears, rather than waiting ~8 seconds for the first beat.
+
+### Mobile Game Layout — Single Bottom Navbar (2025-10-27)
+
+- **Component**: `src/components/layouts/GameLayout1.tsx`
+- **Change**: Removed the duplicate mobile-only bottom navbar block (`lg:hidden fixed bottom-0 inset-x-0 …`). Safari on iOS would render both stacked, causing taps to hit the overlaying copy and require multiple presses for actions like **Make Guess**.
+- **Result**: Only one bottom navbar renders on mobile, eliminating overlapping layers and restoring single-tap responsiveness on Safari.
 
 ### Preparation Cancel Guard (2025-10-26)
 
@@ -203,8 +246,8 @@
   - When the RPC succeeds, `authoritativeTimer: true` is included and clients defer to the server countdown. The lobby still logs start events and persists the round start when `ENABLE_ROOM_ROUND_PERSIST=1`.
 - **Client context (`GameContext.startGame`)**
   - Accepts an `authoritativeTimer` flag coming from the lobby `start` message. This flag is stored in context state and exposed via `useGame()` so downstream hooks/components can differentiate between server-driven and local timers.
-- **In-round HUD (`GameRoundPage.tsx`)**
-  - The local countdown now checks `authoritativeTimer`; when true the local `useGameLocalCountdown` stays idle and the HUD expects the authoritative signal via Supabase sync. When false, the local timer autostarts and behaves as before.
+- **In-round HUD (`GameRoundPage.tsx` & `useUnifiedCountdown.ts`)**
+  - The `useUnifiedCountdown` hook now proactively connects to the server timer when `authoritativeTimer` is true, even if the client's local `autoStart` conditions are not yet met. This ensures that if a user refreshes the page or joins mid-round, they will immediately sync with the server's authoritative countdown.
   - The countdown gating debug output lists `authoritativeTimer=true` in the "missing" array when the local timer is intentionally not starting.
 
 Together these changes eliminate the ghost-submission rush and ensure every player sees a timer even if the authoritative RPC path is unavailable.
@@ -1215,12 +1258,11 @@ order by round_index, created_at;
 
 - **GameOverlayHUD → TimerDisplay**
   - File: `src/components/navigation/GameOverlayHUD.tsx`
-{{ ... }}
   - Passes `roundTimerSec` as the total round duration and enables `externalTimer` on `TimerDisplay` to prevent an internal countdown. Never pass remaining time as the duration.
 - **TimerDisplay behavior**
   - File: `src/components/game/TimerDisplay.tsx`
   - Progress is computed as `remainingTime / roundTimerSec`. When `externalTimer` is true, the component does not decrement time itself; it only renders, plays last-10s beeps, and optional vibration based on settings.
-- **Reset behavior**
+ - **Reset behavior**
   - File: `src/contexts/GameContext.tsx` → `resetGame()`
   - Fully resets gameplay and timer state to avoid stale Level Up timers/rooms:
     - Clears images, round results, error/loading.
@@ -1228,6 +1270,22 @@ order by round_index, created_at;
     - `setTimerEnabled(false)`
     - `setRoundTimerSec(0)`
     - Generates a new `gameId`.
+
+#### Solo Timer Persistence (2025-10-27)
+
+- **Hook**: `src/gameTimer/useGameLocalCountdown.ts`
+  - Stores a per-round session in `localStorage` at `gh-game-timer/session/{timerId}` with `{ durationMs, startAt }`.
+  - Uses an `:ended` sentinel key to guarantee `onExpire` fires only once per round across reloads and tabs.
+  - Listens to `storage` events to synchronize multi-tab state for the same round.
+- **Timer ID**: `buildTimerId(baseId, roundIndex)` from `src/lib/timerId.ts`
+  - For Solo, `baseId` is `roomId || gameId` from `GameContext` so the countdown survives refresh on the same route.
+  - Format: `gh:{baseId}:{roundIndex}` (0-based round index).
+- **Game page integration**: `src/pages/GameRoundPage.tsx`
+  - Solo mode uses `useGameLocalCountdown` with `autoStart = timerEnabled && roundStarted && !showIntro && !!timerId`.
+  - `remainingTime` in HUD comes from `soloCountdown.remainingSec` and is rendered by `TimerDisplay` in external mode.
+  - On expiry, `onExpire` calls existing `handleTimeComplete()` which records the round result and navigates to `.../results`.
+  - On refresh, if the persisted timer is already expired, an effect invokes `handleTimeComplete()` immediately to route to results (no reset).
+  - We deliberately avoid resetting the solo timer on mount/round hydration; a new session is created only when the round changes (new `timerId`).
 
 ### Round Results Types and Next-Round Timer
 

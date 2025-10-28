@@ -143,6 +143,7 @@ const GameRoundPage: React.FC = () => {
   const pendingClampRef = useRef(false);
   const hasClampedThisRound = useRef(false);
   const timerEnabledRef = useRef(false);
+  const forcedTimerEnabledRef = useRef(false);
   const timerReadyRef = useRef(false);
   const remainingTimeRef = useRef(0);
   const clampRemainingRef = useRef<(seconds: number) => void>(() => {});
@@ -730,15 +731,45 @@ const GameRoundPage: React.FC = () => {
   // Track how the Level Up intro was opened: automatically (round 1) or manually from HUD
   const [introSource, setIntroSource] = useState<'auto' | 'hub'>('auto');
 
-  // Level Up guarantee: timer must be enabled even on refresh/navigation directly into Level Up routes
+  // Level Up + Compete guarantees: timer must be enabled even on refresh/navigation directly into these routes
   useEffect(() => {
-    if (isLevelUpRoute && !timerEnabled) {
+    const shouldForceTimer = isLevelUpRoute || isCompeteMode;
+    if (shouldForceTimer && !timerEnabled) {
       setTimerEnabled(true);
+      forcedTimerEnabledRef.current = true;
       if (import.meta.env.DEV) {
-        try { console.debug('[GameRoundPage] Enforcing timerEnabled=true for Level Up route'); } catch {}
+        try {
+          console.debug('[GameRoundPage] Forcing timerEnabled=true', {
+            isLevelUpRoute,
+            isCompeteMode,
+            roundNumber,
+          });
+        } catch {}
       }
     }
-  }, [isLevelUpRoute, timerEnabled, setTimerEnabled]);
+
+    if (!shouldForceTimer && forcedTimerEnabledRef.current && timerEnabled) {
+      forcedTimerEnabledRef.current = false;
+      setTimerEnabled(false);
+      if (import.meta.env.DEV) {
+        try { console.debug('[GameRoundPage] Restoring timerEnabled=false outside forced modes'); } catch {}
+      }
+    }
+
+    return () => {
+      if (!shouldForceTimer && forcedTimerEnabledRef.current) {
+        forcedTimerEnabledRef.current = false;
+        setTimerEnabled(false);
+      }
+    };
+  }, [isLevelUpRoute, isCompeteMode, timerEnabled, setTimerEnabled, roundNumber]);
+
+  useEffect(() => () => {
+    if (forcedTimerEnabledRef.current) {
+      forcedTimerEnabledRef.current = false;
+      setTimerEnabled(false);
+    }
+  }, [setTimerEnabled]);
 
   // For Level Up: auto-show intro ONLY at round 1 and gate timer start until Start is pressed
   useEffect(() => {

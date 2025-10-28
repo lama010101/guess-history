@@ -1,14 +1,43 @@
+### Leaderboard Current User Card (2025-10-28)
+
+- **Component**: `src/pages/LeaderboardPage.tsx`
+  - The "Your Ranking" heading on the current user card now renders the player’s avatar (initial fallback) and display name to match row styling.
+  - Keep the avatar image wrapped with an `onError` handler that hides broken sources and rely on initials when `avatar_url` is absent or fails to load.
+  - Preserve the existing rank/%/XP grid beneath the identity block so metric badges remain aligned.
+
+### Friends Page Tabs Width (2025-10-28)
+
+- **Component**: `src/pages/FriendsPage.tsx`
+  - The tabs list now uses a two-column grid sized to `w-full` so both triggers span the same width as the tables/cards rendered below.
+  - Each trigger centers its content with `flex-1` to keep button labels aligned with the underlying list/table width when additional columns are added.
+
 ### GameRoundPage Selected Year Hook Ordering (2025-10-27)
 
 - **Component**: `src/pages/GameRoundPage.tsx`
   - Keep the `selectedYear` state declaration before any DEV-only submit debug effects that reference it. If those effects run while hooks are still being initialized, React throws "Cannot access 'selectedYear' before initialization" and the first round fails to render.
   - The debug effects can sit immediately after the state block (e.g., after `selectedYear`, `remainingTime`, `hasGuessedLocation` etc.) so they always read defined values.
 
+### Leaderboard Mode Tabs & Metrics (2025-10-28)
+
+- **Component**: `src/pages/LeaderboardPage.tsx`
+  - The leaderboard renders Global, Practice (solo), Level Up, and Compete tabs via the shared `Tabs` primitive. Switching tabs resets that tab’s infinite scroll window and re-runs local sorting for its dataset only.
+  - Global pulls overall aggregates (`xp_total`, `games_played`, `overall_accuracy`) from `public.user_metrics`. Practice maps to `*_solo`, Level Up to `*_level`, and Compete to `*_compete`. Each tab maintains independent sort key/direction, display count, and infinite-scroll tracking.
+  - The Level Up tab replaces the "Games" column with the player’s best unlocked level (`profiles.level_up_best_level`), so the header dynamically flips between **Games** (Global/Practice/Compete) and **Level** (Level Up).
+  - The current user summary card reflects the active tab’s stats and rank. Expect `currentUserData.entry` to be undefined when the user lacks progress for that mode and hide the card accordingly.
+
+### XP & Accuracy Badge Gradient Alignment (2025-10-28)
+
+- **File**: `src/components/ui/badge.tsx`
+  - XP and accuracy badge variants now use a straight 90° gradient with balanced left/right padding to eliminate the hard color band that previously appeared on the leading edge.
+  - When designing new badge variants, double-check for asymmetric padding or gradient angles that create visible "bars" along the rounded capsule edges.
+
 ### Friends/Leaderboard/Profile Navbar Home Link (2025-10-28)
 
 - **Layout**: `src/layouts/MainLayout.tsx`
-  - The sticky top nav now centers a "G-H" home link badge between stats and profile controls. The `G-` segment renders white while the `H` uses the shared multi-stop gradient to match other CTA accents.
-  - Clicking the badge navigates to `/home` and replaces the previous empty center space, keeping the nav balanced across Friends, Leaderboard, and Profile pages that use `MainLayout`.
+  - The sticky top nav centers a compact "G-H" home link between stats and profile controls. The `G-` segment renders white while the `H` uses the shared multi-stop gradient to match other CTA accents.
+  - Tracking between the two characters is default (no extra spacing) and the link now renders without a surrounding frame/border—just text with a subtle hover fade.
+  - The link hides when the current route is `/home` to avoid redundant navigation.
+  - Clicking the text on other routes navigates to `/home` and replaces the previous empty center space, keeping the nav balanced across Friends, Leaderboard, and Profile pages that use `MainLayout`.
 
 ### Solo Submit Flow Debug Instrumentation (2025-10-27)
 
@@ -252,11 +281,16 @@
 - **Component**: `src/pages/compete/results/CompeteSyncRoundResultsPage.tsx`
   - Removed backend status copy like "Scores synced from Supabase snapshots" from the round leaderboard card so the UI stays player-facing.
 
+### Compete Timer Enforcement Behaviour (2025-10-24)
+
+- **Component**: `src/pages/GameRoundPage.tsx`
+  - The HUD timer is now always visible in compete mode, ensuring that players see a countdown even if the lobby settings briefly report the timer as off.
+  - The timer is controlled by PartyKit and is updated in real-time to reflect the authoritative countdown.
+
 ### Compete Multiplayer Flow Review (2025-10-24)
 
-- **Round gameplay**: `src/pages/GameRoundPage.tsx`
-  - Player submission broadcasts arrive via `useLobbyChat()` callbacks and update `submittedCounts`, `peerRoster`, and HUD chips. The first peer submission triggers the countdown rush by clamping `useGameLocalCountdown` to 15 s when more than one player is still active.
-  - `peerRoster` merges live PartyKit roster data with Supabase `useRoundPeers()` aggregates so HUD avatars and counts stay aligned with the authoritative lobby size.
+- **Timer visibility**: `GameRoundPage.tsx` now forces `timerEnabled` to `true` whenever the route is in compete mode so the HUD always renders a countdown. This ensures the client keeps showing the PartyKit-controlled timer even if lobby settings briefly report the timer as off, preventing blank timer states during rounds.
+- **Player submission broadcasts**: arrive via `useLobbyChat()` callbacks and update `submittedCounts`, `peerRoster`, and HUD chips. The first peer submission triggers the countdown rush by clamping `useGameLocalCountdown` to 15 s when more than one player is still active.
 - **Hint penalties**: `src/hooks/useHintV2.ts` persists XP and accuracy debt per purchase; `src/hooks/useRoundPeers.ts` rehydrates the same debts for peers so leaderboards and HUD displays reflect consistent penalties.
 - **Timer synchronization**: `buildTimerId()` and `useGameLocalCountdown()` coordinate an authoritative countdown per `roomId`/round. Peers joining late hydrate from Supabase and PartyKit, and countdown rush only fires once per round.
 - **Results readiness**: `src/pages/compete/results/CompeteSyncRoundResultsPage.tsx` listens for `results-ready` payloads from `useLobbyChat()` to auto-advance when all players acknowledge. A fallback increments `localFallbackReady` so players can still progress if PartyKit signalling fails temporarily.

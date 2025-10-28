@@ -384,12 +384,12 @@ const FriendsPage = () => {
       <h1 className="text-2xl font-bold mb-6 text-history-primary dark:text-history-light">Friends</h1>
       
       <Tabs value={activeTab} defaultValue="friends" className="w-full" onValueChange={setActiveTab}>
-        <TabsList className="mb-6">
-          <TabsTrigger value="friends" className="flex items-center gap-2">
+        <TabsList className="mb-6 grid w-full grid-cols-2 gap-2">
+          <TabsTrigger value="friends" className="flex flex-1 items-center justify-center gap-2">
             <User className="h-4 w-4" />
             Your Friends
           </TabsTrigger>
-          <TabsTrigger value="search" className="flex items-center gap-2">
+          <TabsTrigger value="search" className="flex flex-1 items-center justify-center gap-2">
             <Search className="h-4 w-4" />
             Find Users
           </TabsTrigger>

@@ -230,12 +230,12 @@ export function AuthModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-md max-h-[85vh] p-0 overflow-hidden bg-black/85 backdrop-blur-md border border-white/10 shadow-2xl sm:rounded-2xl" aria-describedby={undefined}>
-        <DialogHeader className="px-6 pt-5">
+      <DialogContent className="sm:max-w-md max-h-[85vh] p-0 overflow-hidden bg-black/85 backdrop-blur-md border border-white/10 shadow-2xl rounded-2xl" aria-describedby={undefined}>
+        <DialogHeader className="px-6 pt-6">
           <DialogTitle>Welcome to Guess History</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-6 flex-1 justify-between px-6 pb-6">
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-4">
           {!isGuest && (
             <Button
               variant="hintGradient"

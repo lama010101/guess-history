@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { AuthModal } from "@/components/AuthModal";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ProfileFromSupabase {
   id: string;
@@ -14,30 +15,82 @@ interface ProfileFromSupabase {
   avatar_image_url?: string | null;
   avatar_url?: string | null;
   avatar_name?: string | null;
+  level_up_best_level?: number | null;
 }
 
-interface LeaderboardEntry {
+type LeaderboardMode = "global" | "practice" | "levelUp" | "compete";
+
+interface ModeLeaderboardEntry {
   user_id: string;
-  xp: number;
-  games_played: number;
   display_name: string;
-  accuracy: number;
   avatar_url?: string;
   avatar_name?: string;
+  accuracy: number;
+  xp: number;
+  games: number;
+  level: number;
 }
 
+interface UserMetricsRow {
+  user_id: string;
+  xp_total: number | null;
+  games_played: number | null;
+  overall_accuracy: number | null;
+  xp_total_solo: number | null;
+  games_played_solo: number | null;
+  overall_accuracy_solo: number | null;
+  xp_total_level: number | null;
+  games_played_level: number | null;
+  overall_accuracy_level: number | null;
+  xp_total_compete: number | null;
+  games_played_compete: number | null;
+  overall_accuracy_compete: number | null;
+}
+
+const LEADERBOARD_MODES: LeaderboardMode[] = ["global", "practice", "levelUp", "compete"];
+
 const LeaderboardPage = () => {
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboards, setLeaderboards] = useState<Record<LeaderboardMode, ModeLeaderboardEntry[]>>({
+    global: [],
+    practice: [],
+    levelUp: [],
+    compete: [],
+  });
   const [loading, setLoading] = useState(true);
-  const [sortConfig, setSortConfig] = useState<{ key: keyof LeaderboardEntry; direction: 'asc' | 'desc' }>({ key: 'xp', direction: 'desc' });
-  const [currentUserRank, setCurrentUserRank] = useState<LeaderboardEntry | null>(null);
-  const [displayCount, setDisplayCount] = useState(20);
-  const [hasMore, setHasMore] = useState(true);
+  const [sortConfigs, setSortConfigs] = useState<Record<LeaderboardMode, { key: keyof ModeLeaderboardEntry; direction: 'asc' | 'desc' }>>({
+    global: { key: 'xp', direction: 'desc' },
+    practice: { key: 'xp', direction: 'desc' },
+    levelUp: { key: 'xp', direction: 'desc' },
+    compete: { key: 'xp', direction: 'desc' },
+  });
+  const [activeTab, setActiveTab] = useState<LeaderboardMode>("global");
+  const [displayCounts, setDisplayCounts] = useState<Record<LeaderboardMode, number>>({
+    global: 20,
+    practice: 20,
+    levelUp: 20,
+    compete: 20,
+  });
+  const [hasMoreMap, setHasMoreMap] = useState<Record<LeaderboardMode, boolean>>({
+    global: true,
+    practice: true,
+    levelUp: true,
+    compete: true,
+  });
+  const [isLoadingMoreMap, setIsLoadingMoreMap] = useState<Record<LeaderboardMode, boolean>>({
+    global: false,
+    practice: false,
+    levelUp: false,
+    compete: false,
+  });
   const { user, isGuest } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const loadTimeoutRef = useRef<number | null>(null);
+  const loadTimeoutRef = useRef<Record<LeaderboardMode, number | null>>({
+    global: null,
+    practice: null,
+    levelUp: null,
+    compete: null,
+  });
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -47,12 +100,28 @@ const LeaderboardPage = () => {
         // Fetch user_metrics sorted by xp_total desc
         const { data: metrics, error: metricsError } = await supabase
           .from('user_metrics')
-          .select('user_id, xp_total, games_played, overall_accuracy')
+          .select(`
+            user_id,
+            xp_total,
+            games_played,
+            overall_accuracy,
+            xp_total_solo,
+            games_played_solo,
+            overall_accuracy_solo,
+            xp_total_level,
+            games_played_level,
+            overall_accuracy_level,
+            xp_total_compete,
+            games_played_compete,
+            overall_accuracy_compete
+          `)
           .order('xp_total', { ascending: false });
         
         if (metricsError) {
           console.error('Error fetching metrics:', metricsError);
-          setLeaderboard([]);
+          setLeaderboards({ global: [], practice: [], levelUp: [], compete: [] });
+          setDisplayCounts({ global: 0, practice: 0, levelUp: 0, compete: 0 });
+          setHasMoreMap({ global: false, practice: false, levelUp: false, compete: false });
           setLoading(false);
           return;
         }
@@ -61,7 +130,9 @@ const LeaderboardPage = () => {
         
         if (!metrics || metrics.length === 0) {
           console.log('No metrics data found');
-          setLeaderboard([]);
+          setLeaderboards({ global: [], practice: [], levelUp: [], compete: [] });
+          setDisplayCounts({ global: 0, practice: 0, levelUp: 0, compete: 0 });
+          setHasMoreMap({ global: false, practice: false, levelUp: false, compete: false });
           setLoading(false);
           return;
         }
@@ -75,12 +146,12 @@ const LeaderboardPage = () => {
           if (userIds.length === 1) {
             profilesResponse = await supabase
               .from('profiles')
-              .select('id, display_name, avatar_image_url, avatar_url, avatar_name')
+              .select('id, display_name, avatar_image_url, avatar_url, avatar_name, level_up_best_level')
               .eq('id', userIds[0]);
           } else { // userIds.length > 1
             profilesResponse = await supabase
               .from('profiles')
-              .select('id, display_name, avatar_image_url, avatar_url, avatar_name')
+              .select('id, display_name, avatar_image_url, avatar_url, avatar_name, level_up_best_level')
               .in('id', userIds);
           }
         } else {
@@ -92,7 +163,9 @@ const LeaderboardPage = () => {
 
         if (profilesError) {
           console.error('Error fetching profiles:', profilesError);
-          setLeaderboard([]); // Clear leaderboard or show error state
+          setLeaderboards({ global: [], practice: [], levelUp: [], compete: [] });
+          setDisplayCounts({ global: 0, practice: 0, levelUp: 0, compete: 0 });
+          setHasMoreMap({ global: false, practice: false, levelUp: false, compete: false });
           setLoading(false);
           return; // Stop processing if profiles can't be fetched
         }
@@ -106,32 +179,72 @@ const LeaderboardPage = () => {
         console.log('Profiles data:', profiles);
         
         // Merge metrics with profile data - only include registered users with proper profiles
-        const leaderboardData: LeaderboardEntry[] = [];
-        for (const m of (metrics as any[])) {
+        const globalData: ModeLeaderboardEntry[] = [];
+        const practiceData: ModeLeaderboardEntry[] = [];
+        const levelUpData: ModeLeaderboardEntry[] = [];
+        const competeData: ModeLeaderboardEntry[] = [];
+
+        for (const m of (metrics as UserMetricsRow[])) {
           const currentProfile = profiles.find((p: any) => p.id === m.user_id);
           
           // Only include users with proper profiles (not guest users)
           if (currentProfile?.display_name) {
-            leaderboardData.push({
+            const avatar = currentProfile.avatar_image_url || currentProfile.avatar_url || undefined;
+            const baseEntry = {
               user_id: m.user_id,
-              xp: m.xp_total || 0,
-              games_played: m.games_played || 0,
-              accuracy: m.overall_accuracy || 0,
               display_name: currentProfile.display_name,
-              avatar_url: currentProfile.avatar_image_url || currentProfile.avatar_url,
-              avatar_name: currentProfile.avatar_name,
+              avatar_url: avatar,
+              avatar_name: currentProfile.avatar_name || undefined,
+              level: currentProfile.level_up_best_level ?? 0,
+            };
+
+            globalData.push({
+              ...baseEntry,
+              xp: Number(m.xp_total ?? 0),
+              accuracy: Number(m.overall_accuracy ?? 0),
+              games: Number(m.games_played ?? 0),
+              level: baseEntry.level,
+            });
+
+            practiceData.push({
+              ...baseEntry,
+              xp: Number(m.xp_total_solo ?? 0),
+              accuracy: Number(m.overall_accuracy_solo ?? 0),
+              games: Number(m.games_played_solo ?? 0),
+              level: baseEntry.level,
+            });
+
+            levelUpData.push({
+              ...baseEntry,
+              xp: Number(m.xp_total_level ?? 0),
+              accuracy: Number(m.overall_accuracy_level ?? 0),
+              games: Number(m.games_played_level ?? 0),
+              level: baseEntry.level,
+            });
+
+            competeData.push({
+              ...baseEntry,
+              xp: Number(m.xp_total_compete ?? 0),
+              accuracy: Number(m.overall_accuracy_compete ?? 0),
+              games: Number(m.games_played_compete ?? 0),
+              level: baseEntry.level,
             });
           }
         }
         
-        // Find current user's rank
-        if (user) {
-          const currentUserEntry = leaderboardData.find(entry => entry.user_id === user.id);
-          setCurrentUserRank(currentUserEntry || null);
-        }
-        
-        console.log('Leaderboard data:', leaderboardData);
-        setLeaderboard(leaderboardData);
+        console.log('Leaderboard data:', { globalData, practiceData, levelUpData, competeData });
+        setLeaderboards({
+          global: globalData,
+          practice: practiceData,
+          levelUp: levelUpData,
+          compete: competeData,
+        });
+        setDisplayCounts({
+          global: 20,
+          practice: 20,
+          levelUp: 20,
+          compete: 20,
+        });
       } catch (err) {
         console.error('Error in fetchLeaderboard:', err);
       } finally {
@@ -150,57 +263,90 @@ const LeaderboardPage = () => {
     return () => clearInterval(refreshInterval);
   }, [user]);
 
-  const sortedLeaderboard = useMemo(() => {
-    return [...leaderboard].sort((a, b) => {
-      const aValue = a[sortConfig.key];
-      const bValue = b[sortConfig.key];
+  const activeEntries = leaderboards[activeTab] || [];
+  const activeSortConfig = sortConfigs[activeTab];
+  const activeDisplayCount = displayCounts[activeTab];
+  const activeHasMore = hasMoreMap[activeTab];
+  const activeIsLoadingMore = isLoadingMoreMap[activeTab];
+  const isLevelUpTab = activeTab === "levelUp";
+
+  const sortedEntries = useMemo(() => {
+    return [...activeEntries].sort((a, b) => {
+      const aValue = a[activeSortConfig.key] ?? 0;
+      const bValue = b[activeSortConfig.key] ?? 0;
 
       if (typeof aValue === 'number' && typeof bValue === 'number') {
-        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+        return activeSortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
       }
 
       if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortConfig.direction === 'asc'
+        return activeSortConfig.direction === 'asc'
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
 
       return 0;
     });
-  }, [leaderboard, sortConfig]);
+  }, [activeEntries, activeSortConfig]);
 
-  const handleSort = (key: keyof LeaderboardEntry) => {
-    setSortConfig(prevConfig => ({
-      key,
-      direction: prevConfig.key === key && prevConfig.direction === 'desc' ? 'asc' : 'desc'
+  const displayedEntries = useMemo(() => {
+    return sortedEntries.slice(0, activeDisplayCount);
+  }, [sortedEntries, activeDisplayCount]);
+
+  const handleSort = (mode: LeaderboardMode, key: keyof ModeLeaderboardEntry) => {
+    setSortConfigs(prevConfig => ({
+      ...prevConfig,
+      [mode]: {
+        key,
+        direction: prevConfig[mode].key === key && prevConfig[mode].direction === 'desc' ? 'asc' : 'desc',
+      },
     }));
-    setDisplayCount(20);
+    setDisplayCounts(prev => ({
+      ...prev,
+      [mode]: 20,
+    }));
   };
 
   const loadMore = useCallback(() => {
-    if (isLoadingMore || !hasMore) return;
-    setIsLoadingMore(true);
-    setDisplayCount(prev => Math.min(prev + 20, sortedLeaderboard.length));
+    if (activeIsLoadingMore || !activeHasMore) return;
 
-    if (loadTimeoutRef.current) {
-      window.clearTimeout(loadTimeoutRef.current);
+    setIsLoadingMoreMap(prev => ({
+      ...prev,
+      [activeTab]: true,
+    }));
+
+    const nextCount = Math.min(displayCounts[activeTab] + 20, sortedEntries.length);
+    setDisplayCounts(prev => ({
+      ...prev,
+      [activeTab]: nextCount,
+    }));
+
+    const existingTimeout = loadTimeoutRef.current[activeTab];
+    if (existingTimeout) {
+      window.clearTimeout(existingTimeout);
     }
 
-    loadTimeoutRef.current = window.setTimeout(() => {
-      setIsLoadingMore(false);
-      loadTimeoutRef.current = null;
+    loadTimeoutRef.current[activeTab] = window.setTimeout(() => {
+      setIsLoadingMoreMap(prev => ({
+        ...prev,
+        [activeTab]: false,
+      }));
+      loadTimeoutRef.current[activeTab] = null;
     }, 250);
-  }, [hasMore, isLoadingMore, sortedLeaderboard.length]);
+  }, [activeHasMore, activeIsLoadingMore, activeTab, displayCounts, sortedEntries.length]);
 
   useEffect(() => {
-    const shouldHaveMore = displayCount < sortedLeaderboard.length;
-    if (hasMore !== shouldHaveMore) {
-      setHasMore(shouldHaveMore);
+    const shouldHaveMore = activeDisplayCount < sortedEntries.length;
+    if (hasMoreMap[activeTab] !== shouldHaveMore) {
+      setHasMoreMap(prev => ({
+        ...prev,
+        [activeTab]: shouldHaveMore,
+      }));
     }
-  }, [displayCount, sortedLeaderboard.length, hasMore]);
+  }, [activeDisplayCount, activeTab, sortedEntries, hasMoreMap]);
 
   useEffect(() => {
-    if (!hasMore) return;
+    if (!activeHasMore) return;
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
 
@@ -217,15 +363,40 @@ const LeaderboardPage = () => {
     return () => {
       observer.disconnect();
     };
-  }, [hasMore, loadMore]);
+  }, [activeHasMore, loadMore]);
 
   useEffect(() => {
     return () => {
-      if (loadTimeoutRef.current) {
-        window.clearTimeout(loadTimeoutRef.current);
-      }
+      LEADERBOARD_MODES.forEach((mode) => {
+        const timeoutId = loadTimeoutRef.current[mode];
+        if (timeoutId) {
+          window.clearTimeout(timeoutId);
+        }
+      });
     };
   }, []);
+
+  useEffect(() => {
+    // Reset infinite scroll trackers when switching tabs
+    setDisplayCounts(prev => ({
+      ...prev,
+      [activeTab]: 20,
+    }));
+  }, [activeTab]);
+
+  const currentUserData = useMemo(() => {
+    if (!user?.id) {
+      return { entry: undefined, rankIndex: -1 };
+    }
+    const rankIndex = sortedEntries.findIndex(entry => entry.user_id === user.id);
+    return {
+      entry: rankIndex >= 0 ? sortedEntries[rankIndex] : undefined,
+      rankIndex,
+    };
+  }, [sortedEntries, user?.id]);
+
+  const lastColumnKey: keyof ModeLeaderboardEntry = isLevelUpTab ? 'level' : 'games';
+  const lastColumnLabel = isLevelUpTab ? 'Level' : 'Games';
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -235,12 +406,30 @@ const LeaderboardPage = () => {
       </h1>
       
       {/* Current user card */}
-      {currentUserRank && (
+      {currentUserData.entry && (
         <div className="max-w-2xl mx-auto mb-6">
           <div className="rounded-lg shadow-lg p-6 bg-[#333333] text-white">
-            <h3 className="text-lg font-semibold mb-4 text-center font-['Montserrat']">
-              Your Ranking
-            </h3>
+            <div className="flex flex-col items-center gap-3 mb-4">
+              {currentUserData.entry.avatar_url ? (
+                <img
+                  src={currentUserData.entry.avatar_url}
+                  alt={currentUserData.entry.display_name}
+                  className="h-16 w-16 rounded-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="h-16 w-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                  <span className="text-xl font-semibold text-gray-600 dark:text-gray-300">
+                    {currentUserData.entry.display_name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
+              <span className="text-lg font-semibold text-center font-['Montserrat']">
+                {currentUserData.entry.display_name}
+              </span>
+            </div>
             <div className="grid grid-cols-3 gap-4 text-center items-center text-white/70 text-xs font-semibold uppercase tracking-wide">
               <span>Rank</span>
               <span>%</span>
@@ -248,16 +437,16 @@ const LeaderboardPage = () => {
             </div>
             <div className="grid grid-cols-3 gap-4 text-center items-center mt-4">
               <div className="text-2xl font-bold">
-                #{leaderboard.findIndex(entry => entry.user_id === user?.id) + 1}
+                #{currentUserData.rankIndex + 1}
               </div>
               <div className="flex justify-center">
-                <Badge variant="accuracy" className="px-4 py-1 text-sm shadow-md">
-                  {Math.round(currentUserRank.accuracy)}%
+                <Badge variant="accuracy" className="px-4 py-1 text-sm">
+                  {Math.round(currentUserData.entry.accuracy)}%
                 </Badge>
               </div>
               <div className="flex justify-center">
-                <Badge variant="xp" className="px-4 py-1 text-sm shadow-md">
-                  {Math.round(currentUserRank.xp).toLocaleString()}
+                <Badge variant="xp" className="px-4 py-1 text-sm">
+                  {Math.round(currentUserData.entry.xp).toLocaleString()}
                 </Badge>
               </div>
             </div>
@@ -285,86 +474,96 @@ const LeaderboardPage = () => {
           </div>
         </Alert>
       )}
-      <div className="bg-[#333333] text-white rounded-xl shadow-lg overflow-hidden max-w-4xl mx-auto">
-        <Table className="bg-[#333333] text-white">
-          <TableHeader className="bg-[#333333]">
-            <TableRow className="bg-[#333333]">
-              <TableHead className="cursor-pointer font-['Montserrat'] text-white hover:bg-[#3d3d3d]" onClick={() => handleSort('user_id')}>
-                Rank {sortConfig.key === 'user_id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-              </TableHead>
-              <TableHead className="cursor-pointer font-['Montserrat'] text-white hover:bg-[#3d3d3d]" onClick={() => handleSort('display_name')}>
-                Player {sortConfig.key === 'display_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-              </TableHead>
-              <TableHead className="cursor-pointer font-['Montserrat'] text-white hover:bg-[#3d3d3d]" onClick={() => handleSort('accuracy')}>
-                % {sortConfig.key === 'accuracy' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-              </TableHead>
-              <TableHead className="cursor-pointer font-['Montserrat'] text-white hover:bg-[#3d3d3d]" onClick={() => handleSort('xp')}>
-                XP {sortConfig.key === 'xp' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-              </TableHead>
-              <TableHead className="cursor-pointer font-['Montserrat'] text-white hover:bg-[#3d3d3d]" onClick={() => handleSort('games_played')}>
-                Games {sortConfig.key === 'games_played' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow><TableCell colSpan={5} className="text-center font-['Montserrat']">Loading...</TableCell></TableRow>
-            ) : sortedLeaderboard.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center font-['Montserrat']">No data found</TableCell></TableRow>
-            ) : (
-              sortedLeaderboard.slice(0, displayCount).map((entry, idx) => (
-                <TableRow
-                  key={entry.user_id}
-                  className={
-                    entry.user_id === user?.id
-                      ? 'bg-[rgba(0,0,0,0.4)] border-l-4 border-history-primary'
-                      : 'hover:bg-[#3d3d3d]'
-                  }
-                >
-                  <TableCell className="font-medium">#{idx + 1}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-3">
-                      {entry.avatar_url ? (
-                        <img 
-                          src={entry.avatar_url} 
-                          alt={entry.display_name}
-                          className="h-8 w-8 rounded-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                          <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                            {entry.display_name.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                      )}
-                      <span className="font-semibold">{entry.display_name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-semibold font-['Montserrat']">
-                    <Badge variant="accuracy" className="px-3 py-1 text-xs shadow-sm">
-                      {Math.round(entry.accuracy)}%
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-semibold font-['Montserrat']">
-                    <Badge variant="xp" className="px-3 py-1 text-xs shadow-sm">
-                      {entry.xp.toLocaleString()}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-['Montserrat']">{entry.games_played}</TableCell>
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as LeaderboardMode)} className="max-w-4xl mx-auto">
+        <TabsList className="mb-6 bg-[#444] text-white w-full gap-2">
+          <TabsTrigger value="global" className="flex-1">Global</TabsTrigger>
+          <TabsTrigger value="practice" className="flex-1">Practice</TabsTrigger>
+          <TabsTrigger value="levelUp" className="flex-1">Level Up</TabsTrigger>
+          <TabsTrigger value="compete" className="flex-1">Compete</TabsTrigger>
+        </TabsList>
+        <TabsContent value={activeTab}>
+          <div className="bg-[#333333] text-white rounded-xl shadow-lg overflow-hidden">
+            <Table className="bg-[#333333] text-white">
+              <TableHeader className="bg-[#333333]">
+                <TableRow className="bg-[#333333]">
+                  <TableHead className="font-['Montserrat'] text-white">Rank</TableHead>
+                  <TableHead className="cursor-pointer font-['Montserrat'] text-white hover:bg-[#3d3d3d]" onClick={() => handleSort(activeTab, 'display_name')}>
+                    Player {activeSortConfig.key === 'display_name' && (activeSortConfig.direction === 'asc' ? '↑' : '↓')}
+                  </TableHead>
+                  <TableHead className="cursor-pointer font-['Montserrat'] text-white hover:bg-[#3d3d3d]" onClick={() => handleSort(activeTab, 'accuracy')}>
+                    % {activeSortConfig.key === 'accuracy' && (activeSortConfig.direction === 'asc' ? '↑' : '↓')}
+                  </TableHead>
+                  <TableHead className="cursor-pointer font-['Montserrat'] text-white hover:bg-[#3d3d3d]" onClick={() => handleSort(activeTab, 'xp')}>
+                    XP {activeSortConfig.key === 'xp' && (activeSortConfig.direction === 'asc' ? '↑' : '↓')}
+                  </TableHead>
+                  <TableHead className="cursor-pointer font-['Montserrat'] text-white hover:bg-[#3d3d3d]" onClick={() => handleSort(activeTab, lastColumnKey)}>
+                    {lastColumnLabel} {activeSortConfig.key === lastColumnKey && (activeSortConfig.direction === 'asc' ? '↑' : '↓')}
+                  </TableHead>
                 </TableRow>
-              ))
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow><TableCell colSpan={5} className="text-center font-['Montserrat']">Loading...</TableCell></TableRow>
+                ) : sortedEntries.length === 0 ? (
+                  <TableRow><TableCell colSpan={5} className="text-center font-['Montserrat']">No data found</TableCell></TableRow>
+                ) : (
+                  displayedEntries.map((entry, idx) => (
+                    <TableRow
+                      key={entry.user_id}
+                      className={
+                        entry.user_id === user?.id
+                          ? 'bg-[rgba(0,0,0,0.4)] border-l-4 border-history-primary'
+                          : 'hover:bg-[#3d3d3d]'
+                      }
+                    >
+                      <TableCell className="font-medium">#{idx + 1}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-3">
+                          {entry.avatar_url ? (
+                            <img 
+                              src={entry.avatar_url} 
+                              alt={entry.display_name}
+                              className="h-8 w-8 rounded-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                              <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                                {entry.display_name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                          <span className="font-semibold">{entry.display_name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-semibold font-['Montserrat']">
+                        <Badge variant="accuracy" className="px-3 py-1 text-xs">
+                          {Math.round(entry.accuracy)}%
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-semibold font-['Montserrat']">
+                        <Badge variant="xp" className="px-3 py-1 text-xs">
+                          {Math.round(entry.xp).toLocaleString()}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-['Montserrat']">
+                        {lastColumnKey === 'level' ? entry.level : entry.games}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+            {activeHasMore && (
+              <div ref={sentinelRef} className="py-6 flex items-center justify-center">
+                <div className="animate-spin h-6 w-6 border-2 border-white/40 border-t-transparent rounded-full"></div>
+              </div>
             )}
-          </TableBody>
-        </Table>
-        {hasMore && (
-          <div ref={sentinelRef} className="py-6 flex items-center justify-center">
-            <div className="animate-spin h-6 w-6 border-2 border-white/40 border-t-transparent rounded-full"></div>
           </div>
-        )}
-      </div>
+        </TabsContent>
+      </Tabs>
       {/* Auth Modal for guest sign up */}
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </div>

@@ -238,9 +238,10 @@ export function AuthModal({
           <div className="flex flex-col gap-3">
           {!isGuest && (
             <Button
+              variant="hintGradient"
               onClick={handleGuestLogin}
               disabled={isLoading}
-              className="w-full rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 flex items-center justify-center gap-2"
+              className="w-full rounded-xl py-3 flex items-center justify-center gap-2 font-semibold shadow-lg"
             >
               <UserX className="w-5 h-5" />
               Continue as guest

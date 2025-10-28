@@ -19,7 +19,8 @@ import LandingPage from "./pages/LandingPage";
 import GameRoundPage from "./pages/GameRoundPage";
 import FinalResultsPage from "./pages/FinalResultsPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
-import ProfilePage from "./pages/ProfilePage";
+import ProfilePage from "@/pages/ProfilePage";
+import ProfileLayout1 from "@/components/layouts/ProfileLayout1";
 import SettingsPage from "./pages/SettingsPage";
 import UserProfilePage from './pages/UserProfile';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -175,6 +176,7 @@ const App = () => {
                         </Route>
                         <Route path="/profile" element={<MainLayout />}>
                           <Route index element={<ProfilePage />} />
+                          <Route path=":userId" element={<ProfileLayout1 />} />
                         </Route>
                         <Route path="/friends" element={<MainLayout />}>
                           <Route index element={<FriendsPage />} />

@@ -1,6 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Award,
@@ -10,7 +9,7 @@ import {
 } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
 import { useGame } from '@/contexts/GameContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { BadgeEvaluation, BadgeRequirementCode } from '@/utils/badges/types';
 import { evaluateUserBadges } from '@/utils/badges/badgeService';
 import { 
@@ -20,7 +19,8 @@ import {
   fetchAvatars,
   UserProfile,
   UserStats,
-  UserSettings
+  UserSettings,
+  ModeAggregate
 } from '@/utils/profile/profileService';
 import { AuthModal } from "@/components/AuthModal";
 
@@ -36,10 +36,12 @@ import LevelProgressCard from '@/components/profile/LevelProgressCard';
 
 const ProfileLayout1 = () => {
   const [avatar, setAvatar] = useState<Avatar | null>(null);
-  const { user, isGuest, upgradeUser } = useAuth();
+  const { user, isGuest } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const params = useParams<{ userId?: string }>();
   const { fetchGlobalMetrics } = useGame();
-  
+
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -55,27 +57,34 @@ const ProfileLayout1 = () => {
 
   const [showAuthModal, setShowAuthModal] = useState(false);
 
+  const isViewingSelf = useMemo(() => {
+    if (!params.userId) return true;
+    if (params.userId === 'me') return true;
+    return user?.id === params.userId;
+  }, [params.userId, user?.id]);
+
+  const targetUserId = useMemo(() => {
+    if (isViewingSelf) return user?.id ?? null;
+    return params.userId ?? null;
+  }, [isViewingSelf, params.userId, user?.id]);
+
+  const allowProfileActions = isViewingSelf;
+
   useEffect(() => {
     fetchGlobalMetrics();
   }, [fetchGlobalMetrics]);
 
-  const loadGuestUserData = useCallback(async () => {
-    if (!user || !isGuest) return null;
-    // Guest data is now handled by the backend, this can be simplified or removed
-    return getDefaultStats();
-  }, [user, isGuest]);
-
   useEffect(() => {
     const fetchProfileData = async () => {
-      if (!user) return;
+      if (!targetUserId) return;
       try {
         setIsLoading(true);
-        const [userProfile, userStats, userSettings, allAvatars] = await Promise.all([
-          fetchUserProfile(user.id),
-          fetchUserStats(user.id),
-          fetchUserSettings(user.id),
+        const [userProfile, userStats, allAvatars] = await Promise.all([
+          fetchUserProfile(targetUserId),
+          fetchUserStats(targetUserId),
           fetchAvatars()
         ]);
+        const userSettings = isViewingSelf ? await fetchUserSettings(targetUserId) : null;
         setProfile(userProfile);
         setStats(userStats);
         setSettings(userSettings);
@@ -89,14 +98,19 @@ const ProfileLayout1 = () => {
         }
         const userMetrics = getDefaultMetrics(userStats);
         setMetrics(userMetrics);
-        if (!isGuest) {
+        if (isViewingSelf && !isGuest && user?.id) {
           const evaluations = await evaluateUserBadges(user.id, userMetrics);
           setBadgeEvaluations(evaluations);
+        } else {
+          setBadgeEvaluations([]);
         }
       } catch (error) {
         console.error('Error fetching profile data:', error);
         setStats(getDefaultStats());
         setMetrics(getDefaultMetrics());
+        if (!isViewingSelf) {
+          setBadgeEvaluations([]);
+        }
       } finally {
         setIsLoading(false);
         setStatsLoading(false);
@@ -106,7 +120,7 @@ const ProfileLayout1 = () => {
       }
     };
     fetchProfileData();
-  }, [user, isGuest]);
+  }, [targetUserId, isGuest, isViewingSelf, user?.id]);
 
   // Refresh profile/stats when profileUpdated is dispatched (e.g., after Level Up best level changes)
   useEffect(() => {
@@ -119,49 +133,87 @@ const ProfileLayout1 = () => {
     return () => window.removeEventListener('profileUpdated', onProfileUpdated);
   }, [user]);
   
+  const emptyModeAggregate: ModeAggregate = { games_played: 0, total_xp: 0, avg_accuracy: 0 };
+
   const getDefaultStats = (): UserStats => ({
-    games_played: 0, avg_accuracy: 0, best_accuracy: 0, perfect_scores: 0,
-    total_xp: 0, global_rank: 0, time_accuracy: 0, location_accuracy: 0, challenge_accuracy: 0,
+    games_played: 0,
+    avg_accuracy: 0,
+    best_accuracy: 0,
+    perfect_scores: 0,
+    total_xp: 0,
+    global_rank: 0,
+    time_accuracy: 0,
+    location_accuracy: 0,
+    challenge_accuracy: 0,
+    per_mode: {
+      solo: { ...emptyModeAggregate },
+      compete: { ...emptyModeAggregate },
+      level: { ...emptyModeAggregate },
+      collaborate: { ...emptyModeAggregate },
+    },
   });
   
   const getDefaultMetrics = (stats?: UserStats): Record<BadgeRequirementCode, number> => ({
-    games_played: stats?.games_played || 0, perfect_rounds: 0, perfect_games: stats?.perfect_scores || 0,
-    time_accuracy: stats?.time_accuracy || 0, location_accuracy: stats?.location_accuracy || 0,
-    overall_accuracy: stats?.avg_accuracy || 0, win_streak: 0, daily_streak: 0,
-    xp_total: stats?.total_xp || 0, year_bullseye: 0, location_bullseye: 0
+    games_played: stats?.games_played || 0,
+    perfect_rounds: 0,
+    perfect_games: stats?.perfect_scores || 0,
+    time_accuracy: stats?.time_accuracy || 0,
+    location_accuracy: stats?.location_accuracy || 0,
+    overall_accuracy: stats?.avg_accuracy || 0,
+    win_streak: 0,
+    daily_streak: 0,
+    xp_total: stats?.total_xp || 0,
+    year_bullseye: 0,
+    location_bullseye: 0,
   });
   
 
 
   const refreshData = async () => {
-    if (!user) return;
+    if (!targetUserId) return;
     // Refresh profile, stats, and avatar data
     const [userProfile, userStats] = await Promise.all([
-      fetchUserProfile(user.id),
-      fetchUserStats(user.id)
+      fetchUserProfile(targetUserId),
+      fetchUserStats(targetUserId)
     ]);
-    
+
     setProfile(userProfile);
     setStats(userStats);
-    
+
     // Refresh avatar metadata if avatar_id is present
     if (userProfile && userProfile.avatar_id) {
       const avatarMeta = await fetchAvatarById(userProfile.avatar_id);
       setAvatar(avatarMeta);
     }
   };
-  
+
+  const handleBack = useCallback(() => {
+    if (location.key !== 'default') {
+      navigate(-1);
+    } else {
+      navigate('/friends');
+    }
+  }, [location.key, navigate]);
+
+  const showBackButton = !isViewingSelf;
+
   return (
     <div className="min-h-screen bg-history-light dark:bg-history-dark flex flex-col">
       <div className="max-w-4xl mx-auto p-4 pt-8 flex-grow">
+        {showBackButton && (
+          <Button variant="ghost" className="mb-4 flex items-center gap-2" onClick={handleBack}>
+            ← Back
+          </Button>
+        )}
         <ProfileHeader 
           profile={profile} 
           isLoading={isLoading}
           onEditProfile={() => {}}
           avatar={avatar}
           onProfileUpdate={refreshData}
+          allowProfileActions={allowProfileActions}
         />
-        {isGuest && (
+        {isViewingSelf && isGuest && (
           <div className="my-4 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700">
             <p>You are currently playing as a guest. Register to save your progress.</p>
             <Button onClick={() => setShowAuthModal(true)} className="mt-2">
@@ -169,7 +221,7 @@ const ProfileLayout1 = () => {
             </Button>
           </div>
         )}
-        
+
         <Tabs defaultValue="stats">
           <div className="glass-card rounded-xl p-6 mb-8 bg-white dark:bg-[#202020]">
             <TabsList className="grid grid-cols-4">
@@ -179,7 +231,7 @@ const ProfileLayout1 = () => {
               <TabsTrigger value="account">Account</TabsTrigger>
             </TabsList>
           </div>
-          
+
           <TabsContent value="stats">
             <LevelProgressCard
               profile={profile}
@@ -189,24 +241,30 @@ const ProfileLayout1 = () => {
             <StatsTab 
               stats={stats || getDefaultStats()} 
               isLoading={statsLoading}
-              badgeEvaluations={badgeEvaluations}
-              badgesLoading={badgesLoading}
+              badgeEvaluations={isViewingSelf ? badgeEvaluations : []}
+              badgesLoading={isViewingSelf ? badgesLoading : false}
             />
           </TabsContent>
-          
+
 
           
           <TabsContent value="avatars">
-            <AvatarsTab 
-              profile={profile} 
-              avatars={avatars} 
-              isLoading={avatarsLoading}
-              onAvatarUpdated={refreshData}
-            />
+            {isViewingSelf ? (
+              <AvatarsTab 
+                profile={profile} 
+                avatars={avatars} 
+                isLoading={avatarsLoading}
+                onAvatarUpdated={refreshData}
+              />
+            ) : (
+              <div className="glass-card rounded-xl p-6 text-center text-muted-foreground">
+                Avatar customization is only available on your own profile.
+              </div>
+            )}
           </TabsContent>
-          
+
           <TabsContent value="settings">
-            {user && settings && (
+            {isViewingSelf && user && settings && (
               <SettingsTab 
                 userId={user.id}
                 settings={settings}
@@ -214,24 +272,36 @@ const ProfileLayout1 = () => {
                 onSettingsUpdated={refreshData}
               />
             )}
+            {!isViewingSelf && (
+              <div className="glass-card rounded-xl p-6 text-center text-muted-foreground">
+                Settings are private to each player.
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="account">
-            {user && !isGuest && <AccountManagement />}
-            {isGuest && (
+            {isViewingSelf && user && !isGuest && <AccountManagement />}
+            {isViewingSelf && isGuest && (
               <div className="text-center p-8 glass-card rounded-xl bg-white dark:bg-[#202020]">
                   <h3 className="text-lg font-semibold text-history-primary dark:text-history-light">Account Management</h3>
                   <p className="text-gray-600 dark:text-gray-400 mt-2">Register to manage your email, password, and other account settings.</p>
               </div>
             )}
+            {!isViewingSelf && (
+              <div className="glass-card rounded-xl p-6 text-center text-muted-foreground">
+                Account details are private.
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
-      
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-      />
+
+      {isViewingSelf && (
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+        />
+      )}
     </div>
   );
 };

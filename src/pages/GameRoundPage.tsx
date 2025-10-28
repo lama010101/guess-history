@@ -71,9 +71,18 @@ const GameRoundPage: React.FC = () => {
     if (isCompeteMode) return;
     if (!resultsPath) return;
     if (!(hasSubmittedThisRound || hasTimedOut)) return;
-    if (leavingRef.current || hasNavigatedToResultsRef.current) return;
+    if (hasNavigatedToResultsRef.current) return;
     hasNavigatedToResultsRef.current = true;
     leavingRef.current = true;
+    if (import.meta.env.DEV) {
+      try {
+        console.debug('[GameRoundPage][SubmitFlow] Navigating to results (solo auto-redirect)', {
+          resultsPath,
+          hasSubmittedThisRound,
+          hasTimedOut,
+        });
+      } catch {}
+    }
     navigate(resultsPath, { replace: true });
   }, [isCompeteMode, resultsPath, hasSubmittedThisRound, hasTimedOut, navigate]);
 
@@ -1633,18 +1642,40 @@ const GameRoundPage: React.FC = () => {
 
   // Handle guess submission
   const handleSubmitGuess = useCallback(async () => {
-    console.log('[GameRoundPage] handleSubmitGuess called');
+    const submitMeta = {
+      roundNumber,
+      isSubmitting,
+      hasTimedOut,
+      hasImage: !!imageForRound,
+      hasGuess: hasGuessedLocation,
+      selectedYear,
+      roomId,
+      isCompeteMode,
+      timerEnabled,
+      hasSubmittedThisRound,
+    };
+
+    if (import.meta.env.DEV) {
+      try { console.debug('[GameRoundPage][SubmitFlow] handleSubmitGuess invoked', submitMeta); } catch {}
+    }
+
     if (isSubmitting) {
-      console.log('[GameRoundPage] Already submitting, returning');
+      if (import.meta.env.DEV) {
+        try { console.debug('[GameRoundPage][SubmitFlow] Aborting submit: already submitting', submitMeta); } catch {}
+      }
       return;
     }
     if (hasTimedOut) {
-      console.log('[GameRoundPage] Has timed out, returning');
+      if (import.meta.env.DEV) {
+        try { console.debug('[GameRoundPage][SubmitFlow] Aborting submit: round timed out', submitMeta); } catch {}
+      }
       return; // Prevent submission after timeout
     }
 
     if (!imageForRound) {
-      console.log('[GameRoundPage] No imageForRound, showing toast');
+      if (import.meta.env.DEV) {
+        try { console.debug('[GameRoundPage][SubmitFlow] Aborting submit: missing image', submitMeta); } catch {}
+      }
       toast({
         title: 'Error',
         description: 'Cannot submit guess, image data is missing.',
@@ -1656,7 +1687,7 @@ const GameRoundPage: React.FC = () => {
     const hasUserId = !!user?.id;
     const canSendLobbyPayload = typeof sendLobbyPayload === 'function';
     if (isCompeteMode && !hasUserId) {
-      console.warn('[GameRoundPage] Submission aborted: missing user ID in compete mode');
+      console.warn('[GameRoundPage][SubmitFlow] Submission aborted: missing user ID in compete mode', submitMeta);
       toast({
         title: 'Account issue',
         description: 'We need to confirm your identity before saving this guess. Please rejoin the room.',
@@ -1665,15 +1696,18 @@ const GameRoundPage: React.FC = () => {
       return;
     }
 
-    // Defensive: Submit should only be possible when both year and location are selected
     if (selectedYear === null) {
-      console.log('[GameRoundPage] No selectedYear, showing toast');
+      if (import.meta.env.DEV) {
+        try { console.debug('[GameRoundPage][SubmitFlow] Aborting submit: year not selected', submitMeta); } catch {}
+      }
       toast({ title: 'Missing Year', description: 'Please select a year before submitting.', variant: 'destructive' });
       return;
     }
 
     if (!hasGuessedLocation) {
-      console.log('[GameRoundPage] No location guessed, showing toast');
+      if (import.meta.env.DEV) {
+        try { console.debug('[GameRoundPage][SubmitFlow] Aborting submit: location not selected', submitMeta); } catch {}
+      }
       toast({
         title: 'No location selected',
         description: 'Please select a location on the map first.',
@@ -1682,13 +1716,23 @@ const GameRoundPage: React.FC = () => {
       return;
     }
 
-    console.log(`[GameRoundPage] Submitting guess for round ${roundNumber}, Year: ${selectedYear}, Coords:`, currentGuess);
+    if (import.meta.env.DEV) {
+      try {
+        console.debug('[GameRoundPage][SubmitFlow] Proceeding with submission', {
+          ...submitMeta,
+          guessCoordinates: currentGuess,
+        });
+      } catch {}
+    }
+
     setIsSubmitting(true);
     setHasSubmittedThisRound(true);
     setRoundStarted(false);
     if (!(isCompeteMode && timerEnabled)) {
       setIsTimerActive(false);
     }
+
+    const submissionStartedAt = Date.now();
 
     try {
       const distance = currentGuess
@@ -1728,7 +1772,14 @@ const GameRoundPage: React.FC = () => {
         hintPenaltyPercent,
       };
 
-      console.log('[GameRoundPage] About to call recordRoundResult with:', resultData, currentRoundIndex);
+      if (import.meta.env.DEV) {
+        try {
+          console.debug('[GameRoundPage][SubmitFlow] Calling recordRoundResult', {
+            resultData,
+            currentRoundIndex,
+          });
+        } catch {}
+      }
       await recordRoundResult(resultData, currentRoundIndex);
       if (isCompeteMode && roomId && canSendLobbyPayload) {
         awaitingSubmissionAckRef.current = true;
@@ -1746,11 +1797,16 @@ const GameRoundPage: React.FC = () => {
           return;
         }
       }
-      console.log('[GameRoundPage] recordRoundResult resolved, navigating to results');
+      if (import.meta.env.DEV) {
+        try {
+          console.debug('[GameRoundPage][SubmitFlow] recordRoundResult resolved', {
+            durationMs: Date.now() - submissionStartedAt,
+          });
+        } catch {}
+      }
 
       // Unlock navigation and stop local countdown to prevent timeout double-submit
       try { setHistoryLocked(false); } catch {}
-      try { (leavingRef as any).current = true; } catch {}
 
       if (roomId) {
         try {
@@ -1784,10 +1840,18 @@ const GameRoundPage: React.FC = () => {
           setIsTimerActive(true);
         }
       } else if (roomId) {
+        if (import.meta.env.DEV) {
+          try {
+            console.debug('[GameRoundPage][SubmitFlow] Navigating to results (solo manual path)', {
+              roomId,
+              roundNumber,
+            });
+          } catch {}
+        }
         navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
       }
     } catch (error) {
-      console.error('Error during guess submission:', error);
+      console.error('[GameRoundPage][SubmitFlow] Error during guess submission', error);
       pendingClampRef.current = true;
       awaitingSubmissionAckRef.current = false;
       toast({
@@ -1796,7 +1860,19 @@ const GameRoundPage: React.FC = () => {
         variant: 'destructive',
       });
     } finally {
-      setTimeout(() => setIsSubmitting(false), 300);
+      if (import.meta.env.DEV) {
+        try {
+          console.debug('[GameRoundPage][SubmitFlow] Scheduling isSubmitting reset', {
+            delayMs: 300,
+          });
+        } catch {}
+      }
+      setTimeout(() => {
+        if (import.meta.env.DEV) {
+          try { console.debug('[GameRoundPage][SubmitFlow] isSubmitting reset fired'); } catch {}
+        }
+        setIsSubmitting(false);
+      }, 300);
     }
   }, [
     isSubmitting,
@@ -1837,126 +1913,74 @@ const GameRoundPage: React.FC = () => {
     }).catch(() => {});
   }, [roomId, roundNumber, location.pathname, showIntro, roundStarted, roundTimerSec, timerEnabled]);
 
-  // Handle timer completion
   const handleTimeComplete = useCallback(async () => {
-    if (!timerEnabled) return;
-    if (leavingRef.current) return;
-    if (isSubmittingRef.current || hasSubmittedThisRound) return;
-    console.log("Timer completed - auto submitting");
-    setHasTimedOut(true);
-    if (!(isCompeteMode && roomId)) {
-      setIsTimerActive(false);
+    if (import.meta.env.DEV) {
+      try {
+        console.debug('[GameRoundPage][SubmitFlow] handleTimeComplete invoked', {
+          timerEnabled,
+          leaving: leavingRef.current,
+          isSubmitting: isSubmittingRef.current,
+          hasSubmittedThisRound,
+          hasTimedOut,
+          roundTimerSec,
+        });
+      } catch {}
     }
-    setRoundStarted(false);
-    setIsSubmitting(true);
 
-    if (!imageForRound) {
-      toast({
-        title: "Error",
-        description: "Cannot submit guess, image data is missing.",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
+    if (!timerEnabled && roundTimerSec > 0) {
+      if (import.meta.env.DEV) {
+        try { console.debug('[GameRoundPage][SubmitFlow] Timer completion ignored: timer disabled with positive duration'); } catch {}
+      }
+      return;
+    }
+    if (leavingRef.current) {
+      if (import.meta.env.DEV) {
+        try { console.debug('[GameRoundPage][SubmitFlow] Timer completion ignored: leaving flag set'); } catch {}
+      }
+      return;
+    }
+    if (isSubmittingRef.current || hasSubmittedThisRound) {
+      if (import.meta.env.DEV) {
+        try { console.debug('[GameRoundPage][SubmitFlow] Timer completion ignored: submission in progress or already submitted'); } catch {}
+      }
       return;
     }
 
-    const emitSubmission = () => {
-      if (!isCompeteMode || !roomId || !sendLobbyPayload || !user?.id) return;
-      const sent = sendLobbyPayload({ type: 'submission', roundNumber });
-      if (!sent) {
-        console.warn('[GameRoundPage] Failed to send submission payload after timeout submit');
-      }
-    };
+    setHasTimedOut(true);
+    setIsTimerActive(false);
+    setHasSubmittedThisRound(true);
 
     try {
-      if (!hasGuessedLocation) {
-        await recordRoundResult(
-          {
-            guessCoordinates: null,
-            distanceKm: null,
-            score: 0,
-            guessYear: null,
-            xpWhere: 0,
-            xpWhen: 0,
-            accuracy: 0,
-            hintsUsed: purchasedHints.length,
-          },
-          currentRoundIndex,
-        );
-        emitSubmission();
-
-        toast({
-          title: "Time's Up!",
-          description: "No location was selected. Your score for this round is 0.",
-          variant: "info",
-          className: "bg-white/70 text-black border border-gray-200",
-        });
-        if (!isCompeteMode && roomId) {
-          try { setHistoryLocked(false); } catch {}
-          try { (leavingRef as any).current = true; } catch {}
-          navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
-          setIsSubmitting(false);
-          return;
+      if (!imageForRound) {
+        if (import.meta.env.DEV) {
+          try { console.debug('[GameRoundPage][SubmitFlow] Timeout submit skipped: missing image for round'); } catch {}
         }
-        if (isCompeteMode) {
-          setHasSubmittedThisRound(true);
-          setWaitingForPeers(true);
-          setIsSubmitting(false);
-          return;
-        }
+        return;
       }
 
-      if (selectedYear === null) {
-        await recordRoundResult(
-          {
-            guessCoordinates: currentGuess,
-            distanceKm: null,
-            score: 0,
-            guessYear: null,
-            xpWhere: 0,
-            xpWhen: 0,
-            accuracy: 0,
-            hintsUsed: purchasedHints.length,
-          },
-          currentRoundIndex,
-        );
-        emitSubmission();
-
-        toast({
-          title: "Time's Up!",
-          description: "No year was selected. Your score for this round is 0.",
-          variant: "info",
-          className: "bg-white/70 text-black border border-gray-200",
-        });
-        if (!isCompeteMode && roomId) {
-          navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
-          setIsSubmitting(false);
-          return;
-        }
-      }
-
-      const distance = currentGuess
+      const guessYear = selectedYear ?? imageForRound.year;
+      const guessCoords = currentGuess ?? null;
+      const distance = guessCoords
         ? calculateDistanceKm(
-            currentGuess.lat,
-            currentGuess.lng,
+            guessCoords.lat,
+            guessCoords.lng,
             imageForRound.latitude,
             imageForRound.longitude,
           )
         : null;
-
-      const timeXP = selectedYear != null ? calculateTimeXP(selectedYear, imageForRound.year) : 0;
-      const locationXP = distance !== null ? calculateLocationXP(distance) : 0;
+      const timeXP = calculateTimeXP(guessYear, imageForRound.year);
+      const locationXP = distance != null ? calculateLocationXP(distance) : 0;
       const roundXPBeforePenalty = timeXP + locationXP;
       const finalScore = Math.max(0, roundXPBeforePenalty - xpDebt);
-      const percentBeforePenalty = (roundXPBeforePenalty / (100 + 100)) * 100;
+      const percentBeforePenalty = (timeXP + locationXP) / 2;
       const roundPercent = Math.max(0, Math.round(percentBeforePenalty - accDebt));
 
       await recordRoundResult(
         {
-          guessCoordinates: currentGuess,
+          guessCoordinates: guessCoords || undefined,
           distanceKm: distance,
           score: finalScore,
-          guessYear: selectedYear,
+          guessYear: selectedYear ?? null,
           xpWhere: locationXP,
           xpWhen: timeXP,
           accuracy: roundPercent,

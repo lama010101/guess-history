@@ -13,6 +13,7 @@ interface ProfileHeaderProps {
   onEditProfile: () => void;
   avatar?: Avatar | null;
   onProfileUpdate?: () => void;
+  allowProfileActions?: boolean;
 }
 
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({ 
@@ -20,7 +21,8 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   isLoading,
   onEditProfile,
   avatar,
-  onProfileUpdate
+  onProfileUpdate,
+  allowProfileActions = true
 }) => {
   const { isGuest } = useAuth();
   const [showUsernameModal, setShowUsernameModal] = useState(false);
@@ -33,6 +35,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   };
   
   const handleAvatarClick = () => {
+    if (!allowProfileActions) return;
     if (isGuest) {
       setShowAuthModal(true);
     } else {
@@ -71,13 +74,15 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               }}
             />
           </div>
-          <Button 
-            size="icon" 
-            className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-white dark:bg-gray-700 shadow cursor-pointer"
-            onClick={handleAvatarClick}
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
+          {allowProfileActions && (
+            <Button 
+              size="icon" 
+              className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-white dark:bg-gray-700 shadow cursor-pointer"
+              onClick={handleAvatarClick}
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          )}
         </div>
         
         <div className="flex-1 text-center sm:text-left">
@@ -122,13 +127,15 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
         </div>
       </div>
       
-      <UsernameChangeModal
-        isOpen={showUsernameModal}
-        onClose={() => setShowUsernameModal(false)}
-        currentUsername={profile?.display_name || ''}
-        userId={profile?.id || ''}
-        onUsernameUpdated={handleUsernameUpdated}
-      />
+      {allowProfileActions && (
+        <UsernameChangeModal
+          isOpen={showUsernameModal}
+          onClose={() => setShowUsernameModal(false)}
+          currentUsername={profile?.display_name || ''}
+          userId={profile?.id || ''}
+          onUsernameUpdated={handleUsernameUpdated}
+        />
+      )}
       
       <AuthModal
         isOpen={showAuthModal}

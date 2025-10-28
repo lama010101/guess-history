@@ -334,47 +334,56 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   };
 
   const handleSubmitGuess = async () => {
-    // With disabled overlay, this should only run when enabled
-    // Call the parent's onComplete if it exists
-    if (!onComplete) return;
+    if (!onComplete) {
+      if (import.meta.env.DEV) {
+        try { console.debug('[GameLayout1][SubmitFlow] Aborting submit: missing onComplete handler'); } catch {}
+      }
+      return;
+    }
+
     if (import.meta.env.DEV) {
       try {
-        console.debug('[GameLayout1] handleSubmitGuess invoked', {
-          hasOnComplete: typeof onComplete === 'function',
-          isSubmitEnabled,
-          isSubmitting,
+        console.debug('[GameLayout1][SubmitFlow] Button clicked', {
+          submitEnabled: isSubmitEnabled,
+          layoutSubmitting: isSubmitting,
           hasLocation: !!currentGuess,
           hasYear: isYearSelected,
         });
       } catch {}
     }
-    setIsSubmitting(true);
-    try {
+
+    if (!isSubmitEnabled) {
       if (import.meta.env.DEV) {
-        try {
-          console.debug('[GameLayout1] Calling onComplete from handleSubmitGuess');
-        } catch {}
+        try { console.debug('[GameLayout1][SubmitFlow] Guard prevented submit (disabled state)'); } catch {}
       }
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const submitStartedAt = Date.now();
+    if (import.meta.env.DEV) {
+      try { console.debug('[GameLayout1][SubmitFlow] Delegating to parent onComplete'); } catch {}
+    }
+
+    try {
       await onComplete();
       if (import.meta.env.DEV) {
         try {
-          console.debug('[GameLayout1] onComplete resolved');
+          console.debug('[GameLayout1][SubmitFlow] onComplete resolved', {
+            durationMs: Date.now() - submitStartedAt,
+          });
         } catch {}
       }
     } catch (error) {
       if (import.meta.env.DEV) {
-        try {
-          console.error('[GameLayout1] onComplete threw during submission', error);
-        } catch {}
+        try { console.error('[GameLayout1][SubmitFlow] onComplete threw', error); } catch {}
       } else {
-        console.error('[GameLayout1] onComplete handler threw during submission', error);
+        console.error('Error during submission:', error);
       }
-      console.error('[GameLayout1] onComplete handler threw during submission', error);
     } finally {
       if (import.meta.env.DEV) {
-        try {
-          console.debug('[GameLayout1] Resetting layout submitting state');
-        } catch {}
+        try { console.debug('[GameLayout1][SubmitFlow] Resetting layout submitting flag'); } catch {}
       }
       setIsSubmitting(false);
     }

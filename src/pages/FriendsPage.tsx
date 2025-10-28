@@ -2,15 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, UserPlus, UserMinus, Mail, Loader, AlertCircle, User } from "lucide-react";
+import { Search, UserPlus, UserMinus, Loader, AlertCircle, User } from "lucide-react";
 import { LockedFeatureOverlay } from "@/components/LockedFeatureOverlay";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog"; // Assuming Dialog components are available
 import { toast } from '@/components/ui/sonner';
 
 // Interface for raw profile data from Supabase
@@ -47,8 +45,6 @@ const FriendsPage = () => {
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [activeTab, setActiveTab] = useState('friends');
   const navigate = useNavigate();
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [selectedUserForProfile, setSelectedUserForProfile] = useState<User | Friend | null>(null);
 
   // If no user, redirect to login
   if (!user) {
@@ -92,9 +88,8 @@ const FriendsPage = () => {
     }
   }, [user]);
 
-  const openProfileModal = (userData: User | Friend) => {
-    setSelectedUserForProfile(userData);
-    setIsProfileModalOpen(true);
+  const handleNavigateToProfile = (profileId: string) => {
+    navigate(`/profile/${profileId}`);
   };
 
   const loadFriends = async () => {
@@ -384,16 +379,11 @@ const FriendsPage = () => {
     ? (searchResults.length > 0 ? searchResults : locallyFiltered)
     : allUsers;
 
-  const closeProfileModal = () => {
-    setIsProfileModalOpen(false);
-    setSelectedUserForProfile(null);
-  };
-
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6 text-history-primary dark:text-history-light">Friends</h1>
       
-      <Tabs defaultValue="friends" className="w-full" onValueChange={setActiveTab}>
+      <Tabs value={activeTab} defaultValue="friends" className="w-full" onValueChange={setActiveTab}>
         <TabsList className="mb-6">
           <TabsTrigger value="friends" className="flex items-center gap-2">
             <User className="h-4 w-4" />
@@ -411,11 +401,11 @@ const FriendsPage = () => {
               <Loader className="h-8 w-8 animate-spin text-history-primary" />
             </div>
           ) : friends.length === 0 ? (
-            <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow">
-              <User className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+            <div className="text-center py-12 bg-[#333333] text-white rounded-lg shadow">
+              <User className="h-16 w-16 mx-auto mb-4 text-gray-300" />
               <h3 className="text-lg font-medium mb-2">No friends yet</h3>
-              <p className="text-muted-foreground mb-4">Start adding friends to play together!</p>
-              <Button onClick={() => document.querySelector('[value="search"]')?.dispatchEvent(new Event('click'))}>
+              <p className="text-gray-300 mb-4">Start adding friends to play together!</p>
+              <Button onClick={() => setActiveTab('search')}>
                 Find Friends
               </Button>
             </div>
@@ -424,10 +414,10 @@ const FriendsPage = () => {
               {friends.map(friend => (
                 <div 
                   key={friend.id} 
-                  className="p-4 bg-white dark:bg-[#202020] rounded-lg shadow flex items-center justify-between"
+                  className="p-4 bg-[#333333] text-white rounded-lg shadow flex items-center justify-between"
                 >
                   <div className="flex items-center">
-                    <Avatar className="h-10 w-10 mr-4 cursor-pointer" onClick={() => openProfileModal(friend)}>
+                    <Avatar className="h-10 w-10 mr-4 cursor-pointer" onClick={() => handleNavigateToProfile(friend.id)}>
                       {friend.avatar_url ? (
                         <AvatarImage src={friend.avatar_url} alt={friend.username} />
                       ) : (
@@ -435,7 +425,7 @@ const FriendsPage = () => {
                       )}
                     </Avatar>
                     <div>
-                      <div className="font-medium cursor-pointer" onClick={() => openProfileModal(friend)}>{friend.username}</div>
+                      <div className="font-medium cursor-pointer" onClick={() => handleNavigateToProfile(friend.id)}>{friend.username}</div>
 
                     </div>
                   </div>
@@ -491,15 +481,15 @@ const FriendsPage = () => {
             </div>
           ) : displayUsers.length === 0 ? (
             searchTerm.trim() ? (
-              <div className="text-center py-8 bg-white dark:bg-gray-800 rounded-lg shadow">
+              <div className="text-center py-8 bg-[#333333] text-white rounded-lg shadow">
                 <AlertCircle className="h-12 w-12 mx-auto mb-4 text-yellow-500" />
                 <h3 className="text-lg font-medium mb-2">No users found</h3>
-                <p className="text-muted-foreground">Try a different search term</p>
+                <p className="text-gray-300">Try a different search term</p>
               </div>
             ) : (
-              <div className="text-center py-8 bg-white dark:bg-gray-800 rounded-lg shadow">
-                <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-muted-foreground">No users available</p>
+              <div className="text-center py-8 bg-[#333333] text-white rounded-lg shadow">
+                <User className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p className="text-gray-300">No users available</p>
               </div>
             )
           ) : (
@@ -517,18 +507,18 @@ const FriendsPage = () => {
                 {displayUsers.map(user => (
                   <div 
                     key={user.id} 
-                    className="p-4 bg-white dark:bg-[#202020] rounded-lg shadow flex items-center justify-between"
+                    className="p-4 bg-[#333333] text-white rounded-lg shadow flex items-center justify-between"
                   >
                     <div className="flex items-center">
-                      <Avatar className="h-10 w-10 mr-4 cursor-pointer" onClick={() => openProfileModal(user)}>
-                      {user.avatar_url ? (
-                        <AvatarImage src={user.avatar_url} alt={user.display_name || 'User'} />
-                      ) : (
-                        <AvatarFallback>{getInitial(user.display_name || 'User')}</AvatarFallback>
-                      )}
-                    </Avatar>
+                      <Avatar className="h-10 w-10 mr-4 cursor-pointer" onClick={() => handleNavigateToProfile(user.id)}>
+                        {user.avatar_url ? (
+                          <AvatarImage src={user.avatar_url} alt={user.display_name || 'User'} />
+                        ) : (
+                          <AvatarFallback>{getInitial(user.display_name || 'User')}</AvatarFallback>
+                        )}
+                      </Avatar>
                       <div>
-                        <div className="font-medium cursor-pointer" onClick={() => openProfileModal(user)}>{user.display_name || 'User'}</div>
+                        <div className="font-medium cursor-pointer" onClick={() => handleNavigateToProfile(user.id)}>{user.display_name || 'User'}</div>
                       </div>
                     </div>
                     
@@ -548,47 +538,6 @@ const FriendsPage = () => {
           )}
         </TabsContent>
       </Tabs>
-
-      {/* Profile Modal */}
-      {selectedUserForProfile && (() => {
-        const profileName = selectedUserForProfile.display_name || 
-                            (('username' in selectedUserForProfile && (selectedUserForProfile as Friend).username) ? (selectedUserForProfile as Friend).username : 'User');
-        return (
-          <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>User Profile</DialogTitle>
-                <DialogDescription>
-                  Viewing profile for {profileName}.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="flex items-center space-x-4">
-                  <Avatar className="h-16 w-16">
-                    {selectedUserForProfile.avatar_url ? (
-                      <AvatarImage src={selectedUserForProfile.avatar_url} alt={profileName} />
-                    ) : (
-                      <AvatarFallback>{getInitial(profileName || 'U')}</AvatarFallback>
-                    )}
-                  </Avatar>
-                  <div>
-                    <h3 className="text-lg font-semibold">{profileName}</h3>
-                    {/* Email field removed (not available on Friend/User union) */}
-                    {/* TODO: Add more profile details here, e.g., XP, games played, etc. */}
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button type="button" variant="secondary" onClick={closeProfileModal}>
-                    Close
-                  </Button>
-                </DialogClose>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        );
-      })()}
     </div>
   );
 };

@@ -17,11 +17,23 @@
   - When players focus the year input, the current value is auto-selected via `input.select()` and the state sync mirrors the latest `selectedYear` if it hadn’t been typed yet.
   - Ensures tapping the displayed year immediately highlights the full number so it can be overwritten without manual selection.
 
+### Year Picker Auto-Center (2025-10-28)
+
+- **Component**: `src/components/game/ZoomYearPicker.tsx`
+  - External year changes (e.g., typing a year in the header input) now mark a pending external value and call `centerOn()` so the rail recenters on that year.
+  - The effect ignores no-op updates (duplicate values, missing data) and keeps the existing interaction tracking to avoid recursive emissions.
+
 ### Solo Submit Button Consolidation (2025-10-28)
 
 - **Change**: Removed the legacy `src/components/game/SubmitGuessButton.tsx` in favor of the in-layout submit controls inside `GameLayout1`.
 - **Reason**: The standalone component duplicated submission logic and navigation, but the active flow now routes through `GameLayout1` → `GameRoundPage.handleSubmitGuess`. Keeping a single path avoids drift in validation, toasts, and multiplayer sync.
 - **Guidance**: Add future submit UI changes directly in `GameLayout1` and keep `handleSubmitGuess` in `GameRoundPage` as the sole submission handler.
+
+### Solo Results Redirect Guard (2025-10-28)
+
+- **Component**: `src/pages/GameRoundPage.tsx`
+- **Change**: Relaxed the solo auto-navigation guard so we no longer skip the results redirect when `leavingRef` is already true. We now only bail if the redirect has already fired (`hasNavigatedToResultsRef`).
+- **Why**: `handleSubmitGuess` sets `leavingRef.current = true` before the guard effect runs when timers are disabled. The effect used to treat that flag as a reason to abort navigation, leaving solo players stuck on the round screen with an unresponsive **Make Guess** button. Removing the `leavingRef` check keeps the same defense against duplicate redirects while allowing the intended navigation to results.
 
 ### Round Image Alt Text Scrubbing (2025-10-25)
 

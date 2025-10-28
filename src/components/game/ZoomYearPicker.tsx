@@ -355,6 +355,37 @@ export default function ZoomYearPicker({
     [applyView, currentSpan, domainMax, domainMin, maxSpan, minSpan]
   );
 
+  useEffect(() => {
+    if (previousValueRef.current === undefined) {
+      previousValueRef.current = value;
+      return;
+    }
+
+    if (value == null || Number.isNaN(value) || value === 0) {
+      previousValueRef.current = value;
+      return;
+    }
+
+    const normalized = clamp(Math.round(value), domainMin, domainMax);
+    const prev = previousValueRef.current;
+    previousValueRef.current = value;
+
+    if (prev != null && Math.abs(prev - normalized) < 0.5) {
+      return;
+    }
+
+    if (lastEmittedValueRef.current != null && Math.abs(lastEmittedValueRef.current - normalized) < 0.5) {
+      return;
+    }
+
+    if (Math.abs(viewCenter - normalized) < 0.5) {
+      return;
+    }
+
+    pendingExternalValueRef.current = normalized;
+    centerOn(normalized);
+  }, [centerOn, domainMax, domainMin, lastEmittedValueRef, value, viewCenter]);
+
   const nudge = useCallback(
     (deltaYears: number) => {
       if (deltaYears === 0) return;

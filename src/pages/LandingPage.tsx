@@ -144,7 +144,8 @@ const LandingPage: React.FC = () => {
           </h1>
           <p className="mt-8 text-lg md:text-2xl drop-shadow-lg">Time travel through historical events.</p>
           <Button
-            className="mt-14 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-20 py-4 rounded-xl shadow-xl flex items-center gap-2"
+            variant="hintGradient"
+            className="mt-14 px-20 py-4 rounded-xl shadow-xl flex items-center gap-2 text-lg font-semibold"
             onClick={() => setAuthOpen(true)}
           >
             <span>Start Playing</span>

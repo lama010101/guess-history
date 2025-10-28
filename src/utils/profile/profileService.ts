@@ -36,6 +36,14 @@ export interface Avatar {
   image_url?: string; // alias for firebase_url to keep old code working
 }
 
+export type GameModeKey = 'solo' | 'compete' | 'level' | 'collaborate';
+
+export interface ModeAggregate {
+  games_played: number;
+  avg_accuracy: number;
+  total_xp: number;
+}
+
 export interface UserStats {
   games_played: number;
   avg_accuracy: number;
@@ -46,6 +54,7 @@ export interface UserStats {
   time_accuracy: number;
   location_accuracy: number;
   challenge_accuracy: number;
+  per_mode: Record<GameModeKey, ModeAggregate>;
 }
 
 // Define the structure of the user_metrics table in Supabase
@@ -65,6 +74,18 @@ export interface UserMetricsTable {
   challenge_accuracy?: number;
   year_bullseye?: number;
   location_bullseye?: number;
+  xp_total_solo?: number;
+  games_played_solo?: number;
+  overall_accuracy_solo?: number;
+  xp_total_compete?: number;
+  games_played_compete?: number;
+  overall_accuracy_compete?: number;
+  xp_total_level?: number;
+  games_played_level?: number;
+  overall_accuracy_level?: number;
+  xp_total_collaborate?: number;
+  games_played_collaborate?: number;
+  overall_accuracy_collaborate?: number;
 }
 
 export type UserMetricsRecord = Record<string, number>;
@@ -450,6 +471,17 @@ export async function fetchUserStats(userId: string): Promise<UserStats | null> 
     
     const metrics = data as UserMetricsTable;
 
+    const resolveModeAggregate = (mode: GameModeKey): ModeAggregate => {
+      const gamesPlayed = Number(metrics[`games_played_${mode}` as const] ?? 0) || 0;
+      const totalXp = Number(metrics[`xp_total_${mode}` as const] ?? 0) || 0;
+      const avgAcc = Number(metrics[`overall_accuracy_${mode}` as const] ?? 0) || 0;
+      return {
+        games_played: gamesPlayed,
+        total_xp: totalXp,
+        avg_accuracy: avgAcc,
+      };
+    };
+
     return {
       games_played: metrics.games_played || 0,
       avg_accuracy: metrics.overall_accuracy || 0,
@@ -459,7 +491,13 @@ export async function fetchUserStats(userId: string): Promise<UserStats | null> 
       global_rank: metrics.global_rank || 0,
       time_accuracy: metrics.time_accuracy || 0,
       location_accuracy: metrics.location_accuracy || 0,
-      challenge_accuracy: metrics.challenge_accuracy || 0
+      challenge_accuracy: metrics.challenge_accuracy || 0,
+      per_mode: {
+        solo: resolveModeAggregate('solo'),
+        compete: resolveModeAggregate('compete'),
+        level: resolveModeAggregate('level'),
+        collaborate: resolveModeAggregate('collaborate'),
+      },
     };
   } catch (error) {
     console.error('Error in fetchUserStats:', error);

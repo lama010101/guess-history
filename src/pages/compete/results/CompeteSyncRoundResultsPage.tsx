@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useParams, useLocation, Navigate } from 'react-router-dom';
 import { Loader, ChevronRight, Home, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -51,87 +51,47 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
     };
   }, []);
 
-  const { roster: lobbyRoster } = useLobbyChat(roomId ?? null);
-
-  const avatarByUserId = useMemo(() => {
-    const map = new Map<string, string | null>();
-    if (Array.isArray(lobbyRoster)) {
-      lobbyRoster.forEach((entry) => {
-        if (entry.userId) {
-          map.set(entry.userId, entry.avatarUrl ?? null);
-        }
-      });
-    }
-    return map;
-  }, [lobbyRoster]);
-
   const combinedPeers = useMemo<PeerRoundRow[]>(() => {
-    const peerMap = new Map<string, PeerRoundRow>((peers || []).map((p) => [p.userId, p]));
-    const mergedById = new Map<string, PeerRoundRow>();
+    if (!Array.isArray(peers) || peers.length === 0) {
+      return (snapshotEntries || []).map((snap) => ({
+        userId: snap.userId,
+        displayName: snap.displayName || 'Player',
+        avatarUrl: null,
+        score: 0,
+        accuracy: Math.round((snap.timeAccuracy + snap.locationAccuracy) / 2),
+        xpTotal: snap.xpTotal,
+        xpDebt: snap.xpDebt,
+        whenXpDebt: 0,
+        whereXpDebt: 0,
+        accDebt: snap.accDebt,
+        whenAccDebt: 0,
+        whereAccDebt: 0,
+        xpWhere: null,
+        xpWhen: null,
+        locationAccuracy: snap.locationAccuracy,
+        timeAccuracy: snap.timeAccuracy,
+        distanceKm: snap.distanceKm,
+        guessYear: snap.guessYear,
+        guessLat: snap.guessLat,
+        guessLng: snap.guessLng,
+        actualLat: null,
+        actualLng: null,
+        submitted: true,
+        ready: false,
+        hintsUsed: snap.hintsUsed,
+        whenHints: null,
+        whereHints: null,
+        netAccuracy: null,
+      }));
+    }
 
-    snapshotEntries.forEach((snap) => {
-      const base = peerMap.get(snap.userId);
-      const merged: PeerRoundRow = base
-        ? {
-            ...base,
-            displayName: base.displayName || snap.displayName || 'Player',
-            xpTotal: Number.isFinite(base.xpTotal) ? base.xpTotal : snap.xpTotal,
-            xpDebt: Number.isFinite(base.xpDebt) ? base.xpDebt : snap.xpDebt,
-            accDebt: Number.isFinite(base.accDebt) ? base.accDebt : snap.accDebt,
-            timeAccuracy: base.timeAccuracy ?? snap.timeAccuracy ?? null,
-            locationAccuracy: base.locationAccuracy ?? snap.locationAccuracy ?? null,
-            distanceKm: base.distanceKm ?? snap.distanceKm ?? null,
-            guessYear: base.guessYear ?? snap.guessYear ?? null,
-            guessLat: base.guessLat ?? snap.guessLat ?? null,
-            guessLng: base.guessLng ?? snap.guessLng ?? null,
-            hintsUsed: base.hintsUsed ?? snap.hintsUsed ?? null,
-            submitted: true,
-            avatarUrl: base.avatarUrl ?? avatarByUserId.get(snap.userId) ?? null,
-          }
-        : {
-            userId: snap.userId,
-            displayName: snap.displayName || 'Player',
-            avatarUrl: avatarByUserId.get(snap.userId) ?? null,
-            score: 0,
-            accuracy: Math.round((snap.timeAccuracy + snap.locationAccuracy) / 2),
-            xpTotal: snap.xpTotal,
-            xpDebt: snap.xpDebt,
-            whenXpDebt: 0,
-            whereXpDebt: 0,
-            accDebt: snap.accDebt,
-            whenAccDebt: 0,
-            whereAccDebt: 0,
-            xpWhere: null,
-            xpWhen: null,
-            locationAccuracy: snap.locationAccuracy,
-            timeAccuracy: snap.timeAccuracy,
-            distanceKm: snap.distanceKm,
-            guessYear: snap.guessYear,
-            guessLat: snap.guessLat,
-            guessLng: snap.guessLng,
-            actualLat: null,
-            actualLng: null,
-            submitted: true,
-            ready: false,
-            hintsUsed: snap.hintsUsed,
-            whenHints: null,
-            whereHints: null,
-            netAccuracy: null,
-          };
-
-      mergedById.set(snap.userId, merged);
-    });
-
-    // Include any remaining peer rows (e.g., observers or entries without snapshot yet)
-    peerMap.forEach((peer, uid) => {
-      if (!mergedById.has(uid)) {
-        const avatarUrl = peer.avatarUrl ?? avatarByUserId.get(uid) ?? null;
-        mergedById.set(uid, avatarUrl === peer.avatarUrl ? peer : { ...peer, avatarUrl });
-      }
-    });
-
-    return Array.from(mergedById.values());
-  }, [peers, snapshotEntries, avatarByUserId]);
+    return peers.map((peer) => ({
+      ...peer,
+      displayName: peer.displayName || 'Player',
+      avatarUrl: peer.avatarUrl ?? null,
+      submitted: peer.submitted ?? false,
+    }));
+  }, [peers, snapshotEntries]);
 
   const layoutLeaderboards = useMemo(() => {
     const mapper = (rows: typeof leaderboard.total) =>
@@ -304,13 +264,15 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
     setLocalFallbackReady(false);
   }, [oneBasedRound]);
 
-  const { sendPayload: sendLobbyPayload } = useLobbyChat({
+  const { sendPayload: sendLobbyPayload, resetChat } = useLobbyChat({
     roomCode: roomId ?? null,
     displayName,
     userId: user?.id,
     enabled: Boolean(roomId),
     onResultsReady: handleResultsReady,
   });
+
+  useEffect(() => resetChat, [resetChat]);
 
   sendResultsReady.current = (ready: boolean) => {
     if (!roomId || !sendLobbyPayload) return false;
@@ -507,6 +469,10 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
     setPendingAdvance(false);
     setResultsReadySummary({ readyCount: 0, totalPlayers: 0, roundNumber: oneBasedRound });
   }, [oneBasedRound]);
+
+  if (!isLoading && !error && (!roomId || !contextResult || !currentImage)) {
+    return <Navigate to={`${modeBasePath}/game/room/${roomId ?? ''}/round/${oneBasedRound}`} replace />;
+  }
 
   if (isLoading) {
     return (

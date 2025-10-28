@@ -221,7 +221,8 @@ export const NavProfile = () => {
             {isGuest && (
               <Button
                 size="sm"
-                className="mt-2 w-full text-xs whitespace-nowrap bg-white text-black hover:bg-gray-100 dark:bg-white dark:text-black dark:hover:bg-gray-100 border border-gray-200"
+                variant="hintGradient"
+                className="mt-2 w-full text-xs whitespace-nowrap shadow-md"
                 onClick={() => setShowAuthModal(true)}
               >
                 Register to save progress

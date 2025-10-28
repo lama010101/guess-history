@@ -26,9 +26,9 @@ const badgeVariants = cva(
         selectedTag:
           "border-transparent bg-history-secondary/20 text-history-secondary font-medium",
         xp: 
-          "border-transparent bg-green-500/85 text-white font-medium",
+          "border-transparent text-white font-medium bg-[linear-gradient(135deg,_#16a34a_0%,_#22d3ee_100%)]",
         accuracy: 
-          "border-transparent bg-blue-500/85 text-white font-medium",
+          "border-transparent text-white font-medium bg-[linear-gradient(135deg,_#2563eb_0%,_#22d3ee_100%)]",
         selectedValue:
           "border-transparent bg-history-secondary/20 text-history-secondary font-medium text-base",
         hint:

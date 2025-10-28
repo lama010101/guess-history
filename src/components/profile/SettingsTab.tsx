@@ -175,7 +175,7 @@ const SettingsTab = forwardRef<SettingsTabHandle, SettingsTabProps>(({
                 <RadioGroupItem 
                   value="km" 
                   id="km" 
-                  className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" 
+                  className="border-gray-400 data-[state=checked]:border-transparent data-[state=checked]:bg-[linear-gradient(135deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] data-[state=checked]:text-black" 
                 />
                 <Label htmlFor="km">Kilometers (km)</Label>
               </div>
@@ -183,7 +183,7 @@ const SettingsTab = forwardRef<SettingsTabHandle, SettingsTabProps>(({
                 <RadioGroupItem 
                   value="mi" 
                   id="mi" 
-                  className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" 
+                  className="border-gray-400 data-[state=checked]:border-transparent data-[state=checked]:bg-[linear-gradient(135deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] data-[state=checked]:text-black" 
                 />
                 <Label htmlFor="mi">Miles (mi)</Label>
               </div>
@@ -205,7 +205,7 @@ const SettingsTab = forwardRef<SettingsTabHandle, SettingsTabProps>(({
                 <RadioGroupItem 
                   value="local" 
                   id="labels-local" 
-                  className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" 
+                  className="border-gray-400 data-[state=checked]:border-transparent data-[state=checked]:bg-[linear-gradient(135deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] data-[state=checked]:text-black" 
                 />
                 <Label htmlFor="labels-local">Local (native script)</Label>
               </div>
@@ -213,7 +213,7 @@ const SettingsTab = forwardRef<SettingsTabHandle, SettingsTabProps>(({
                 <RadioGroupItem 
                   value="en" 
                   id="labels-en" 
-                  className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" 
+                  className="border-gray-400 data-[state=checked]:border-transparent data-[state=checked]:bg-[linear-gradient(135deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] data-[state=checked]:text-black" 
                 />
                 <Label htmlFor="labels-en">English only</Label>
               </div>
@@ -283,21 +283,21 @@ const SettingsTab = forwardRef<SettingsTabHandle, SettingsTabProps>(({
             className="flex flex-col gap-4"
           >
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="none" id="inertia-none" className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" />
+              <RadioGroupItem value="none" id="inertia-none" className="border-gray-400 data-[state=checked]:border-transparent data-[state=checked]:bg-[linear-gradient(135deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] data-[state=checked]:text-black" />
               <Label htmlFor="inertia-none" className="flex items-center">
                 <Navigation className="h-4 w-4 mr-2 opacity-50" />
                 None - No automatic panning
               </Label>
             </div>
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="swipes" id="inertia-swipes" className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" />
+              <RadioGroupItem value="swipes" id="inertia-swipes" className="border-gray-400 data-[state=checked]:border-transparent data-[state=checked]:bg-[linear-gradient(135deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] data-[state=checked]:text-black" />
               <Label htmlFor="inertia-swipes" className="flex items-center">
                 <Navigation className="h-4 w-4 mr-2" />
                 Panning - From one edge to the other
               </Label>
             </div>
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="swipes_recenter" id="inertia-recenter" className="border-gray-400 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white" />
+              <RadioGroupItem value="swipes_recenter" id="inertia-recenter" className="border-gray-400 data-[state=checked]:border-transparent data-[state=checked]:bg-[linear-gradient(135deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] data-[state=checked]:text-black" />
               <Label htmlFor="inertia-recenter" className="flex items-center">
                 <Navigation className="h-4 w-4 mr-2" />
                 Panning + recenter - Motion, then auto-center

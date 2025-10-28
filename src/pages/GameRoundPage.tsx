@@ -66,14 +66,30 @@ const GameRoundPage: React.FC = () => {
   const hasNavigatedToResultsRef = useRef(false);
   const [hasSubmittedThisRound, setHasSubmittedThisRound] = useState(false);
   const [hasTimedOut, setHasTimedOut] = useState<boolean>(false);
+  const [shouldRenderResultsRedirect, setShouldRenderResultsRedirect] = useState(false);
+  const [redirectReplaceMode, setRedirectReplaceMode] = useState(false);
+
+  const requestNavigateToResults = useCallback((replace = false) => {
+    if (!resultsPath) return;
+
+    const alreadyNavigated = hasNavigatedToResultsRef.current && !replace;
+    if (!hasNavigatedToResultsRef.current) {
+      hasNavigatedToResultsRef.current = true;
+    }
+    leavingRef.current = true;
+    setHistoryLocked(false);
+    setShouldRenderResultsRedirect(true);
+    setRedirectReplaceMode((prev) => prev || replace);
+    if (!alreadyNavigated) {
+      navigate(resultsPath, { replace });
+    }
+  }, [navigate, resultsPath]);
 
   useEffect(() => {
     if (isCompeteMode) return;
     if (!resultsPath) return;
     if (!(hasSubmittedThisRound || hasTimedOut)) return;
     if (hasNavigatedToResultsRef.current) return;
-    hasNavigatedToResultsRef.current = true;
-    leavingRef.current = true;
     if (import.meta.env.DEV) {
       try {
         console.debug('[GameRoundPage][SubmitFlow] Navigating to results (solo auto-redirect)', {
@@ -83,8 +99,8 @@ const GameRoundPage: React.FC = () => {
         });
       } catch {}
     }
-    navigate(resultsPath, { replace: true });
-  }, [isCompeteMode, resultsPath, hasSubmittedThisRound, hasTimedOut, navigate]);
+    requestNavigateToResults(true);
+  }, [isCompeteMode, resultsPath, hasSubmittedThisRound, hasTimedOut, requestNavigateToResults]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -462,10 +478,9 @@ const GameRoundPage: React.FC = () => {
     setWaitingForPeers(!allSubmitted);
 
     if (allSubmitted && roomId && !hasNavigatedToResultsRef.current) {
-      hasNavigatedToResultsRef.current = true;
-      navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
+      requestNavigateToResults();
     }
-  }, [isCompeteMode, roundNumber, roomId, navigate, modeBasePath]);
+  }, [isCompeteMode, roundNumber, roomId, requestNavigateToResults]);
 
   const {
     messages: chatMessages,
@@ -1144,7 +1159,13 @@ const GameRoundPage: React.FC = () => {
     const selfPeer = roundPeers.find((p) => p.userId === selfId) || null;
     const submittedAdj = submitted + (hasSubmittedThisRound && (!selfPeer || selfPeer.submitted !== true) ? 1 : 0);
     const allSubmitted = expectedTotal > 0 && submittedAdj >= expectedTotal;
-    setSubmittedCounts({ submitted: submittedAdj, total: expectedTotal });
+
+    setSubmittedCounts((prev) => {
+      if (prev.submitted === submittedAdj && prev.total === expectedTotal) {
+        return prev;
+      }
+      return { submitted: submittedAdj, total: expectedTotal };
+    });
 
     const otherSubmitters = roundPeers.filter((peer) => {
       if (!peer.submitted) return false;
@@ -1170,7 +1191,7 @@ const GameRoundPage: React.FC = () => {
       const progressLabel = expectedTotal > 0 ? ` (${submitted}/${expectedTotal})` : '';
       const submitterLabel = newSubmitterNames.length === 1 ? newSubmitterNames[0] : `${newSubmitterNames.length} players`;
       showSubmissionNotice(`${submitterLabel} submitted${progressLabel}`);
-      
+
       if (timerEnabledRef.current && !hasClampedThisRound.current && remainingTimeRef.current > 15) {
         applyCountdownRush();
       }
@@ -1178,7 +1199,7 @@ const GameRoundPage: React.FC = () => {
 
     if (!hasSubmittedThisRound) {
       if (isCompeteMode) {
-        setWaitingForPeers(false);
+        setWaitingForPeers((prev) => (prev === false ? prev : false));
       }
       return;
     }
@@ -1209,23 +1230,22 @@ const GameRoundPage: React.FC = () => {
             });
           } catch {}
         }
-        hasNavigatedToResultsRef.current = true;
-        setWaitingForPeers(false);
-        navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
+        setWaitingForPeers((prev) => (prev === false ? prev : false));
+        requestNavigateToResults();
       } else {
-        setWaitingForPeers(!allSubmitted);
-        if (!allSubmitted && timerEnabledRef.current) {
-          setIsTimerActive(true);
+        const shouldWait = !allSubmitted;
+        setWaitingForPeers((prev) => (prev === shouldWait ? prev : shouldWait));
+        if (shouldWait && timerEnabledRef.current) {
+          setIsTimerActive((prev) => (prev === true ? prev : true));
         }
       }
     } else if (allSubmitted && !hasNavigatedToResultsRef.current) {
       hasNavigatedToResultsRef.current = true;
-      setWaitingForPeers(false);
+      setWaitingForPeers((prev) => (prev === false ? prev : false));
       navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
     }
   }, [
     roundPeers,
-    waitingForPeers,
     roomId,
     modeBasePath,
     navigate,
@@ -1235,8 +1255,10 @@ const GameRoundPage: React.FC = () => {
     showSubmissionNotice,
     applyCountdownRush,
     registerRecentSubmitter,
-    submittedCounts,
     lobbyRoster,
+    requestNavigateToResults,
+    user?.id,
+    displayName,
   ]);
 
   useEffect(() => {
@@ -1293,6 +1315,8 @@ const GameRoundPage: React.FC = () => {
     setCurrentGuess(null);
     setHasGuessedLocation(false);
     setHasTimedOut(false);
+    setShouldRenderResultsRedirect(false);
+    setRedirectReplaceMode(false);
     if (timerEnabled) {
       // On round entry, do not overwrite Solo's persisted timer. Solo will hydrate via soloCountdown effect.
       // Only seed the UI in Compete mode where server/unified countdown hydrates separately.
@@ -1359,15 +1383,14 @@ const GameRoundPage: React.FC = () => {
         if (!cancelled && participantCount > 0 && submittedCount >= participantCount) {
           setWaitingForPeers(false);
           if (roomId && !hasNavigatedToResultsRef.current) {
-            hasNavigatedToResultsRef.current = true;
-            navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
+            requestNavigateToResults();
           }
         }
       } catch {}
     };
     const t = setTimeout(run, 1500);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [isCompeteMode, roomId, hasSubmittedThisRound, waitingForPeers, currentRoundIndex, modeBasePath, navigate, roundNumber]);
+  }, [isCompeteMode, roomId, hasSubmittedThisRound, waitingForPeers, currentRoundIndex, requestNavigateToResults, roundNumber]);
 
   const peerMarkers = useMemo(() => {
     if (!isCompeteMode) {
@@ -1853,7 +1876,7 @@ const GameRoundPage: React.FC = () => {
             });
           } catch {}
         }
-        navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
+        requestNavigateToResults();
       }
     } catch (error) {
       console.error('[GameRoundPage][SubmitFlow] Error during guess submission', error);
@@ -2006,7 +2029,7 @@ const GameRoundPage: React.FC = () => {
         try { setHistoryLocked(false); } catch {}
         try { (leavingRef as any).current = true; } catch {}
         setTimeout(() => {
-          navigate(`${modeBasePath}/game/room/${roomId}/round/${roundNumber}/results`);
+          requestNavigateToResults();
           setIsSubmitting(false);
         }, 500);
       } else {
@@ -2035,8 +2058,7 @@ const GameRoundPage: React.FC = () => {
     recordRoundResult,
     purchasedHints.length,
     currentRoundIndex,
-    navigate,
-    modeBasePath,
+    requestNavigateToResults,
     selectedYear,
     currentGuess,
   ]);
@@ -2104,6 +2126,10 @@ const GameRoundPage: React.FC = () => {
       : (typeof globalMinYear === 'number' ? currentYear : undefined));
 
   const layoutGameMode = isCompeteMode ? 'compete' : (isLevelUpRoute ? 'levelup' : 'solo');
+
+  if (shouldRenderResultsRedirect && resultsPath) {
+    return <Navigate to={resultsPath} replace={redirectReplaceMode} />;
+  }
 
   if (!isCompeteMode && (hasSubmittedThisRound || hasTimedOut) && resultsPath) {
     return <Navigate to={resultsPath} replace />;

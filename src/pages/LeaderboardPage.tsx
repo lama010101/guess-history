@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ListOrdered, Info } from "lucide-react";
+import { Info } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { AuthModal } from "@/components/AuthModal";
+import { Badge } from "@/components/ui/badge";
 
 interface ProfileFromSupabase {
   id: string;
@@ -35,6 +36,8 @@ const LeaderboardPage = () => {
   const { user, isGuest } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -147,44 +150,82 @@ const LeaderboardPage = () => {
     return () => clearInterval(refreshInterval);
   }, [user]);
 
-  const loadMore = async () => {
-    if (isLoadingMore || !hasMore) return;
-    
-    setIsLoadingMore(true);
-    const newDisplayCount = displayCount + 20;
-    setDisplayCount(newDisplayCount);
-    
-    // Check if we have more data to load
-    if (newDisplayCount >= sortedLeaderboard.length) {
-      setHasMore(false);
-    }
-    
-    setIsLoadingMore(false);
-  };
+  const sortedLeaderboard = useMemo(() => {
+    return [...leaderboard].sort((a, b) => {
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortConfig.direction === 'asc'
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+
+      return 0;
+    });
+  }, [leaderboard, sortConfig]);
 
   const handleSort = (key: keyof LeaderboardEntry) => {
     setSortConfig(prevConfig => ({
       key,
       direction: prevConfig.key === key && prevConfig.direction === 'desc' ? 'asc' : 'desc'
     }));
+    setDisplayCount(20);
   };
 
-  const sortedLeaderboard = [...leaderboard].sort((a, b) => {
-    const aValue = a[sortConfig.key];
-    const bValue = b[sortConfig.key];
-    
-    if (typeof aValue === 'number' && typeof bValue === 'number') {
-      return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+  const loadMore = useCallback(() => {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    setDisplayCount(prev => Math.min(prev + 20, sortedLeaderboard.length));
+
+    if (loadTimeoutRef.current) {
+      window.clearTimeout(loadTimeoutRef.current);
     }
-    
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return sortConfig.direction === 'asc' 
-        ? aValue.localeCompare(bValue) 
-        : bValue.localeCompare(aValue);
+
+    loadTimeoutRef.current = window.setTimeout(() => {
+      setIsLoadingMore(false);
+      loadTimeoutRef.current = null;
+    }, 250);
+  }, [hasMore, isLoadingMore, sortedLeaderboard.length]);
+
+  useEffect(() => {
+    const shouldHaveMore = displayCount < sortedLeaderboard.length;
+    if (hasMore !== shouldHaveMore) {
+      setHasMore(shouldHaveMore);
     }
-    
-    return 0;
-  });
+  }, [displayCount, sortedLeaderboard.length, hasMore]);
+
+  useEffect(() => {
+    if (!hasMore) return;
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          loadMore();
+        }
+      },
+      { root: null, rootMargin: "200px", threshold: 0.1 }
+    );
+
+    observer.observe(sentinel);
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasMore, loadMore]);
+
+  useEffect(() => {
+    return () => {
+      if (loadTimeoutRef.current) {
+        window.clearTimeout(loadTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -196,53 +237,28 @@ const LeaderboardPage = () => {
       {/* Current user card */}
       {currentUserRank && (
         <div className="max-w-2xl mx-auto mb-6">
-          <div className="bg-white dark:bg-[#202020] rounded-lg shadow-lg p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 text-center font-['Montserrat']">
+          <div className="rounded-lg shadow-lg p-6 bg-[#333333] text-white">
+            <h3 className="text-lg font-semibold mb-4 text-center font-['Montserrat']">
               Your Ranking
             </h3>
-            {/* Header row for labels */}
-            <div className="grid grid-cols-4 gap-4 text-center items-center">
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Rank</div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Name</div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">%</div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">XP</div>
+            <div className="grid grid-cols-3 gap-4 text-center items-center text-white/70 text-xs font-semibold uppercase tracking-wide">
+              <span>Rank</span>
+              <span>%</span>
+              <span>XP</span>
             </div>
-            <div className="grid grid-cols-4 gap-4 text-center items-center">
-              <div>
-                <div className="text-2xl font-bold text-history-primary dark:text-white">
-                  #{leaderboard.findIndex(entry => entry.user_id === user?.id) + 1}
-                </div>
+            <div className="grid grid-cols-3 gap-4 text-center items-center mt-4">
+              <div className="text-2xl font-bold">
+                #{leaderboard.findIndex(entry => entry.user_id === user?.id) + 1}
               </div>
-              <div>
-                <div className="flex items-center justify-center gap-2">
-                  {currentUserRank.avatar_url ? (
-                    <img
-                      src={currentUserRank.avatar_url}
-                      alt={currentUserRank.display_name}
-                      className="h-8 w-8 rounded-full object-cover border-2 border-history-primary/30"
-                      onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                  ) : (
-                    <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                      <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                        {currentUserRank.display_name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                  <span className="text-lg font-semibold text-history-primary dark:text-white">
-                    {currentUserRank.display_name}
-                  </span>
-                </div>
-              </div>
-              <div>
-                <div className="text-lg font-semibold text-history-primary dark:text-white">
+              <div className="flex justify-center">
+                <Badge variant="accuracy" className="px-4 py-1 text-sm shadow-md">
                   {Math.round(currentUserRank.accuracy)}%
-                </div>
+                </Badge>
               </div>
-              <div>
-                <div className="text-lg font-semibold text-history-primary dark:text-white">
+              <div className="flex justify-center">
+                <Badge variant="xp" className="px-4 py-1 text-sm shadow-md">
                   {Math.round(currentUserRank.xp).toLocaleString()}
-                </div>
+                </Badge>
               </div>
             </div>
           </div>
@@ -250,17 +266,17 @@ const LeaderboardPage = () => {
       )}
       
       {isGuest && (
-        <Alert className="mb-6 bg-amber-50 border-amber-200 text-amber-800 max-w-4xl mx-auto">
-          <div className="flex items-center gap-2">
+        <Alert className="mb-6 bg-white border border-gray-200 text-black max-w-4xl mx-auto">
+          <div className="flex items-center gap-2 text-black">
             <Info className="h-4 w-4" />
             <AlertDescription>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full gap-2 text-black">
                 <span>Guest users can view the leaderboard but won't appear on it.</span>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-300"
+                <Button
+                  size="sm"
+                  variant="hintGradient"
                   onClick={() => setShowAuthModal(true)}
+                  className="text-black"
                 >
                   Sign up to compete
                 </Button>
@@ -269,23 +285,23 @@ const LeaderboardPage = () => {
           </div>
         </Alert>
       )}
-      <div className="bg-white dark:bg-[#202020] rounded-xl shadow-lg overflow-hidden max-w-4xl mx-auto">
-        <Table className="bg-white dark:bg-[#202020]">
-          <TableHeader>
-            <TableRow>
-              <TableHead className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 font-['Montserrat']" onClick={() => handleSort('user_id')}>
+      <div className="bg-[#333333] text-white rounded-xl shadow-lg overflow-hidden max-w-4xl mx-auto">
+        <Table className="bg-[#333333] text-white">
+          <TableHeader className="bg-[#333333]">
+            <TableRow className="bg-[#333333]">
+              <TableHead className="cursor-pointer font-['Montserrat'] text-white hover:bg-[#3d3d3d]" onClick={() => handleSort('user_id')}>
                 Rank {sortConfig.key === 'user_id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </TableHead>
-              <TableHead className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 font-['Montserrat']" onClick={() => handleSort('display_name')}>
+              <TableHead className="cursor-pointer font-['Montserrat'] text-white hover:bg-[#3d3d3d]" onClick={() => handleSort('display_name')}>
                 Player {sortConfig.key === 'display_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </TableHead>
-              <TableHead className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 font-['Montserrat']" onClick={() => handleSort('accuracy')}>
+              <TableHead className="cursor-pointer font-['Montserrat'] text-white hover:bg-[#3d3d3d]" onClick={() => handleSort('accuracy')}>
                 % {sortConfig.key === 'accuracy' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </TableHead>
-              <TableHead className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 font-['Montserrat']" onClick={() => handleSort('xp')}>
+              <TableHead className="cursor-pointer font-['Montserrat'] text-white hover:bg-[#3d3d3d]" onClick={() => handleSort('xp')}>
                 XP {sortConfig.key === 'xp' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </TableHead>
-              <TableHead className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 font-['Montserrat']" onClick={() => handleSort('games_played')}>
+              <TableHead className="cursor-pointer font-['Montserrat'] text-white hover:bg-[#3d3d3d]" onClick={() => handleSort('games_played')}>
                 Games {sortConfig.key === 'games_played' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </TableHead>
             </TableRow>
@@ -301,8 +317,8 @@ const LeaderboardPage = () => {
                   key={entry.user_id}
                   className={
                     entry.user_id === user?.id
-                      ? 'bg-history-primary/10 dark:bg-history-primary/30 ring-2 ring-history-primary/60 dark:ring-history-primary/80'
-                      : ''
+                      ? 'bg-[rgba(0,0,0,0.4)] border-l-4 border-history-primary'
+                      : 'hover:bg-[#3d3d3d]'
                   }
                 >
                   <TableCell className="font-medium">#{idx + 1}</TableCell>
@@ -324,26 +340,28 @@ const LeaderboardPage = () => {
                           </span>
                         </div>
                       )}
-                      <span>{entry.display_name}</span>
+                      <span className="font-semibold">{entry.display_name}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="font-semibold font-['Montserrat']">{Math.round(entry.accuracy)}%</TableCell>
-                  <TableCell className="font-semibold font-['Montserrat']">{entry.xp.toLocaleString()}</TableCell>
+                  <TableCell className="font-semibold font-['Montserrat']">
+                    <Badge variant="accuracy" className="px-3 py-1 text-xs shadow-sm">
+                      {Math.round(entry.accuracy)}%
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="font-semibold font-['Montserrat']">
+                    <Badge variant="xp" className="px-3 py-1 text-xs shadow-sm">
+                      {entry.xp.toLocaleString()}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="font-['Montserrat']">{entry.games_played}</TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
-        {hasMore && sortedLeaderboard.length > displayCount && (
-          <div className="text-center py-4">
-            {isLoadingMore ? (
-              <div className="animate-spin h-6 w-6 border-2 border-history-primary border-t-transparent rounded-full mx-auto"></div>
-            ) : (
-              <Button onClick={loadMore} variant="outline">
-                Load More
-              </Button>
-            )}
+        {hasMore && (
+          <div ref={sentinelRef} className="py-6 flex items-center justify-center">
+            <div className="animate-spin h-6 w-6 border-2 border-white/40 border-t-transparent rounded-full"></div>
           </div>
         )}
       </div>

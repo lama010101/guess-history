@@ -790,7 +790,7 @@ const FinalResultsPage = () => {
 
                 {/* Share Results button under score card */}
                 <div className="mt-6 flex justify-center">
-                  <Button onClick={handleShare} className="gap-2 bg-white text-black hover:bg-gray-100">
+                  <Button onClick={handleShare} variant="hintGradient" className="gap-2">
                     <Share2 className="h-5 w-5" />
                     Share Results
                   </Button>

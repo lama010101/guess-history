@@ -269,8 +269,8 @@ export function AuthModal({
           <Button
             onClick={handleGoogleSignIn}
             disabled={isLoading}
-            className="w-full bg-white text-black border hover:bg-white hover:text-black flex items-center justify-center gap-2"
-            variant="secondary"
+            className="w-full bg-[#4285F4] hover:bg-[#3367D6] active:bg-[#1E88E5] text-white flex items-center justify-center gap-2"
+            style={{ fontFamily: 'Roboto, "Helvetica Neue", Arial, sans-serif' }}
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
               <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
@@ -280,7 +280,7 @@ export function AuthModal({
                 <path fill="#EA4335" d="M -14.754 45.098 C -12.9843 45.098 -11.4643 45.623 -10.2843 46.433 L -6.14576 42.924 C -8.80451 41.689 -11.514 40.619 -14.754 40.619 C -19.194 40.619 -22.9443 42.179 -25.0943 46.069 L -20.9643 49.679 C -20.1343 46.999 -17.694 45.098 -14.754 45.098 Z"/>
               </g>
             </svg>
-            Continue with Google
+            Sign in with Google
           </Button>
           </div>
 

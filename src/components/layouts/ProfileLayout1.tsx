@@ -216,7 +216,11 @@ const ProfileLayout1 = () => {
         {isViewingSelf && isGuest && (
           <div className="my-4 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700">
             <p>You are currently playing as a guest. Register to save your progress.</p>
-            <Button onClick={() => setShowAuthModal(true)} className="mt-2">
+            <Button
+              onClick={() => setShowAuthModal(true)}
+              variant="hintGradient"
+              className="mt-2"
+            >
               Register to save progress
             </Button>
           </div>

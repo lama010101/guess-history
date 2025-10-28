@@ -128,11 +128,11 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   // Targeted highlight states for When/Where
   const [highlightWhen, setHighlightWhen] = useState(false);
   const [highlightWhere, setHighlightWhere] = useState(false);
+  const [pendingYearDraft, setPendingYearDraft] = useState<string>('');
   // Loading state after submitting guess
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Inline editable year input state for header
+  // Inline editable year input state for header (draft when typing)
   const [yearInput, setYearInput] = useState<string>('');
-  // Track if the slider has been interacted with; controls showing the year
   const [yearInteracted, setYearInteracted] = useState(false);
   // Submit guidance message shown only when clicking a disabled Submit button
   const [submitPrompt, setSubmitPrompt] = useState<string | null>(null);
@@ -150,15 +150,14 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const yearInputRef = useRef<HTMLInputElement>(null);
   const submitButtonDebugRef = useRef<string>('');
   useEffect(() => {
-    // Only sync input from selectedYear after interaction; keep empty initially
-    if (yearInteracted) {
-      if (typeof selectedYear === 'number') {
-        setYearInput(String(selectedYear));
-      } else {
-        setYearInput('');
-      }
+    if (!yearInteracted) return;
+    if (pendingYearDraft !== '') return;
+    if (typeof selectedYear === 'number') {
+      setYearInput(String(selectedYear));
+    } else {
+      setYearInput('');
     }
-  }, [selectedYear, yearInteracted]);
+  }, [selectedYear, yearInteracted, pendingYearDraft]);
 
   // Admin-configurable flags via env (fallbacks match spec defaults)
   const immersiveEnabled = ((import.meta as any).env?.VITE_IMMERSIVE_ENABLED ?? 'true') === 'true';
@@ -544,7 +543,12 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                   <input
                     type="text"
                     value={yearInteracted ? yearInput : ''}
-                    onChange={(e) => setYearInput(e.target.value)}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      setYearInteracted(true);
+                      setYearInput(raw);
+                      setPendingYearDraft(raw);
+                    }}
                     ref={yearInputRef}
                     onFocus={(event) => {
                       // Ensure yearInteracted is set when input is focused
@@ -560,15 +564,17 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                       }, 0);
                     }}
                     onBlur={() => {
-                      const parsed = parseInt(yearInput, 10);
-                      if (!isNaN(parsed)) {
-                        const clamped = Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, parsed));
-                        if (clamped !== selectedYear) onYearChange(clamped);
-                        setYearInput(String(clamped));
-                      } else {
-                        // keep empty, not selected
-                        setYearInput('');
+                      if (pendingYearDraft.trim() !== '') {
+                        const parsed = parseInt(pendingYearDraft, 10);
+                        if (!Number.isNaN(parsed)) {
+                          const clamped = Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, parsed));
+                          if (clamped !== selectedYear) onYearChange(clamped);
+                          setYearInput(String(clamped));
+                        } else {
+                          setYearInput('');
+                        }
                       }
+                      setPendingYearDraft('');
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {

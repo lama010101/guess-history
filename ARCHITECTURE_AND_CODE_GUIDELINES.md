@@ -4,6 +4,12 @@
   - Keep the `selectedYear` state declaration before any DEV-only submit debug effects that reference it. If those effects run while hooks are still being initialized, React throws "Cannot access 'selectedYear' before initialization" and the first round fails to render.
   - The debug effects can sit immediately after the state block (e.g., after `selectedYear`, `remainingTime`, `hasGuessedLocation` etc.) so they always read defined values.
 
+### Friends/Leaderboard/Profile Navbar Home Link (2025-10-28)
+
+- **Layout**: `src/layouts/MainLayout.tsx`
+  - The sticky top nav now centers a "G-H" home link badge between stats and profile controls. The `G-` segment renders white while the `H` uses the shared multi-stop gradient to match other CTA accents.
+  - Clicking the badge navigates to `/home` and replaces the previous empty center space, keeping the nav balanced across Friends, Leaderboard, and Profile pages that use `MainLayout`.
+
 ### Solo Submit Flow Debug Instrumentation (2025-10-27)
 
 - **Components**: `src/pages/GameRoundPage.tsx`, `src/components/layouts/GameLayout1.tsx`
@@ -16,6 +22,18 @@
 - **Component**: `src/components/layouts/GameLayout1.tsx`
   - When players focus the year input, the current value is auto-selected via `input.select()` and the state sync mirrors the latest `selectedYear` if it hadn’t been typed yet.
   - Ensures tapping the displayed year immediately highlights the full number so it can be overwritten without manual selection.
+
+### Guest CTA Gradient Alignment (2025-10-28)
+
+- **Components**: `src/components/NavProfile.tsx`, `src/components/layouts/ProfileLayout1.tsx`, `src/pages/FinalResultsPage.tsx`
+  - Guest-oriented buttons (**Register to save progress**, **Share Results**) now use the shared `hintGradient` button variant to reuse the vibrant gradient already used for Hint CTAs.
+  - Keeps guest prompts visually consistent and ensures the gradient style definition lives centrally in `src/components/ui/button.tsx`.
+
+### Year Input Draft Commit (2025-10-28)
+
+- **Component**: `src/components/layouts/GameLayout1.tsx`
+  - Manual typing now stores a draft value while focused; the year commits on blur/Enter after clamping to `YEAR_RANGE_MIN/MAX`.
+  - Prevents the default dataset year from being re-inserted mid-typing while still syncing the chosen year once the player finishes editing.
 
 ### Year Picker Auto-Center (2025-10-28)
 
@@ -3589,6 +3607,12 @@ Notes
 - Client integration (`src/pages/GameRoundPage.tsx`):
   - Writes progress whenever the round view mounts or state changes (`waiting`, `intro`, `active`, `results`).
   - On manual submission and timeout auto-submit, it records `substep: 'results'` with the navigation target before redirecting.
+  - Results navigation is funneled through `requestNavigateToResults()` which both issues the router transition and renders a `<Navigate replace>` fallback. This ensures Compete rooms (including single-player edge cases) land on `/results` even if the history stack suppresses the imperative `navigate()` call.
+  - Compete submission progress now uses idempotent state setters (`setSubmittedCounts`, `setWaitingForPeers`, `setIsTimerActive`) so that realtime roster churn or PartyKit retries cannot trigger the React "maximum update depth" loop observed in Oct 2025.
+- Compete results view (`src/pages/compete/results/CompeteSyncRoundResultsPage.tsx`):
+  - Mirrors the Solo guard by redirecting back to the round route whenever the hydrated `contextResult`/`currentImage` pair is missing after submission. This prevents blank screens when Supabase replication lags for single-player rooms.
+  - Falls back to locally cached `snapshotEntries` when the realtime peers array is empty so the leaderboard renders immediately.
+  - Resets the lobby chat hook on unmount to avoid duplicate websocket sessions after advancing rounds.
 - Usage: Consumers can query `session_progress` to resume multiplayer sessions, drive spectator dashboards, or audit player states. RLS already restricts rows to authenticated participants (see `20250819_create_multiplayer_core.sql`).
 
 ### Supabase Client Singleton & Fetch Intercept (2025-09-20)

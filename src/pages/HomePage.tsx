@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from '@/contexts/AuthContext';
-import GuestBadge from '@/components/GuestBadge';
 import { UserSettings, fetchUserSettings, UserProfile, fetchUserProfile } from '@/utils/profile/profileService';
 import { useGame } from "@/contexts/GameContext";
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -59,7 +58,6 @@ const challengeColor = "bg-purple-500/20 text-purple-500";
 const HomePage = () => {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const { user, isGuest } = useAuth();
-  const [showGuestBadge, setShowGuestBadge] = useState(false);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null); // For profile specific settings if any, or just user id
   const [isLoadingUserSettings, setIsLoadingUserSettings] = useState(false);
@@ -249,8 +247,6 @@ const HomePage = () => {
           setUserSettings(settingsData);
           setProfile(profileData);
         }
-        // Show guest badge if the user is a guest
-        setShowGuestBadge(isGuest);
       } catch (error) {
         console.error('Error loading user data:', error);
       } finally {
@@ -431,7 +427,6 @@ const HomePage = () => {
 
   return (
     <div style={homePageStyle}>
-      {showGuestBadge && <GuestBadge username={profile?.display_name || 'Guest'} />}
       <div className="absolute inset-0 z-[100] w-full h-full overflow-y-auto p-4 md:p-8 box-border bg-black/80 flex items-start justify-center min-h-screen">
         
         {isLoaded ? (

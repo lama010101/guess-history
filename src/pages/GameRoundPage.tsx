@@ -1120,7 +1120,12 @@ const GameRoundPage: React.FC = () => {
 
   useEffect(() => {
     if (!isCompeteMode || !roomId) {
-      setSubmittedCounts({ submitted: 0, total: 0 });
+      setSubmittedCounts((prev) => {
+        if (prev.submitted === 0 && prev.total === 0) {
+          return prev;
+        }
+        return { submitted: 0, total: 0 };
+      });
       return;
     }
 
@@ -2099,6 +2104,10 @@ const GameRoundPage: React.FC = () => {
       : (typeof globalMinYear === 'number' ? currentYear : undefined));
 
   const layoutGameMode = isCompeteMode ? 'compete' : (isLevelUpRoute ? 'levelup' : 'solo');
+
+  if (!isCompeteMode && (hasSubmittedThisRound || hasTimedOut) && resultsPath) {
+    return <Navigate to={resultsPath} replace />;
+  }
 
   // Render the layout and the separate submit button
   return (

@@ -1236,9 +1236,6 @@ const Room: React.FC = () => {
               ) : (
                 <div className="mt-4 text-sm text-neutral-400">Waiting for players...</div>
               )}
-              {roster.length === 1 && (
-                <div className="mt-4 text-xs text-neutral-300">Share the room code above so friends can join.</div>
-              )}
             </>
           )}
         </section>

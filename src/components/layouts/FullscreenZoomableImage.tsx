@@ -1,12 +1,19 @@
-import React, { useRef, useState, useEffect, WheelEvent } from "react";
+import React, { useRef, useState, useEffect, WheelEvent, useCallback } from "react";
 import { Maximize, ZoomIn, ZoomOut } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchUserSettings, UserSettings } from '@/utils/profile/profileService';
+import TimerDisplay from '@/components/game/TimerDisplay';
 
 interface FullscreenZoomableImageProps {
   image: { url: string; placeholderUrl: string; title: string };
   onExit: () => void;
   currentRound?: number;
+  timerEnabled?: boolean;
+  rawRemainingTime?: number;
+  isTimerActive?: boolean;
+  onTimeout?: () => void;
+  setRemainingTime?: React.Dispatch<React.SetStateAction<number>>;
+  roundTimerSec?: number;
 }
 
 const MIN_ZOOM = 1;
@@ -19,7 +26,17 @@ const ZOOM_ENABLED = true;
 // Track whether we've already auto-panned for a given image/round key during this page session
 const __autoPanRegistry = new Set<string>();
 
-const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image, onExit, currentRound = 1 }) => {
+const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({
+  image,
+  onExit,
+  currentRound = 1,
+  timerEnabled = false,
+  rawRemainingTime = 0,
+  isTimerActive = false,
+  onTimeout,
+  setRemainingTime,
+  roundTimerSec = 0,
+}) => {
   const { user } = useAuth();
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -54,6 +71,10 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
   const autoPanRafRef = useRef<number | null>(null);
   const autoPanCancelledRef = useRef<boolean>(false);
   const [isAutoPanning, setIsAutoPanning] = useState(false);
+
+  const fallbackSetRemainingTime = useCallback((_: React.SetStateAction<number>) => {}, []);
+  const effectiveSetRemainingTime = setRemainingTime ?? fallbackSetRemainingTime;
+  const effectiveOnTimeout = onTimeout ?? (() => {});
 
   const cancelInertia = () => {
     if (rafRef.current != null) {
@@ -718,8 +739,22 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
           }}
         />
       </div>
+      {/* Timer overlay */}
+      {timerEnabled && roundTimerSec > 0 && (
+        <div className="fixed top-6 left-6 z-[10002] pointer-events-auto">
+          <TimerDisplay
+            remainingTime={Math.max(0, rawRemainingTime ?? 0)}
+            setRemainingTime={effectiveSetRemainingTime}
+            isActive={isTimerActive}
+            onTimeout={effectiveOnTimeout}
+            roundTimerSec={roundTimerSec}
+            externalTimer={true}
+          />
+        </div>
+      )}
+
       {/* Zoom controls */}
-      <div className="fixed bottom-6 right-6 z-[10000] flex flex-col gap-3">
+      <div className="fixed top-6 right-6 z-[10002] flex flex-col items-center gap-2 pointer-events-auto">
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); zoomIn(); }}
@@ -730,6 +765,9 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({ image
         >
           <ZoomIn className="w-5 h-5" />
         </button>
+        <div className="min-w-[3rem] rounded-full bg-black/70 text-white text-xs font-semibold px-3 py-1 text-center shadow-lg select-none">
+          {Math.round(zoom * 100)}%
+        </div>
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); zoomOut(); }}

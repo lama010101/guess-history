@@ -505,6 +505,12 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           }}
           onExit={handleExitImageFullscreen}
           currentRound={currentRound}
+          timerEnabled={hudTimerEnabled}
+          rawRemainingTime={remainingTime}
+          isTimerActive={isTimerActive}
+          onTimeout={onTimeout}
+          setRemainingTime={setRemainingTime}
+          roundTimerSec={effectiveRoundTimerSec}
         />
       )}
 

@@ -156,12 +156,12 @@ const AvatarsTab: React.FC<AvatarsTabProps> = ({
   const currentAvatarId = profile?.avatar_id || null;
 
   return (
-    <div className="glass-card rounded-xl p-6">
+    <div className="glass-card rounded-xl p-6 bg-[#333333]">
       <h3 className="text-lg font-semibold mb-6 text-history-primary dark:text-history-light">Choose Your Avatar</h3>
       
       {/* Current user avatar name and info */}
       {profile && profile.avatar_name && (
-        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+        <div className="mb-6 p-4 rounded-lg border border-[#3f424b] bg-[#333333] text-white">
           <h4 className="font-medium mb-2 text-history-primary dark:text-history-light">Current Avatar</h4>
           <div className="text-base font-medium">{profile.avatar_name}</div>
         </div>
@@ -169,7 +169,7 @@ const AvatarsTab: React.FC<AvatarsTabProps> = ({
       
       {/* Selected Avatar Info and Save Button - Moved to top */}
       {selectedAvatar && selectedAvatarId !== profile?.avatar_id && (
-        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+        <div className="mb-6 p-4 rounded-lg border border-[#3f424b] bg-[#333333] text-white">
           <h4 className="font-medium mb-2 text-history-primary dark:text-history-light">Selected Avatar</h4>
           <div className="flex items-start gap-4">
             <div
@@ -189,11 +189,11 @@ const AvatarsTab: React.FC<AvatarsTabProps> = ({
               </div>
             </div>
             <div className="flex-1">
-              <div className="text-base font-medium">{selectedAvatar.name}</div>
+              <div className="text-base font-medium text-white">{selectedAvatar.name}</div>
               {selectedAvatar.description && (
-                <div className="text-sm text-muted-foreground mt-1">{selectedAvatar.description}</div>
+                <div className="text-sm text-neutral-200 mt-1">{selectedAvatar.description}</div>
               )}
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-neutral-300 mt-1 space-y-1">
                 {selectedAvatar.birth_day && (
                   <div>Born: {selectedAvatar.birth_day}
                     {selectedAvatar.birth_city && `, ${selectedAvatar.birth_city}`}
@@ -208,7 +208,8 @@ const AvatarsTab: React.FC<AvatarsTabProps> = ({
                 )}
               </div>
               <Button
-                className="mt-3"
+                className="mt-3 text-black"
+                variant="hintGradient"
                 disabled={updating || selectedAvatarId === profile?.avatar_id}
                 onClick={handleSaveAvatar}
               >
@@ -235,9 +236,9 @@ const AvatarsTab: React.FC<AvatarsTabProps> = ({
               <div 
                 key={avatar.id}
                 ref={isLastItem ? lastAvatarRef : null}
-                className={`relative bg-white dark:bg-gray-900 rounded-lg p-3 text-center shadow-sm border-2 ${
-                  isSelected ? 'border-history-primary' : 'border-transparent'
-                } hover:border-history-primary/50 transition-colors cursor-pointer`}
+                className={`relative rounded-lg p-3 text-center shadow-sm border ${
+                  isSelected ? 'border-history-primary' : 'border-[#3f424b]'
+                } bg-[#333333] text-white hover:border-history-primary/50 transition-colors cursor-pointer`}
                 onClick={() => handleSelectAvatar(avatar.id)}
               >
                 <div

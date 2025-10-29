@@ -18,7 +18,9 @@ import { cacheRoomInviteToken, declineInviteForRoom, ensureRoomInviteToken, getC
 import type { Tables } from '@/integrations/supabase/types';
 import { acquireChannel } from '@/integrations/supabase/realtime';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import GradientName from '@/components/ui/GradientName';
 import { fetchAvatarUrlsForUserIds } from '@/utils/profile/avatarLoader';
+import { getAvatarFrameGradient } from '@/utils/avatarGradient';
 import { Slider } from '@/components/ui/slider';
 import { useSettingsStore, YEAR_RANGE_MIN, YEAR_RANGE_MAX } from '@/lib/useSettingsStore';
 
@@ -76,7 +78,7 @@ const Room: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [ownId, setOwnId] = useState<string>('');
   const [friendsModalOpen, setFriendsModalOpen] = useState(false);
-  const [localTimerSec, setLocalTimerSec] = useState<number>(Number(roundTimerSec || 60));
+  const [localTimerSec, setLocalTimerSec] = useState<number>(Number(roundTimerSec || 120));
   const [draggingTimer, setDraggingTimer] = useState(false);
   const settings = useSettingsStore();
   const [yearRange, setYearRange] = useState<[number, number]>(settings.yearRange);
@@ -460,7 +462,7 @@ const Room: React.FC = () => {
   // Keep local slider value in sync when not dragging
   useEffect(() => {
     if (draggingTimer) return;
-    const val = Number(roundTimerSec || 60);
+    const val = Number(roundTimerSec || 120);
     setLocalTimerSec(Math.max(5, Math.min(300, Math.round(val / 5) * 5)));
   }, [roundTimerSec, draggingTimer]);
 
@@ -723,7 +725,7 @@ const Room: React.FC = () => {
     let payload: LobbyClientMessage | null = null as any;
     if (enabled) {
       // Normalize to UI range (5–300) and step to avoid server/client mismatches
-      const raw = Number(roundTimerSec) || 60;
+      const raw = Number(roundTimerSec) || 120;
       const clamped = Math.max(5, Math.min(300, Math.round(raw / 5) * 5));
       next = { sec: clamped, enabled: true };
       payload = { type: 'settings', timerSeconds: clamped, timerEnabled: true, yearMin: yearRangeRef.current[0], yearMax: yearRangeRef.current[1] } as any;
@@ -899,13 +901,13 @@ const Room: React.FC = () => {
                     onKeyDown={(e) => { if (e.key === 'Enter') commitTimerInput(); if (e.key === 'Escape') setEditingTimer(false); }}
                     onBlur={() => setEditingTimer(false)}
                     className="h-7 w-24 rounded-md border border-[#3f424b] bg-[#1d2026] px-2 text-right text-sm text-white"
-                    placeholder={`${Number(roundTimerSec || 60)}s`}
+                    placeholder={`${Number(roundTimerSec || 120)}s`}
                     aria-label="Set round timer in seconds"
                   />
                 ) : (
                   <button
                     type="button"
-                    onClick={() => { setEditingTimer(true); setTimerInput(String(Number(roundTimerSec || localTimerSec || 60))); }}
+                    onClick={() => { setEditingTimer(true); setTimerInput(String(Number(roundTimerSec || localTimerSec || 120))); }}
                     className="hover:text-[#b6ecff]"
                     aria-label="Edit round timer"
                   >
@@ -920,7 +922,7 @@ const Room: React.FC = () => {
           {isHost && (
             <div className="mt-4 room-timer">
               <Slider
-                value={[Number(draggingTimer ? localTimerSec : (roundTimerSec || 60))]}
+                value={[Number(draggingTimer ? localTimerSec : (roundTimerSec || 120))]}
                 min={5}
                 max={300}
                 step={5}
@@ -1104,27 +1106,37 @@ const Room: React.FC = () => {
                       ) : limitedFriends.length === 0 ? (
                         <div className="text-xs text-neutral-300">No friends match your filter.</div>
                       ) : (
-                        limitedFriends.map((f) => (
-                          <div key={f.id} className="flex items-center justify-between rounded-lg border border-[#3f424b] bg-[#1d2026] px-3 py-2">
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-9 w-9 border border-[#3f424b] bg-[#262930]">
-                                <AvatarImage src={f.avatarUrl ?? avatarUrls[f.id] ?? undefined} alt={`${f.display_name} avatar`} />
-                                <AvatarFallback className="bg-transparent text-sm font-semibold text-white">
-                                  {getInitial(f.display_name)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="text-sm font-semibold text-white">{f.display_name}</span>
+                        limitedFriends.map((f) => {
+                          const friendSeed = f.id || f.display_name;
+                          return (
+                            <div key={f.id} className="flex items-center justify-between rounded-lg border border-[#3f424b] bg-[#1d2026] px-3 py-2">
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className="rounded-full p-[2px]"
+                                  style={{ background: getAvatarFrameGradient(friendSeed) }}
+                                >
+                                  <Avatar className="h-9 w-9 border border-[#1d2026] bg-[#262930]">
+                                    <AvatarImage src={f.avatarUrl ?? avatarUrls[f.id] ?? undefined} alt={`${f.display_name} avatar`} />
+                                    <AvatarFallback className="bg-transparent text-sm font-semibold text-white">
+                                      {getInitial(f.display_name)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                </div>
+                                <GradientName seed={friendSeed} className="text-sm font-semibold truncate">
+                                  {f.display_name}
+                                </GradientName>
+                              </div>
+                              <Button
+                                onClick={() => inviteFriend(f)}
+                                size="sm"
+                                className="bg-[#22d3ee] px-4 py-1.5 text-xs font-semibold text-black hover:bg-[#1cbfdb]"
+                                aria-label="Invite friend"
+                              >
+                                Invite
+                              </Button>
                             </div>
-                            <Button
-                              onClick={() => inviteFriend(f)}
-                              size="sm"
-                              className="bg-[#22d3ee] px-4 py-1.5 text-xs font-semibold text-black hover:bg-[#1cbfdb]"
-                              aria-label="Invite friend"
-                            >
-                              Invite
-                            </Button>
-                          </div>
-                        ))
+                          );
+                        })
                       )}
                       {hasMoreFriends && !friendsLoading && limitedFriends.length > 0 && (
                         <button
@@ -1186,18 +1198,26 @@ const Room: React.FC = () => {
                   {extendedRoster.map((r: any, index: number) => {
                     const isYou = r.id === ownId;
                     const showReadyTag = r.ready && typeof r._inviteId !== 'string' && !isYou;
+                    const rosterSeed = r.userId || r.id || r.name;
                     return (
                       <div key={`${r.id}-${index}`} className="flex items-center justify-between gap-3 rounded-xl border border-[#3f424b] bg-[#1d2026] px-4 py-3">
                         <div className="flex flex-1 items-center gap-3">
-                          <Avatar className="h-10 w-10 border border-[#3f424b] bg-[#262930]">
-                            <AvatarImage src={r.avatarUrl ?? undefined} alt={`${r.name} avatar`} />
-                            <AvatarFallback className="bg-transparent text-sm font-semibold text-white">
-                              {getInitial(r.name)}
-                            </AvatarFallback>
-                          </Avatar>
+                          <div
+                            className="rounded-full p-[2.5px]"
+                            style={{ background: getAvatarFrameGradient(rosterSeed) }}
+                          >
+                            <Avatar className="h-10 w-10 border border-[#1d2026] bg-[#262930]">
+                              <AvatarImage src={r.avatarUrl ?? undefined} alt={`${r.name} avatar`} />
+                              <AvatarFallback className="bg-transparent text-sm font-semibold text-white">
+                                {getInitial(r.name)}
+                              </AvatarFallback>
+                            </Avatar>
+                          </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
-                              <span className="truncate text-sm font-semibold text-white">{isYou ? `(You) ${r.name}` : r.name}</span>
+                              <GradientName seed={rosterSeed} className="truncate text-sm font-semibold">
+                                {isYou ? `(You) ${r.name}` : r.name}
+                              </GradientName>
                               {r.host && <span className="flex-none rounded-full bg-[#22d3ee]/20 px-2 py-0.5 text-[10px] font-semibold text-[#22d3ee]">Host</span>}
                               {typeof r._inviteId === 'string' && <span className="flex-none rounded-full bg-[#f97316]/15 px-2 py-0.5 text-[10px] font-semibold text-[#f97316]">Invited</span>}
                               {showReadyTag && (

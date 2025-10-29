@@ -17,6 +17,7 @@ interface ProfileFromSupabase {
   id: string;
   display_name: string | null;
   avatar_url: string | null;
+  avatar_image_url: string | null;
   avatar_name?: string | null; // e.g., "Ada Lovelace #7726"
 }
 
@@ -24,12 +25,14 @@ type Friend = {
   id: string;
   username: string;
   avatar_url?: string;
+  avatar_image_url?: string;
   display_name?: string;
 };
 
 type User = {
   id: string;
   avatar_url?: string;
+  avatar_image_url?: string;
   display_name?: string;
   original_name?: string;
   avatar_name?: string;
@@ -112,7 +115,7 @@ const FriendsPage = () => {
         // Get friend profiles
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select('id, display_name, avatar_url')
+          .select('id, display_name, avatar_url, avatar_image_url')
           .in('id', friendIds);
 
         if (profilesError) {
@@ -128,6 +131,7 @@ const FriendsPage = () => {
             id: profile.id,
             username: profile.display_name || 'User',
             avatar_url: profile.avatar_url || undefined,
+            avatar_image_url: profile.avatar_image_url || undefined,
             display_name: profile.display_name || 'User',
           }));
           setFriends(friendsList);
@@ -161,7 +165,7 @@ const FriendsPage = () => {
       while (aggregated.length < maxToFetch) {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, display_name, avatar_url, avatar_name')
+          .select('id, display_name, avatar_url, avatar_image_url, avatar_name')
           .neq('id', user.id)
           .order('display_name', { ascending: true })
           .range(offset, offset + pageSize - 1);
@@ -198,6 +202,7 @@ const FriendsPage = () => {
               display_name: displayName,
               original_name: baseName,
               avatar_url: profile.avatar_url || undefined,
+              avatar_image_url: profile.avatar_image_url || undefined,
               avatar_name: profile.avatar_name || undefined,
             } as User; // Cast to User type
           });
@@ -221,7 +226,7 @@ const FriendsPage = () => {
       const term = searchTerm.trim();
       const { data: usersData, error: usersError } = await supabase
         .from('profiles')
-        .select('id, display_name, avatar_url, avatar_name')
+        .select('id, display_name, avatar_url, avatar_image_url, avatar_name')
         .or(`display_name.ilike.%${term}%,avatar_name.ilike.%${term}%`)
         .neq('id', user.id) // user.id is safe here due to the function guard
         .limit(100);
@@ -251,6 +256,7 @@ const FriendsPage = () => {
               display_name: displayName,
               original_name: baseName,
               avatar_url: profile.avatar_url || undefined,
+              avatar_image_url: profile.avatar_image_url || undefined,
               avatar_name: profile.avatar_name || undefined,
             } as User; // Cast to User type
           });
@@ -283,7 +289,8 @@ const FriendsPage = () => {
       const newFriend: Friend = {
         id: friend.id,
         username: friend.original_name || friend.display_name || 'User',
-        avatar_url: friend.avatar_url
+        avatar_url: friend.avatar_url,
+        avatar_image_url: friend.avatar_image_url,
       };
       
       setFriends([...friends, newFriend]);
@@ -323,7 +330,8 @@ const FriendsPage = () => {
         const userToAdd: User = {
           id: removedFriend.id,
           display_name: removedFriend.username,
-          avatar_url: removedFriend.avatar_url
+          avatar_url: removedFriend.avatar_url,
+          avatar_image_url: removedFriend.avatar_image_url,
         };
         setAllUsers([...allUsers, userToAdd]);
       }
@@ -412,20 +420,25 @@ const FriendsPage = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {friends.map(friend => {
+              {friends.map((friend) => {
                 const nameSeed = friend.id || friend.username;
                 const nameStyle = getAvatarTextGradientStyle(nameSeed);
                 const frameStyle = { background: getAvatarFrameGradient(nameSeed) };
+                const avatarSrc = friend.avatar_image_url || friend.avatar_url;
                 return (
-                  <div 
-                    key={friend.id} 
+                  <div
+                    key={friend.id}
                     className="p-4 bg-[#333333] text-white rounded-lg shadow flex items-center justify-between"
                   >
                     <div className="flex items-center">
-                      <div className="h-10 w-10 mr-4 cursor-pointer rounded-full p-[2px]" style={frameStyle} onClick={() => handleNavigateToProfile(friend.id)}>
+                      <div
+                        className="h-10 w-10 mr-4 cursor-pointer rounded-full p-[2px]"
+                        style={frameStyle}
+                        onClick={() => handleNavigateToProfile(friend.id)}
+                      >
                         <Avatar className="h-full w-full border border-[#3f424b] bg-[#262930]">
-                          {friend.avatar_url ? (
-                            <AvatarImage src={friend.avatar_url} alt={friend.username} />
+                          {avatarSrc ? (
+                            <AvatarImage src={avatarSrc} alt={friend.username} />
                           ) : (
                             <AvatarFallback>{getInitial(friend.username)}</AvatarFallback>
                           )}
@@ -437,28 +450,30 @@ const FriendsPage = () => {
                           style={nameStyle}
                           onClick={() => handleNavigateToProfile(friend.id)}
                         >
-                          {friend.username}
+                          {friend.display_name || friend.username}
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="flex space-x-2">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => removeFriend(friend.id)}
-                            >
-                              <UserMinus className="h-4 w-4 text-red-500" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Remove Friend</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => inviteFriendToGame(friend)}
+                        className="flex items-center"
+                      >
+                        <UserPlus className="h-4 w-4 mr-2 text-green-500" />
+                        Invite
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeFriend(friend.id)}
+                        className="flex items-center text-red-400 border-red-400 hover:text-red-500 hover:border-red-500"
+                      >
+                        <UserMinus className="h-4 w-4 mr-2" />
+                        Remove
+                      </Button>
                     </div>
                   </div>
                 );
@@ -466,45 +481,17 @@ const FriendsPage = () => {
             </div>
           )}
         </TabsContent>
-        
-        <TabsContent value="search" className="space-y-6">
-          <div className="flex space-x-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search users by name..." 
-                className="pl-9"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && searchUsers()}
-              />
-            </div>
-            <Button 
-              onClick={searchUsers} 
-              disabled={isSearching || !searchTerm.trim()}
-            >
-              {isSearching ? <Loader className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
-              Search
-            </Button>
-          </div>
-          
-          {isSearching || isLoadingUsers ? (
+
+        <TabsContent value="search">
+          {isLoadingUsers || isSearching ? (
             <div className="flex justify-center py-8">
               <Loader className="h-8 w-8 animate-spin text-history-primary" />
             </div>
           ) : displayUsers.length === 0 ? (
-            searchTerm.trim() ? (
-              <div className="text-center py-8 bg-[#333333] text-white rounded-lg shadow">
-                <AlertCircle className="h-12 w-12 mx-auto mb-4 text-yellow-500" />
-                <h3 className="text-lg font-medium mb-2">No users found</h3>
-                <p className="text-gray-300">Try a different search term</p>
-              </div>
-            ) : (
-              <div className="text-center py-8 bg-[#333333] text-white rounded-lg shadow">
-                <User className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p className="text-gray-300">No users available</p>
-              </div>
-            )
+            <div className="text-center py-8 bg-[#333333] text-white rounded-lg shadow">
+              <User className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p className="text-gray-300">No users available{searchTerm.trim() ? ` matching "${searchTerm}"` : ''}</p>
+            </div>
           ) : (
             <div>
               {searchTerm.trim() ? (
@@ -517,20 +504,25 @@ const FriendsPage = () => {
                 </div>
               )}
               <div className="space-y-4">
-                {displayUsers.map(user => {
+                {displayUsers.map((user) => {
                   const nameSeed = user.id || user.display_name || 'user';
                   const nameStyle = getAvatarTextGradientStyle(nameSeed);
                   const frameStyle = { background: getAvatarFrameGradient(nameSeed) };
+                  const avatarSrc = user.avatar_image_url || user.avatar_url;
                   return (
-                    <div 
-                      key={user.id} 
+                    <div
+                      key={user.id}
                       className="p-4 bg-[#333333] text-white rounded-lg shadow flex items-center justify-between"
                     >
                       <div className="flex items-center">
-                        <div className="h-10 w-10 mr-4 cursor-pointer rounded-full p-[2px]" style={frameStyle} onClick={() => handleNavigateToProfile(user.id)}>
+                        <div
+                          className="h-10 w-10 mr-4 cursor-pointer rounded-full p-[2px]"
+                          style={frameStyle}
+                          onClick={() => handleNavigateToProfile(user.id)}
+                        >
                           <Avatar className="h-full w-full border border-[#3f424b] bg-[#262930]">
-                            {user.avatar_url ? (
-                              <AvatarImage src={user.avatar_url} alt={user.display_name || 'User'} />
+                            {avatarSrc ? (
+                              <AvatarImage src={avatarSrc} alt={user.display_name || 'User'} />
                             ) : (
                               <AvatarFallback>{getInitial(user.display_name || 'User')}</AvatarFallback>
                             )}
@@ -546,9 +538,9 @@ const FriendsPage = () => {
                           </div>
                         </div>
                       </div>
-                      
-                      <Button 
-                        variant="outline" 
+
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => addFriend(user)}
                         className="flex items-center"

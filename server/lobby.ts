@@ -169,7 +169,7 @@ export default class Lobby implements Party.Server {
   // Start flag to avoid duplicate starts
   private started = false;
   // Timer settings (host-controlled)
-  private timerSeconds: number = 60;
+  private timerSeconds: number = 120;
   private timerEnabled: boolean = true;
   private mode: "sync" | "async" = "sync";
   private yearMin: number | null = null;
@@ -726,7 +726,7 @@ export default class Lobby implements Party.Server {
           // If everyone currently in the room is ready, start the game
           const allReady = Array.from(this.players.keys()).every((id) => this.ready.get(id) === true);
           if (!this.started && this.players.size > 0 && allReady) {
-            const durationSec = Math.max(5, Math.min(600, this.timerSeconds || 60));
+            const durationSec = Math.max(5, Math.min(600, this.timerSeconds || 120));
             const timerEnabled = !!this.timerEnabled;
             this.started = true;
             await this.resetPersistedRoundState();

@@ -6,6 +6,23 @@
 - **Usage**: `src/components/layouts/ResultsLayout2.tsx`
   - Continue toggling `isSourceModalOpen` via the Source button; no additional layout overrides are required now that the modal self-manages its fullscreen styling.
 
+### Gameplay History Lock Reinforcement (2025-10-29)
+
+- **Component**: `src/pages/GameRoundPage.tsx`
+  - Back navigation during active rounds now uses a reusable history lock context that writes sentinel `pushState` / `replaceState` entries containing a `__historyLock` marker. `popstate`, `visibilitychange`, and `focus` handlers call `reinforce()` to immediately restore the locked URL and push the user forward if they attempt to leave mid-round.
+  - When adding new leave flows (e.g., modals or automatic redirects), call `setHistoryLocked(false)` before navigation so the cleanup removes listeners and unlocks the history stack. Always reset `leavingRef.current = true` before external redirects so the guards know navigation is intentional.
+
+### Round Timer Defaults (2025-10-29)
+
+- **Settings Source**: `src/lib/useSettingsStore.ts`
+  - The global timer setting now initializes at **120 seconds (2 minutes)** so both Solo and Compete modes start with a 2-minute round by default.
+- **Solo / Practice**: `src/components/GlobalSettingsModal.tsx`
+  - Defaults shown in the modal reflect the 120-second timer and persist this value to local storage when saved.
+- **Compete Lobby**: `src/pages/Room.tsx`
+  - The host slider/input fall back to 120 seconds when no authoritative timer is present, keeping multiplayer sessions aligned with the new default.
+- **Game Runtime**: `src/contexts/GameContext.tsx`
+  - `roundTimerSec` now uses the settings store’s value (120 seconds when unset) to drive in-round countdowns for all modes unless overridden by an authoritative multiplayer timer.
+
 ### Leaderboard Current User Card (2025-10-28)
 
 - **Component**: `src/pages/LeaderboardPage.tsx`
@@ -25,6 +42,12 @@
 - **Component**: `src/pages/FriendsPage.tsx`
   - The tabs list now uses a two-column grid sized to `w-full` so both triggers span the same width as the tables/cards rendered below.
   - Each trigger centers its content with `flex-1` to keep button labels aligned with the underlying list/table width when additional columns are added.
+
+### Friends Page Avatar Images (2025-10-29)
+
+- **Component**: `src/pages/FriendsPage.tsx`
+  - Friends and search listings now prefer `avatar_image_url` sourced from Supabase profiles before falling back to `avatar_url` or initials, ensuring curated avatars appear wherever available.
+  - Supabase profile fetches include `avatar_image_url`, and local Friend/User types persist this field so subsequent actions (add/remove) maintain the same image data without additional queries.
 
 ### Auth Modal Guest CTA & Spacing (2025-10-28)
 
@@ -97,6 +120,11 @@
 - **Update (2025-10-28 Evening)**: Avatar frames derive a deterministic multi-stop gradient via `getAvatarFrameGradient(seed)` in `src/utils/avatarGradient.ts`. `ProfileHeader` and `AvatarsTab` pass profile/selection IDs as seeds so each user sees a distinct frame without storing extra data; paired soft gradients tint biography surfaces.
 - **Update (2025-10-29)**: Username styling now reuses a shared `<GradientName>` helper that applies the seeded frame gradient to text. `NavProfile`, `ProfileHeader`, and friends lists all render display names with this component so gradients stay consistent across the app.
 - **Update (2025-10-29 PM)**: Profile stats emphasize overall accuracy first. The Accuracy Breakdown block lives at the top of `StatsTab`, mode tiles list Games/Average Accuracy/Total XP only, and the earned-badges preview was removed. Level Up Progress mini cards now surface Games Played and Time Accuracy, followed by separate progress bars for overall/time/location thresholds.
+
+### Visual Styling
+
+- Avatar frames and gradient usernames use `getAvatarFrameGradient` / `getAvatarTextGradientStyle` from `src/utils/avatarGradient.ts` for consistent rendering across profile, lobby, and leaderboard surfaces.
+- These helpers now draw seeded 3-color gradients from the Pastel Spectrum pool (`src/utils/avatarGradient.ts`) to ensure every frame/username can sample the full light rainbow shown in design references while still producing deterministic combinations per seed.
 
 ### Year Input Draft Commit (2025-10-28)
 
@@ -3092,7 +3120,7 @@ Notes: UI changes are limited to the Home page and the shared `Logo` component p
   - Bottom navbar background set to solid black (`bg-black`).
   - Home button height matches Play Again: both use `size="lg"` with `py-6 text-base`.
   - Top navbar simplified: logo removed; global Accuracy and XP badges on the left; `NavProfile` on the right.
-  - Accuracy and XP badge gradients use the compete palette HSLA ramps (light at 0%, dark at 100%) for consistent styling across browsers.
+  - Accuracy and XP badge gradients now reuse the hintGradient 135° direction while keeping the compete palette HSLA stops.
 
 - Round Results bottom "Next Round" button width increased.
   - File: `src/pages/RoundResultsPage.tsx`

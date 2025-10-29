@@ -54,18 +54,18 @@
 
   .badge-gradient-accuracy {
     background: hsla(212, 96%, 73%, 1);
-    background: linear-gradient(90deg, hsla(212, 96%, 73%, 1) 0%, hsla(223, 100%, 67%, 1) 100%);
-    background: -moz-linear-gradient(90deg, hsla(212, 96%, 73%, 1) 0%, hsla(223, 100%, 67%, 1) 100%);
-    background: -webkit-linear-gradient(90deg, hsla(212, 96%, 73%, 1) 0%, hsla(223, 100%, 67%, 1) 100%);
+    background: linear-gradient(135deg, hsla(212, 96%, 73%, 1) 0%, hsla(223, 100%, 67%, 1) 100%);
+    background: -moz-linear-gradient(135deg, hsla(212, 96%, 73%, 1) 0%, hsla(223, 100%, 67%, 1) 100%);
+    background: -webkit-linear-gradient(135deg, hsla(212, 96%, 73%, 1) 0%, hsla(223, 100%, 67%, 1) 100%);
     filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#79b6fc", endColorstr="#5988ff", GradientType=1);
     background-repeat: no-repeat;
   }
 
   .badge-gradient-xp {
     background: hsla(116, 44%, 62%, 1);
-    background: linear-gradient(90deg, hsla(116, 44%, 62%, 1) 0%, hsla(109, 42%, 48%, 1) 100%);
-    background: -moz-linear-gradient(90deg, hsla(116, 44%, 62%, 1) 0%, hsla(109, 42%, 48%, 1) 100%);
-    background: -webkit-linear-gradient(90deg, hsla(116, 44%, 62%, 1) 0%, hsla(109, 42%, 48%, 1) 100%);
+    background: linear-gradient(135deg, hsla(116, 44%, 62%, 1) 0%, hsla(109, 42%, 48%, 1) 100%);
+    background: -moz-linear-gradient(135deg, hsla(116, 44%, 62%, 1) 0%, hsla(109, 42%, 48%, 1) 100%);
+    background: -webkit-linear-gradient(135deg, hsla(116, 44%, 62%, 1) 0%, hsla(109, 42%, 48%, 1) 100%);
     filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#7ac975", endColorstr="#5aae47", GradientType=1);
     background-repeat: no-repeat;
   }

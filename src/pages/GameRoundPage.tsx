@@ -50,6 +50,12 @@ const GameRoundPage: React.FC = () => {
   const currentRoundIndex = roundNumber - 1;
   const historyLockIdRef = useRef(0);
   const lockedUrlRef = useRef<string | null>(null);
+  const historyLockContextRef = useRef<{
+    lockId: number;
+    replaceSentinel: () => void;
+    pushSentinel: () => void;
+    reinforce: () => void;
+  } | null>(null);
   // Derive base mode path (everything before '/game/') to keep navigation inside the current mode (e.g., /level, /solo, /compete/sync)
   const modeBasePath = useMemo(() => {
     const path = location.pathname;
@@ -161,6 +167,7 @@ const GameRoundPage: React.FC = () => {
     recentlySubmitted: boolean;
   }>>([]);
   const [lobbyRoster, setLobbyRoster] = useState<Array<{ id: string; name: string; ready: boolean; host: boolean }>>([]);
+  const [lobbyParticipantCount, setLobbyParticipantCount] = useState<number>(0);
   const makeRosterId = useCallback((userId?: string | null, fallbackName?: string | null) => {
     if (userId && userId.trim().length > 0) {
       return userId;
@@ -196,38 +203,86 @@ const GameRoundPage: React.FC = () => {
     const lockId = ++historyLockIdRef.current;
     lockedUrlRef.current = window.location.href;
 
-    const restoreLockedUrl = () => {
+    const buildState = () => {
+      const base = window.history.state;
+      return {
+        ...(base && typeof base === 'object' ? base : {}),
+        __historyLock: lockId,
+        __historyLockTs: Date.now(),
+      };
+    };
+
+    const replaceSentinel = () => {
       if (historyLockIdRef.current !== lockId) return;
       const targetUrl = lockedUrlRef.current ?? window.location.href;
       try {
-        if (window.location.href !== targetUrl) {
-          window.history.replaceState(null, '', targetUrl);
-        } else {
-          window.history.pushState(null, '', targetUrl);
-        }
+        window.history.replaceState(buildState(), '', targetUrl);
       } catch {}
     };
 
-    // Prime the history stack so the first back press keeps the user on the page.
-    try {
-      window.history.pushState(null, '', lockedUrlRef.current);
-    } catch {}
+    const pushSentinel = () => {
+      if (historyLockIdRef.current !== lockId) return;
+      const targetUrl = lockedUrlRef.current ?? window.location.href;
+      try {
+        window.history.pushState(buildState(), '', targetUrl);
+      } catch {}
+    };
+
+    const reinforce = () => {
+      replaceSentinel();
+      pushSentinel();
+    };
+
+    historyLockContextRef.current = {
+      lockId,
+      replaceSentinel,
+      pushSentinel,
+      reinforce,
+    };
+
+    replaceSentinel();
+    pushSentinel();
+    pushSentinel();
 
     const handlePop = (event: PopStateEvent) => {
       if (historyLockIdRef.current !== lockId) return;
+      if (leavingRef.current) return;
       event.preventDefault?.();
       event.stopImmediatePropagation?.();
-      // Restore immediately to prevent rapid back presses from slipping through,
-      // then schedule a follow-up to outlast router updates.
-      restoreLockedUrl();
-      setTimeout(restoreLockedUrl, 0);
+
+      reinforce();
+
+      try { window.history.forward(); } catch {}
+      try { window.history.go(1); } catch {}
+
+      window.setTimeout(() => {
+        if (historyLockIdRef.current !== lockId || leavingRef.current) return;
+        replaceSentinel();
+      }, 0);
     };
 
-    window.addEventListener('popstate', handlePop);
+    const handleVisibility = () => {
+      if (historyLockIdRef.current !== lockId) return;
+      if (document.visibilityState === 'visible') {
+        reinforce();
+      }
+    };
+
+    const handleFocus = () => {
+      if (historyLockIdRef.current !== lockId) return;
+      reinforce();
+    };
+
+    window.addEventListener('popstate', handlePop, { capture: true });
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleFocus, true);
 
     return () => {
       historyLockIdRef.current += 1;
-      window.removeEventListener('popstate', handlePop);
+      historyLockContextRef.current = null;
+      window.removeEventListener('popstate', handlePop, true);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus, true);
     };
   }, [historyLocked]);
 
@@ -235,9 +290,26 @@ const GameRoundPage: React.FC = () => {
     if (typeof window === 'undefined') return;
     if (!historyLocked) return;
     lockedUrlRef.current = window.location.href;
-    try {
-      window.history.replaceState(null, '', lockedUrlRef.current);
-    } catch {}
+
+    const context = historyLockContextRef.current;
+    if (context && context.lockId === historyLockIdRef.current) {
+      context.replaceSentinel();
+      context.pushSentinel();
+    } else {
+      try {
+        const targetUrl = lockedUrlRef.current;
+        const base = window.history.state;
+        window.history.replaceState(
+          {
+            ...(base && typeof base === 'object' ? base : {}),
+            __historyLock: historyLockIdRef.current,
+            __historyLockTs: Date.now(),
+          },
+          '',
+          targetUrl,
+        );
+      } catch {}
+    }
   }, [historyLocked, location.pathname, location.search, location.hash]);
 
   useEffect(() => {
@@ -539,6 +611,7 @@ const GameRoundPage: React.FC = () => {
 
       const nextRoster = Array.from(deduped.values());
       setLobbyRoster(nextRoster);
+      setLobbyParticipantCount(nextRoster.length);
 
       if (nextRoster.length > 0) {
         setPeerProfileCache((prev) => {
@@ -1190,7 +1263,7 @@ const GameRoundPage: React.FC = () => {
     const expectedTotal = Math.max(
       hasSubmittedThisRound ? 1 : 0,
       roundPeers.length,
-      lobbyRoster.length,
+      lobbyParticipantCount,
       expectedFromBroadcast,
     );
     const submitted = roundPeers.filter((peer) => peer.submitted).length;
@@ -1302,6 +1375,7 @@ const GameRoundPage: React.FC = () => {
     user?.id,
     displayName,
     submittedCounts,
+    lobbyParticipantCount,
   ]);
 
   useEffect(() => {
@@ -1613,7 +1687,10 @@ const GameRoundPage: React.FC = () => {
         }
         return computedPeerRoster;
       });
+      return;
     }
+
+    setCachedPeerRoster([]);
   }, [isCompeteMode, computedPeerRoster]);
 
   const peerRoster = useMemo(() => {

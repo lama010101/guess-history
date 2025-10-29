@@ -134,7 +134,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   
   // Timer defaults come from settings store (enabled by default)
   const { timerSeconds, setTimerSeconds, setYearRange } = useSettingsStore();
-  const [roundTimerSec, setRoundTimerSec] = useState<number>(timerSeconds || 60);
+  const [roundTimerSec, setRoundTimerSec] = useState<number>(timerSeconds || 120);
   const [timerEnabled, setTimerEnabled] = useState<boolean>(true);
   const [authoritativeTimer, setAuthoritativeTimer] = useState<boolean>(false);
   // Cache for global oldest image year (used by Level Up constraints)

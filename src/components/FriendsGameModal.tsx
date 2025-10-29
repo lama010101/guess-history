@@ -16,8 +16,8 @@ const FriendsGameModal: React.FC<FriendsGameModalProps> = ({
 }) => {
   const [hintsPerGame, setHintsPerGame] = useState(10);
   const [timerEnabled, setTimerEnabled] = useState(true);
-  const [timerSeconds, setTimerSeconds] = useState(60);
-  const [initialState, setInitialState] = useState({ hintsPerGame: 3, timerEnabled: true, timerSeconds: 60 });
+  const [timerSeconds, setTimerSeconds] = useState(120);
+  const [initialState, setInitialState] = useState({ hintsPerGame: 3, timerEnabled: true, timerSeconds: 120 });
 
   useEffect(() => {
     if (isOpen) {
@@ -27,18 +27,18 @@ const FriendsGameModal: React.FC<FriendsGameModalProps> = ({
           const parsed = JSON.parse(saved);
           setHintsPerGame(parsed.hintsPerGame ?? 10);
           setTimerEnabled(parsed.timerEnabled ?? true);
-          setTimerSeconds(parsed.timerSeconds ?? 60);
+          setTimerSeconds(parsed.timerSeconds ?? 120);
           setInitialState({
             hintsPerGame: parsed.hintsPerGame ?? 10,
             timerEnabled: parsed.timerEnabled ?? true,
-            timerSeconds: parsed.timerSeconds ?? 60,
+            timerSeconds: parsed.timerSeconds ?? 120,
           });
         } catch {
           // Use defaults if parsing fails
           setHintsPerGame(10);
           setTimerEnabled(true);
-          setTimerSeconds(60);
-          setInitialState({ hintsPerGame: 10, timerEnabled: true, timerSeconds: 60 });
+          setTimerSeconds(120);
+          setInitialState({ hintsPerGame: 10, timerEnabled: true, timerSeconds: 120 });
         }
       }
     }

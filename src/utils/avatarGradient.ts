@@ -1,16 +1,25 @@
 import type { CSSProperties } from 'react';
 
-export const AVATAR_GRADIENT_PALETTES: readonly [string, string, string][] = [
-  ["#22c55e", "#0ea5e9", "#a855f7"], // green → blue → violet
-  ["#f97316", "#facc15", "#22c55e"], // orange → amber → green
-  ["#ef4444", "#ec4899", "#6366f1"], // red → pink → indigo
-  ["#38bdf8", "#22d3ee", "#14b8a6"], // sky → cyan → teal
-  ["#f472b6", "#fb7185", "#f97316"], // pink → rose → orange
-  ["#0ea5e9", "#6366f1", "#8b5cf6"], // light blue → indigo → violet
-  ["#84cc16", "#22c55e", "#14b8a6"], // lime → green → teal
-  ["#fcd34d", "#fb923c", "#ef4444"], // gold → orange → red
-  ["#8b5cf6", "#ec4899", "#22d3ee"], // violet → pink → cyan
-  ["#14b8a6", "#22c55e", "#facc15"], // teal → green → amber
+const PASTEL_COLOR_POOL: readonly string[] = [
+  '#bde9ff', // pastel blue
+  '#c4e1ff', // baby periwinkle
+  '#ccd9ff', // powder indigo
+  '#d6d1ff', // soft wisteria
+  '#dfc9ff', // lilac haze
+  '#e7c1ff', // orchid blush
+  '#f0b9ff', // lavender pink
+  '#f8b1ff', // cotton candy
+  '#ffabf0', // bubblegum rose
+  '#ffb3da', // petal pink
+  '#ffbfc1', // apricot blush
+  '#ffc9a8', // melon cream
+  '#ffd38f', // peach sorbet
+  '#ffdf86', // buttercup
+  '#f1ef88', // pale lemon
+  '#d9f4a0', // fresh pear
+  '#c2f8bb', // mint sherbet
+  '#aef7d4', // seafoam
+  '#9ff3e6', // aqua breeze
 ] as const;
 
 function hashSeed(seed: string): number {
@@ -30,12 +39,27 @@ function withAlpha(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-function pickPalette(seed: string | undefined): [string, string, string] {
-  if (!seed) {
-    return AVATAR_GRADIENT_PALETTES[0];
+function createSeededRandom(seed: string | undefined) {
+  let state = hashSeed(seed ?? '');
+  if (state === 0) {
+    state = 0x1fffffff;
   }
-  const index = hashSeed(seed) % AVATAR_GRADIENT_PALETTES.length;
-  return AVATAR_GRADIENT_PALETTES[index];
+  return () => {
+    state = (state * 1664525 + 1013904223) | 0;
+    return ((state >>> 0) / 0x100000000);
+  };
+}
+
+function pickPalette(seed: string | undefined): [string, string, string] {
+  const rng = createSeededRandom(seed);
+  const chosen = new Set<number>();
+  while (chosen.size < 3) {
+    const index = Math.floor(rng() * PASTEL_COLOR_POOL.length);
+    chosen.add(index % PASTEL_COLOR_POOL.length);
+  }
+  const ordered = Array.from(chosen).sort((a, b) => a - b);
+  const [first, second, third] = ordered;
+  return [PASTEL_COLOR_POOL[first], PASTEL_COLOR_POOL[second], PASTEL_COLOR_POOL[third]];
 }
 
 export function getAvatarFrameGradient(seed?: string): string {

@@ -5,6 +5,9 @@ import { Info } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import GradientName from "@/components/ui/GradientName";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getAvatarFrameGradient } from "@/utils/avatarGradient";
 import { AuthModal } from "@/components/AuthModal";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -410,25 +413,23 @@ const LeaderboardPage = () => {
         <div className="max-w-2xl mx-auto mb-6">
           <div className="rounded-lg shadow-lg p-6 bg-[#333333] text-white">
             <div className="flex flex-col items-center gap-3 mb-4">
-              {currentUserData.entry.avatar_url ? (
-                <img
-                  src={currentUserData.entry.avatar_url}
-                  alt={currentUserData.entry.display_name}
-                  className="h-16 w-16 rounded-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              ) : (
-                <div className="h-16 w-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                  <span className="text-xl font-semibold text-gray-600 dark:text-gray-300">
+              <div
+                className="rounded-full p-[3px]"
+                style={{ background: getAvatarFrameGradient(currentUserData.entry.user_id || currentUserData.entry.display_name) }}
+              >
+                <Avatar className="h-16 w-16 border border-[#1d2026] bg-[#262930]">
+                  <AvatarImage
+                    src={currentUserData.entry.avatar_url ?? undefined}
+                    alt={currentUserData.entry.display_name}
+                  />
+                  <AvatarFallback className="bg-transparent text-xl font-semibold text-white">
                     {currentUserData.entry.display_name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-              )}
-              <span className="text-lg font-semibold text-center font-['Montserrat']">
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+              <GradientName seed={currentUserData.entry.user_id || currentUserData.entry.display_name} className="text-lg font-semibold text-center font-['Montserrat']">
                 {currentUserData.entry.display_name}
-              </span>
+              </GradientName>
             </div>
             <div className="grid grid-cols-3 gap-4 text-center items-center text-white/70 text-xs font-semibold uppercase tracking-wide">
               <span>Rank</span>
@@ -519,23 +520,23 @@ const LeaderboardPage = () => {
                       <TableCell className="font-medium">#{idx + 1}</TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-3">
-                          {entry.avatar_url ? (
-                            <img 
-                              src={entry.avatar_url} 
-                              alt={entry.display_name}
-                              className="h-8 w-8 rounded-full object-cover"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = 'none';
-                              }}
-                            />
-                          ) : (
-                            <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                              <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                          <div
+                            className="rounded-full p-[2px]"
+                            style={{ background: getAvatarFrameGradient(entry.user_id || entry.display_name) }}
+                          >
+                            <Avatar className="h-8 w-8 border border-[#1d2026] bg-[#262930]">
+                              <AvatarImage
+                                src={entry.avatar_url ?? undefined}
+                                alt={entry.display_name}
+                              />
+                              <AvatarFallback className="bg-transparent text-xs font-medium text-white">
                                 {entry.display_name.charAt(0).toUpperCase()}
-                              </span>
-                            </div>
-                          )}
-                          <span className="font-semibold">{entry.display_name}</span>
+                              </AvatarFallback>
+                            </Avatar>
+                          </div>
+                          <GradientName seed={entry.user_id || entry.display_name} className="font-semibold">
+                            {entry.display_name}
+                          </GradientName>
                         </div>
                       </TableCell>
                       <TableCell className="font-semibold font-['Montserrat']">

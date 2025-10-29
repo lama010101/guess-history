@@ -21,8 +21,8 @@ interface GameSettings {
 const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClose, onSettingsUpdated }) => {
   const [hintsPerGame, setHintsPerGame] = React.useState(3);
   const [timerEnabled, setTimerEnabled] = React.useState(true);
-  const [timerSeconds, setTimerSeconds] = React.useState(60); // 1 min
-  const [initialState, setInitialState] = React.useState({ hintsPerGame: 3, timerEnabled: true, timerSeconds: 60 });
+  const [timerSeconds, setTimerSeconds] = React.useState(120); // 2 min
+  const [initialState, setInitialState] = React.useState({ hintsPerGame: 3, timerEnabled: true, timerSeconds: 120 });
 
   React.useEffect(() => {
     if (isOpen) {
@@ -32,23 +32,23 @@ const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({ isOpen, onClo
           const parsed = JSON.parse(saved);
           setHintsPerGame(parsed.hintsPerGame ?? 3);
           setTimerEnabled(parsed.timerEnabled ?? true);
-          setTimerSeconds(parsed.timerSeconds ?? 60);
+          setTimerSeconds(parsed.timerSeconds ?? 120);
           setInitialState({
             hintsPerGame: parsed.hintsPerGame ?? 3,
             timerEnabled: parsed.timerEnabled ?? true,
-            timerSeconds: parsed.timerSeconds ?? 60,
+            timerSeconds: parsed.timerSeconds ?? 120,
           });
         } catch {
           setHintsPerGame(3);
           setTimerEnabled(true);
-          setTimerSeconds(60);
-          setInitialState({ hintsPerGame: 3, timerEnabled: true, timerSeconds: 60 });
+          setTimerSeconds(120);
+          setInitialState({ hintsPerGame: 3, timerEnabled: true, timerSeconds: 120 });
         }
       } else {
         setHintsPerGame(3);
         setTimerEnabled(true);
-        setTimerSeconds(60);
-        setInitialState({ hintsPerGame: 3, timerEnabled: true, timerSeconds: 60 });
+        setTimerSeconds(120);
+        setInitialState({ hintsPerGame: 3, timerEnabled: true, timerSeconds: 120 });
       }
     }
   }, [isOpen]);

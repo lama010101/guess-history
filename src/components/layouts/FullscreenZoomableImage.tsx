@@ -141,6 +141,14 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({
 
   const zoomIn = () => handleZoomStep(ZOOM_STEP);
   const zoomOut = () => handleZoomStep(-ZOOM_STEP);
+
+  const resetZoom = useCallback(() => {
+    cancelInertia();
+    cancelAutoPan();
+    setZoom(1);
+    setOffset({ x: 0, y: 0 });
+    if (showHint) setShowHint(false);
+  }, [cancelInertia, cancelAutoPan, showHint]);
   
   // Calculate zoom centered on mouse position
   const zoomAtPoint = (newZoom: number, clientX: number, clientY: number) => {
@@ -765,9 +773,18 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({
         >
           <ZoomIn className="w-5 h-5" />
         </button>
-        <div className="min-w-[3rem] rounded-full bg-black/70 text-white text-xs font-semibold px-3 py-1 text-center shadow-lg select-none">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            resetZoom();
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          className={`min-w-[3rem] rounded-full bg-black/70 text-white text-xs font-semibold px-3 py-1 text-center shadow-lg select-none transition ${zoomAtMin ? 'cursor-default' : 'hover:bg-black/80 active:scale-[0.97]'}`}
+          aria-label="Reset zoom to 100%"
+        >
           {Math.round(zoom * 100)}%
-        </div>
+        </button>
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); zoomOut(); }}

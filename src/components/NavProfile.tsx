@@ -1,5 +1,5 @@
 // NavProfile component
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGame } from "@/contexts/GameContext";
 import { useLogs } from "@/contexts/LogContext";
@@ -32,6 +32,7 @@ import {
   UserCog
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { getAvatarFrameGradient, getAvatarTextGradientStyle } from '@/utils/avatarGradient';
 
 export const NavProfile = () => {
   const { user, signOut, isGuest } = useAuth();
@@ -173,6 +174,9 @@ export const NavProfile = () => {
   };
 
   const avatarUrl = (avatar?.firebase_url) || profile?.avatar_image_url || profile?.avatar_url || null;
+  const gradientSeed = profile?.avatar_id || profile?.id || profile?.display_name || user?.id || 'nav';
+  const avatarBorderStyle = useMemo(() => ({ background: getAvatarFrameGradient(gradientSeed) }), [gradientSeed]);
+  const displayNameStyle = useMemo(() => getAvatarTextGradientStyle(gradientSeed), [gradientSeed]);
   // Determine the best display name to show in the dropdown
   const userDisplayName =
     // Prefer unique profile-side avatar_name/display_name so numeric suffixes are preserved
@@ -190,31 +194,35 @@ export const NavProfile = () => {
       <DropdownMenu>
         <DropdownMenuTrigger className="outline-none" asChild>
           <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0">
-            <Avatar className="h-8 w-8 border-2 border-history-secondary/20 hover:border-history-secondary/40 transition-colors">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="User avatar" className="h-8 w-8 rounded-full object-cover" />
-              ) : (
+            <div className="h-8 w-8 rounded-full p-[2px] transition-all" style={avatarBorderStyle}>
+              <Avatar className="h-full w-full border border-white/10 dark:border-black/20">
+                {avatarUrl ? (
+                <img src={avatarUrl} alt="User avatar" className="h-full w-full rounded-full object-cover" />
+                ) : (
                 <AvatarFallback className="bg-history-primary text-white text-sm">
                   {getInitial()}
                 </AvatarFallback>
-              )}
-            </Avatar>
+                )}
+              </Avatar>
+            </div>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <div className="flex flex-col items-center pt-4 pb-2">
-            <Avatar className="h-14 w-14 border-2 border-history-secondary/20 mb-2">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="User avatar" className="h-14 w-14 rounded-full object-cover" />
-              ) : (
+            <div className="h-14 w-14 rounded-full p-[3px] mb-2" style={avatarBorderStyle}>
+              <Avatar className="h-full w-full border border-white/10 dark:border-black/20">
+                {avatarUrl ? (
+                <img src={avatarUrl} alt="User avatar" className="h-full w-full rounded-full object-cover" />
+                ) : (
                 <AvatarFallback className="bg-history-primary text-white text-2xl">
                   {getInitial()}
                 </AvatarFallback>
-              )}
-            </Avatar>
+                )}
+              </Avatar>
+            </div>
           </div>
           <div className="px-2 py-1.5">
-            <p className="text-sm font-medium truncate">{userDisplayName}</p>
+            <p className="text-sm font-medium truncate" style={displayNameStyle}>{userDisplayName}</p>
             {isGuest && (
               <p className="text-xs text-muted-foreground">Playing as guest</p>
             )}

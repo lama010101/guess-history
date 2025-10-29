@@ -418,6 +418,13 @@ const GameRoundPage: React.FC = () => {
     return String(derived ?? '').trim() || 'Anonymous';
   }, [profile?.display_name, user?.user_metadata?.display_name, user?.email]);
 
+  const selfRosterId = useMemo(() => {
+    const normalized = makeRosterId(user?.id ?? null, displayName ?? null);
+    return normalized && normalized.trim().length > 0 ? normalized : null;
+  }, [makeRosterId, user?.id, displayName]);
+
+  const selfNameLc = useMemo(() => (displayName || '').trim().toLowerCase(), [displayName]);
+
   const handleSubmissionBroadcast = useCallback((payload: SubmissionBroadcast) => {
     if (!isCompeteMode) return;
     if (!Number.isFinite(roundNumber) || payload.roundNumber !== roundNumber) return;
@@ -1178,10 +1185,13 @@ const GameRoundPage: React.FC = () => {
     const currentPlayerKey = user?.id ?? (displayName ? `name:${displayName.trim().toLowerCase()}` : null);
 
     // Determine expected participants using current sources only to prevent sticky inflation
+    const expectedFromBroadcast = Math.max(0, submittedCounts.total);
+    const hasAuthoritativeCount = expectedFromBroadcast > 0;
     const expectedTotal = Math.max(
       hasSubmittedThisRound ? 1 : 0,
       roundPeers.length,
       lobbyRoster.length,
+      expectedFromBroadcast,
     );
     const submitted = roundPeers.filter((peer) => peer.submitted).length;
     // Fallback: if we locally submitted but our DB row hasn't appeared yet,
@@ -1189,7 +1199,8 @@ const GameRoundPage: React.FC = () => {
     const selfId = user?.id || null;
     const selfPeer = roundPeers.find((p) => p.userId === selfId) || null;
     const submittedAdj = submitted + (hasSubmittedThisRound && (!selfPeer || selfPeer.submitted !== true) ? 1 : 0);
-    const allSubmitted = expectedTotal > 0 && submittedAdj >= expectedTotal;
+    const effectiveExpected = expectedTotal;
+    const allSubmitted = effectiveExpected > 0 && submittedAdj >= effectiveExpected;
 
     setSubmittedCounts((prev) => {
       if (prev.submitted === submittedAdj && prev.total === expectedTotal) {
@@ -1264,7 +1275,7 @@ const GameRoundPage: React.FC = () => {
         setWaitingForPeers((prev) => (prev === false ? prev : false));
         requestNavigateToResults();
       } else {
-        const shouldWait = !allSubmitted;
+        const shouldWait = effectiveExpected === 0 ? true : !allSubmitted;
         setWaitingForPeers((prev) => (prev === shouldWait ? prev : shouldWait));
         if (shouldWait && timerEnabledRef.current) {
           setIsTimerActive((prev) => (prev === true ? prev : true));
@@ -1290,6 +1301,7 @@ const GameRoundPage: React.FC = () => {
     requestNavigateToResults,
     user?.id,
     displayName,
+    submittedCounts,
   ]);
 
   useEffect(() => {
@@ -1450,8 +1462,6 @@ const GameRoundPage: React.FC = () => {
       }>;
     }
 
-    const selfRosterId = makeRosterId(user?.id ?? null, displayName) || null;
-
     // Prefer DB-backed peers when available
     const mappedDbPeers = (roundPeers || [])
       .map((peer, index) => {
@@ -1487,7 +1497,6 @@ const GameRoundPage: React.FC = () => {
     if (mappedDbPeers.length > 0) return mappedDbPeers;
 
     // Fallback to PartyKit lobby roster when DB peers are unavailable
-    const selfNameLc = (displayName || '').trim().toLowerCase();
     const mappedLobby = (lobbyRoster || [])
       .filter((p) => (p?.name || '').trim().length > 0)
       .map((p) => {
@@ -1582,7 +1591,7 @@ const GameRoundPage: React.FC = () => {
     });
 
     return Array.from(deduped.values()).map(({ entry }) => entry);
-  }, [isCompeteMode, roundPeers, user?.id, displayName, makeRosterId, recentSubmitterIds, lobbyRoster, peerProfileCache]);
+  }, [isCompeteMode, roundPeers, user?.id, displayName, makeRosterId, recentSubmitterIds, lobbyRoster, peerProfileCache, selfRosterId, selfNameLc]);
 
   useEffect(() => {
     if (!isCompeteMode) {
@@ -1610,6 +1619,7 @@ const GameRoundPage: React.FC = () => {
   const peerRoster = useMemo(() => {
     if (!isCompeteMode) return [] as typeof cachedPeerRoster;
     const base = computedPeerRoster.length > 0 ? computedPeerRoster : cachedPeerRoster;
+    if (base.length === 0) return [];
     const deduped = new Map<string, typeof base[number]>();
     base.forEach((peer, index) => {
       if (peer.isSelf) return;
@@ -1637,8 +1647,29 @@ const GameRoundPage: React.FC = () => {
         deduped.set(key, peer);
       }
     });
-    return Array.from(deduped.values());
-  }, [isCompeteMode, computedPeerRoster, cachedPeerRoster]);
+    const roster = Array.from(deduped.values());
+    const selfUserId = user?.id?.trim() ?? null;
+    const filtered = roster.filter((peer) => {
+      const peerId = (peer.id || '').trim();
+      if (selfUserId && peerId === selfUserId) {
+        return false;
+      }
+      if (selfRosterId && peerId === selfRosterId) {
+        return false;
+      }
+      const nameLc = (peer.displayName || '').trim().toLowerCase();
+      if (selfNameLc && nameLc === selfNameLc) {
+        if (!peerId || peerId.startsWith('conn:') || peerId.startsWith('name:') || peerId.startsWith('anon:')) {
+          return false;
+        }
+      }
+      return true;
+    });
+    if (filtered.length === 0) {
+      return [];
+    }
+    return filtered;
+  }, [isCompeteMode, computedPeerRoster, cachedPeerRoster, user?.id, selfRosterId, selfNameLc]);
 
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -1700,6 +1731,20 @@ const GameRoundPage: React.FC = () => {
 
 
   // Handle guess submission
+  const emitSubmission = useCallback(() => {
+    if (!isCompeteMode || !roomId) return;
+    if (!sendLobbyPayload) return;
+    const sent = sendLobbyPayload({ type: 'submission', roundNumber });
+    if (!sent) {
+      console.warn('[GameRoundPage] Failed to send submission payload');
+      toast({
+        title: 'Connection issue',
+        description: 'Trying again… hold on a moment, we will retry automatically.',
+        variant: 'destructive',
+      });
+    }
+  }, [isCompeteMode, roomId, sendLobbyPayload, roundNumber, toast]);
+
   const handleSubmitGuess = useCallback(async () => {
     const submitMeta = {
       roundNumber,
@@ -1842,16 +1887,8 @@ const GameRoundPage: React.FC = () => {
       await recordRoundResult(resultData, currentRoundIndex);
       if (isCompeteMode && roomId && canSendLobbyPayload) {
         awaitingSubmissionAckRef.current = true;
-        const sent = sendLobbyPayload({ type: 'submission', roundNumber });
-        if (!sent) {
-          console.warn('[GameRoundPage] Failed to send submission payload after manual submit');
-          pendingClampRef.current = true;
-          toast({
-            title: 'Connection issue',
-            description: 'Trying again… hold on a moment, we will retry automatically.',
-            variant: 'destructive',
-          });
-          awaitingSubmissionAckRef.current = false;
+        emitSubmission();
+        if (!awaitingSubmissionAckRef.current) {
           setIsSubmitting(false);
           return;
         }

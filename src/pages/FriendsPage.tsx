@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,6 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from '@/components/ui/sonner';
+import { getAvatarFrameGradient, getAvatarTextGradientStyle } from '@/utils/avatarGradient';
 
 // Interface for raw profile data from Supabase
 interface ProfileFromSupabase {
@@ -411,45 +412,57 @@ const FriendsPage = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {friends.map(friend => (
-                <div 
-                  key={friend.id} 
-                  className="p-4 bg-[#333333] text-white rounded-lg shadow flex items-center justify-between"
-                >
-                  <div className="flex items-center">
-                    <Avatar className="h-10 w-10 mr-4 cursor-pointer" onClick={() => handleNavigateToProfile(friend.id)}>
-                      {friend.avatar_url ? (
-                        <AvatarImage src={friend.avatar_url} alt={friend.username} />
-                      ) : (
-                        <AvatarFallback>{getInitial(friend.username)}</AvatarFallback>
-                      )}
-                    </Avatar>
-                    <div>
-                      <div className="font-medium cursor-pointer" onClick={() => handleNavigateToProfile(friend.id)}>{friend.username}</div>
-
+              {friends.map(friend => {
+                const nameSeed = friend.id || friend.username;
+                const nameStyle = getAvatarTextGradientStyle(nameSeed);
+                const frameStyle = { background: getAvatarFrameGradient(nameSeed) };
+                return (
+                  <div 
+                    key={friend.id} 
+                    className="p-4 bg-[#333333] text-white rounded-lg shadow flex items-center justify-between"
+                  >
+                    <div className="flex items-center">
+                      <div className="h-10 w-10 mr-4 cursor-pointer rounded-full p-[2px]" style={frameStyle} onClick={() => handleNavigateToProfile(friend.id)}>
+                        <Avatar className="h-full w-full border border-[#3f424b] bg-[#262930]">
+                          {friend.avatar_url ? (
+                            <AvatarImage src={friend.avatar_url} alt={friend.username} />
+                          ) : (
+                            <AvatarFallback>{getInitial(friend.username)}</AvatarFallback>
+                          )}
+                        </Avatar>
+                      </div>
+                      <div>
+                        <div
+                          className="font-medium cursor-pointer"
+                          style={nameStyle}
+                          onClick={() => handleNavigateToProfile(friend.id)}
+                        >
+                          {friend.username}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex space-x-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => removeFriend(friend.id)}
+                            >
+                              <UserMinus className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Remove Friend</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                   </div>
-                  
-                  <div className="flex space-x-2">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => removeFriend(friend.id)}
-                          >
-                            <UserMinus className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Remove Friend</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </TabsContent>
@@ -504,35 +517,48 @@ const FriendsPage = () => {
                 </div>
               )}
               <div className="space-y-4">
-                {displayUsers.map(user => (
-                  <div 
-                    key={user.id} 
-                    className="p-4 bg-[#333333] text-white rounded-lg shadow flex items-center justify-between"
-                  >
-                    <div className="flex items-center">
-                      <Avatar className="h-10 w-10 mr-4 cursor-pointer" onClick={() => handleNavigateToProfile(user.id)}>
-                        {user.avatar_url ? (
-                          <AvatarImage src={user.avatar_url} alt={user.display_name || 'User'} />
-                        ) : (
-                          <AvatarFallback>{getInitial(user.display_name || 'User')}</AvatarFallback>
-                        )}
-                      </Avatar>
-                      <div>
-                        <div className="font-medium cursor-pointer" onClick={() => handleNavigateToProfile(user.id)}>{user.display_name || 'User'}</div>
-                      </div>
-                    </div>
-                    
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => addFriend(user)}
-                      className="flex items-center"
+                {displayUsers.map(user => {
+                  const nameSeed = user.id || user.display_name || 'user';
+                  const nameStyle = getAvatarTextGradientStyle(nameSeed);
+                  const frameStyle = { background: getAvatarFrameGradient(nameSeed) };
+                  return (
+                    <div 
+                      key={user.id} 
+                      className="p-4 bg-[#333333] text-white rounded-lg shadow flex items-center justify-between"
                     >
-                      <UserPlus className="h-4 w-4 mr-2 text-green-500" />
-                      Add Friend
-                    </Button>
-                  </div>
-                ))}
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 mr-4 cursor-pointer rounded-full p-[2px]" style={frameStyle} onClick={() => handleNavigateToProfile(user.id)}>
+                          <Avatar className="h-full w-full border border-[#3f424b] bg-[#262930]">
+                            {user.avatar_url ? (
+                              <AvatarImage src={user.avatar_url} alt={user.display_name || 'User'} />
+                            ) : (
+                              <AvatarFallback>{getInitial(user.display_name || 'User')}</AvatarFallback>
+                            )}
+                          </Avatar>
+                        </div>
+                        <div>
+                          <div
+                            className="font-medium cursor-pointer"
+                            style={nameStyle}
+                            onClick={() => handleNavigateToProfile(user.id)}
+                          >
+                            {user.display_name || 'User'}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => addFriend(user)}
+                        className="flex items-center"
+                      >
+                        <UserPlus className="h-4 w-4 mr-2 text-green-500" />
+                        Add Friend
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

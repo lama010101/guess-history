@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import LazyImage from '@/components/ui/LazyImage';
 import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
@@ -6,6 +6,8 @@ import { UserProfile, Avatar } from '@/utils/profile/profileService';
 import { UsernameChangeModal } from './UsernameChangeModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { AuthModal } from '@/components/AuthModal';
+import { getAvatarFrameGradient } from '@/utils/avatarGradient';
+import GradientName from '@/components/ui/GradientName';
 
 interface ProfileHeaderProps {
   profile: UserProfile | null;
@@ -28,6 +30,10 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   
+  const gradientSeed = profile?.id || profile?.display_name || avatar?.id || avatar?.first_name || 'default';
+
+  const frameGradient = useMemo(() => getAvatarFrameGradient(gradientSeed), [gradientSeed]);
+
   const getDisplayName = () => {
     if (isLoading) return '...';
     if (!profile) return 'Guest';
@@ -63,16 +69,21 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
     <div className="glass-card rounded-xl p-6 mb-6 bg-[#333333]">
       <div className="flex flex-col sm:flex-row items-center gap-6">
         <div className="relative">
-          <div className="h-24 w-24 rounded-full overflow-hidden border-4 border-history-secondary">
-            <LazyImage 
-              src={getAvatarUrl()}
-              alt="Profile avatar" 
-              className="h-full w-full object-cover"
-              skeletonClassName="h-full w-full"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = '/placeholder.svg';
-              }}
-            />
+          <div
+            className="h-24 w-24 rounded-full p-[3px]"
+            style={{ background: frameGradient }}
+          >
+            <div className="h-full w-full rounded-full overflow-hidden">
+              <LazyImage 
+                src={getAvatarUrl()}
+                alt="Profile avatar" 
+                className="h-full w-full object-cover"
+                skeletonClassName="h-full w-full"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/placeholder.svg';
+                }}
+              />
+            </div>
           </div>
           {allowProfileActions && (
             <Button 
@@ -80,21 +91,23 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-white dark:bg-gray-700 shadow cursor-pointer"
               onClick={handleAvatarClick}
             >
-              <Settings className="h-4 w-4" />
+              <Settings className="h-4 w-4 text-white" />
             </Button>
           )}
         </div>
         
         <div className="flex-1 text-center sm:text-left">
-          <h2 className="text-xl font-bold text-history-primary dark:text-history-light">
+          <GradientName seed={gradientSeed} className="text-xl font-bold">
             {getDisplayName()}
-          </h2>
+          </GradientName>
           <div className="text-sm text-muted-foreground mb-2">
             Member since {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : 'recently'}
           </div>
           {avatar && (
-            <div className="mt-2 p-3 rounded-lg bg-history-secondary/10 dark:bg-history-light/10">
-              <div className="font-semibold text-history-secondary dark:text-history-light mb-1">
+            <div
+              className="mt-2 p-3 rounded-lg bg-[#333333]"
+            >
+              <div className="font-semibold mb-1 text-white">
                 {avatar.first_name} {avatar.last_name}
               </div>
               {avatar.description && (

@@ -356,11 +356,6 @@ export default function ZoomYearPicker({
   );
 
   useEffect(() => {
-    if (previousValueRef.current === undefined) {
-      previousValueRef.current = value;
-      return;
-    }
-
     if (value == null || Number.isNaN(value) || value === 0) {
       previousValueRef.current = value;
       return;

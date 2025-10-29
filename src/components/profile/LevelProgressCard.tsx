@@ -27,14 +27,16 @@ const LevelProgressCard: React.FC<LevelProgressCardProps> = ({ profile, stats, i
   const overallAcc = Math.max(0, Math.min(100, Number(stats.avg_accuracy || 0)));
   const timeAcc = Math.max(0, Math.min(100, Number(stats.time_accuracy || 0)));
   const locAcc = Math.max(0, Math.min(100, Number(stats.location_accuracy || 0)));
-  const bestAxis = timeAcc >= locAcc ? { label: 'Time', value: timeAcc } : { label: 'Location', value: locAcc };
-
   const overallProgressPct = constraints.requiredOverallAccuracy > 0
     ? Math.max(0, Math.min(100, Math.round((overallAcc / constraints.requiredOverallAccuracy) * 100)))
     : 0;
 
-  const roundProgressPct = constraints.requiredRoundAccuracy > 0
-    ? Math.max(0, Math.min(100, Math.round((bestAxis.value / constraints.requiredRoundAccuracy) * 100)))
+  const timeProgressPct = constraints.requiredRoundAccuracy > 0
+    ? Math.max(0, Math.min(100, Math.round((timeAcc / constraints.requiredRoundAccuracy) * 100)))
+    : 0;
+
+  const locationProgressPct = constraints.requiredRoundAccuracy > 0
+    ? Math.max(0, Math.min(100, Math.round((locAcc / constraints.requiredRoundAccuracy) * 100)))
     : 0;
 
   return (
@@ -45,21 +47,25 @@ const LevelProgressCard: React.FC<LevelProgressCardProps> = ({ profile, stats, i
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <div className="rounded-lg p-4 text-center bg-[#444444]">
+        <div className="rounded-lg border border-[#3f424b] p-4 text-center bg-[#1d2026]">
           <div className="text-2xl font-bold text-history-primary dark:text-history-light">Level {currentLevel}</div>
           <div className="text-sm text-muted-foreground">Current</div>
         </div>
-        <div className="rounded-lg p-4 text-center bg-[#444444]">
+        <div className="rounded-lg border border-[#3f424b] p-4 text-center bg-[#1d2026]">
           <div className="text-2xl font-bold text-history-primary dark:text-history-light">{formatInteger(stats.total_xp || 0)}</div>
           <div className="text-sm text-muted-foreground">Total XP</div>
         </div>
-        <div className="rounded-lg p-4 text-center bg-[#444444]">
+        <div className="rounded-lg border border-[#3f424b] p-4 text-center bg-[#1d2026]">
           <div className="text-2xl font-bold text-history-primary dark:text-history-light">{formatInteger(stats.avg_accuracy || 0)}%</div>
           <div className="text-sm text-muted-foreground">Overall Accuracy</div>
         </div>
-        <div className="rounded-lg p-4 text-center bg-[#444444]">
-          <div className="text-2xl font-bold text-history-primary dark:text-history-light">{formatInteger(Math.max(timeAcc, locAcc))}%</div>
-          <div className="text-sm text-muted-foreground">Best Axis</div>
+        <div className="rounded-lg border border-[#3f424b] p-4 text-center bg-[#1d2026]">
+          <div className="text-2xl font-bold text-history-primary dark:text-history-light">{formatInteger(stats.time_accuracy || 0)}%</div>
+          <div className="text-sm text-muted-foreground">Time Accuracy</div>
+        </div>
+        <div className="rounded-lg border border-[#3f424b] p-4 text-center bg-[#1d2026]">
+          <div className="text-2xl font-bold text-history-primary dark:text-history-light">{formatInteger(stats.games_played || 0)}</div>
+          <div className="text-sm text-muted-foreground">Games Played</div>
         </div>
       </div>
 
@@ -69,16 +75,28 @@ const LevelProgressCard: React.FC<LevelProgressCardProps> = ({ profile, stats, i
             <span>Overall Accuracy</span>
             <span className="font-medium">{formatInteger(overallAcc)}% / {constraints.requiredOverallAccuracy}%</span>
           </div>
-          <Progress value={overallProgressPct} className="h-2 bg-gray-700 dark:bg-gray-800 mode-levelup:bg-[#444444]" indicatorClassName="bg-history-secondary" />
+          <Progress value={overallProgressPct} className="h-2 bg-gray-700 dark:bg-gray-800 mode-levelup:bg-[#444444]" indicatorClassName="bg-hint-gradient" />
         </div>
 
-        <div>
-          <div className="flex items-center justify-between text-sm mb-1">
-            <span>{bestAxis.label} Accuracy</span>
-            <span className="font-medium">{formatInteger(bestAxis.value)}% / {constraints.requiredRoundAccuracy}%</span>
+        {stats.time_accuracy != null && (
+          <div>
+            <div className="flex items-center justify-between text-sm mb-1">
+              <span>Time Accuracy</span>
+              <span className="font-medium">{formatInteger(timeAcc)}% / {constraints.requiredRoundAccuracy}%</span>
+            </div>
+            <Progress value={timeProgressPct} className="h-2 bg-gray-700 dark:bg-gray-800 mode-levelup:bg-[#444444]" indicatorClassName="bg-hint-gradient" />
           </div>
-          <Progress value={roundProgressPct} className="h-2 bg-gray-700 dark:bg-gray-800 mode-levelup:bg-[#444444]" indicatorClassName="bg-history-secondary" />
-        </div>
+        )}
+
+        {stats.location_accuracy != null && (
+          <div>
+            <div className="flex items-center justify-between text-sm mb-1">
+              <span>Location Accuracy</span>
+              <span className="font-medium">{formatInteger(locAcc)}% / {constraints.requiredRoundAccuracy}%</span>
+            </div>
+            <Progress value={locationProgressPct} className="h-2 bg-gray-700 dark:bg-gray-800 mode-levelup:bg-[#444444]" indicatorClassName="bg-hint-gradient" />
+          </div>
+        )}
       </div>
 
       <div className="mt-4 text-xs text-muted-foreground">

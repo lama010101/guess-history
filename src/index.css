@@ -52,6 +52,24 @@
     content: none;
   }
 
+  .badge-gradient-accuracy {
+    background: hsla(212, 96%, 73%, 1);
+    background: linear-gradient(90deg, hsla(212, 96%, 73%, 1) 0%, hsla(223, 100%, 67%, 1) 100%);
+    background: -moz-linear-gradient(90deg, hsla(212, 96%, 73%, 1) 0%, hsla(223, 100%, 67%, 1) 100%);
+    background: -webkit-linear-gradient(90deg, hsla(212, 96%, 73%, 1) 0%, hsla(223, 100%, 67%, 1) 100%);
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#79b6fc", endColorstr="#5988ff", GradientType=1);
+    background-repeat: no-repeat;
+  }
+
+  .badge-gradient-xp {
+    background: hsla(116, 44%, 62%, 1);
+    background: linear-gradient(90deg, hsla(116, 44%, 62%, 1) 0%, hsla(109, 42%, 48%, 1) 100%);
+    background: -moz-linear-gradient(90deg, hsla(116, 44%, 62%, 1) 0%, hsla(109, 42%, 48%, 1) 100%);
+    background: -webkit-linear-gradient(90deg, hsla(116, 44%, 62%, 1) 0%, hsla(109, 42%, 48%, 1) 100%);
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#7ac975", endColorstr="#5aae47", GradientType=1);
+    background-repeat: no-repeat;
+  }
+
   /* Custom styles for the time slider */
   .time-slider {
     -webkit-appearance: none;
@@ -559,6 +577,28 @@ document:has(.leaflet-fullscreen-on) .hud-element,
 }
 
 @layer utilities {
+  .bg-hint-gradient {
+    background: linear-gradient(135deg, #c4b5fd 0%, #f9a8d4 20%, #fdba74 45%, #fde68a 70%, #86efac 100%);
+  }
+
+  .bg-hint-gradient-soft {
+    background: linear-gradient(
+      135deg,
+      rgba(196, 181, 253, 0.15) 0%,
+      rgba(249, 168, 212, 0.15) 20%,
+      rgba(253, 186, 116, 0.15) 45%,
+      rgba(253, 230, 138, 0.15) 70%,
+      rgba(134, 239, 172, 0.15) 100%
+    );
+  }
+
+  .text-hint-gradient {
+    background: linear-gradient(135deg, #c4b5fd 0%, #f9a8d4 20%, #fdba74 45%, #fde68a 70%, #86efac 100%);
+    -webkit-background-clip: text;
+    color: transparent;
+    background-clip: text;
+  }
+
   /* In compete mode, map common orange utilities to turquoise without touching solo */
   /* Backgrounds */
   .mode-compete .bg-orange-400 { background-color: hsl(var(--secondary)) !important; }

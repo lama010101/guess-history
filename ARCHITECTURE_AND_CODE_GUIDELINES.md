@@ -1,3 +1,11 @@
+### Round Results Source Modal Fullscreen (2025-10-29)
+
+- **Component**: `src/components/modals/SourceModal.tsx`
+  - The round results **Source** button now opens a full-viewport dialog with a black backdrop. Keep the `DialogContent` constrained to `left-0 top-0 h-screen w-screen` with `max-w-none` so it always fills both desktop and mobile viewports.
+  - Preserve the header padding (`px-4 py-3`) and full-height `iframe` container so citation pages remain scrollable beneath the fixed header.
+- **Usage**: `src/components/layouts/ResultsLayout2.tsx`
+  - Continue toggling `isSourceModalOpen` via the Source button; no additional layout overrides are required now that the modal self-manages its fullscreen styling.
+
 ### Leaderboard Current User Card (2025-10-28)
 
 - **Component**: `src/pages/LeaderboardPage.tsx`
@@ -5,11 +13,25 @@
   - Keep the avatar image wrapped with an `onError` handler that hides broken sources and rely on initials when `avatar_url` is absent or fails to load.
   - Preserve the existing rank/%/XP grid beneath the identity block so metric badges remain aligned.
 
+### Practice Card Year Range Styling (2025-10-29)
+
+- **Component**: `src/pages/HomePage.tsx`
+  - Solo Practice “Years” toggle/slider reuse the base shadcn `Switch`/`Slider` styles so they visually match the Round Timer controls. Avoid attaching custom class hooks unless the overall practice palette changes again.
+- **Styles**: `src/index.css`
+  - No practice-specific overrides remain—removing `.home-year-*` ensures any future global slider theme updates automatically apply to both timer and year controls.
+
 ### Friends Page Tabs Width (2025-10-28)
 
 - **Component**: `src/pages/FriendsPage.tsx`
   - The tabs list now uses a two-column grid sized to `w-full` so both triggers span the same width as the tables/cards rendered below.
   - Each trigger centers its content with `flex-1` to keep button labels aligned with the underlying list/table width when additional columns are added.
+
+### Auth Modal Guest CTA & Spacing (2025-10-28)
+
+- **Component**: `src/components/AuthModal.tsx`
+  - `Continue as guest` reappears for non-guest visitors and remains hidden once a guest account is active (`isGuest === true`).
+  - Dialog content always uses `rounded-2xl` (across breakpoints) and a widened 48px vertical rhythm between the heading, auth CTA block, and tabbed forms so the title spacing matches the primary action button margin.
+  - Sign-in/sign-up submit buttons sit in their own padded wrapper (`py-5`) so the vertical gap above matches the gap below, keeping parity with the rest of the web app’s card spacing.
 
 ### GameRoundPage Selected Year Hook Ordering (2025-10-27)
 
@@ -30,6 +52,12 @@
 - **File**: `src/components/ui/badge.tsx`
   - XP and accuracy badge variants now use a straight 90° gradient with balanced left/right padding to eliminate the hard color band that previously appeared on the leading edge.
   - When designing new badge variants, double-check for asymmetric padding or gradient angles that create visible "bars" along the rounded capsule edges.
+
+### XP & Accuracy Badge Edge Cleanup (2025-10-29)
+
+- **File**: `src/components/ui/badge.tsx`
+  - Added `overflow-hidden` to the shared badge base and forced `bg-no-repeat` on the gradient variants to prevent stray light-blue pixels from bleeding past the capsule border.
+  - Maintain these safeguards for any future gradient badges so rounded edges stay crisp across dark backgrounds.
 
 ### Friends/Leaderboard/Profile Navbar Home Link (2025-10-28)
 
@@ -58,6 +86,18 @@
   - Guest-oriented buttons (**Register to save progress**, **Share Results**) now use the shared `hintGradient` button variant to reuse the vibrant gradient already used for Hint CTAs.
   - Keeps guest prompts visually consistent and ensures the gradient style definition lives centrally in `src/components/ui/button.tsx`.
 
+### Profile Gradient Refresh (2025-10-28)
+
+- **Utilities**: `src/index.css`
+  - Added `.bg-hint-gradient`, `.bg-hint-gradient-soft`, and `.text-hint-gradient` helpers to reuse the multi-stop hint gradient for borders, panels, and text.
+- **Components**: `src/components/profile/ProfileHeader.tsx`, `LevelProgressCard.tsx`, `StatsTab.tsx`
+  - Avatar frame, biography panel, and accuracy progress bars now use the hint gradient utilities instead of the previous orange (`history-secondary`) styling.
+  - Keeps profile accents aligned with the hint CTA palette and avoids hard-coded color tokens in component classes.
+- **Update (2025-10-28 PM)**: `StatsTab` and `LevelProgressCard` now reuse the chat panel dark surface (`bg-[#1d2026]` + `border-[#3f424b]`) for all metric tiles. Mode Breakdown cards show uppercase headings with inline values to match the refreshed stats layout.
+- **Update (2025-10-28 Evening)**: Avatar frames derive a deterministic multi-stop gradient via `getAvatarFrameGradient(seed)` in `src/utils/avatarGradient.ts`. `ProfileHeader` and `AvatarsTab` pass profile/selection IDs as seeds so each user sees a distinct frame without storing extra data; paired soft gradients tint biography surfaces.
+- **Update (2025-10-29)**: Username styling now reuses a shared `<GradientName>` helper that applies the seeded frame gradient to text. `NavProfile`, `ProfileHeader`, and friends lists all render display names with this component so gradients stay consistent across the app.
+- **Update (2025-10-29 PM)**: Profile stats emphasize overall accuracy first. The Accuracy Breakdown block lives at the top of `StatsTab`, mode tiles list Games/Average Accuracy/Total XP only, and the earned-badges preview was removed. Level Up Progress mini cards now surface Games Played and Time Accuracy, followed by separate progress bars for overall/time/location thresholds.
+
 ### Year Input Draft Commit (2025-10-28)
 
 - **Component**: `src/components/layouts/GameLayout1.tsx`
@@ -69,6 +109,7 @@
 - **Component**: `src/components/game/ZoomYearPicker.tsx`
   - External year changes (e.g., typing a year in the header input) now mark a pending external value and call `centerOn()` so the rail recenters on that year.
   - The effect ignores no-op updates (duplicate values, missing data) and keeps the existing interaction tracking to avoid recursive emissions.
+  - Update (2025-10-28 PM): The first controlled value now also triggers centering, ensuring the initial typed year sticks instead of snapping back to the picker default.
 
 ### Solo Submit Button Consolidation (2025-10-28)
 
@@ -94,6 +135,12 @@
   - Added floating zoom buttons (ZoomIn/ZoomOut) anchored bottom-right when fullscreen is open.
   - Buttons adjust the existing zoom state, keep focus within the viewer, and disable at min/max bounds while stopping propagation so drags aren’t disrupted.
   - Uses existing `handleZoomStep` logic, keeping pinch/wheel gestures and hint dismissal intact.
+
+### Fullscreen Zoom Reset Click (2025-10-29)
+
+- **Component**: `src/components/layouts/FullscreenZoomableImage.tsx`
+  - The zoom percentage chip between the +/- controls is now a button; clicking it resets zoom to 100% and recenters the image.
+  - Reset dismisses inertia/auto-pan so the viewer immediately returns to the default position without continued motion.
 
 ### Fullscreen Button Attention Pulse Timing (2025-10-27)
 
@@ -2293,19 +2340,16 @@ The multiplayer lobby supports a host-configurable round timer that synchronizes
   - UI pre-hydration sets `remainingTime = roundTimerSec` until the countdown hydrates, then syncs to `remainingSec`.
 
 - Timer ID construction utility: `src/lib/timerId.ts` (`buildTimerId(baseId, roundIndex)`). The `baseId` used by the page is `roomId || gameId`.
-
 - Notes:
   - Solo mode uses global timer settings via `useSettingsStore` (see HomePage wiring). On first page load in a new game, the session is created with that configured duration.
   - Multi-tab synchronization and resume behavior match the `/timer` feature.
+- Multiplayer guardrails:
+  - **Compete-mode round completion now relies on broadcast totals when deciding navigation.** `GameRoundPage.tsx` merges PartyKit submission broadcasts with live Supabase peers (`useRoundPeers`) to compute `submittedCounts`. The compete-mode “wait for peers” check uses the server-reported `totalPlayers` floor so a local player does not navigate to results until broadcasts confirm all expected participants have submitted.
 
 - **Change**: The `timerId` construction in `GameRoundPage` now prefers `roomId` for Solo timer persistence, mirroring the behavior of `useGameLocalCountdown`. This ensures consistent timer behavior across refreshes and tabs.
 
 - **Reference**: The `useGameLocalCountdown` hook provides a local countdown solution that persists across tabs and refreshes, independent of server timers. Its behavior is mirrored in the `GameRoundPage` integration.
 
-- **Client → Server message**: `progress`
-  - Shape: `{ type: 'progress'; roundNumber: number; substep?: string }`
-{{ ... }}
-  - Usage: Sent opportunistically to reflect a player’s in-round state transitions, e.g., `substep` in `['pre','thinking','guessing','hint','submitted']`.
   - Security: Server ignores messages from non-joined connections.
 
 - **Server → Client message**: `progress`
@@ -3048,6 +3092,7 @@ Notes: UI changes are limited to the Home page and the shared `Logo` component p
   - Bottom navbar background set to solid black (`bg-black`).
   - Home button height matches Play Again: both use `size="lg"` with `py-6 text-base`.
   - Top navbar simplified: logo removed; global Accuracy and XP badges on the left; `NavProfile` on the right.
+  - Accuracy and XP badge gradients use the compete palette HSLA ramps (light at 0%, dark at 100%) for consistent styling across browsers.
 
 - Round Results bottom "Next Round" button width increased.
   - File: `src/pages/RoundResultsPage.tsx`

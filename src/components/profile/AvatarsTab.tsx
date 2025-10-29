@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { UserProfile, Avatar } from '@/utils/profile/profileService';
 import { Button } from "@/components/ui/button";
 import { CheckCircle, LockIcon } from "lucide-react";
 import { updateUserAvatar } from '@/utils/profile/profileService';
 import { toast } from '@/components/ui/use-toast';
 import LazyImage from '@/components/ui/LazyImage';
+import { getAvatarFrameGradient } from '@/utils/avatarGradient';
 
 interface AvatarsTabProps {
   profile: UserProfile | null;
@@ -137,6 +138,12 @@ const AvatarsTab: React.FC<AvatarsTabProps> = ({
     }
   };
   
+  const currentGradientSeed = profile?.avatar_id || profile?.id || profile?.display_name;
+  const currentFrameGradient = useMemo(
+    () => getAvatarFrameGradient(currentGradientSeed || 'current'),
+    [currentGradientSeed]
+  );
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-8">
@@ -165,16 +172,21 @@ const AvatarsTab: React.FC<AvatarsTabProps> = ({
         <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
           <h4 className="font-medium mb-2 text-history-primary dark:text-history-light">Selected Avatar</h4>
           <div className="flex items-start gap-4">
-            <div className="h-20 w-20 bg-history-light dark:bg-history-dark rounded-full overflow-hidden flex-shrink-0">
-              <LazyImage 
-                src={selectedAvatar.firebase_url || selectedAvatar.image_url} 
-                alt={selectedAvatar.name} 
-                className="h-full w-full object-cover"
-                skeletonClassName="h-full w-full"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/placeholder.svg';
-                }}
-              />
+            <div
+              className="flex-shrink-0 rounded-full p-[3px]"
+              style={{ background: getAvatarFrameGradient(selectedAvatar.id || selectedAvatar.name || 'selected') }}
+            >
+              <div className="h-20 w-20 rounded-full overflow-hidden">
+                <LazyImage 
+                  src={selectedAvatar.firebase_url || selectedAvatar.image_url} 
+                  alt={selectedAvatar.name} 
+                  className="h-full w-full object-cover"
+                  skeletonClassName="h-full w-full"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/placeholder.svg';
+                  }}
+                />
+              </div>
             </div>
             <div className="flex-1">
               <div className="text-base font-medium">{selectedAvatar.name}</div>
@@ -216,6 +228,8 @@ const AvatarsTab: React.FC<AvatarsTabProps> = ({
           {displayedAvatars.map((avatar, index) => {
             const isSelected = avatar.id === selectedAvatarId;
             const isLastItem = index === displayedAvatars.length - 1;
+            const paletteSeed = avatar.id || avatar.name || avatar.firebase_url;
+            const frameGradient = getAvatarFrameGradient(paletteSeed);
             
             return (
               <div 
@@ -226,16 +240,21 @@ const AvatarsTab: React.FC<AvatarsTabProps> = ({
                 } hover:border-history-primary/50 transition-colors cursor-pointer`}
                 onClick={() => handleSelectAvatar(avatar.id)}
               >
-                <div className="h-24 w-24 mx-auto bg-history-light dark:bg-history-dark rounded-full overflow-hidden mb-2">
-                  <LazyImage 
-                    src={avatar.firebase_url || avatar.image_url} 
-                    alt={avatar.name} 
-                    className="h-full w-full object-cover"
-                    skeletonClassName="h-full w-full"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/placeholder.svg';
-                    }}
-                  />
+                <div
+                  className="h-24 w-24 mx-auto rounded-full p-[3px] mb-2"
+                  style={{ background: frameGradient }}
+                >
+                  <div className="h-full w-full rounded-full overflow-hidden">
+                    <LazyImage 
+                      src={avatar.firebase_url || avatar.image_url} 
+                      alt={avatar.name} 
+                      className="h-full w-full object-cover"
+                      skeletonClassName="h-full w-full"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/placeholder.svg';
+                      }}
+                    />
+                  </div>
                 </div>
                 <div className="text-sm font-medium truncate" title={avatar.name}>
                   {avatar.name}
@@ -256,16 +275,21 @@ const AvatarsTab: React.FC<AvatarsTabProps> = ({
         <div className="mt-8">
           <h4 className="font-medium mb-4 text-history-primary dark:text-history-light">Your Social Avatar</h4>
           <div className="flex items-center">
-            <div className="h-20 w-20 bg-history-light dark:bg-history-dark rounded-full overflow-hidden mr-4">
-              <LazyImage 
-                src={profile.avatar_url} 
-                alt="Social avatar" 
-                className="h-full w-full object-cover"
-                skeletonClassName="h-full w-full"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/placeholder.svg';
-                }}
-              />
+            <div
+              className="mr-4 rounded-full p-[3px]"
+              style={{ background: currentFrameGradient }}
+            >
+              <div className="h-20 w-20 rounded-full overflow-hidden">
+                <LazyImage 
+                  src={profile.avatar_url} 
+                  alt="Social avatar" 
+                  className="h-full w-full object-cover"
+                  skeletonClassName="h-full w-full"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/placeholder.svg';
+                  }}
+                />
+              </div>
             </div>
             <div>
               <p className="text-sm mb-2">This is your avatar from your social login.</p>

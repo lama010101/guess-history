@@ -118,7 +118,7 @@ export const UsernameChangeModal: React.FC<UsernameChangeModalProps> = ({
           <Button variant="outline" onClick={onClose} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={handleSaveUsername} disabled={isLoading}>
+          <Button variant="hintGradient" onClick={handleSaveUsername} disabled={isLoading}>
             {isLoading ? "Saving..." : "Save Changes"}
           </Button>
         </DialogFooter>

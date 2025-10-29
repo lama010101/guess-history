@@ -237,17 +237,17 @@ const ProfileLayout1 = () => {
           </div>
 
           <TabsContent value="stats">
-            <LevelProgressCard
+            <StatsTab 
+              stats={stats || getDefaultStats()} 
+              isLoading={statsLoading}
+            />
+            <div className="mt-6">
+              <LevelProgressCard
               profile={profile}
               stats={stats || getDefaultStats()}
               isLoading={statsLoading}
             />
-            <StatsTab 
-              stats={stats || getDefaultStats()} 
-              isLoading={statsLoading}
-              badgeEvaluations={isViewingSelf ? badgeEvaluations : []}
-              badgesLoading={isViewingSelf ? badgesLoading : false}
-            />
+            </div>
           </TabsContent>
 
 

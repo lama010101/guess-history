@@ -230,12 +230,12 @@ export function AuthModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-md max-h-[85vh] p-0 overflow-hidden bg-black/85 backdrop-blur-md border border-white/10 shadow-2xl rounded-2xl" aria-describedby={undefined}>
+      <DialogContent className="sm:max-w-md max-h-[85vh] p-0 overflow-hidden bg-black/85 backdrop-blur-md border border-white/10 shadow-2xl rounded-2xl sm:rounded-2xl" aria-describedby={undefined}>
         <DialogHeader className="px-6 pt-6">
           <DialogTitle>Welcome to Guess History</DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col gap-6 flex-1 justify-between px-6 pb-6">
-          <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-8 flex-1 justify-between px-6 pb-6">
+          <div className={`flex flex-col gap-4 ${isGuest ? "mt-4" : "mt-0"}`}>
           {!isGuest && (
             <Button
               variant="hintGradient"
@@ -288,15 +288,15 @@ export function AuthModal({
             defaultValue="signIn" 
             value={activeTab} 
             onValueChange={(value) => setActiveTab(value as "signIn" | "signUp")}
-            className="mt-4"
+            className="mt-6"
           >
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signIn">Sign In</TabsTrigger>
               <TabsTrigger value="signUp">Sign Up</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="signIn" className="mt-4">
-              <form onSubmit={handleEmailAuth} className="space-y-4">
+            <TabsContent value="signIn" className="mt-6">
+              <form onSubmit={handleEmailAuth} className="space-y-5">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
@@ -355,16 +355,18 @@ export function AuthModal({
                     )}
                   </div>
                 </div>
-                <Button
-                  type="submit"
-                  className="w-full bg-white text-black border hover:bg-white hover:text-black flex items-center justify-center gap-2"
-                  disabled={isLoading}
-                >
-                  <Mail className="w-4 h-4" />
-                  Sign In
-                </Button>
+                <div className="py-5">
+                  <Button
+                    type="submit"
+                    className="w-full bg-white text-black border hover:bg-white hover:text-black flex items-center justify-center gap-2"
+                    disabled={isLoading}
+                  >
+                    <Mail className="w-4 h-4" />
+                    Sign In
+                  </Button>
+                </div>
                 {formError && (
-                  <div className="mt-2 text-sm text-red-500 flex items-start gap-2">
+                  <div className="text-sm text-red-500 flex items-start gap-2">
                     <AlertCircle className="h-4 w-4 mt-0.5" />
                     <div>
                       <p>{formError}</p>
@@ -377,8 +379,8 @@ export function AuthModal({
               </form>
             </TabsContent>
             
-            <TabsContent value="signUp" className="mt-4">
-              <form onSubmit={handleEmailAuth} className="space-y-4">
+            <TabsContent value="signUp" className="mt-6">
+              <form onSubmit={handleEmailAuth} className="space-y-5">
                 <div className="space-y-2">
                   <Label htmlFor="email-signup">Email</Label>
                   <Input
@@ -401,14 +403,16 @@ export function AuthModal({
                     disabled={isLoading}
                   />
                 </div>
-                <Button
-                  type="submit"
-                  className="w-full bg-white text-black border hover:bg-white hover:text-black flex items-center justify-center gap-2"
-                  disabled={isLoading}
-                >
-                  <Mail className="w-4 h-4" />
-                  Create Account
-                </Button>
+                <div className="py-5">
+                  <Button
+                    type="submit"
+                    className="w-full bg-white text-black border hover:bg-white hover:text-black flex items-center justify-center gap-2"
+                    disabled={isLoading}
+                  >
+                    <Mail className="w-4 h-4" />
+                    Create Account
+                  </Button>
+                </div>
               </form>
             </TabsContent>
           </Tabs>

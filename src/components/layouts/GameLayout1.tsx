@@ -150,11 +150,10 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const yearInputRef = useRef<HTMLInputElement>(null);
   const submitButtonDebugRef = useRef<string>('');
   useEffect(() => {
-    if (!yearInteracted) return;
     if (pendingYearDraft !== '') return;
     if (typeof selectedYear === 'number') {
       setYearInput(String(selectedYear));
-    } else {
+    } else if (!yearInteracted) {
       setYearInput('');
     }
   }, [selectedYear, yearInteracted, pendingYearDraft]);

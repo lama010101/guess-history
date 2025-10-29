@@ -12,7 +12,9 @@ const SourceModal: React.FC<SourceModalProps> = ({ isOpen, onClose, url }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[92vw] sm:max-w-[95vw] max-h-[95vh] overflow-hidden rounded-2xl border border-white/10 bg-black/85 backdrop-blur-md shadow-2xl flex flex-col p-0">
+      <DialogContent
+        className="left-0 top-0 h-screen w-screen max-w-none translate-x-0 translate-y-0 overflow-hidden border-0 bg-black text-white p-0 sm:rounded-none flex flex-col"
+      >
         <DialogHeader className="px-4 py-3 border-b border-white/10 flex-shrink-0">
           <DialogTitle className="text-white">Source</DialogTitle>
         </DialogHeader>

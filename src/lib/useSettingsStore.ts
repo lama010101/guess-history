@@ -62,7 +62,7 @@ interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   soundEnabled: true,
-  timerSeconds: 60, // Default to 60 seconds
+  timerSeconds: 120, // Default to 120 seconds (2 minutes)
   vibrateEnabled: false,
   gyroscopeEnabled: false,
   distanceUnit: 'km',

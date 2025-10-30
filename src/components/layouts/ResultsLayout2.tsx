@@ -576,6 +576,17 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
         }
       }
 
+      // DEV-only diagnostics: log final leaderboard userIds and highlight id
+      if (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.DEV) {
+        try {
+          console.debug('[ResultsLayout2] leaderboard rows', {
+            metric,
+            highlightUserId: highlightId ?? selfUserId,
+            rowUserIds: rows.map(r => r.userId),
+          });
+        } catch {}
+      }
+
       return renderLeaderboardTable(rows, leaderboards.currentUserId ?? null, metric, variant);
     }
 

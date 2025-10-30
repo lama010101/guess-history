@@ -23,7 +23,7 @@ const InviteToastContent: React.FC<InviteToastContentProps> = ({ roomId, hostNam
       <div className="flex items-center gap-2">
         <Button
           size="sm"
-          className="bg-emerald-500 hover:bg-emerald-500/90 text-black"
+          className="bg-emerald-500 hover:bg-emerald-500/90 text-black flex-1"
           onClick={onAccept}
         >
           Accept
@@ -31,7 +31,7 @@ const InviteToastContent: React.FC<InviteToastContentProps> = ({ roomId, hostNam
         <Button
           size="sm"
           variant="destructive"
-          className="bg-red-500 hover:bg-red-500/90 text-white"
+          className="bg-red-500 hover:bg-red-500/90 text-white w-auto px-4"
           onClick={onDecline}
         >
           Decline

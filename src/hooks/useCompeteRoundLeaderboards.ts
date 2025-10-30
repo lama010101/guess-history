@@ -145,18 +145,53 @@ export function useCompeteRoundLeaderboards(
       userIdSet.add(currentUserId);
     }
 
+    const globalObj: Record<string, any> | null = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+
+    const getLogStore = (): any[] | null => {
+      if (!globalObj) return null;
+      if (!Array.isArray(globalObj.__ghCompeteLeaderboardLogs)) {
+        globalObj.__ghCompeteLeaderboardLogs = [] as any[];
+      }
+      return globalObj.__ghCompeteLeaderboardLogs as any[];
+    };
+
+    if (globalObj && typeof globalObj.__ghGetCompeteLeaderboardLogTail !== 'function') {
+      globalObj.__ghGetCompeteLeaderboardLogTail = (limit: number = 10) => {
+        const store = getLogStore();
+        if (!store) return [] as any[];
+        const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10;
+        return store.slice(-safeLimit);
+      };
+    }
+
+    const isDev = typeof import.meta !== 'undefined' && Boolean((import.meta as any)?.env?.DEV);
+    const debugEnabled = isDev || globalObj?.__ghEnableLeaderboardLogs === true;
+
+    const pushDebugLog = (stage: 'input' | 'computed', payload: Record<string, unknown>) => {
+      if (!debugEnabled) return;
+      console.debug(`[useCompeteRoundLeaderboards] ${stage}`, payload);
+
+      const store = getLogStore();
+      if (!store) return;
+      store.push({ ts: Date.now(), stage, payload });
+      if (store.length > 200) {
+        store.splice(0, store.length - 200);
+      }
+    };
+
     // Dev-only diagnostics to trace inputs and ensure current user presence
-    if (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.DEV) {
+    if (debugEnabled) {
       try {
         const ids = Array.from(userIdSet);
-        console.debug('[useCompeteRoundLeaderboards] input', {
+        const payload = {
           roomId: resolvedRoomId,
           roundNumber: resolvedRoundNumber,
           snapshotCount: snapshotEntries.length,
           peersCount: (peers || []).length,
           currentUserId,
           userIdSet: ids,
-        });
+        };
+        pushDebugLog('input', payload);
       } catch {}
     }
 
@@ -221,7 +256,7 @@ export function useCompeteRoundLeaderboards(
       total.push({
         userId,
         displayName,
-        value: netAccuracy,
+        value: Number.isFinite(netAccuracy) ? netAccuracy : 0,
         xpTotal,
         xpDebt,
         timeAccuracy: timeAcc,
@@ -266,9 +301,9 @@ export function useCompeteRoundLeaderboards(
         : 'legacy' as const;
 
     // Dev-only diagnostics to trace computed rows and ensure self inclusion
-    if (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.DEV) {
+    if (debugEnabled) {
       try {
-        console.debug('[useCompeteRoundLeaderboards] computed', {
+        const payload = {
           roomId: resolvedRoomId,
           roundNumber: resolvedRoundNumber,
           source: derivedSource,
@@ -276,7 +311,8 @@ export function useCompeteRoundLeaderboards(
           totalIds: total.map(r => r.userId),
           whenIds: when.map(r => r.userId),
           whereIds: where.map(r => r.userId),
-        });
+        };
+        pushDebugLog('computed', payload);
       } catch {}
     }
 

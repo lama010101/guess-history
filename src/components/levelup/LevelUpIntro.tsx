@@ -205,7 +205,7 @@ const LevelUpIntro: React.FC<LevelUpIntroProps> = ({
                 }
                 onStart();
               }}
-              className="w-full px-6 py-2 rounded-lg bg-pink-500 text-white hover:bg-pink-600 transition-colors"
+              className="w-full px-6 py-2 rounded-lg bg-pink-500 text-black hover:bg-pink-400 transition-colors"
               disabled={isLoading}
             >
               Start

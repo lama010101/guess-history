@@ -174,9 +174,9 @@ export default function PreparationOverlay() {
   if (!shouldShow) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[1100] flex items-center justify-center">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-md sm:backdrop-blur-xl backdrop-saturate-150 transition-opacity" />
 
       {/* Panel */}
       <div

@@ -65,7 +65,7 @@ const FinalResultsPage = () => {
   const restartSeedRef = useRef<string | null>(null);
   const chatListRef = React.useRef<HTMLDivElement | null>(null);
   const [chatInput, setChatInput] = React.useState('');
-  const [chatCollapsed, setChatCollapsed] = React.useState(true);
+  const [chatCollapsed, setChatCollapsed] = React.useState(false);
   
   // Apply Level Up theming via body class when under /level/ routes
   useEffect(() => {
@@ -749,160 +749,165 @@ const FinalResultsPage = () => {
                 </div>
               )}
               <div className="bg-[#333333] rounded-lg p-6 text-white mb-8 sm:mb-12">
-                <h1 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4 text-center">FINAL SCORE</h1>
-                <div className="flex justify-center items-center gap-4 mt-2">
-                  <Badge variant="accuracy" className="text-lg flex items-center gap-1" aria-label={`Accuracy: ${totalPercentage}%`}>
-                    <Target className="h-4 w-4" />
-                    <span>{totalPercentage}%</span>
-                  </Badge>
-                  <Badge variant="xp" className="text-lg flex items-center gap-1" aria-label={`XP: ${totalScore}`}>
-                    <Zap className="h-4 w-4" />
-                    <span>{totalScore}</span>
-                  </Badge>
-                </div>
-
-                {/* Accuracy progress bars */}
-                <div className="mt-4 space-y-3" role="group" aria-label="Accuracy breakdown">
-                  <div>
-                    <div className="text-sm text-gray-300 mb-1 flex items-center justify-between">
-                      <span>Time Accuracy</span>
-                      <span>{formatInteger(totalWhenAccuracy)}%</span>
-                    </div>
-                    <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-history-secondary"
-                        style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhenAccuracy)))}%` }}
-                        aria-label={`Time accuracy ${formatInteger(totalWhenAccuracy)}%`}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-gray-300 mb-1 flex items-center justify-between">
-                      <span>Location Accuracy</span>
-                      <span>{formatInteger(totalWhereAccuracy)}%</span>
-                    </div>
-                    <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-history-secondary"
-                        style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhereAccuracy)))}%` }}
-                        aria-label={`Location accuracy ${formatInteger(totalWhereAccuracy)}%`}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Detailed metrics */}
-                <div className="mt-6 grid grid-cols-2 gap-3 text-sm">
-                  <div className="bg-[#2b2b2b] rounded-md p-3">
-                    <div className="text-gray-300">Avg Years Off</div>
-                    <div className="font-semibold">{formatInteger(avgYearsOff)}</div>
-                  </div>
-                  <div className="bg-[#2b2b2b] rounded-md p-3">
-                    <div className="text-gray-300">Avg {avgDistanceUnit.toUpperCase()} Away</div>
-                    <div className="font-semibold">{avgDistanceValue}</div>
-                  </div>
-                  <div className="bg-[#2b2b2b] rounded-md p-3 col-span-2 grid grid-cols-2 gap-3">
-                    <div>
-                      <div className="text-gray-300">Hints Used</div>
-                      <div className="font-semibold">{totalHintsUsed}</div>
-                    </div>
-                    <div>
-                      <div className="text-gray-300">Hint Penalties</div>
-                      {totalAccDebtPercent > 0 || (totalXpDebtState ?? 0) > 0 ? (
-                        <div className="font-semibold text-red-400 flex flex-wrap items-baseline gap-2">
-                          {totalAccDebtPercent > 0 ? <span>-{totalAccDebtPercent}%</span> : null}
-                          {(totalXpDebtState ?? 0) > 0 ? <span>-{formatInteger(totalXpDebtState || 0)} XP</span> : null}
-                        </div>
-                      ) : (
-                        <div className="font-semibold text-white">0</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Share Results button under score card */}
-                <div className="mt-6 flex justify-center">
-                  <Button onClick={handleShare} variant="hintGradient" className="gap-2">
-                    <Share2 className="h-5 w-5" />
-                    Share Results
-                  </Button>
-                </div>
-
-                {/* SYNC Compete: show final leaderboard for all participants */}
-                {isSyncCompeteRoute && effectiveRoomId ? (
-                  <>
-                    <div className="mt-6">
-                      <FinalScoreboard roomId={effectiveRoomId} />
-                    </div>
-                    <div className="mt-4 w-full rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 text-white">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <MessageSquare className="h-4 w-4 text-white" />
-                          <h3 className="text-base font-semibold text-white">Chat</h3>
-                          <span className="text-xs text-neutral-400">
-                            {lobbyMessages.length} message{lobbyMessages.length === 1 ? '' : 's'}
-                          </span>
-                          <span className="text-xs text-neutral-500">· Status: {lobbyStatus}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setChatCollapsed((prev) => !prev)}
-                          className="text-neutral-300 transition-colors hover:text-white"
-                          aria-label={chatCollapsed ? 'Expand chat' : 'Collapse chat'}
-                        >
-                          {chatCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-                        </button>
+                <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)] lg:items-start lg:gap-10">
+                  <div className="flex flex-col items-center gap-6 text-center lg:items-start lg:text-left">
+                    <div className="flex flex-col items-center gap-2 lg:items-start">
+                      <h1 className="text-2xl sm:text-3xl font-bold">FINAL SCORE</h1>
+                      <div className="flex flex-wrap items-center justify-center gap-4 lg:justify-start">
+                        <Badge variant="accuracy" className="text-lg flex items-center gap-1" aria-label={`Accuracy: ${totalPercentage}%`}>
+                          <Target className="h-4 w-4" />
+                          <span>{totalPercentage}%</span>
+                        </Badge>
+                        <Badge variant="xp" className="text-lg flex items-center gap-1" aria-label={`XP: ${totalScore}`}>
+                          <Zap className="h-4 w-4" />
+                          <span>{totalScore}</span>
+                        </Badge>
                       </div>
-                      {!chatCollapsed && (
-                        <>
-                          <div
-                            ref={chatListRef}
-                            className="mt-4 max-h-64 overflow-y-auto rounded-xl border border-neutral-800 bg-black/40 px-4 py-3"
-                            aria-label="Chat messages"
-                          >
-                            {lobbyMessages.length === 0 ? (
-                              <div className="text-sm text-neutral-400">No messages yet…</div>
-                            ) : (
-                              lobbyMessages.map((msg) => (
-                                <div key={msg.id} className="pb-3 last:pb-0">
-                                  <div className="flex items-center justify-between gap-3">
-                                    <span className="truncate text-sm font-semibold text-[#22d3ee] max-w-[70%]">{msg.from}</span>
-                                    <span className="text-[10px] text-neutral-400">{formatChatTime(msg.timestamp)}</span>
-                                  </div>
-                                  <div className="mt-1 text-sm text-neutral-200 whitespace-pre-wrap break-words">{msg.message}</div>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                          <div className="mt-4 flex items-center gap-3">
-                            <Input
-                              value={chatInput}
-                              onChange={(e) => setChatInput(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                  e.preventDefault();
-                                  handleSendChat();
-                                }
-                              }}
-                              placeholder={lobbyStatus === 'open' ? 'Type a message…' : 'Connecting…'}
-                              className="rounded-lg border border-neutral-800 bg-black/40 text-white"
-                              aria-label="Type a chat message"
-                              disabled={lobbyStatus !== 'open'}
-                            />
-                            <Button
-                              onClick={handleSendChat}
-                              disabled={lobbyStatus !== 'open' || !chatInput.trim()}
-                              className="bg-[#22d3ee] px-4 text-black hover:bg-[#1cbfdb] disabled:opacity-40"
-                            >
-                              Send
-                            </Button>
-                          </div>
-                        </>
-                      )}
                     </div>
-                  </>
-                ) : null}
+
+                    <div className="grid w-full gap-4 sm:grid-cols-2" role="group" aria-label="Accuracy breakdown">
+                      <div className="rounded-lg border border-neutral-700 bg-black/30 p-4">
+                        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-300">
+                          <span>Time Accuracy</span>
+                          <span>{formatInteger(totalWhenAccuracy)}%</span>
+                        </div>
+                        <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-700">
+                          <div
+                            className="h-full bg-history-secondary"
+                            style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhenAccuracy)))}%` }}
+                            aria-label={`Time accuracy ${formatInteger(totalWhenAccuracy)}%`}
+                          />
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-neutral-700 bg-black/30 p-4">
+                        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-300">
+                          <span>Location Accuracy</span>
+                          <span>{formatInteger(totalWhereAccuracy)}%</span>
+                        </div>
+                        <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-700">
+                          <div
+                            className="h-full bg-history-secondary"
+                            style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhereAccuracy)))}%` }}
+                            aria-label={`Location accuracy ${formatInteger(totalWhereAccuracy)}%`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex w-full justify-center lg:justify-start">
+                      <Button onClick={handleShare} variant="hintGradient" className="gap-2">
+                        <Share2 className="h-5 w-5" />
+                        Share Results
+                      </Button>
+                    </div>
+                  </div>
+
+                  <aside className="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 p-5 shadow-inner">
+                    <div className="flex items-center justify-between text-xs uppercase tracking-wide text-neutral-400">
+                      <span>Session Stats</span>
+                      <span>{roundResults.length} rounds</span>
+                    </div>
+                    <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                      <div className="rounded-lg border border-neutral-800 bg-black/40 p-3">
+                        <div className="text-xs uppercase tracking-wide text-neutral-400">Avg Years Off</div>
+                        <div className="mt-1 text-lg font-semibold text-white">{formatInteger(avgYearsOff)}</div>
+                      </div>
+                      <div className="rounded-lg border border-neutral-800 bg-black/40 p-3">
+                        <div className="text-xs uppercase tracking-wide text-neutral-400">Avg {avgDistanceUnit.toUpperCase()} Away</div>
+                        <div className="mt-1 text-lg font-semibold text-white">{avgDistanceValue}</div>
+                      </div>
+                      <div className="rounded-lg border border-neutral-800 bg-black/40 p-3">
+                        <div className="text-xs uppercase tracking-wide text-neutral-400">Hints Used</div>
+                        <div className="mt-1 text-lg font-semibold text-white">{totalHintsUsed}</div>
+                      </div>
+                      <div className="rounded-lg border border-neutral-800 bg-black/40 p-3">
+                        <div className="text-xs uppercase tracking-wide text-neutral-400">Hint Penalties</div>
+                        {totalAccDebtPercent > 0 || (totalXpDebtState ?? 0) > 0 ? (
+                          <div className="mt-1 flex flex-wrap items-baseline gap-2 text-lg font-semibold text-red-400">
+                            {totalAccDebtPercent > 0 ? <span>-{totalAccDebtPercent}%</span> : null}
+                            {(totalXpDebtState ?? 0) > 0 ? <span>-{formatInteger(totalXpDebtState || 0)} XP</span> : null}
+                          </div>
+                        ) : (
+                          <div className="mt-1 text-lg font-semibold text-white">0</div>
+                        )}
+                      </div>
+                    </div>
+                  </aside>
+                </div>
               </div>
+
+              {/* SYNC Compete: show final leaderboard for all participants */}
+              {isSyncCompeteRoute && effectiveRoomId ? (
+                <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]">
+                  <FinalScoreboard roomId={effectiveRoomId} className="h-full" />
+                  <div className="w-full rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 text-white flex flex-col">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4 text-white" />
+                        <h3 className="text-base font-semibold text-white">Chat</h3>
+                        <span className="text-xs text-neutral-400">
+                          {lobbyMessages.length} message{lobbyMessages.length === 1 ? '' : 's'}
+                        </span>
+                        <span className="text-xs text-neutral-500">· Status: {lobbyStatus}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setChatCollapsed((prev) => !prev)}
+                        className="text-neutral-300 transition-colors hover:text-white"
+                        aria-label={chatCollapsed ? 'Expand chat' : 'Collapse chat'}
+                      >
+                        {chatCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {!chatCollapsed && (
+                      <div className="mt-4 flex flex-1 flex-col gap-4">
+                        <div
+                          ref={chatListRef}
+                          className="flex-1 overflow-y-auto rounded-xl border border-neutral-800 bg-black/40 px-4 py-3"
+                          aria-label="Chat messages"
+                        >
+                          {lobbyMessages.length === 0 ? (
+                            <div className="text-sm text-neutral-400">No messages yet…</div>
+                          ) : (
+                            lobbyMessages.map((msg) => (
+                              <div key={msg.id} className="pb-3 last:pb-0">
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="max-w-[70%] truncate text-sm font-semibold text-[#22d3ee]">{msg.from}</span>
+                                  <span className="text-[10px] text-neutral-400">{formatChatTime(msg.timestamp)}</span>
+                                </div>
+                                <div className="mt-1 text-sm text-neutral-200 whitespace-pre-wrap break-words">{msg.message}</div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Input
+                            value={chatInput}
+                            onChange={(e) => setChatInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSendChat();
+                              }
+                            }}
+                            placeholder={lobbyStatus === 'open' ? 'Type a message…' : 'Connecting…'}
+                            className="rounded-lg border border-neutral-800 bg-black/40 text-white"
+                            aria-label="Type a chat message"
+                            disabled={lobbyStatus !== 'open'}
+                          />
+                          <Button
+                            onClick={handleSendChat}
+                            disabled={lobbyStatus !== 'open' || !chatInput.trim()}
+                            className="bg-[#22d3ee] px-4 text-black hover:bg-[#1cbfdb] disabled:opacity-40"
+                          >
+                            Send
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : null}
 
               {/* GAME SUMMARY removed per new design; metrics are now in the final score card */}
 

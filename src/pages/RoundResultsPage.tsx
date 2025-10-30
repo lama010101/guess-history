@@ -12,7 +12,7 @@ import { Badge } from '@/utils/badges/types';
 import { toast as sonnerToast } from '@/components/ui/sonner';
 import { ConfirmNavigationDialog } from '@/components/game/ConfirmNavigationDialog';
 import ImageRatingModal from '@/components/rating/ImageRatingModal';
-import { makeRoundId } from '@/utils/roomState';
+import { makeRoundId, markRoundResultsVisited } from '@/utils/roomState';
 // Import RoundResult type from context if not already imported by ResultsLayout2 or define mapping
 import { GameImage } from '@/contexts/GameContext';
 import { RoundResult as ContextRoundResult } from '@/types';
@@ -152,6 +152,12 @@ const RoundResultsPage = () => {
 
   const roundNumber = parseInt(roundNumberStr || '1', 10);
   const currentRoundIndex = roundNumber - 1; // 0-based index
+
+  useEffect(() => {
+    if (!roomId) return;
+    if (!Number.isFinite(roundNumber)) return;
+    markRoundResultsVisited(roomId, roundNumber);
+  }, [roomId, roundNumber]);
 
   // Ensure context roomId is in sync with URL and membership is upserted
   useEffect(() => {
@@ -335,10 +341,10 @@ const RoundResultsPage = () => {
   }, [effectiveResult, effectiveImage, contextResult, snapshotResult, currentImage, pendingImage, snapshotImage, roomId, currentRoundIndex, images.length]);
 
   // --- Multiplayer peers: fetch other players' answers for this room/round ---
-  const isSyncCompeteRoute = useMemo(() => location.pathname.startsWith('/compete/sync/'), [location.pathname]);
+  const isCompeteRoute = useMemo(() => location.pathname.includes('/compete/'), [location.pathname]);
   const { peers: peerRows, miniLeaderboards } = useRoundPeers(
-    isSyncCompeteRoute ? roomId || null : null,
-    isSyncCompeteRoute && Number.isFinite(roundNumber) ? roundNumber : null
+    isCompeteRoute ? roomId || null : null,
+    isCompeteRoute && Number.isFinite(roundNumber) ? roundNumber : null
   );
 
   interface LayoutLeaderboardRow {
@@ -351,7 +357,7 @@ const RoundResultsPage = () => {
   }
 
   const layoutLeaderboards = useMemo(() => {
-    if (!isSyncCompeteRoute || !miniLeaderboards) return undefined;
+    if (!isCompeteRoute || !miniLeaderboards) return undefined;
 
     const peerMap = new Map((peerRows || []).map((peer) => [peer.userId, peer]));
     const normalizeCount = (value: number | null | undefined) => {
@@ -416,7 +422,7 @@ const RoundResultsPage = () => {
       }),
       currentUserId: user?.id ?? null,
     };
-  }, [isSyncCompeteRoute, miniLeaderboards, peerRows, user?.id]);
+  }, [isCompeteRoute, miniLeaderboards, peerRows, user?.id]);
 
   // Fetch and process hint debts when user, image, and results are ready
   const fetchDebts = useCallback(async () => {
@@ -794,7 +800,7 @@ const RoundResultsPage = () => {
         loading={navigating}
         error={null} 
         avatarUrl={profile?.avatar_image_url || profile?.avatar_url || '/assets/default-avatar.png'}
-        peers={isSyncCompeteRoute ? (peerRows || []).filter(p => !user || p.userId !== user.id) : []}
+        peers={isCompeteRoute ? (peerRows || []).filter(p => !user || p.userId !== user.id) : []}
         leaderboards={layoutLeaderboards}
         currentUserDisplayName={profile?.display_name || 'You'}
         nextRoundButton={

@@ -1,3 +1,69 @@
+### Compete Chat Input Affordance (2025-10-30)
+
+- **Component**: `src/pages/GameRoundPage.tsx`
+  - The floating compete chat footer now relies on a simple top divider (`border-white/20`) and horizontal padding so the input stays distinct without a heavy card frame.
+  - The text field still uses the darker pill (`bg-[#35373d]`) with cyan caret/placeholder accents and disabled opacity states to clearly signal focus and availability.
+  - Keep any future footer tweaks within the same wrapper so pointer-events layering on the floating panel remains intact.
+
+### Compete Lobby Chat Footer (2025-10-30)
+
+- **Component**: `src/pages/Room.tsx`
+  - The lobby chat footer no longer renders a dark card background. Use the `border-t border-white/15` divider with `pt-4` spacing to separate controls from the transcript pane.
+  - The `<Input>` retains the shared cyan caret/placeholder treatment (`bg-[#35373d]`, `border-white/25`) while preserving the disabled state used when the host is alone.
+  - The Send button mirrors the floating panel styling with consistent padding, font weight, and disabled colors so chat affordance matches across surfaces.
+
+### Final Results Chat Footer (2025-10-30)
+
+- **Component**: `src/pages/FinalResultsPage.tsx`
+  - The post-game chat uses the same divider + spacing pattern as the lobby/round footers so the entry field stays distinct against the dark results backdrop without an extra frame.
+  - Keep the shared cyan input styling and button states if additional controls (emoji picker, attachments) are added so compete chat surfaces remain consistent.
+
+### Compete Lobby Desktop Layout (2025-10-30)
+
+- **Component**: `src/pages/Room.tsx`
+  - The compete lobby now uses a responsive two-column shell (`lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]`): timer/year controls stack on the left while invites and roster live in a right rail that keeps a steady width on desktop.
+  - Timer and year cards share a consistent header/footer pattern with host-only controls aligned to the right, matching the final results layout hierarchy. Any added cards should reuse the `rounded-2xl border-[#3f424b] bg-[#333333] p-6` scaffold for parity.
+  - Player rows stretch to fill desktop width with avatar, status chips, and action buttons aligned via `lg:flex-row` wrappers. Maintain the `attention-pulse` ready button placement and chip order when adding new per-player actions.
+
+### Compete Lobby Mobile Header Alignment (2025-10-30)
+
+- **Component**: `src/pages/Room.tsx`
+  - The mobile header now groups the Back chevron and `Compete` title in a single inline stack so navigation and context share the same row. The player count sits opposite in the flex container to avoid wrapping beneath the title on narrow devices.
+  - Player roster rows keep the Ready toggle directly beside the local user’s gradient name. Host-only kick buttons and invite dismissal controls stay in the trailing slot so actions remain discoverable when rows wrap.
+
+### Compete Lobby Header Surface (2025-10-30)
+
+- **Component**: `src/pages/Room.tsx`
+  - The top header bar uses `bg-black/90` with a subtle blur/shadow so the compete background art shows through while keeping enough contrast for the white text and counters. Preserve this surface when adjusting header spacing or adding buttons to maintain readability.
+
+  - The post-game chat uses the same rounded card container and cyan-accented input as the lobby/round panels, clarifying the entry field against the dark results backdrop.
+  - Keep the wrapper classes (`rounded-2xl border-white/15 bg-[#2a2a2a] shadow-[0_-6px_16px_rgba(0,0,0,0.28)]`) if additional controls (emoji picker, attachments) are added so the card footprint remains consistent across compete chat surfaces.
+
+### Final Results Desktop Layout (2025-10-30)
+
+- **Component**: `src/pages/FinalResultsPage.tsx`
+  - The compete final score card now uses a two-column desktop grid: score badges and accuracy breakdown stay on the left, while session stats live in a right-hand aside. Keep the grid definition (`lg:grid lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)]`) when extending metrics so spacing remains balanced across breakpoints.
+  - Accuracy breakdown tiles moved to bordered cards with fuller width progress bars for better legibility on large screens. Reuse the `border-neutral-700 bg-black/30` surface for any additional accuracy tiles to keep the visual hierarchy intact.
+  - The synced compete leaderboard and chat now render in a responsive two-column layout (`lg:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]`) so the chat column maintains a stable width on desktop while stacking vertically on smaller viewports.
+
+### Compete Lobby Host Kick Control (2025-10-30)
+
+- **Component**: `src/pages/Room.tsx`
+  - Hosts once again see a red **X** icon button next to each active player (non-invite) entry in the roster cards. Clicking it calls `kickPlayer(connId)`, which reuses the existing PartyKit `kick` message path to remove that connection from the room.
+  - The button hides for invite placeholders, the host’s own row, and non-host clients to prevent accidental self-removal or exposing the control to guests.
+- **Server**: `server/lobby.ts`
+  - No server changes were required; the restored UI uses the existing `kick` message handling that closes the target connection, promotes the next host when necessary, and rebroadcasts the roster.
+
+### Compete Waiting Overlay Peer Detection (2025-10-30)
+
+- **Hook**: `src/hooks/useRoundPeers.ts`
+  - Submission detection no longer treats scoreboard rows with only default zeros as valid submissions. We now only flag a peer as submitted when the RPC returns meaningful metrics (accuracy, distance, guess year, XP debt values). This avoids marking every roster entry as submitted during gaps in `round_results`, keeping the in-round “Waiting for” overlay populated with actual peer names instead of `+1 more` placeholders.
+
+### Accordion Header Click Target (2025-10-30)
+
+- **Component**: `src/components/ui/accordion.tsx`
+  - Accordion headers now forward clicks from the entire title bar (outside the chevron button) to the underlying Radix trigger, making the full header area toggle panels. Consumers can optionally pass `headerClassName` to style the wrapping header while keeping the default `Trigger` classes intact.
+
 ### Round Results Source Modal Fullscreen (2025-10-29)
 
 - **Component**: `src/components/modals/SourceModal.tsx`
@@ -6,11 +72,24 @@
 - **Usage**: `src/components/layouts/ResultsLayout2.tsx`
   - Continue toggling `isSourceModalOpen` via the Source button; no additional layout overrides are required now that the modal self-manages its fullscreen styling.
 
+- **Component**: `src/pages/GameRoundPage.tsx`
+  - Solo routes now consult `hasRoundResultsBeenVisited(roomId, roundNumber)` before rendering. If the matching results screen was already viewed, the round route immediately redirects back to the results URL so players cannot revisit the guessing UI after seeing the outcome.
+- **Component**: `src/pages/RoundResultsPage.tsx`
+  - Entering a round results route calls `markRoundResultsVisited(roomId, roundNumber)`, which tags the visit in `localStorage`. Each round uses a distinct key (`gh_results_visited:{roomId}:r{round}`), so future rounds in the same room continue to function normally while preventing re-entry to already completed rounds.
+- **Utility**: `src/utils/roomState.ts`
+  - Added helpers `markRoundResultsVisited`, `hasRoundResultsBeenVisited`, and `clearRoomResultsVisited` to centralize read/write access to the visit markers. Call `clearRoomResultsVisited(roomId)` if you introduce flows that need to reset state for replay/debug purposes.
+
 ### Timeout Toast Styling (2025-10-29)
 
 - **Component**: `src/pages/GameRoundPage.tsx`
   - The "Time's Up" toast now renders with an 80% opaque white background (`bg-white/80`) to improve legibility over gameplay visuals.
   - The toast close button is forced visible via `[toast-close]` selectors so players can always dismiss the notification immediately after automatic submission.
+
+### Timeout Submissions Award Zero XP (2025-10-30)
+
+- **Component**: `src/pages/GameRoundPage.tsx`
+  - `handleTimeComplete` now keeps `guessYear` and coordinates `null` when the player never made a guess, and only calculates XP when data exists.
+  - This ensures auto-submitted rounds without guesses persist as `0` XP/accuracy instead of falling back to the actual year.
 
 ### Toast Stacking Order Above Auth Modal (2025-10-30)
 
@@ -38,7 +117,8 @@
   - Defaults shown in the modal reflect the 120-second timer and persist this value to local storage when saved.
 - **Compete Lobby**: `src/pages/Room.tsx`
   - The host slider/input fall back to 120 seconds when no authoritative timer is present, keeping multiplayer sessions aligned with the new default.
-- **Update (2025-10-30)**: `src/pages/Room.tsx` centralizes the compete timer default via `DEFAULT_COMPETE_TIMER_SEC` (120s) so all lobby UI fallbacks and PartyKit broadcasts stay in sync.
+  - **Update (2025-10-30)**: `src/pages/Room.tsx` centralizes the compete timer default via `DEFAULT_COMPETE_TIMER_SEC` (120s) so all lobby UI fallbacks and PartyKit broadcasts stay in sync.
+  - **Update (2025-10-30)**: Host broadcasts are suppressed until the initial `settings` payload is received (`initialSettingsSyncedRef`) to avoid overwriting the lobby default before PartyKit confirms the room state. This fixes the 120s → 60s flicker when the host first loads the room.
 - **Game Runtime**: `src/contexts/GameContext.tsx`
   - `roundTimerSec` now uses the settings store’s value (120 seconds when unset) to drive in-round countdowns for all modes unless overridden by an authoritative multiplayer timer.
 
@@ -78,6 +158,12 @@
 - **Component**: `src/pages/Room.tsx`
   - The Manage Friends modal hides the default Radix close icon and renders a custom circular close button (`bg-[#22d3ee]`, hover `#1cbfdb`) in the top-right corner. Trigger it via `setFriendsModalOpen(false)` so the lobby refresh logic still runs on close.
 
+### Compete Room Friend List Realtime Sync (2025-10-30)
+
+- **Component**: `src/pages/Room.tsx`
+  - Hosts now subscribe to Supabase `friends` table changes (`user_id` scoped) while on the room route. When a new friend is added via the Manage Friends dialog, the realtime listener re-runs `loadFriends()` so the "Invite Your Friends" card refreshes immediately without a page reload.
+  - DELETE payloads optimistically remove the matching entry from `friendsList` before refetching to keep the invite filter responsive while the network request settles.
+
 ### Auth Modal Guest CTA & Spacing (2025-10-28)
 
 - **Component**: `src/components/AuthModal.tsx`
@@ -110,6 +196,18 @@
 - **File**: `src/components/ui/badge.tsx`
   - Added `overflow-hidden` to the shared badge base and forced `bg-no-repeat` on the gradient variants to prevent stray light-blue pixels from bleeding past the capsule border.
   - Maintain these safeguards for any future gradient badges so rounded edges stay crisp across dark backgrounds.
+
+### CTA Text Contrast Alignment (2025-10-30)
+
+- **Components**: `src/components/levelup/LevelUpIntro.tsx`, `src/components/layouts/GameLayout1.tsx`
+  - Updated the Level Up intro **Start** button and the in-round **Make Guess** buttons (desktop + mobile) to enforce black text across enabled and disabled states.
+  - Keeps contrast consistent with the pink/orange button fills that ship with the new palette while satisfying accessibility feedback about dark text on lighter CTA backgrounds.
+
+### Preparation Overlay Backdrop (2025-10-30)
+
+- **Component**: `src/components/game/PreparationOverlay.tsx`
+  - Swapped the plain dark overlay for the same blurred, saturated backdrop used by other full-screen modals so the "Dropping you into History…" state now visually matches hints/feedback dialogs.
+  - Overlay z-index remains aligned with modal stack (`z-[1100]`); only the background styling changed, preserving the existing panel layout and transitions.
 
 ### Friends/Leaderboard/Profile Navbar Home Link (2025-10-28)
 
@@ -196,6 +294,10 @@
 - **Component**: `src/components/layouts/GameLayout1.tsx`
   - The pending draft year is now tracked via a ref so we preserve the last typed value through blur handlers.
   - Invalid numeric input no longer clears the field; we fall back to the raw draft so players can correct typos without losing their entry.
+  - Draft values persist until a successful commit; pressing Enter applies the clamped year immediately while clearing the draft cache.
+  - When blur fires with no draft, the input now re-syncs to the committed `selectedYear` so the field never empties after Enter commits.
+  - While the input is blurred and no committed year exists yet, the picker uses the last valid typed year as a temporary value so the rail recenters without fighting the edit session.
+  - The input textbox always reflects the raw `yearInput` string—even before a year is committed—so blur/rail sync never drops the user’s typed digits.
 
 ### Year Picker Auto-Center (2025-10-28)
 
@@ -367,16 +469,6 @@
 
 - **Hook**: `src/hooks/useCompeteRoundLeaderboards.ts`
   - `LeaderRow` now includes `avatarUrl`, populated from `useRoundPeers()` so leaderboard data carries resolved profile avatars.
-- **Component**: `src/components/scoreboard/CompeteRoundLeaderboards.tsx`
-  - Rows render the supplied `avatarUrl` (with initial fallback) to match the compete HUD and room roster visuals.
-- **Result**: Players see their actual profile avatars across the compete HUD and round leaderboards, keeping visual identity consistent with the lobby/room view.
-- **Update (2025-10-29 PM)**: `src/components/navigation/GameOverlayHUD.tsx` now reuses the shared `Avatar` primitives for the peer roster, preferring Supabase-provided `avatarUrl` values and falling back to seeded initials. This keeps HUD styling aligned with Friends/Lobby surfaces while preserving readable initials when no image is available.
-- **Update (2025-10-29 PM2)**: Compete results surfaces now use the seeded pastel avatar gradients everywhere leaderboards appear. `src/components/scoreboard/CompeteRoundLeaderboards.tsx`, the inline leaderboard in `src/pages/compete/results/CompeteSyncRoundResultsPage.tsx`, and the embedded tables rendered by `src/components/layouts/ResultsLayout2.tsx` all wrap avatars in `getAvatarFrameGradient` frames with shared `Avatar` primitives and gradient-backed fallbacks.
-
-### Compete Round Results Map — Avatar Markers (2025-10-25)
-
-- **Component**: `src/components/layouts/ResultsLayout2.tsx`
-- **Shared UI**: `src/components/map/AvatarMarker.tsx`
 - **Behavior**:
   - Replaced bespoke `createUserIcon()` markers with the shared `<AvatarMarker>` component so round results reuse the same avatar rendering used elsewhere.
   - Local player guesses render with a golden halo; peer guesses use blue accents. Both fall back to initials when no avatar image is available.
@@ -1038,8 +1130,15 @@ __QA checklist__
 - /compete shows the top navbar.
 - On mobile, Join card is above Host card; both visible without toggles.
 - In a SYNC room, after each round, the round leaderboard renders on the Results page.
-- On the Final Results page for SYNC rooms, the final leaderboard renders below the final score card. A collapsible lobby chat card (collapsed by default) sits immediately under the leaderboard, reusing the room chat visuals. The card shows message count, connection status, scrollable history, and input actions only when the user is still connected to the room via `useLobbyChat`.
+- On the Final Results page for SYNC rooms, the final leaderboard renders below the final score card. A collapsible lobby chat card (expanded by default) sits immediately under the leaderboard, reusing the room chat visuals. The card shows message count, connection status, scrollable history, and input actions only when the user is still connected to the room via `useLobbyChat`.
 - ASYNC rooms do not render leaderboards; existing behavior is unchanged.
+
+#### Final Leaderboard UI refresh (2025-10-30)
+
+- Component: `src/components/scoreboard/FinalScoreboard.tsx`
+  - Leaderboard header text is centered and bumped to `text-lg` for better hierarchy.
+  - Each row now shows the player's avatar with the shared pastel frame gradient. Avatars load via `fetchAvatarUrlsForUserIds`, falling back to initials when unavailable.
+  - Hint penalty note remains inline; when no penalties exist, we show the participant's average accuracy as secondary context.
 
 #### Compete Round Results — Participants' Answers (2025-09-18)
 

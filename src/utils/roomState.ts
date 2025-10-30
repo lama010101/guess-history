@@ -1,5 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 
+const RESULTS_VISITED_PREFIX = 'gh_results_visited:';
+
 export interface RoomRoundState {
   room_id: string;
   round_number: number;
@@ -23,6 +25,48 @@ type SessionProgressPayload = {
  */
 export function makeRoundId(roomId: string, roundNumber: number): string {
   return `${roomId}-r${roundNumber}`;
+}
+
+function buildResultsVisitedKey(roomId: string, roundNumber: number): string {
+  return `${RESULTS_VISITED_PREFIX}${roomId}:r${roundNumber}`;
+}
+
+export function markRoundResultsVisited(roomId: string, roundNumber: number): void {
+  if (typeof window === 'undefined') return;
+  if (!roomId || !Number.isFinite(roundNumber)) return;
+  try {
+    window.localStorage.setItem(buildResultsVisitedKey(roomId, roundNumber), '1');
+  } catch {}
+}
+
+export function hasRoundResultsBeenVisited(roomId: string, roundNumber: number): boolean {
+  if (typeof window === 'undefined') return false;
+  if (!roomId || !Number.isFinite(roundNumber)) return false;
+  try {
+    return window.localStorage.getItem(buildResultsVisitedKey(roomId, roundNumber)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function clearRoomResultsVisited(roomId: string): void {
+  if (typeof window === 'undefined') return;
+  if (!roomId) return;
+  try {
+    const prefix = `${RESULTS_VISITED_PREFIX}${roomId}:`;
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i += 1) {
+      const key = window.localStorage.key(i);
+      if (key && key.startsWith(prefix)) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((key) => {
+      try {
+        window.localStorage.removeItem(key);
+      } catch {}
+    });
+  } catch {}
 }
 
 /**

@@ -20,6 +20,7 @@ import { awardRoundBadges } from '@/utils/badges/badgeService';
 import { supabase } from '@/integrations/supabase/client';
 import { useLobbyChat } from '@/hooks/useLobbyChat';
 import { useSyncRoundScores } from '@/hooks/useSyncRoundScores';
+import { usePeerProfileCacheStore, resolvePeerProfile, makePeerNameKey } from '@/store/peerProfileCacheStore';
 
 const getInitial = (value?: string | null) => {
   const trimmed = (value ?? '').trim();
@@ -43,6 +44,8 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
   const { isLoading, error, contextResult, currentImage, hintDebts, playerSummary } = useCompeteRoundResult(roomId ?? null, Number.isFinite(oneBasedRound) ? oneBasedRound : null);
   const { peers, refresh: refreshPeers } = useCompetePeers(roomId ?? null, Number.isFinite(oneBasedRound) ? oneBasedRound : null);
   const { entries: snapshotEntries } = useSyncRoundScores(roomId ?? null, Number.isFinite(oneBasedRound) ? oneBasedRound : null);
+  const mergePeerProfiles = usePeerProfileCacheStore((state) => state.mergeEntries);
+  const peerProfileCache = usePeerProfileCacheStore((state) => state.cache);
   const leaderboard = useCompeteRoundLeaderboards(roomId ?? null, Number.isFinite(oneBasedRound) ? oneBasedRound : null);
 
   useEffect(() => {
@@ -54,45 +57,90 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
 
   const combinedPeers = useMemo<PeerRoundRow[]>(() => {
     if (!Array.isArray(peers) || peers.length === 0) {
-      return (snapshotEntries || []).map((snap) => ({
-        userId: snap.userId,
-        displayName: snap.displayName || 'Player',
-        avatarUrl: null,
-        score: 0,
-        accuracy: Math.round((snap.timeAccuracy + snap.locationAccuracy) / 2),
-        xpTotal: snap.xpTotal,
-        xpDebt: snap.xpDebt,
-        whenXpDebt: 0,
-        whereXpDebt: 0,
-        accDebt: snap.accDebt,
-        whenAccDebt: 0,
-        whereAccDebt: 0,
-        xpWhere: null,
-        xpWhen: null,
-        locationAccuracy: snap.locationAccuracy,
-        timeAccuracy: snap.timeAccuracy,
-        distanceKm: snap.distanceKm,
-        guessYear: snap.guessYear,
-        guessLat: snap.guessLat,
-        guessLng: snap.guessLng,
-        actualLat: null,
-        actualLng: null,
-        submitted: true,
-        ready: false,
-        hintsUsed: snap.hintsUsed,
-        whenHints: null,
-        whereHints: null,
-        netAccuracy: null,
-      }));
+      // Try to backfill avatarUrl from computed leaderboards when peers haven't loaded yet
+      const avatarById = new Map<string, string | null>(
+        [
+          ...(leaderboard?.total || []).map(r => [r.userId, r.avatarUrl ?? null]),
+          ...(leaderboard?.when || []).map(r => [r.userId, r.avatarUrl ?? null]),
+          ...(leaderboard?.where || []).map(r => [r.userId, r.avatarUrl ?? null]),
+        ] as Array<[string, string | null]>
+      );
+
+      return (snapshotEntries || []).map((snap) => {
+        const cached = resolvePeerProfile(snap.userId, snap.displayName);
+        return ({
+          userId: snap.userId,
+          displayName: snap.displayName || 'Player',
+          avatarUrl: avatarById.get(snap.userId) ?? cached?.avatarUrl ?? null,
+          score: 0,
+          accuracy: Math.round((snap.timeAccuracy + snap.locationAccuracy) / 2),
+          xpTotal: snap.xpTotal,
+          xpDebt: snap.xpDebt,
+          whenXpDebt: 0,
+          whereXpDebt: 0,
+          accDebt: snap.accDebt,
+          whenAccDebt: 0,
+          whereAccDebt: 0,
+          xpWhere: null,
+          xpWhen: null,
+          locationAccuracy: snap.locationAccuracy,
+          timeAccuracy: snap.timeAccuracy,
+          distanceKm: snap.distanceKm,
+          guessYear: snap.guessYear,
+          guessLat: snap.guessLat,
+          guessLng: snap.guessLng,
+          actualLat: null,
+          actualLng: null,
+          submitted: true,
+          ready: false,
+          hintsUsed: snap.hintsUsed,
+          whenHints: null,
+          whereHints: null,
+          netAccuracy: null,
+        });
+      });
     }
 
-    return peers.map((peer) => ({
-      ...peer,
-      displayName: peer.displayName || 'Player',
-      avatarUrl: peer.avatarUrl ?? null,
-      submitted: peer.submitted ?? false,
-    }));
-  }, [peers, snapshotEntries]);
+    const mergePayload: Record<string, { displayName?: string | null; avatarUrl?: string | null }> = {};
+
+    const mapped = peers.map((peer, index) => {
+      const resolved = resolvePeerProfile(peer.userId, peer.displayName);
+      const avatarUrl = peer.avatarUrl ?? resolved?.avatarUrl ?? null;
+      const displayName = peer.displayName?.trim().length ? peer.displayName : (resolved?.displayName ?? 'Player');
+
+      const cacheKeys: string[] = [];
+      if (peer.userId && peer.userId.trim().length > 0) {
+        cacheKeys.push(peer.userId.trim());
+      }
+      const nameKey = makePeerNameKey(peer.displayName);
+      if (nameKey) cacheKeys.push(nameKey);
+
+      cacheKeys.forEach((key) => {
+        if (!key) return;
+        const existing = peerProfileCache[key];
+        const nextDisplay = displayName || existing?.displayName || '';
+        const nextAvatar = avatarUrl ?? existing?.avatarUrl ?? null;
+        if (nextDisplay === '' && nextAvatar === null) return;
+        mergePayload[key] = {
+          displayName: nextDisplay,
+          avatarUrl: nextAvatar,
+        };
+      });
+
+      return {
+        ...peer,
+        displayName,
+        avatarUrl,
+        submitted: peer.submitted ?? false,
+      };
+    });
+
+    if (Object.keys(mergePayload).length > 0) {
+      mergePeerProfiles(mergePayload);
+    }
+
+    return mapped;
+  }, [peers, snapshotEntries, leaderboard.total, leaderboard.when, leaderboard.where, mergePeerProfiles, peerProfileCache]);
 
   const layoutLeaderboards = useMemo(() => {
     const mapper = (rows: typeof leaderboard.total) =>
@@ -104,6 +152,7 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
           hintsUsed: row.hintsUsed,
           penalty: row.penalty ?? (row.accDebt ?? 0),
           accDebt: (row as any).accDebt ?? 0,
+          avatarUrl: row.avatarUrl ?? null,
         }))
         .sort((a, b) => {
           const valueDiff = (b.value ?? 0) - (a.value ?? 0);
@@ -361,9 +410,13 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
   const expectedParticipants = useMemo(() => {
     const roundMatches = resultsReadySummary.roundNumber === oneBasedRound;
     const fromServer = roundMatches ? resultsReadySummary.totalPlayers : 0;
+    if (fromServer > 0) {
+      return fromServer;
+    }
+
     const fromPeers = peers.length;
     const fromSubmissions = allSubmittedRef.current ? lastSubmittedCountRef.current : 0;
-    return Math.max(fromServer || 0, fromPeers || 0, fromSubmissions || 0);
+    return Math.max(fromPeers || 0, fromSubmissions || 0);
   }, [resultsReadySummary.roundNumber, resultsReadySummary.totalPlayers, oneBasedRound, peers.length]);
 
   const serverReadyCount = resultsReadySummary.roundNumber === oneBasedRound ? resultsReadySummary.readyCount : 0;

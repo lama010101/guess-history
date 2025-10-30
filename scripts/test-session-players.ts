@@ -1,4 +1,31 @@
-import supabase from '../src/integrations/supabase/client';
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '../src/integrations/supabase/types';
+
+const SUPABASE_URL = 'https://jghesmrwhegaotbztrhr.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnaGVzbXJ3aGVnYW90Ynp0cmhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ0MzAwMDEsImV4cCI6MjA2MDAwNjAwMX0.C-zSGAiZAIbvKh9vNb2_s3DHogSzSKImLkRbjr_h5xI';
+
+const memoryStore = new Map<string, string>();
+const authStorage = {
+  getItem: (key: string) => memoryStore.get(key) ?? null,
+  setItem: (key: string, value: string) => {
+    memoryStore.set(key, value);
+  },
+  removeItem: (key: string) => {
+    memoryStore.delete(key);
+  },
+};
+
+const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,
+    storage: authStorage,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
+  },
+  global: {
+    fetch: (...args) => fetch(...args),
+  },
+});
 
 // Helper: probe a public table by selecting 0 rows; treat 42P01 as non-existent
 async function tableExists(tableName: 'session_players' | 'round_results'): Promise<boolean> {

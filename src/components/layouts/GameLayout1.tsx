@@ -135,6 +135,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   // Inline editable year input state for header (draft when typing)
   const [yearInput, setYearInput] = useState<string>('');
   const [yearInteracted, setYearInteracted] = useState(false);
+  const [yearInputFocused, setYearInputFocused] = useState(false);
   // Submit guidance message shown only when clicking a disabled Submit button
   const [submitPrompt, setSubmitPrompt] = useState<string | null>(null);
   // Show red alert messages inline on the relevant cards
@@ -222,6 +223,14 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const hudTimerEnabled = effectiveTimerEnabled;
   const parsedYear = parseInt(yearInput, 10);
   const typedYear = Number.isNaN(parsedYear) ? null : parsedYear;
+  const pickerValue = useMemo(() => {
+    if (!yearInteracted) return null;
+    if (typeof selectedYear === 'number') return selectedYear;
+    if (!yearInputFocused && pendingYearDraft === '' && typedYear != null) {
+      return Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, typedYear));
+    }
+    return null;
+  }, [yearInteracted, selectedYear, yearInputFocused, pendingYearDraft, typedYear]);
   // Dynamic year bounds based on prepared images for this game session
   const dynamicMinYear = useMemo(() => {
     const ys = (game?.images || []).map((img) => img.year).filter((y) => typeof y === 'number' && !isNaN(y));
@@ -542,7 +551,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                 >
                   <input
                     type="text"
-                    value={yearInteracted ? yearInput : ''}
+                    value={yearInput}
                     onChange={(e) => {
                       const raw = e.target.value;
                       setYearInteracted(true);
@@ -553,6 +562,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                     ref={yearInputRef}
                     onFocus={(event) => {
                       // Ensure yearInteracted is set when input is focused
+                      setYearInputFocused(true);
                       setYearInteracted(true);
                       if (!yearInteracted && typeof selectedYear === 'number') {
                         setYearInput(String(selectedYear));
@@ -565,6 +575,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                       }, 0);
                     }}
                     onBlur={() => {
+                      setYearInputFocused(false);
                       const draft = pendingYearDraftRef.current.trim();
                       if (draft !== '') {
                         const parsed = parseInt(draft, 10);
@@ -576,8 +587,14 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                           pendingYearDraftRef.current = '';
                           return;
                         }
+                        setYearInput(pendingYearDraftRef.current);
+                        return;
                       }
-                      setYearInput(pendingYearDraftRef.current);
+                      if (typeof selectedYear === 'number') {
+                        setYearInput(String(selectedYear));
+                      } else if (!yearInteracted) {
+                        setYearInput('');
+                      }
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
@@ -626,12 +643,19 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                     minSpan={1}
                     initialView={{ vMin: effectiveMinYear, vMax: effectiveMaxYear }}
                     initialYear={defaultPickerYear}
-                    value={yearInteracted ? (selectedYear ?? null) : null}
+                    value={pickerValue}
                     onChange={(nextYear) => {
+                      if (pendingYearDraftRef.current !== '' || yearInputFocused) {
+                        return;
+                      }
                       const clampedYear = Math.min(Math.max(nextYear, YEAR_RANGE_MIN), YEAR_RANGE_MAX);
                       onYearChange(clampedYear);
                       setYearInteracted(true);
                       setYearInput(String(clampedYear));
+                      if (pendingYearDraftRef.current !== '') {
+                        setPendingYearDraft('');
+                        pendingYearDraftRef.current = '';
+                      }
                     }}
                   />
                 </div>
@@ -747,7 +771,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
               <Button
                 onClick={handleSubmitGuess}
                 disabled={!isSubmitEnabled}
-                className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-[#444444] cursor-not-allowed'} w-full max-w-md flex items-center justify-center text-base font-semibold h-12 px-6 !text-white shadow-lg rounded-md disabled:opacity-100 disabled:!text-white`}
+                className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-[#444444] cursor-not-allowed'} w-full max-w-md flex items-center justify-center text-base font-semibold h-12 px-6 text-black shadow-lg rounded-md disabled:opacity-100 disabled:text-black`}
               >
                 <Send className="h-5 w-5 mr-2" /> Make Guess
               </Button>
@@ -778,7 +802,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
               <Button
                 onClick={handleSubmitGuess}
                 disabled={!isSubmitEnabled}
-                className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-[#444444] cursor-not-allowed'} h-12 w-full rounded-md !text-white text-base font-semibold flex items-center justify-center disabled:opacity-100 disabled:!text-white`}
+                className={`${isSubmitEnabled ? 'bg-orange-500 hover:bg-orange-600' : 'bg-[#444444] cursor-not-allowed'} h-12 w-full rounded-md text-black text-base font-semibold flex items-center justify-center disabled:opacity-100 disabled:text-black`}
               >
                 <Send className="h-5 w-5 mr-2" /> Make Guess
               </Button>

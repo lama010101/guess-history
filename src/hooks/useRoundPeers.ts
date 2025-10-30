@@ -10,6 +10,14 @@ const devLog = (...args: unknown[]) => {
   }
 };
 
+const getGlobalObject = (): Record<string, any> | null => {
+  try {
+    return typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+  } catch {
+    return null;
+  }
+};
+
 const pickFirstString = (...candidates: Array<string | null | undefined>): string | null => {
   for (const candidate of candidates) {
     if (typeof candidate === 'string') {
@@ -88,6 +96,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [miniLeaderboards, setMiniLeaderboards] = useState<MiniLeaderboards>({ total: [], time: [], location: [] });
+  const [expectedParticipantCount, setExpectedParticipantCount] = useState(0);
   const mountedRef = useRef(true);
   const refreshInFlightRef = useRef(false);
   const queuedRefreshRef = useRef(false);
@@ -129,6 +138,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       devLog('Missing roomId or roundNumber', { roomId, roundNumber });
       setPeers([]);
       setMiniLeaderboards({ total: [], time: [], location: [] });
+      setExpectedParticipantCount(0);
       return;
     }
     if (refreshInFlightRef.current) {
@@ -296,9 +306,15 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
         hintsByUser.set(uid, prev);
       });
       const sbByUser = new Map<string, any>((scoreboardRows || []).map((s: any) => [String(s.user_id), s]));
+      const roundResultUserIds = (rrRows || []).map((r: any) => String(r.user_id));
+      const syncUserIds = (syncRows || []).map((s: any) => String(s.user_id));
+      const hintUserIds = Array.from(hintsByUser.keys());
       const allUserIds = Array.from(new Set<string>([
         ...playersArr.map((p) => String(p.user_id)),
         ...scoreboardRows.map((s) => String(s.user_id)),
+        ...roundResultUserIds,
+        ...syncUserIds,
+        ...hintUserIds,
       ]));
 
       let profilesArr: Array<any> = [];
@@ -351,9 +367,14 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
           profile?.avatar_id ? avatarById.get(String(profile.avatar_id)) ?? null : null,
         );
         const hasRoundResult = !!rr;
-        const hasScoreboardEntry = !!sb && (
-          sb.score != null || sb.accuracy != null || sb.xp_total != null || sb.xp_where != null || sb.xp_when != null
-        );
+        const scoreboardSubmissionIndicators = [
+          sb?.accuracy,
+          sb?.distance_km,
+          sb?.guess_year,
+          sb?.xp_debt,
+          sb?.acc_debt,
+        ];
+        const hasScoreboardEntry = scoreboardSubmissionIndicators.some((value) => value != null);
         const hasSyncSnapshot = !!sync;
         const hintAgg = hintsByUser.get(uid);
         const rawHintsUsedCandidates = [
@@ -538,6 +559,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
 
       if (mountedRef.current) {
         setPeers(mergedPeers);
+        setExpectedParticipantCount(allUserIds.length);
         const lbTotal = buildLeaderboard(peer => (typeof peer.netAccuracy === 'number' ? peer.netAccuracy : null));
         const lbTime = buildLeaderboard(
           peer => {
@@ -573,6 +595,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       if (mountedRef.current) {
         setError(e?.message || 'Failed to load peers');
         setMiniLeaderboards({ total: [], time: [], location: [] });
+        setExpectedParticipantCount((prev) => prev > 0 ? prev : peers.length);
       }
     } finally {
       refreshInFlightRef.current = false;
@@ -627,9 +650,16 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       return;
     }
 
-    const waitingForPeers = peers.length === 0 || peers.some((peer) => !peer.submitted);
+    const expected = Math.max(expectedParticipantCount, 0);
+    const waitingForPeers = (expected > 0 ? peers.length < expected : peers.length === 0)
+      || peers.some((peer) => !peer.submitted);
     if (!waitingForPeers) {
       return;
+    }
+
+    if (pollIntervalRef.current != null) {
+      window.clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
     }
 
     if (typeof window !== 'undefined') {
@@ -644,7 +674,25 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
         pollIntervalRef.current = null;
       }
     };
-  }, [roomId, roundNumber, peers, refresh]);
+  }, [roomId, roundNumber, peers, refresh, expectedParticipantCount]);
+
+  useEffect(() => {
+    if (!roomId) return;
+
+    const sessionHandle = acquireChannel(`session_players:${roomId}`);
+    sessionHandle.channel.on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'session_players',
+      filter: `room_id=eq.${roomId}`,
+    }, () => {
+      refresh();
+    });
+
+    return () => {
+      sessionHandle.release();
+    };
+  }, [roomId, refresh]);
 
   return useMemo(() => ({ peers, isLoading, error, refresh, miniLeaderboards }), [peers, isLoading, error, refresh, miniLeaderboards]);
 }

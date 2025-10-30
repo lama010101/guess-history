@@ -114,6 +114,7 @@ const Room: React.FC = () => {
   const chatListRef = useRef<HTMLDivElement | null>(null);
   const [avatarUrls, setAvatarUrls] = useState<Record<string, string | null>>({});
   const yearRangeRef = useRef<[number, number]>(settings.yearRange);
+  const initialSettingsSyncedRef = useRef(false);
 
   const getInitial = useCallback((value: string | null | undefined) => {
     const trimmed = (value ?? '').trim();
@@ -209,6 +210,8 @@ const Room: React.FC = () => {
     if (!inviteTokenRef.current && roomCode) {
       inviteTokenRef.current = await ensureRoomInviteToken(roomCode, 'sync');
     }
+
+    initialSettingsSyncedRef.current = false;
 
     const ws = new WebSocket(url);
     wsRef.current = ws;
@@ -352,6 +355,7 @@ const Room: React.FC = () => {
                   try { settings.setYearRange(sanitized); } catch {}
                 }
               }
+              initialSettingsSyncedRef.current = true;
               break;
             case 'full':
               setStatus('full');
@@ -497,15 +501,18 @@ const Room: React.FC = () => {
     setRoundTimerSec(clamped);
   }, [setRoundTimerSec]);
 
+  const hasOtherParticipants = useMemo(() => roster.some((entry) => entry.id !== ownId), [roster, ownId]);
+
   const sendChat = useCallback(() => {
     const ws = wsRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (isHost && !hasOtherParticipants) return;
     const msg = input.trim();
     if (!msg) return;
     const payload: LobbyClientMessage = { type: 'chat', message: msg, timestamp: isoNow() };
     ws.send(JSON.stringify(payload));
     setInput('');
-  }, [input]);
+  }, [input, isHost, hasOtherParticipants]);
 
   const toggleReady = useCallback(() => {
     const ws = wsRef.current;
@@ -630,6 +637,54 @@ const Room: React.FC = () => {
   }, [isHost, user?.id, roomCode]);
 
   useEffect(() => {
+    if (!isHost || !user?.id) return;
+    const channelName = `friends:room:${user.id}`;
+    const handle = acquireChannel(channelName);
+
+    const refreshFriends = async () => {
+      try {
+        await loadFriends();
+      } catch (e) {
+        try {
+          console.warn('[Room] failed to refresh friends after realtime update', e);
+        } catch {}
+      }
+    };
+
+    handle.channel.on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'friends',
+        filter: `user_id=eq.${user.id}`,
+      },
+      () => {
+        void refreshFriends();
+      },
+    );
+
+    handle.channel.on(
+      'postgres_changes',
+      {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'friends',
+        filter: `user_id=eq.${user.id}`,
+      },
+      ({ old }) => {
+        const prevFriendId = (old as { friend_id?: string } | null)?.friend_id;
+        setFriendsList((prev) => (prevFriendId ? prev.filter((f) => f.id !== prevFriendId) : prev));
+        void refreshFriends();
+      },
+    );
+
+    return () => {
+      handle.release();
+    };
+  }, [isHost, user?.id, loadFriends]);
+
+  useEffect(() => {
     if (isHost && user?.id) {
       loadFriends();
       loadInvites();
@@ -728,6 +783,7 @@ const Room: React.FC = () => {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     if (!isHost) return;
     if (draggingYear) return; // do not broadcast while dragging year range
+    if (!initialSettingsSyncedRef.current) return;
     const enabled = !!timerEnabled;
     const last = lastSentSettingsRef.current;
     let next: { sec: number; enabled: boolean } | null = null;
@@ -906,403 +962,422 @@ const Room: React.FC = () => {
         .room-timer .slider-thumb { background: #101316; border-color: #22d3ee; box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.25); }
         .room-timer .slider-thumb:focus-visible { outline: none; }
       `}</style>
-      <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 pb-28 pt-6">
-        <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={handleBack}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-white transition-colors hover:text-neutral-200"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Back
-          </button>
-          <h1 className="flex-1 text-center text-2xl font-semibold text-white">Compete</h1>
-          <div className="w-24 text-right text-xs text-neutral-400">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-28 pt-6 lg:gap-8">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-black/90 px-4 py-3 shadow-[0_4px_24px_rgba(0,0,0,0.35)] backdrop-blur">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleBack}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-white transition-colors hover:text-neutral-200"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Back
+            </button>
+            <h1 className="text-2xl font-semibold text-white">Compete</h1>
+          </div>
+          <div className="text-xs text-neutral-300 sm:text-right">
             {(roster.length || players.length)} player{(roster.length || players.length) === 1 ? '' : 's'}
           </div>
         </div>
-
-        <section className="rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-base font-semibold text-white">
-              <Clock className="h-5 w-5 text-white" />
-              <span>Round Timer</span>
-            </div>
-            <div className="text-sm font-semibold text-[#22d3ee]">
-              {isHost ? (
-                editingTimer ? (
-                  <Input
-                    autoFocus
-                    value={timerInput}
-                    onChange={(e) => setTimerInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') commitTimerInput(); if (e.key === 'Escape') setEditingTimer(false); }}
-                    onBlur={() => setEditingTimer(false)}
-                    className="h-7 w-24 rounded-md border border-[#3f424b] bg-[#1d2026] px-2 text-right text-sm text-white"
-                    placeholder={`${Number(roundTimerSec || 120)}s`}
-                    aria-label="Set round timer in seconds"
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] lg:gap-8">
+          <div className="flex flex-col gap-6">
+            <section className="rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-center gap-2 text-base font-semibold text-white">
+                  <Clock className="h-5 w-5 text-white" />
+                  <span>Round Timer</span>
+                </div>
+                <div className="text-sm font-semibold text-[#22d3ee]">
+                  {isHost ? (
+                    editingTimer ? (
+                      <Input
+                        autoFocus
+                        value={timerInput}
+                        onChange={(e) => setTimerInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') commitTimerInput(); if (e.key === 'Escape') setEditingTimer(false); }}
+                        onBlur={() => setEditingTimer(false)}
+                        className="h-7 w-24 rounded-md border border-[#3f424b] bg-[#1d2026] px-2 text-right text-sm text-white"
+                        placeholder={`${Number(roundTimerSec || 120)}s`}
+                        aria-label="Set round timer in seconds"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => { setEditingTimer(true); setTimerInput(String(Number(roundTimerSec || localTimerSec || 120))); }}
+                        className="hover:text-[#b6ecff]"
+                        aria-label="Edit round timer"
+                      >
+                        {formatTime(Number(isHost && draggingTimer ? localTimerSec : (roundTimerSec || 0)))}
+                      </button>
+                    )
+                  ) : (
+                    <span>{formatTime(Number(roundTimerSec || 0))}</span>
+                  )}
+                </div>
+              </div>
+              {isHost && (
+                <div className="mt-4 room-timer">
+                  <Slider
+                    value={[Number(draggingTimer ? localTimerSec : (roundTimerSec || DEFAULT_COMPETE_TIMER_SEC))]}
+                    min={5}
+                    max={300}
+                    step={5}
+                    onValueChange={(vals) => {
+                      const v = Array.isArray(vals) ? Number(vals[0]) : Number(vals as unknown as number);
+                      setDraggingTimer(true);
+                      setLocalTimerSec(v);
+                    }}
+                    onValueCommit={(vals) => {
+                      const v = Array.isArray(vals) ? Number(vals[0]) : Number(vals as unknown as number);
+                      commitTimerSeconds(v);
+                    }}
+                    className="w-full"
                   />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => { setEditingTimer(true); setTimerInput(String(Number(roundTimerSec || localTimerSec || 120))); }}
-                    className="hover:text-[#b6ecff]"
-                    aria-label="Edit round timer"
-                  >
-                    {formatTime(Number(isHost && draggingTimer ? localTimerSec : (roundTimerSec || 0)))}
-                  </button>
-                )
-              ) : (
-                <span>{formatTime(Number(roundTimerSec || 0))}</span>
-              )}
-            </div>
-          </div>
-          {isHost && (
-            <div className="mt-4 room-timer">
-              <Slider
-                value={[Number(draggingTimer ? localTimerSec : (roundTimerSec || DEFAULT_COMPETE_TIMER_SEC))]}
-                min={5}
-                max={300}
-                step={5}
-                onValueChange={(vals) => {
-                  const v = Array.isArray(vals) ? Number(vals[0]) : Number(vals as unknown as number);
-                  setDraggingTimer(true);
-                  setLocalTimerSec(v);
-                }}
-                onValueCommit={(vals) => {
-                  const v = Array.isArray(vals) ? Number(vals[0]) : Number(vals as unknown as number);
-                  commitTimerSeconds(v);
-                }}
-                className="w-full"
-              />
-              <div className="mt-2 flex justify-between text-xs text-white">
-                <span>5s</span>
-                <span>5m</span>
-              </div>
-            </div>
-          )}
-
-        </section>
-
-        <section className="rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-base font-semibold text-white">
-              <Calendar className="h-5 w-5 text-white" />
-              <span>Year Range</span>
-            </div>
-            <div className="text-sm font-semibold text-[#22d3ee] flex items-center gap-1">
-              {isHost && editingYearSide === 'min' ? (
-                <Input
-                  autoFocus
-                  value={yearInput}
-                  onChange={(e) => setYearInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') commitYearFromInput('min'); if (e.key === 'Escape') setEditingYearSide(null); }}
-                  onBlur={() => setEditingYearSide(null)}
-                  className="h-7 w-20 rounded-md border border-[#3f424b] bg-[#1d2026] px-2 text-right text-sm text-white"
-                  aria-label="Edit minimum year"
-                />
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => { if (isHost) { setEditingYearSide('min'); setYearInput(String(yearRange[0])); } }}
-                  className="hover:text-[#b6ecff]"
-                  aria-label="Edit minimum year"
-                >
-                  {displayedYearRange[0]}
-                </button>
-              )}
-              <span className="px-1">—</span>
-              {isHost && editingYearSide === 'max' ? (
-                <Input
-                  autoFocus
-                  value={yearInput}
-                  onChange={(e) => setYearInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') commitYearFromInput('max'); if (e.key === 'Escape') setEditingYearSide(null); }}
-                  onBlur={() => setEditingYearSide(null)}
-                  className="h-7 w-20 rounded-md border border-[#3f424b] bg-[#1d2026] px-2 text-right text-sm text-white"
-                  aria-label="Edit maximum year"
-                />
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => { if (isHost) { setEditingYearSide('max'); setYearInput(String(yearRange[1])); } }}
-                  className="hover:text-[#b6ecff]"
-                  aria-label="Edit maximum year"
-                >
-                  {displayedYearRange[1]}
-                </button>
-              )}
-            </div>
-          </div>
-          {isHost && (
-            <div className="mt-4 room-year-range">
-              <Slider
-                value={displayedYearRange}
-                min={YEAR_RANGE_MIN}
-                max={YEAR_RANGE_MAX}
-                step={5}
-                onValueChange={(vals) => {
-                  if (!Array.isArray(vals) || vals.length !== 2) return;
-                  const a = Math.round(Number(vals[0]));
-                  const b = Math.round(Number(vals[1]));
-                  if (!draggingYear) setDraggingYear(true);
-                  const sanitized = sanitizeYearRange([a, b] as [number, number]);
-                  setLocalYearRange(sanitized);
-                }}
-                onPointerDown={() => setDraggingYear(true)}
-                onValueCommit={(vals) => {
-                  if (!Array.isArray(vals) || vals.length !== 2) return;
-                  const a = Math.round(Number(vals[0]));
-                  const b = Math.round(Number(vals[1]));
-                  const sanitized = sanitizeYearRange([a, b] as [number, number]);
-                  setDraggingYear(false);
-                  setLocalYearRange(null);
-                  setYearRange(sanitized);
-                  try { settings.setYearRange(sanitized); } catch {}
-                }}
-                className="w-full"
-              />
-              <div className="mt-2 flex justify-between text-xs text-white">
-                <span>{YEAR_RANGE_MIN}</span>
-                <span>{YEAR_RANGE_MAX}</span>
-              </div>
-            </div>
-          )}
-        </section>
-
-        {isHost && (
-          <Accordion
-            type="single"
-            collapsible
-            value={inviteAccordionOpen ? 'invite-card' : ''}
-            onValueChange={(val) => setInviteAccordionOpen(val === 'invite-card')}
-            className="rounded-2xl border border-[#3f424b] bg-[#333333]"
-          >
-            <AccordionItem value="invite-card" className="overflow-hidden">
-              <AccordionTrigger className="flex items-center justify-between px-6 py-5 text-base font-semibold text-white">
-                <div className="flex items-center gap-2">
-                  <UserPlus className="h-4 w-4 text-white" />
-                  <span>Invite Your Friends</span>
-                </div>
-                {copied && <span className="text-xs font-semibold text-[#22d3ee]">Copied!</span>}
-              </AccordionTrigger>
-              <AccordionContent className="space-y-5 px-6 pb-6 pt-0">
-                <div>
-                  <Label className="text-xs text-neutral-200">Share Room Code</Label>
-                  <div className="mt-2 flex items-center gap-2">
-                    <Input
-                      value={roomCode.toUpperCase()}
-                      readOnly
-                      className="h-11 flex-1 rounded-[14px] border border-[#454852] bg-[#1d2026] text-lg font-semibold tracking-[0.28em] text-white"
-                    />
-                    <Button
-                      onClick={copyCode}
-                      size="icon"
-                      className="h-11 w-11 bg-[#22d3ee] px-0 text-black hover:bg-[#1cbfdb]"
-                      aria-label="Copy room code"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
+                  <div className="mt-2 flex justify-between text-xs text-white">
+                    <span>5s</span>
+                    <span>5m</span>
                   </div>
-                  <p className="mt-2 text-xs text-neutral-400">Share this room code so friends can join.</p>
                 </div>
-                <div className="space-y-3">
-                  <Label className="text-xs text-neutral-200">Send Invite</Label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500" />
+              )}
+            </section>
+
+            <section className="rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-center gap-2 text-base font-semibold text-white">
+                  <Calendar className="h-5 w-5 text-white" />
+                  <span>Year Range</span>
+                </div>
+                <div className="flex items-center gap-1 text-sm font-semibold text-[#22d3ee]">
+                  {isHost && editingYearSide === 'min' ? (
                     <Input
-                      placeholder="Filter your friends by name..."
-                      value={searchTerm}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setSearchTerm(value);
-                        if (value.trim().length > 0) {
-                          setFriendsListVisible(true);
-                        } else {
-                          setFriendsListVisible(false);
-                        }
-                      }}
-                      className="rounded-lg border border-[#454852] bg-[#1d2026] pl-9 text-sm text-white placeholder:text-neutral-500"
+                      autoFocus
+                      value={yearInput}
+                      onChange={(e) => setYearInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') commitYearFromInput('min'); if (e.key === 'Escape') setEditingYearSide(null); }}
+                      onBlur={() => setEditingYearSide(null)}
+                      className="h-7 w-20 rounded-md border border-[#3f424b] bg-[#1d2026] px-2 text-right text-sm text-white"
+                      aria-label="Edit minimum year"
                     />
-                  </div>
-                  <div className="flex items-center justify-between text-xs font-medium text-[#22d3ee]">
+                  ) : (
                     <button
                       type="button"
+                      onClick={() => { if (isHost) { setEditingYearSide('min'); setYearInput(String(yearRange[0])); } }}
                       className="hover:text-[#b6ecff]"
-                      onClick={() => setFriendsListVisible((prev) => !prev)}
+                      aria-label="Edit minimum year"
                     >
-                      {friendsListVisible ? 'Hide Friends' : 'View Friends'}
+                      {displayedYearRange[0]}
                     </button>
+                  )}
+                  <span className="px-1">—</span>
+                  {isHost && editingYearSide === 'max' ? (
+                    <Input
+                      autoFocus
+                      value={yearInput}
+                      onChange={(e) => setYearInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') commitYearFromInput('max'); if (e.key === 'Escape') setEditingYearSide(null); }}
+                      onBlur={() => setEditingYearSide(null)}
+                      className="h-7 w-20 rounded-md border border-[#3f424b] bg-[#1d2026] px-2 text-right text-sm text-white"
+                      aria-label="Edit maximum year"
+                    />
+                  ) : (
                     <button
                       type="button"
+                      onClick={() => { if (isHost) { setEditingYearSide('max'); setYearInput(String(yearRange[1])); } }}
                       className="hover:text-[#b6ecff]"
-                      onClick={() => {
-                        friendsModalOpenedRef.current = true;
-                        setFriendsModalOpen(true);
-                      }}
+                      aria-label="Edit maximum year"
                     >
-                      Manage Friends
+                      {displayedYearRange[1]}
                     </button>
+                  )}
+                </div>
+              </div>
+              {isHost && (
+                <div className="mt-4 room-year-range">
+                  <Slider
+                    value={displayedYearRange}
+                    min={YEAR_RANGE_MIN}
+                    max={YEAR_RANGE_MAX}
+                    step={5}
+                    onValueChange={(vals) => {
+                      if (!Array.isArray(vals) || vals.length !== 2) return;
+                      const a = Math.round(Number(vals[0]));
+                      const b = Math.round(Number(vals[1]));
+                      if (!draggingYear) setDraggingYear(true);
+                      const sanitized = sanitizeYearRange([a, b] as [number, number]);
+                      setLocalYearRange(sanitized);
+                    }}
+                    onPointerDown={() => setDraggingYear(true)}
+                    onValueCommit={(vals) => {
+                      if (!Array.isArray(vals) || vals.length !== 2) return;
+                      const a = Math.round(Number(vals[0]));
+                      const b = Math.round(Number(vals[1]));
+                      const sanitized = sanitizeYearRange([a, b] as [number, number]);
+                      setDraggingYear(false);
+                      setLocalYearRange(null);
+                      setYearRange(sanitized);
+                      try { settings.setYearRange(sanitized); } catch {}
+                    }}
+                    className="w-full"
+                  />
+                  <div className="mt-2 flex justify-between text-xs text-white">
+                    <span>{YEAR_RANGE_MIN}</span>
+                    <span>{YEAR_RANGE_MAX}</span>
                   </div>
-                  {friendsListVisible && (
-                    <div className="space-y-2">
-                      {friendsLoading ? (
-                        <div className="text-xs text-neutral-300">Loading friends…</div>
-                      ) : limitedFriends.length === 0 ? (
-                        <div className="text-xs text-neutral-300">No friends match your filter.</div>
-                      ) : (
-                        limitedFriends.map((f) => {
-                          const friendSeed = f.id || f.display_name;
-                          return (
-                            <div key={f.id} className="flex items-center justify-between rounded-lg border border-[#3f424b] bg-[#1d2026] px-3 py-2">
-                              <div className="flex items-center gap-3">
-                                <div
-                                  className="rounded-full p-[2px]"
-                                  style={{ background: getAvatarFrameGradient(friendSeed) }}
-                                >
-                                  <Avatar className="h-9 w-9 border border-[#1d2026] bg-[#262930]">
-                                    <AvatarImage src={f.avatarUrl ?? avatarUrls[f.id] ?? undefined} alt={`${f.display_name} avatar`} />
-                                    <AvatarFallback className="bg-transparent text-sm font-semibold text-white">
-                                      {getInitial(f.display_name)}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                </div>
-                                <GradientName seed={friendSeed} className="text-sm font-semibold truncate">
-                                  {f.display_name}
-                                </GradientName>
-                              </div>
-                              <Button
-                                onClick={() => inviteFriend(f)}
-                                size="sm"
-                                className="bg-[#22d3ee] px-4 py-1.5 text-xs font-semibold text-black hover:bg-[#1cbfdb]"
-                                aria-label="Invite friend"
-                              >
-                                Invite
-                              </Button>
-                            </div>
-                          );
-                        })
-                      )}
-                      {hasMoreFriends && !friendsLoading && limitedFriends.length > 0 && (
+                </div>
+              )}
+            </section>
+          </div>
+
+          <aside className="flex flex-col gap-6">
+            {isHost && (
+              <Accordion
+                type="single"
+                collapsible
+                value={inviteAccordionOpen ? 'invite-card' : ''}
+                onValueChange={(val) => setInviteAccordionOpen(val === 'invite-card')}
+                className="rounded-2xl border border-[#3f424b] bg-[#333333]"
+              >
+                <AccordionItem value="invite-card" className="overflow-hidden">
+                  <AccordionTrigger className="flex items-center justify-between px-6 py-5 text-base font-semibold text-white">
+                    <div className="flex items-center gap-2">
+                      <UserPlus className="h-4 w-4 text-white" />
+                      <span>Invite Your Friends</span>
+                    </div>
+                    {copied && <span className="text-xs font-semibold text-[#22d3ee]">Copied!</span>}
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-5 px-6 pb-6 pt-0">
+                    <div>
+                      <Label className="text-xs text-neutral-200">Share Room Code</Label>
+                      <div className="mt-2 flex items-center gap-2">
+                        <Input
+                          value={roomCode.toUpperCase()}
+                          readOnly
+                          className="h-11 flex-1 rounded-[14px] border border-[#454852] bg-[#1d2026] text-lg font-semibold tracking-[0.28em] text-white"
+                        />
+                        <Button
+                          onClick={copyCode}
+                          size="icon"
+                          className="h-11 w-11 bg-[#22d3ee] px-0 text-black hover:bg-[#1cbfdb]"
+                          aria-label="Copy room code"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <p className="mt-2 text-xs text-neutral-400">Share this room code so friends can join.</p>
+                    </div>
+                    <div className="space-y-3">
+                      <Label className="text-xs text-neutral-200">Send Invite</Label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500" />
+                        <Input
+                          placeholder="Filter your friends by name..."
+                          value={searchTerm}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setSearchTerm(value);
+                            if (value.trim().length > 0) {
+                              setFriendsListVisible(true);
+                            } else {
+                              setFriendsListVisible(false);
+                            }
+                          }}
+                          className="rounded-lg border border-[#454852] bg-[#1d2026] pl-9 text-sm text-white placeholder:text-neutral-500"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-xs font-medium text-[#22d3ee]">
                         <button
                           type="button"
-                          className="text-left text-xs font-semibold text-[#22d3ee] hover:text-[#b6ecff]"
+                          className="hover:text-[#b6ecff]"
+                          onClick={() => setFriendsListVisible((prev) => !prev)}
+                        >
+                          {friendsListVisible ? 'Hide Friends' : 'View Friends'}
+                        </button>
+                        <button
+                          type="button"
+                          className="hover:text-[#b6ecff]"
                           onClick={() => {
                             friendsModalOpenedRef.current = true;
                             setFriendsModalOpen(true);
                           }}
                         >
-                          More
+                          Manage Friends
                         </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-                {invites.length > 0 && (
-                  <div className="rounded-xl border border-[#3f424b] bg-[#2d2f36] p-4">
-                    <h3 className="text-sm font-semibold text-white">Pending Invites</h3>
-                    <div className="mt-3 space-y-2 text-sm">
-                      {invites.map((inv) => (
-                        <div key={inv.id} className="flex items-center justify-between rounded-lg border border-[#3f424b] bg-[#1d2026] px-3 py-2">
-                          <span className="truncate text-sm text-white">{inv.display_name || 'Friend'}</span>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-red-300 hover:text-red-200" onClick={() => cancelInvite(inv.id)}>
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        )}
-
-        <section className="rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-white" />
-              <h2 className="text-base font-semibold text-white">Players ({roster.length || players.length})</h2>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-neutral-400">Room {roomCode.toUpperCase()} · Status: {status}</span>
-              <button
-                type="button"
-                onClick={() => setPlayersCollapsed((prev) => !prev)}
-                className="text-neutral-300 hover:text-white"
-                aria-label={playersCollapsed ? 'Expand players list' : 'Collapse players list'}
-              >
-                {playersCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-          {!playersCollapsed && (
-            <>
-              {extendedRoster.length > 0 ? (
-                <div className="mt-4 space-y-3">
-                  {extendedRoster.map((r: any, index: number) => {
-                    const isYou = r.id === ownId;
-                    const showReadyTag = r.ready && typeof r._inviteId !== 'string' && !isYou;
-                    const rosterSeed = r.userId || r.id || r.name;
-                    return (
-                      <div key={`${r.id}-${index}`} className="flex items-center justify-between gap-3 rounded-xl border border-[#3f424b] bg-[#1d2026] px-4 py-3">
-                        <div className="flex flex-1 items-center gap-3">
-                          <div
-                            className="rounded-full p-[2.5px]"
-                            style={{ background: getAvatarFrameGradient(rosterSeed) }}
-                          >
-                            <Avatar className="h-10 w-10 border border-[#1d2026] bg-[#262930]">
-                              <AvatarImage src={r.avatarUrl ?? undefined} alt={`${r.name} avatar`} />
-                              <AvatarFallback className="bg-transparent text-sm font-semibold text-white">
-                                {getInitial(r.name)}
-                              </AvatarFallback>
-                            </Avatar>
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <GradientName seed={rosterSeed} className="truncate text-sm font-semibold">
-                                {isYou ? `(You) ${r.name}` : r.name}
-                              </GradientName>
-                              {r.host && <span className="flex-none rounded-full bg-[#22d3ee]/20 px-2 py-0.5 text-[10px] font-semibold text-[#22d3ee]">Host</span>}
-                              {typeof r._inviteId === 'string' && <span className="flex-none rounded-full bg-[#f97316]/15 px-2 py-0.5 text-[10px] font-semibold text-[#f97316]">Invited</span>}
-                              {showReadyTag && (
-                                <span className="ml-auto flex-none rounded-full bg-[#22d96d]/20 px-2 py-0.5 text-[10px] font-semibold text-[#22d96d]">Ready!</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {typeof r._inviteId === 'string' ? (
-                            isHost && (
-                              <Button size="icon" variant="ghost" className="h-8 w-8 text-red-300 hover:text-red-200" onClick={() => cancelInvite(r._inviteId)}>
-                                <X className="h-4 w-4" />
-                              </Button>
-                            )
-                          ) : isYou ? (
+                      </div>
+                      {friendsListVisible && (
+                        <div className="space-y-2">
+                          {friendsLoading ? (
+                            <div className="text-xs text-neutral-300">Loading friends…</div>
+                          ) : limitedFriends.length === 0 ? (
+                            <div className="text-xs text-neutral-300">No friends match your filter.</div>
+                          ) : (
+                            limitedFriends.map((f) => {
+                              const friendSeed = f.id || f.display_name;
+                              return (
+                                <div key={f.id} className="flex items-center justify-between rounded-lg border border-[#3f424b] bg-[#1d2026] px-3 py-2">
+                                  <div className="flex items-center gap-3">
+                                    <div
+                                      className="rounded-full p-[2px]"
+                                      style={{ background: getAvatarFrameGradient(friendSeed) }}
+                                    >
+                                      <Avatar className="h-9 w-9 border border-[#1d2026] bg-[#262930]">
+                                        <AvatarImage src={f.avatarUrl ?? avatarUrls[f.id] ?? undefined} alt={`${f.display_name} avatar`} />
+                                        <AvatarFallback className="bg-transparent text-sm font-semibold text-white">
+                                          {getInitial(f.display_name)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                    </div>
+                                    <GradientName seed={friendSeed} className="text-sm font-semibold truncate">
+                                      {f.display_name}
+                                    </GradientName>
+                                  </div>
+                                  <Button
+                                    onClick={() => inviteFriend(f)}
+                                    size="sm"
+                                    className="bg-[#22d3ee] px-4 py-1.5 text-xs font-semibold text-black hover:bg-[#1cbfdb]"
+                                    aria-label="Invite friend"
+                                  >
+                                    Invite
+                                  </Button>
+                                </div>
+                              );
+                            })
+                          )}
+                          {hasMoreFriends && !friendsLoading && limitedFriends.length > 0 && (
                             <button
                               type="button"
-                              onClick={toggleReady}
-                              disabled={status !== 'open'}
-                              className={`rounded-xl px-4 py-1.5 text-xs font-semibold transition-colors shadow-lg ${ownReady ? 'bg-[#22d96d] text-black hover:bg-[#1fb862]' : 'attention-pulse bg-[#22d3ee] text-black hover:bg-[#1cbfdb]'}`}
-                              style={(!ownReady
-                                ? ({ '--attention-pulse-shadow-color': 'rgba(34, 211, 238, 0.35)' } as React.CSSProperties)
-                                : undefined)}
+                              className="text-left text-xs font-semibold text-[#22d3ee] hover:text-[#b6ecff]"
+                              onClick={() => {
+                                friendsModalOpenedRef.current = true;
+                                setFriendsModalOpen(true);
+                              }}
                             >
-                              {ownReady ? 'Ready!' : 'Ready?'}
+                              More
                             </button>
-                          ) : (
-                            !r.ready && <span className="text-sm font-semibold text-neutral-200">Not ready</span>
                           )}
                         </div>
+                      )}
+                    </div>
+                    {invites.length > 0 && (
+                      <div className="rounded-xl border border-[#3f424b] bg-[#2d2f36] p-4">
+                        <h3 className="text-sm font-semibold text-white">Pending Invites</h3>
+                        <div className="mt-3 space-y-2 text-sm">
+                          {invites.map((inv) => (
+                            <div key={inv.id} className="flex items-center justify-between rounded-lg border border-[#3f424b] bg-[#1d2026] px-3 py-2">
+                              <span className="truncate text-sm text-white">{inv.display_name || 'Friend'}</span>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 text-red-300 hover:text-red-200" onClick={() => cancelInvite(inv.id)}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    );
-                  })}
+                    )}
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            )}
+
+            <section className="rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-white" />
+                  <h2 className="text-base font-semibold text-white">Players ({roster.length || players.length})</h2>
                 </div>
-              ) : (
-                <div className="mt-4 text-sm text-neutral-400">Waiting for players...</div>
+                <div className="flex items-center gap-3 text-xs text-neutral-400">
+                  <span>Room {roomCode.toUpperCase()} · Status: {status}</span>
+                  <button
+                    type="button"
+                    onClick={() => setPlayersCollapsed((prev) => !prev)}
+                    className="text-neutral-300 hover:text-white"
+                    aria-label={playersCollapsed ? 'Expand players list' : 'Collapse players list'}
+                  >
+                    {playersCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              {!playersCollapsed && (
+                <>
+                  {extendedRoster.length > 0 ? (
+                    <div className="mt-4 space-y-3">
+                      {extendedRoster.map((r: any, index: number) => {
+                        const isYou = r.id === ownId;
+                        const showReadyTag = r.ready && typeof r._inviteId !== 'string' && !isYou;
+                        const rosterSeed = r.userId || r.id || r.name;
+                        return (
+                          <div key={`${r.id}-${index}`} className="flex flex-wrap items-center gap-4 rounded-xl border border-[#3f424b] bg-[#1d2026] px-4 py-3">
+                            <div className="flex min-w-0 flex-1 items-center gap-3">
+                              <div
+                                className="rounded-full p-[2.5px]"
+                                style={{ background: getAvatarFrameGradient(rosterSeed) }}
+                              >
+                                <Avatar className="h-10 w-10 border border-[#1d2026] bg-[#262930]">
+                                  <AvatarImage src={r.avatarUrl ?? undefined} alt={`${r.name} avatar`} />
+                                  <AvatarFallback className="bg-transparent text-sm font-semibold text-white">
+                                    {getInitial(r.name)}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <GradientName seed={rosterSeed} className="truncate text-sm font-semibold">
+                                    {isYou ? `(You) ${r.name}` : r.name}
+                                  </GradientName>
+                                  {isYou && (
+                                    <button
+                                      type="button"
+                                      onClick={toggleReady}
+                                      disabled={status !== 'open'}
+                                      className={`flex-none rounded-xl px-4 py-1.5 text-xs font-semibold shadow-lg transition-colors ${ownReady ? 'bg-[#22d96d] text-black hover:bg-[#1fb862]' : 'attention-pulse bg-[#22d3ee] text-black hover:bg-[#1cbfdb]'}`}
+                                      style={(!ownReady
+                                        ? ({ '--attention-pulse-shadow-color': 'rgba(34, 211, 238, 0.35)' } as React.CSSProperties)
+                                        : undefined)}
+                                    >
+                                      {ownReady ? 'Ready!' : 'Ready?'}
+                                    </button>
+                                  )}
+                                  {r.host && <span className="flex-none rounded-full bg-[#22d3ee]/20 px-2 py-0.5 text-[10px] font-semibold text-[#22d3ee]">Host</span>}
+                                  {typeof r._inviteId === 'string' && <span className="flex-none rounded-full bg-[#f97316]/15 px-2 py-0.5 text-[10px] font-semibold text-[#f97316]">Invited</span>}
+                                  {showReadyTag && (
+                                    <span className="flex-none rounded-full bg-[#22d96d]/20 px-2 py-0.5 text-[10px] font-semibold text-[#22d96d]">Ready!</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            {typeof r._inviteId === 'string' ? (
+                              isHost && (
+                                <div className="ml-auto flex items-center gap-3">
+                                  <Button size="icon" variant="ghost" className="h-8 w-8 text-red-300 hover:text-red-200" onClick={() => cancelInvite(r._inviteId)}>
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              )
+                            ) : !isYou ? (
+                              <div className="ml-auto flex items-center gap-3">
+                                {!r.ready && <span className="text-sm font-semibold text-neutral-200">Not ready</span>}
+                                {isHost && r.id !== ownId && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-8 w-8 text-red-300 hover:text-red-200"
+                                    onClick={() => kickPlayer(r.id)}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="mt-4 text-sm text-neutral-400">Waiting for players...</div>
+                  )}
+                </>
               )}
-            </>
-          )}
-        </section>
+            </section>
+          </aside>
+        </div>
 
         <section className="rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
           <div className="flex items-center justify-between">
@@ -1324,7 +1399,7 @@ const Room: React.FC = () => {
             <>
               <div
                 ref={chatListRef}
-                className="mt-4 h-60 overflow-y-auto rounded-xl border border-[#3f424b] bg-[#1d2026] px-4 py-3"
+                className="mt-4 max-h-60 overflow-y-auto rounded-xl border border-[#3f424b] bg-[#1d2026] px-4 py-3"
                 aria-label="Chat messages"
               >
                 {chat.length === 0 ? (
@@ -1341,7 +1416,7 @@ const Room: React.FC = () => {
                   ))
                 )}
               </div>
-              <div className="mt-4 flex items-center gap-3">
+              <div className="mt-4 flex items-center gap-3 pt-4">
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -1352,10 +1427,17 @@ const Room: React.FC = () => {
                     }
                   }}
                   placeholder={status === 'open' ? 'Type a message…' : 'Connecting…'}
-                  className="rounded-lg border border-[#454852] bg-[#1d2026] text-white"
+                  className="flex-1 rounded-xl border border-white/25 bg-[#35373d] px-3 py-2 text-sm text-white caret-[#22d3ee] placeholder:text-[#22d3ee] placeholder:opacity-80 focus-visible:ring-2 focus-visible:ring-[#22d3ee] focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
                   aria-label="Type a chat message"
+                  disabled={isHost && !hasOtherParticipants}
                 />
-                <Button onClick={sendChat} disabled={!input.trim() || status !== 'open'} className="bg-[#22d3ee] px-4 text-black hover:bg-[#1cbfdb] disabled:opacity-40">
+                <Button
+                  onClick={sendChat}
+                  disabled={
+                    !input.trim() || status !== 'open' || (isHost && !hasOtherParticipants)
+                  }
+                  className="rounded-lg bg-[#22d3ee] px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-[#1cbfdb] disabled:bg-white/20 disabled:text-white/50"
+                >
                   Send
                 </Button>
               </div>

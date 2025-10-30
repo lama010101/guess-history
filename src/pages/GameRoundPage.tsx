@@ -6,7 +6,7 @@ import { Loader, MapPin, MessageCircle, X, Zap } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserProfile, fetchUserProfile } from '@/utils/profile/profileService';
 import { useToast } from "@/components/ui/use-toast";
-import { setCurrentRoundInSession, getCurrentRoundFromSession, upsertSessionProgress, getSessionProgress } from '@/utils/roomState';
+import { setCurrentRoundInSession, getCurrentRoundFromSession, upsertSessionProgress, getSessionProgress, hasRoundResultsBeenVisited } from '@/utils/roomState';
 import { Button } from '@/components/ui/button';
 import { SegmentedProgressBar } from '@/components/ui';
 import LevelUpIntro from '@/components/levelup/LevelUpIntro';
@@ -36,6 +36,7 @@ import { useLobbyChat, type SubmissionBroadcast, type RoundCompleteBroadcast } f
 import { useSettingsStore } from '@/lib/useSettingsStore';
 import { useGame } from '@/contexts/GameContext';
 import type { GuessCoordinates } from '@/types';
+import { usePeerProfileCacheStore, resolvePeerProfile, makePeerNameKey } from '@/store/peerProfileCacheStore';
 
 // Cache the global minimum year to avoid repeated queries in a session
 let __globalMinYearCache: number | null = null;
@@ -158,7 +159,25 @@ const GameRoundPage: React.FC = () => {
   const recentSubmitterIdsRef = useRef<Record<string, boolean>>({});
   const [recentSubmitterIds, setRecentSubmitterIds] = useState<Record<string, boolean>>({});
   const maxExpectedTotalRef = useRef(0);
-  const [peerProfileCache, setPeerProfileCache] = useState<Record<string, { displayName: string; avatarUrl: string | null }>>({});
+  const peerProfileCache = usePeerProfileCacheStore((state) => state.cache);
+  const mergePeerProfiles = usePeerProfileCacheStore((state) => state.mergeEntries);
+
+  const resolveCachedProfile = useCallback((userId?: string | null, displayName?: string | null) => {
+    const entry = resolvePeerProfile(userId, displayName);
+    if (entry) {
+      return entry;
+    }
+    if (userId && userId.trim().length > 0) {
+      const byId = peerProfileCache[userId.trim()];
+      if (byId) return byId;
+    }
+    const nameKey = makePeerNameKey(displayName);
+    if (nameKey) {
+      const byName = peerProfileCache[nameKey];
+      if (byName) return byName;
+    }
+    return null;
+  }, [peerProfileCache]);
   const [cachedPeerRoster, setCachedPeerRoster] = useState<Array<{
     id: string;
     displayName: string;
@@ -664,50 +683,45 @@ const GameRoundPage: React.FC = () => {
       setLobbyParticipantCount(nextRoster.length);
 
       if (nextRoster.length > 0) {
-        setPeerProfileCache((prev) => {
-          let updated = prev;
-          let changed = false;
+        const mergePayload: Record<string, { displayName?: string | null; avatarUrl?: string | null }> = {};
+        (players || []).forEach((player) => {
+          if (!player) return;
+          const raw = player as Record<string, unknown>;
+          const trimmedName = typeof player.name === 'string' ? player.name.trim() : '';
+          const rosterId = makeRosterId(
+            typeof raw.userId === 'string' ? raw.userId : null,
+            player.name || null,
+          );
+          const cacheKeys: string[] = rosterId
+            ? [rosterId]
+            : (trimmedName ? [`name:${trimmedName.toLowerCase()}`] : []);
 
-          (players || []).forEach((player) => {
-            const raw = player as Record<string, unknown>;
-            const trimmedName = typeof player.name === 'string' ? player.name.trim() : '';
-            const rosterId = makeRosterId(
-              typeof raw.userId === 'string' ? raw.userId : null,
-              player.name || null,
-            );
-            const avatarPrimary = typeof raw.avatar === 'string' ? raw.avatar.trim() : '';
-            const avatarFallback = typeof raw.avatarUrl === 'string' ? raw.avatarUrl.trim() : '';
-            const avatarSource = avatarPrimary.length > 0
-              ? avatarPrimary
-              : (avatarFallback.length > 0 ? avatarFallback : null);
-            const cacheKeys: string[] = rosterId
-              ? [rosterId]
-              : (trimmedName ? [`name:${trimmedName.toLowerCase()}`] : []);
+          const avatarPrimary = typeof raw.avatar === 'string' ? raw.avatar.trim() : '';
+          const avatarFallback = typeof raw.avatarUrl === 'string' ? raw.avatarUrl.trim() : '';
+          const avatarSource = avatarPrimary.length > 0
+            ? avatarPrimary
+            : (avatarFallback.length > 0 ? avatarFallback : null);
 
-            cacheKeys.forEach((key) => {
-              const existing = updated[key];
-              const nextDisplay = trimmedName || existing?.displayName || '';
-              const nextAvatar = avatarSource ?? existing?.avatarUrl ?? null;
+          cacheKeys.forEach((key) => {
+            if (!key) return;
+            const existing = peerProfileCache[key];
+            const nextDisplay = trimmedName || existing?.displayName || '';
+            const nextAvatar = avatarSource ?? existing?.avatarUrl ?? null;
 
-              if (nextDisplay === '' && nextAvatar === null) {
-                return;
-              }
+            if (nextDisplay === '' && nextAvatar === null) {
+              return;
+            }
 
-              if (!existing || existing.displayName !== nextDisplay || existing.avatarUrl !== nextAvatar) {
-                if (!changed) {
-                  updated = { ...prev };
-                  changed = true;
-                }
-                updated[key] = {
-                  displayName: nextDisplay,
-                  avatarUrl: nextAvatar,
-                };
-              }
-            });
+            mergePayload[key] = {
+              displayName: nextDisplay,
+              avatarUrl: nextAvatar,
+            };
           });
-
-          return changed ? updated : prev;
         });
+
+        if (Object.keys(mergePayload).length > 0) {
+          mergePeerProfiles(mergePayload);
+        }
       }
     },
   });
@@ -1492,73 +1506,6 @@ const GameRoundPage: React.FC = () => {
   }, [isCompeteMode, waitingForPeers, hasSubmittedThisRound, roundNumber, debugCompete]);
 
   useEffect(() => {
-    if (!isCompeteMode) return;
-    if (!roundPeers || roundPeers.length === 0) return;
-
-    setPeerProfileCache((prev) => {
-      let nextRef = prev;
-      let changed = false;
-
-      roundPeers.forEach((peer) => {
-        const displayNameSafe = (peer.displayName ?? '').trim() || 'Player';
-        const avatarUrl = peer.avatarUrl ?? null;
-        const keys: string[] =
-          (typeof peer.userId === 'string' && peer.userId.trim().length > 0)
-            ? [peer.userId.trim()]
-            : (peer.displayName && peer.displayName.trim().length > 0)
-              ? [`name:${peer.displayName.trim().toLowerCase()}`]
-              : [];
-
-        keys.forEach((key) => {
-          const existing = nextRef[key];
-          if (!existing || existing.displayName !== displayNameSafe || existing.avatarUrl !== avatarUrl) {
-            if (!changed) {
-              nextRef = { ...prev };
-              changed = true;
-            }
-            nextRef[key] = {
-              displayName: displayNameSafe,
-              avatarUrl,
-            };
-          }
-        });
-      });
-
-      return changed ? nextRef : prev;
-    });
-  }, [isCompeteMode, roundPeers]);
-
-  useEffect(() => {
-    setWaitingForPeers(false);
-    setSubmittedCounts({ submitted: 0, total: 0 });
-    setHasSubmittedThisRound(false);
-    hasNavigatedToResultsRef.current = false;
-    setSubmissionNotice(null);
-    setFlashActive(false);
-    pendingClampRef.current = false;
-    hasClampedThisRound.current = false;
-    submittedPeerIdsRef.current.clear();
-    recentSubmitterIdsRef.current = {};
-    awaitingSubmissionAckRef.current = false;
-    maxExpectedTotalRef.current = 0;
-    setRecentSubmitterIds({});
-    setCachedPeerRoster([]);
-    setCurrentGuess(null);
-    setHasGuessedLocation(false);
-    setHasTimedOut(false);
-    setShouldRenderResultsRedirect(false);
-    setRedirectReplaceMode(false);
-    if (timerEnabled) {
-      // On round entry, do not overwrite Solo's persisted timer. Solo will hydrate via soloCountdown effect.
-      // Only seed the UI in Compete mode where server/unified countdown hydrates separately.
-      if (isCompeteMode) {
-        setRemainingTime(roundTimerSec);
-      }
-      setIsTimerActive(false);
-    }
-  }, [roomId, roundNumber]);
-
-  useEffect(() => {
     if (!timerEnabled) {
       pendingClampRef.current = false;
       return;
@@ -1650,14 +1597,23 @@ const GameRoundPage: React.FC = () => {
     }
     return (roundPeers || [])
       .filter((peer) => peer.userId !== (user?.id || null) && peer.guessLat != null && peer.guessLng != null)
-      .map((peer) => ({
-        id: peer.userId,
-        lat: peer.guessLat as number,
-        lng: peer.guessLng as number,
-        avatarUrl: peer.avatarUrl ?? null,
-        displayName: peer.displayName ?? 'Player',
-      }));
-  }, [isCompeteMode, roundPeers, user?.id]);
+      .map((peer) => {
+        const cachedProfile = resolveCachedProfile(peer.userId, peer.displayName);
+        const avatarUrl = peer.avatarUrl ?? cachedProfile?.avatarUrl ?? null;
+        const displayLabel = peer.displayName && peer.displayName.trim().length > 0
+          ? peer.displayName
+          : (cachedProfile?.displayName && cachedProfile.displayName.trim().length > 0
+            ? cachedProfile.displayName
+            : 'Player');
+        return ({
+          id: peer.userId,
+          lat: peer.guessLat as number,
+          lng: peer.guessLng as number,
+          avatarUrl,
+          displayName: displayLabel,
+        });
+      });
+  }, [isCompeteMode, roundPeers, user?.id, resolveCachedProfile]);
 
   const computedPeerRoster = useMemo(() => {
     if (!isCompeteMode) {
@@ -2321,7 +2277,7 @@ const GameRoundPage: React.FC = () => {
         return;
       }
 
-      const guessYear = selectedYear ?? imageForRound.year;
+      const guessYear = selectedYear ?? null;
       const guessCoords = currentGuess ?? null;
       const distance = guessCoords
         ? calculateDistanceKm(
@@ -2331,7 +2287,7 @@ const GameRoundPage: React.FC = () => {
             imageForRound.longitude,
           )
         : null;
-      const timeXP = calculateTimeXP(guessYear, imageForRound.year);
+      const timeXP = guessYear != null ? calculateTimeXP(guessYear, imageForRound.year) : 0;
       const locationXP = distance != null ? calculateLocationXP(distance) : 0;
       const roundXPBeforePenalty = timeXP + locationXP;
       const finalScore = Math.max(0, roundXPBeforePenalty - xpDebt);
@@ -2343,7 +2299,7 @@ const GameRoundPage: React.FC = () => {
           guessCoordinates: guessCoords || undefined,
           distanceKm: distance,
           score: finalScore,
-          guessYear: selectedYear ?? null,
+          guessYear,
           xpWhere: locationXP,
           xpWhen: timeXP,
           accuracy: roundPercent,
@@ -2467,7 +2423,7 @@ const GameRoundPage: React.FC = () => {
     return <Navigate to={resultsPath} replace={redirectReplaceMode} />;
   }
 
-  if (!isCompeteMode && (hasSubmittedThisRound || hasTimedOut) && resultsPath) {
+  if (!isCompeteMode && (hasSubmittedThisRound || hasTimedOut || (roomId && hasRoundResultsBeenVisited(roomId, roundNumber))) && resultsPath) {
     return <Navigate to={resultsPath} replace />;
   }
 
@@ -2592,7 +2548,7 @@ const GameRoundPage: React.FC = () => {
                 ))
               )}
             </div>
-            <div className="px-4 py-3 border-t border-white/10 flex items-center gap-2">
+            <div className="px-4 py-3 flex items-center gap-2">
               <input
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
@@ -2604,7 +2560,7 @@ const GameRoundPage: React.FC = () => {
                 }}
                 placeholder={chatStatus === 'open' ? 'Type a message…' : chatStatus === 'connecting' ? 'Connecting…' : 'Chat unavailable'}
                 disabled={chatStatus !== 'open'}
-                className="flex-1 rounded-lg bg-white/10 text-white placeholder:text-white/40 border border-white/20 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                className="flex-1 rounded-xl bg-[#35373d] text-white placeholder:text-[#22d3ee] placeholder:opacity-80 border border-white/25 px-3 py-2 text-sm caret-[#22d3ee] focus:outline-none focus:ring-2 focus:ring-[#22d3ee] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
               />
               <button
                 type="button"

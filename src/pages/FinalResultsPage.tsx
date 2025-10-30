@@ -1,8 +1,9 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 
-import { Share2, Loader, Home, Target, Zap, RefreshCw } from "lucide-react";
+import { Share2, Loader, Home, Target, Zap, RefreshCw, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
 import { NavProfile } from "@/components/NavProfile";
 import { formatInteger, kmToMi } from '@/utils/format';
 import { useSettingsStore } from '@/lib/useSettingsStore';
@@ -62,6 +63,9 @@ const FinalResultsPage = () => {
   // In-flight guard for starting the next level; resets on failure so user can retry
   const isContinuingRef = useRef<boolean>(false);
   const restartSeedRef = useRef<string | null>(null);
+  const chatListRef = React.useRef<HTMLDivElement | null>(null);
+  const [chatInput, setChatInput] = React.useState('');
+  const [chatCollapsed, setChatCollapsed] = React.useState(true);
   
   // Apply Level Up theming via body class when under /level/ routes
   useEffect(() => {
@@ -104,7 +108,7 @@ const FinalResultsPage = () => {
   const isLevelUp = location.pathname.includes('/level/');
   const isSyncCompeteRoute = React.useMemo(() => location.pathname.startsWith('/compete/sync/'), [location.pathname]);
   const { user } = useAuth();
-  const { messages: lobbyMessages, sendMessage: sendLobbyMessage } = useLobbyChat({
+  const { messages: lobbyMessages, sendMessage: sendLobbyMessage, status: lobbyStatus } = useLobbyChat({
     roomCode: isSyncCompeteRoute && effectiveRoomId ? effectiveRoomId : null,
     displayName: 'Player',
     userId: user?.id,
@@ -130,6 +134,34 @@ const FinalResultsPage = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const formatChatTime = React.useCallback((iso: string) => {
+    try {
+      const date = new Date(iso);
+      if (Number.isNaN(date.getTime())) {
+        return '';
+      }
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return '';
+    }
+  }, []);
+
+  const handleSendChat = React.useCallback(() => {
+    const trimmed = chatInput.trim();
+    if (!trimmed) return;
+    const sent = sendLobbyMessage(trimmed);
+    if (sent) {
+      setChatInput('');
+    }
+  }, [chatInput, sendLobbyMessage]);
+
+  React.useEffect(() => {
+    if (chatCollapsed) return;
+    const el = chatListRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [lobbyMessages, chatCollapsed]);
 
   // Listen for restart messages from lobby chat to auto-start a new synced game
   useEffect(() => {
@@ -798,9 +830,77 @@ const FinalResultsPage = () => {
 
                 {/* SYNC Compete: show final leaderboard for all participants */}
                 {isSyncCompeteRoute && effectiveRoomId ? (
-                  <div className="mt-6">
-                    <FinalScoreboard roomId={effectiveRoomId} />
-                  </div>
+                  <>
+                    <div className="mt-6">
+                      <FinalScoreboard roomId={effectiveRoomId} />
+                    </div>
+                    <div className="mt-4 w-full rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 text-white">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <MessageSquare className="h-4 w-4 text-white" />
+                          <h3 className="text-base font-semibold text-white">Chat</h3>
+                          <span className="text-xs text-neutral-400">
+                            {lobbyMessages.length} message{lobbyMessages.length === 1 ? '' : 's'}
+                          </span>
+                          <span className="text-xs text-neutral-500">· Status: {lobbyStatus}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setChatCollapsed((prev) => !prev)}
+                          className="text-neutral-300 transition-colors hover:text-white"
+                          aria-label={chatCollapsed ? 'Expand chat' : 'Collapse chat'}
+                        >
+                          {chatCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      {!chatCollapsed && (
+                        <>
+                          <div
+                            ref={chatListRef}
+                            className="mt-4 max-h-64 overflow-y-auto rounded-xl border border-neutral-800 bg-black/40 px-4 py-3"
+                            aria-label="Chat messages"
+                          >
+                            {lobbyMessages.length === 0 ? (
+                              <div className="text-sm text-neutral-400">No messages yet…</div>
+                            ) : (
+                              lobbyMessages.map((msg) => (
+                                <div key={msg.id} className="pb-3 last:pb-0">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="truncate text-sm font-semibold text-[#22d3ee] max-w-[70%]">{msg.from}</span>
+                                    <span className="text-[10px] text-neutral-400">{formatChatTime(msg.timestamp)}</span>
+                                  </div>
+                                  <div className="mt-1 text-sm text-neutral-200 whitespace-pre-wrap break-words">{msg.message}</div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                          <div className="mt-4 flex items-center gap-3">
+                            <Input
+                              value={chatInput}
+                              onChange={(e) => setChatInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleSendChat();
+                                }
+                              }}
+                              placeholder={lobbyStatus === 'open' ? 'Type a message…' : 'Connecting…'}
+                              className="rounded-lg border border-neutral-800 bg-black/40 text-white"
+                              aria-label="Type a chat message"
+                              disabled={lobbyStatus !== 'open'}
+                            />
+                            <Button
+                              onClick={handleSendChat}
+                              disabled={lobbyStatus !== 'open' || !chatInput.trim()}
+                              className="bg-[#22d3ee] px-4 text-black hover:bg-[#1cbfdb] disabled:opacity-40"
+                            >
+                              Send
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </>
                 ) : null}
               </div>
 

@@ -272,7 +272,15 @@ const Room: React.FC = () => {
                   );
                   if (pickNew) deduped.set(key, entry);
                 }
-                setRoster(Array.from(deduped.values()));
+                const nextRoster = Array.from(deduped.values());
+                setRoster(nextRoster);
+
+                const rosterFriendIds = nextRoster
+                  .map((entry) => entry.userId)
+                  .filter((id): id is string => typeof id === 'string' && id.length > 0);
+                if (rosterFriendIds.length > 0) {
+                  setInvites((prev) => prev.filter((invite) => !rosterFriendIds.includes(invite.friend_id)));
+                }
               }
               break;
             case 'hello':
@@ -773,20 +781,44 @@ const Room: React.FC = () => {
 
   const inviteFriend = useCallback(async (f: FriendEntry) => {
     if (!user?.id || !roomCode) return;
+
+    if (roster.some((entry) => entry.userId && entry.userId === f.id)) {
+      toast({ description: `${f.display_name} is already in this room.` });
+      return;
+    }
+
+    if (invites.some((invite) => invite.friend_id === f.id)) {
+      toast({ description: `${f.display_name} has already been invited.` });
+      return;
+    }
+
     try {
       const { error, data } = await supabase
         .from('room_invites')
         .insert([{ room_id: roomCode, inviter_user_id: user.id, friend_id: f.id }])
         .select('id')
         .single();
-      if (error) throw error;
-      setInvites((prev) => [{ id: data!.id, friend_id: f.id, display_name: f.display_name }, ...prev]);
+
+      if (error) {
+        const code = (error as any)?.code as string | undefined;
+        const message = (error as any)?.message as string | undefined;
+        const isDuplicate = code === '23505' || code === '409' || (message ? /duplicate/i.test(message) : false);
+        if (isDuplicate) {
+          toast({ description: `${f.display_name} has already been invited.` });
+          return;
+        }
+        throw error;
+      }
+
+      if (data?.id) {
+        setInvites((prev) => [{ id: data.id, friend_id: f.id, display_name: f.display_name }, ...prev]);
+      }
       toast({ description: `Invited ${f.display_name}` });
     } catch (e) {
       console.error('[Room] inviteFriend error', e);
       toast({ description: 'Failed to invite', variant: 'destructive' });
     }
-  }, [user?.id, roomCode]);
+  }, [user?.id, roomCode, roster, invites, toast]);
 
   const cancelInvite = useCallback(async (inviteId: string) => {
     try {

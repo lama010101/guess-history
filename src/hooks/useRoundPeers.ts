@@ -485,6 +485,30 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
         });
       }
 
+      // DEV diagnostics: verify consistency across sources and presence of current user
+      if (isDev) {
+        try {
+          const uniqIds = Array.from(new Set<string>(mergedPeers.map(p => String(p.userId))));
+          const spCount = Array.isArray(playersArr) ? new Set(playersArr.map((p: any) => String(p.user_id))).size : 0;
+          const sbCount = new Set((scoreboardRows || []).map((s: any) => String(s.user_id))).size;
+          const rrCount = rrByUser.size;
+          const syncCount = syncByUser.size;
+          const hintCount = hintsByUser.size;
+          let selfId: string | null = null;
+          try { const { data: { user } } = await supabase.auth.getUser(); selfId = user?.id ?? null; } catch {}
+          const selfPeer = selfId ? mergedPeers.find(p => p.userId === selfId) : null;
+          console.debug('[useRoundPeers] merge summary', {
+            roomId,
+            roundNumber: oneBasedRound,
+            sources: { session_players: spCount, scoreboard: sbCount, round_results: rrCount, sync_round_scores: syncCount, round_hints: hintCount },
+            mergedCount: mergedPeers.length,
+            mergedIds: uniqIds,
+            hasSelf: !!selfPeer,
+            selfSubmitted: selfPeer?.submitted ?? null,
+          });
+        } catch {}
+      }
+
       devLog('merged peer count', mergedPeers.length, mergedPeers.map(p => ({ id: p.userId, hasAvatar: !!p.avatarUrl })));
 
       const normalizeForSort = (value: number | null) => (typeof value === 'number' && Number.isFinite(value) ? value : -Infinity);

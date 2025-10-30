@@ -17,6 +17,13 @@
 - **Component**: `src/components/ui/toast.tsx`
   - Raised the `ToastViewport` z-index to `1400` so error toasts render above the authentication dialog’s blurred overlay (`z-[1100]`). Keep future overlays below this threshold or increase it accordingly if new modals require higher stacking contexts.
 
+### Image Feedback Dialog Accent (2025-10-30)
+
+- **Components**: `src/components/rating/ImageRatingModal.tsx`, `src/components/ui/dialog.tsx`
+  - The rating modal’s Submit Feedback button uses the app accent (Tailwind `secondary`) and is force-colored via `bg-orange-500` so it is orange in Solo. In other modes, our global `.mode-*` remaps translate the orange utility to that mode’s accent (turquoise for Compete, pink for Level Up).
+  - The dialog close icon uses the accent color too (`text-secondary`).
+  - The submit button keeps its color when disabled via `disabled:opacity-100` so it doesn’t look greyed out.
+
 ### Gameplay History Lock Reinforcement (2025-10-29)
 
 - **Component**: `src/pages/GameRoundPage.tsx`
@@ -1031,7 +1038,7 @@ __QA checklist__
 - /compete shows the top navbar.
 - On mobile, Join card is above Host card; both visible without toggles.
 - In a SYNC room, after each round, the round leaderboard renders on the Results page.
-- On the Final Results page for SYNC rooms, the final leaderboard renders below the final score card.
+- On the Final Results page for SYNC rooms, the final leaderboard renders below the final score card. A collapsible lobby chat card (collapsed by default) sits immediately under the leaderboard, reusing the room chat visuals. The card shows message count, connection status, scrollable history, and input actions only when the user is still connected to the room via `useLobbyChat`.
 - ASYNC rooms do not render leaderboards; existing behavior is unchanged.
 
 #### Compete Round Results — Participants' Answers (2025-09-18)

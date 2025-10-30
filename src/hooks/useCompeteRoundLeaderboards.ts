@@ -145,6 +145,21 @@ export function useCompeteRoundLeaderboards(
       userIdSet.add(currentUserId);
     }
 
+    // Dev-only diagnostics to trace inputs and ensure current user presence
+    if (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.DEV) {
+      try {
+        const ids = Array.from(userIdSet);
+        console.debug('[useCompeteRoundLeaderboards] input', {
+          roomId: resolvedRoomId,
+          roundNumber: resolvedRoundNumber,
+          snapshotCount: snapshotEntries.length,
+          peersCount: (peers || []).length,
+          currentUserId,
+          userIdSet: ids,
+        });
+      } catch {}
+    }
+
     if (userIdSet.size === 0) {
       return { computed: EMPTY_ROWS, source: 'empty' as const };
     }
@@ -249,6 +264,21 @@ export function useCompeteRoundLeaderboards(
       : snapshotMap.size > 0
         ? 'snapshots' as const
         : 'legacy' as const;
+
+    // Dev-only diagnostics to trace computed rows and ensure self inclusion
+    if (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.DEV) {
+      try {
+        console.debug('[useCompeteRoundLeaderboards] computed', {
+          roomId: resolvedRoomId,
+          roundNumber: resolvedRoundNumber,
+          source: derivedSource,
+          currentUserId,
+          totalIds: total.map(r => r.userId),
+          whenIds: when.map(r => r.userId),
+          whereIds: where.map(r => r.userId),
+        });
+      } catch {}
+    }
 
     return { computed: { total, when, where }, source: derivedSource };
   }, [resolvedRoomId, resolvedRoundNumber, snapshotEntries, peers, actualYear, currentUserId, currentUserDisplayName]);

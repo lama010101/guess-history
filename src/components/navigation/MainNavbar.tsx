@@ -16,15 +16,6 @@ interface MainNavbarProps {
 
 const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
   const { globalXP, globalAccuracy, fetchGlobalMetrics } = useGame();
-  const [isScrolled, setIsScrolled] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 0);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
   const navigate = useNavigate();
   const { user } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -93,9 +84,7 @@ const MainNavbar: React.FC<MainNavbarProps> = ({ onMenuClick }) => {
 
   return (
     <header
-      className={`sticky top-0 z-50 transition-colors duration-300 ${
-        isScrolled ? 'bg-black/90 backdrop-blur' : 'bg-black/0 backdrop-blur-none'
-      }`}
+      className="sticky top-0 z-50 transition-colors duration-300 bg-black/90 backdrop-blur"
       onClick={() => navigate('/home')}
       role="button"
       aria-label="Go to Home"

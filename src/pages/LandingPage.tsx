@@ -55,10 +55,11 @@ const LandingPage: React.FC = () => {
 
   // Redirect authenticated user straight to the Home hub (avoid while auth modal is open or a game is starting)
   useEffect(() => {
-    if (user && !authOpen && !isLoading && images.length === 0) {
+    if (isLoading) return;
+    if (user) {
       navigate("/home", { replace: true });
     }
-  }, [user, authOpen, isLoading, images.length, navigate]);
+  }, [user, isLoading, navigate]);
 
   // Cycle through hero images every 3 seconds
   useEffect(() => {

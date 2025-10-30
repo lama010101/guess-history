@@ -162,9 +162,10 @@ const ImageRatingModal: React.FC<ImageRatingModalProps> = ({ isOpen, onClose, im
             Cancel
           </Button>
           <Button
+            variant="secondary"
             onClick={handleSubmit}
             disabled={isSubmitting || !isFormValid}
-            className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90"
+            className="w-full sm:w-auto disabled:opacity-100 bg-orange-500 hover:bg-orange-600 text-black"
           >
             {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
           </Button>

@@ -64,6 +64,8 @@ export function AuthModal({
   };
 
   const handleGuestLogin = async () => {
+    if (isLoading) return;
+
     try {
       console.log("Starting guest login from modal");
       setIsLoading(true);

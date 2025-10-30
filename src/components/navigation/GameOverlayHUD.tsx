@@ -95,7 +95,7 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
   return (
     <div className={`absolute inset-0 z-[1000] flex flex-col justify-between p-4 pointer-events-none game-overlay-hud ${className || ''}`}>
       {/* Top bar - Score centered, Home button on right */}
-      <div className="flex justify-between items-start w-full relative">
+      <div className="relative flex w-full items-start justify-between px-0 py-0 pointer-events-auto">
         {/* Left side - Timer */}
         <div className="pointer-events-auto flex items-center gap-2">
           {timerEnabled && (
@@ -111,7 +111,7 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
         </div>
         
         {/* Center - Score and accuracy (absolutely centered) */}
-        <div className="absolute left-1/2 -translate-x-1/2 top-0 flex flex-col items-center bg-black/30 backdrop-blur-sm p-2 rounded-lg pointer-events-auto">
+        <div className="absolute left-1/2 -translate-x-1/2 top-0 flex flex-col items-center p-0 pointer-events-auto">
           <div className="flex space-x-2">
             <Badge 
               variant="accuracy" 

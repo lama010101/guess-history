@@ -301,11 +301,17 @@ export default function ZoomYearPicker({
   useEffect(() => {
     if (!Number.isFinite(selectedYear)) return;
     if (pendingExternalValueRef.current !== null) {
-      if (Math.abs(selectedYear - pendingExternalValueRef.current) < 0.5) {
+      // Clear the pending external lock either when we've centered closely enough
+      // OR as soon as the user interacts, so dragging never gets stuck near bounds.
+      if (
+        Math.abs(selectedYear - pendingExternalValueRef.current) < 0.5 ||
+        hasInteractedRef.current
+      ) {
         pendingExternalValueRef.current = null;
         lastEmittedValueRef.current = null;
+      } else {
+        return;
       }
-      return;
     }
     if (
       !hasInteractedRef.current &&

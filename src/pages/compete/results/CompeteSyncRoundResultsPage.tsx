@@ -516,61 +516,6 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
             {forceRefreshingLeaderboards && <span className="text-[11px] text-muted-foreground/80">Finalizing scores…</span>}
           </div>
         )}
-        roundLeaderboardCard={(
-          <div className="space-y-2">
-            {leaderboard.error ? (
-              <div className="text-sm text-destructive">{leaderboard.error}</div>
-            ) : leaderboard.total.length === 0 ? (
-              <div className="text-sm text-muted-foreground">Waiting for players to finish this round…</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <tbody>
-                    {leaderboard.total.map((row) => {
-                      const isCurrent = leaderboard.currentUserId != null && row.userId === leaderboard.currentUserId;
-                      const displayName = row.displayName || 'Player';
-                      const nameWithYou = isCurrent ? `(You) ${displayName}` : displayName;
-                      const hintsUsed = Math.max(0, Number(row.hintsUsed ?? 0));
-                      const accDebt = Math.max(0, Number((row as any).accDebt ?? 0));
-                      const gradientSeed = row.userId || displayName;
-                      const frameStyle = { background: getAvatarFrameGradient(gradientSeed) };
-                      return (
-                        <tr key={`inline:${row.userId}`} className="border-b border-gray-200 last:border-0 dark:border-neutral-700">
-                          <td className={`py-2 pr-2 ${isCurrent ? 'font-semibold text-foreground' : 'text-foreground/80'}`}>
-                            <div className="flex items-center gap-3">
-                              <div
-                                className="rounded-full p-[2px]"
-                                style={frameStyle}
-                              >
-                                <Avatar className="h-7 w-7 border border-[#1d2026] bg-[#262930]">
-                                  {row.avatarUrl ? (
-                                    <AvatarImage src={row.avatarUrl} alt={displayName} />
-                                  ) : null}
-                                  <AvatarFallback className="bg-transparent text-xs font-semibold text-white">
-                                    {getInitial(displayName)}
-                                  </AvatarFallback>
-                                </Avatar>
-                              </div>
-                              <div className="flex items-baseline gap-2">
-                               <span>{nameWithYou}</span>
-                                {hintsUsed > 0 ? (
-                                  <span className="text-xs font-semibold text-red-500">{`${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'} = ${accDebt}%`}</span>
-                                ) : null}
-                              </div>
-                            </div>
-                          </td>
-                          <td className={`py-2 pr-2 text-right ${isCurrent ? 'font-semibold text-foreground' : 'font-medium text-foreground/80'}`}>
-                            {`${Math.round(row.value ?? 0)}%`}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
         nextRoundButton={
           <div className="flex items-center gap-2">
             <Button

@@ -3,6 +3,7 @@ import { useNavigate, useParams, useLocation, Navigate } from 'react-router-dom'
 import { Loader, ChevronRight, Home, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getAvatarFrameGradient } from '@/utils/avatarGradient';
 import ResultsLayout2 from '@/components/layouts/ResultsLayout2';
 import ImageRatingModal from '@/components/rating/ImageRatingModal';
 import { ConfirmNavigationDialog } from '@/components/game/ConfirmNavigationDialog';
@@ -531,19 +532,27 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
                       const nameWithYou = isCurrent ? `(You) ${displayName}` : displayName;
                       const hintsUsed = Math.max(0, Number(row.hintsUsed ?? 0));
                       const accDebt = Math.max(0, Number((row as any).accDebt ?? 0));
+                      const gradientSeed = row.userId || displayName;
+                      const frameStyle = { background: getAvatarFrameGradient(gradientSeed) };
                       return (
                         <tr key={`inline:${row.userId}`} className="border-b border-gray-200 last:border-0 dark:border-neutral-700">
                           <td className={`py-2 pr-2 ${isCurrent ? 'font-semibold text-foreground' : 'text-foreground/80'}`}>
                             <div className="flex items-center gap-3">
-                              <Avatar className="h-7 w-7">
-                                {row.avatarUrl ? (
-                                  <AvatarImage src={row.avatarUrl} alt={displayName} />
-                                ) : (
-                                  <AvatarFallback>{getInitial(displayName)}</AvatarFallback>
-                                )}
-                              </Avatar>
+                              <div
+                                className="rounded-full p-[2px]"
+                                style={frameStyle}
+                              >
+                                <Avatar className="h-7 w-7 border border-[#1d2026] bg-[#262930]">
+                                  {row.avatarUrl ? (
+                                    <AvatarImage src={row.avatarUrl} alt={displayName} />
+                                  ) : null}
+                                  <AvatarFallback className="bg-transparent text-xs font-semibold text-white">
+                                    {getInitial(displayName)}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </div>
                               <div className="flex items-baseline gap-2">
-                                <span>{nameWithYou}</span>
+                               <span>{nameWithYou}</span>
                                 {hintsUsed > 0 ? (
                                   <span className="text-xs font-semibold text-red-500">{`${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'} = ${accDebt}%`}</span>
                                 ) : null}
@@ -574,7 +583,7 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
                   {`${nextRoundCountdown}s`}
                 </span>
               )}
-              <span>{hasConfirmedAdvance ? 'Ready' : (oneBasedRound === totalRounds ? 'Finish Game' : 'Next Round')}</span>
+              <span>{hasConfirmedAdvance ? 'Ready' : (oneBasedRound === totalRounds ? 'Final Results' : 'Next Round')}</span>
               {navigating ? <Loader className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
             </Button>
             {hasConfirmedAdvance && !allPlayersReady && (

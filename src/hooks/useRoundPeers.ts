@@ -58,6 +58,7 @@ export interface MiniLeaderboardRow {
   displayName: string;
   value: number | null;
   hintsUsed: number;
+  avatarUrl: string | null;
 }
 
 export interface MiniLeaderboards {
@@ -497,6 +498,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
             displayName: peer.displayName,
             value: extractor(peer),
             hintsUsed: Math.max(0, Number((hintsExtractor ? hintsExtractor(peer) : peer.hintsUsed) ?? 0)),
+            avatarUrl: peer.avatarUrl ?? null,
           }))
           .filter((row) => row.value != null && Number.isFinite(Number(row.value)));
 
@@ -512,26 +514,34 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
 
       if (mountedRef.current) {
         setPeers(mergedPeers);
+        const lbTotal = buildLeaderboard(peer => (typeof peer.netAccuracy === 'number' ? peer.netAccuracy : null));
+        const lbTime = buildLeaderboard(
+          peer => {
+            if (typeof peer.timeAccuracy === 'number') {
+              return Math.max(0, peer.timeAccuracy - Number(peer.whenAccDebt ?? 0));
+            }
+            return null;
+          },
+          peer => (typeof peer.whenHints === 'number' ? peer.whenHints : null)
+        );
+        const lbWhere = buildLeaderboard(
+          peer => {
+            if (typeof peer.locationAccuracy === 'number') {
+              return Math.max(0, peer.locationAccuracy - Number(peer.whereAccDebt ?? 0));
+            }
+            return null;
+          },
+          peer => (typeof peer.whereHints === 'number' ? peer.whereHints : null)
+        );
         setMiniLeaderboards({
-          total: buildLeaderboard(peer => (typeof peer.netAccuracy === 'number' ? peer.netAccuracy : null)),
-          time: buildLeaderboard(
-            peer => {
-              if (typeof peer.timeAccuracy === 'number') {
-                return Math.max(0, peer.timeAccuracy - Number(peer.whenAccDebt ?? 0));
-              }
-              return null;
-            },
-            peer => (typeof peer.whenHints === 'number' ? peer.whenHints : null)
-          ),
-          location: buildLeaderboard(
-            peer => {
-              if (typeof peer.locationAccuracy === 'number') {
-                return Math.max(0, peer.locationAccuracy - Number(peer.whereAccDebt ?? 0));
-              }
-              return null;
-            },
-            peer => (typeof peer.whereHints === 'number' ? peer.whereHints : null)
-          ),
+          total: lbTotal,
+          time: lbTime,
+          location: lbWhere,
+        });
+        devLog('miniLeaderboards built', {
+          total: lbTotal.map(r => r.userId),
+          time: lbTime.map(r => r.userId),
+          location: lbWhere.map(r => r.userId),
         });
         setError(null);
       }

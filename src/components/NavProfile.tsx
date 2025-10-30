@@ -69,7 +69,7 @@ export const NavProfile = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('avatar_image_url, avatar_url, avatar_name, display_name, avatar_id')
+        .select('avatar_image_url, avatar_url, avatar_name, display_name, username, avatar_id')
         .eq('id', user.id)
         .single();
 
@@ -179,9 +179,11 @@ export const NavProfile = () => {
   const displayNameStyle = useMemo(() => getAvatarTextGradientStyle(gradientSeed), [gradientSeed]);
   // Determine the best display name to show in the dropdown
   const userDisplayName =
-    // Prefer unique profile-side avatar_name/display_name so numeric suffixes are preserved
-    profile?.avatar_name ??
-    profile?.display_name ??
+    // Always prefer user-controlled profile names first
+    (profile?.display_name?.trim() ? profile.display_name.trim() : null) ??
+    (profile?.username?.trim() ? profile.username.trim() : null) ??
+    // Fall back to legacy avatar_name values when user fields are absent
+    (profile?.avatar_name?.trim() ? profile.avatar_name.trim() : null) ??
     // Fall back to avatar record name if profile fields are missing
     (avatar ? (avatar.first_name || avatar.last_name ? `${avatar.first_name ?? ''} ${avatar.last_name ?? ''}`.trim() : (avatar.name || avatar.display_name || null)) : null) ??
     (user?.user_metadata as any)?.full_name ??
@@ -221,20 +223,25 @@ export const NavProfile = () => {
               </Avatar>
             </div>
           </div>
-          <div className="px-2 py-1.5">
-            <p className="text-sm font-medium truncate" style={displayNameStyle}>{userDisplayName}</p>
+          <div className="px-2 py-1.5 text-center">
+            <p
+              className="mx-auto max-w-full truncate text-sm font-medium"
+              style={displayNameStyle}
+            >
+              {userDisplayName}
+            </p>
             {isGuest && (
-              <p className="text-xs text-muted-foreground">Playing as guest</p>
-            )}
-            {isGuest && (
-              <Button
-                size="sm"
-                variant="hintGradient"
-                className="mt-2 w-full text-xs whitespace-nowrap shadow-md"
-                onClick={() => setShowAuthModal(true)}
-              >
-                Register to save progress
-              </Button>
+              <>
+                <p className="mt-1 text-xs text-muted-foreground">Playing as guest</p>
+                <Button
+                  variant="hintGradient"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => setShowAuthModal(true)}
+                >
+                  Register to save progress
+                </Button>
+              </>
             )}
           </div>
           <DropdownMenuSeparator />

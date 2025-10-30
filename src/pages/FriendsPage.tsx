@@ -38,9 +38,14 @@ type User = {
   avatar_name?: string;
 };
 
-const FriendsPage = () => {
+type FriendsPageProps = {
+  showHeading?: boolean;
+};
+
+const FriendsPage = ({ showHeading = true }: FriendsPageProps) => {
   const { user, isGuest } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [friendsFilter, setFriendsFilter] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -376,6 +381,15 @@ const FriendsPage = () => {
   // Get the list of users to display based on search state
   // Prefer instant client-side filtering from loaded users while typing,
   // and use server results (searchResults) when explicitly requested.
+  const filteredFriends = useMemo(() => {
+    const normalized = friendsFilter.trim().toLowerCase();
+    if (!normalized) return friends;
+    return friends.filter((friend) => {
+      const name = (friend.display_name || friend.username || '').toLowerCase();
+      return name.includes(normalized);
+    });
+  }, [friends, friendsFilter]);
+
   const normalizedTerm = searchTerm.trim().toLowerCase();
   const locallyFiltered = normalizedTerm
     ? allUsers.filter((u) =>
@@ -389,8 +403,10 @@ const FriendsPage = () => {
     : allUsers;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6 text-history-primary dark:text-history-light">Friends</h1>
+    <div className={`max-w-4xl mx-auto px-4 ${showHeading ? 'py-8' : 'py-4'}`}>
+      {showHeading && (
+        <h1 className="text-2xl font-bold mb-6 text-history-primary dark:text-history-light">Friends</h1>
+      )}
       
       <Tabs value={activeTab} defaultValue="friends" className="w-full" onValueChange={setActiveTab}>
         <TabsList className="mb-6 grid w-full grid-cols-2 gap-2">
@@ -420,64 +436,72 @@ const FriendsPage = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {friends.map((friend) => {
-                const nameSeed = friend.id || friend.username;
-                const nameStyle = getAvatarTextGradientStyle(nameSeed);
-                const frameStyle = { background: getAvatarFrameGradient(nameSeed) };
-                const avatarSrc = friend.avatar_image_url || friend.avatar_url;
-                return (
-                  <div
-                    key={friend.id}
-                    className="p-4 bg-[#333333] text-white rounded-lg shadow flex items-center justify-between"
-                  >
-                    <div className="flex items-center">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input
+                  value={friendsFilter}
+                  onChange={(e) => setFriendsFilter(e.target.value)}
+                  placeholder="Filter your friends by name..."
+                  aria-label="Filter friends"
+                  className="rounded-lg border border-[#3f424b] bg-[#1d2026] pl-9 text-sm text-white placeholder:text-neutral-500"
+                />
+              </div>
+              {filteredFriends.length === 0 ? (
+                <div className="rounded-lg bg-[#333333] p-4 text-center text-sm text-gray-300">
+                  No friends match your filter.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredFriends.map((friend) => {
+                    const nameSeed = friend.id || friend.username;
+                    const nameStyle = getAvatarTextGradientStyle(nameSeed);
+                    const frameStyle = { background: getAvatarFrameGradient(nameSeed) };
+                    const avatarSrc = friend.avatar_image_url || friend.avatar_url;
+                    return (
                       <div
-                        className="h-10 w-10 mr-4 cursor-pointer rounded-full p-[2px]"
-                        style={frameStyle}
-                        onClick={() => handleNavigateToProfile(friend.id)}
+                        key={friend.id}
+                        className="flex items-center justify-between rounded-lg bg-[#333333] p-4 text-white shadow"
                       >
-                        <Avatar className="h-full w-full border border-[#3f424b] bg-[#262930]">
-                          {avatarSrc ? (
-                            <AvatarImage src={avatarSrc} alt={friend.username} />
-                          ) : (
-                            <AvatarFallback>{getInitial(friend.username)}</AvatarFallback>
-                          )}
-                        </Avatar>
-                      </div>
-                      <div>
-                        <div
-                          className="font-medium cursor-pointer"
-                          style={nameStyle}
-                          onClick={() => handleNavigateToProfile(friend.id)}
-                        >
-                          {friend.display_name || friend.username}
+                        <div className="flex items-center">
+                          <div
+                            className="mr-4 h-10 w-10 cursor-pointer rounded-full p-[2px]"
+                            style={frameStyle}
+                            onClick={() => handleNavigateToProfile(friend.id)}
+                          >
+                            <Avatar className="h-full w-full border border-[#3f424b] bg-[#262930]">
+                              {avatarSrc ? (
+                                <AvatarImage src={avatarSrc} alt={friend.username} />
+                              ) : (
+                                <AvatarFallback>{getInitial(friend.username)}</AvatarFallback>
+                              )}
+                            </Avatar>
+                          </div>
+                          <div>
+                            <div
+                              className="font-medium cursor-pointer"
+                              style={nameStyle}
+                              onClick={() => handleNavigateToProfile(friend.id)}
+                            >
+                              {friend.display_name || friend.username}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeFriend(friend.id)}
+                            className="text-red-400 hover:bg-transparent hover:text-red-500 focus-visible:ring-offset-0"
+                            aria-label="Remove friend"
+                          >
+                            <UserMinus className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => inviteFriendToGame(friend)}
-                        className="flex items-center"
-                      >
-                        <UserPlus className="h-4 w-4 mr-2 text-green-500" />
-                        Invite
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeFriend(friend.id)}
-                        className="flex items-center text-red-400 border-red-400 hover:text-red-500 hover:border-red-500"
-                      >
-                        <UserMinus className="h-4 w-4 mr-2" />
-                        Remove
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </TabsContent>
@@ -487,71 +511,92 @@ const FriendsPage = () => {
             <div className="flex justify-center py-8">
               <Loader className="h-8 w-8 animate-spin text-history-primary" />
             </div>
-          ) : displayUsers.length === 0 ? (
-            <div className="text-center py-8 bg-[#333333] text-white rounded-lg shadow">
-              <User className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p className="text-gray-300">No users available{searchTerm.trim() ? ` matching "${searchTerm}"` : ''}</p>
-            </div>
           ) : (
-            <div>
-              {searchTerm.trim() ? (
-                <div className="mb-4 text-sm text-muted-foreground">
-                  Found {displayUsers.length} users matching "{searchTerm}"
+            <div className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      searchUsers();
+                    }
+                  }}
+                  placeholder="Search users by name..."
+                  aria-label="Search users"
+                  className="rounded-lg border border-[#3f424b] bg-[#1d2026] pl-9 text-sm text-white placeholder:text-neutral-500"
+                />
+              </div>
+              {displayUsers.length === 0 ? (
+                <div className="text-center py-8 bg-[#333333] text-white rounded-lg shadow">
+                  <User className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p className="text-gray-300">
+                    No users available{searchTerm.trim() ? ` matching "${searchTerm}"` : ''}
+                  </p>
                 </div>
               ) : (
-                <div className="mb-4 text-sm text-muted-foreground">
-                  Showing all available users ({displayUsers.length})
-                </div>
-              )}
-              <div className="space-y-4">
-                {displayUsers.map((user) => {
-                  const nameSeed = user.id || user.display_name || 'user';
-                  const nameStyle = getAvatarTextGradientStyle(nameSeed);
-                  const frameStyle = { background: getAvatarFrameGradient(nameSeed) };
-                  const avatarSrc = user.avatar_image_url || user.avatar_url;
-                  return (
-                    <div
-                      key={user.id}
-                      className="p-4 bg-[#333333] text-white rounded-lg shadow flex items-center justify-between"
-                    >
-                      <div className="flex items-center">
-                        <div
-                          className="h-10 w-10 mr-4 cursor-pointer rounded-full p-[2px]"
-                          style={frameStyle}
-                          onClick={() => handleNavigateToProfile(user.id)}
-                        >
-                          <Avatar className="h-full w-full border border-[#3f424b] bg-[#262930]">
-                            {avatarSrc ? (
-                              <AvatarImage src={avatarSrc} alt={user.display_name || 'User'} />
-                            ) : (
-                              <AvatarFallback>{getInitial(user.display_name || 'User')}</AvatarFallback>
-                            )}
-                          </Avatar>
-                        </div>
-                        <div>
-                          <div
-                            className="font-medium cursor-pointer"
-                            style={nameStyle}
-                            onClick={() => handleNavigateToProfile(user.id)}
-                          >
-                            {user.display_name || 'User'}
-                          </div>
-                        </div>
-                      </div>
-
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => addFriend(user)}
-                        className="flex items-center"
-                      >
-                        <UserPlus className="h-4 w-4 mr-2 text-green-500" />
-                        Add Friend
-                      </Button>
+                <>
+                  {searchTerm.trim() ? (
+                    <div className="text-sm text-muted-foreground">
+                      Found {displayUsers.length} users matching "{searchTerm}"
                     </div>
-                  );
-                })}
-              </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      Showing all available users ({displayUsers.length})
+                    </div>
+                  )}
+                  <div className="space-y-4">
+                    {displayUsers.map((user) => {
+                      const nameSeed = user.id || user.display_name || 'user';
+                      const nameStyle = getAvatarTextGradientStyle(nameSeed);
+                      const frameStyle = { background: getAvatarFrameGradient(nameSeed) };
+                      const avatarSrc = user.avatar_image_url || user.avatar_url;
+                      return (
+                        <div
+                          key={user.id}
+                          className="flex items-center justify-between rounded-lg bg-[#333333] p-4 text-white shadow"
+                        >
+                          <div className="flex items-center">
+                            <div
+                              className="mr-4 h-10 w-10 cursor-pointer rounded-full p-[2px]"
+                              style={frameStyle}
+                              onClick={() => handleNavigateToProfile(user.id)}
+                            >
+                              <Avatar className="h-full w-full border border-[#3f424b] bg-[#262930]">
+                                {avatarSrc ? (
+                                  <AvatarImage src={avatarSrc} alt={user.display_name || 'User'} />
+                                ) : (
+                                  <AvatarFallback>{getInitial(user.display_name || 'User')}</AvatarFallback>
+                                )}
+                              </Avatar>
+                            </div>
+                            <div>
+                              <div
+                                className="font-medium cursor-pointer"
+                                style={nameStyle}
+                                onClick={() => handleNavigateToProfile(user.id)}
+                              >
+                                {user.display_name || 'User'}
+                              </div>
+                            </div>
+                          </div>
+
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => addFriend(user)}
+                            className="text-green-400 hover:bg-transparent hover:text-green-500 focus-visible:ring-offset-0"
+                            aria-label="Add friend"
+                          >
+                            <UserPlus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </TabsContent>

@@ -32,7 +32,7 @@ export function AuthModal({
   onGuestContinue,
   initialTab
 }: AuthModalProps) {
-  const { continueAsGuest, signInWithGoogle, signInWithEmail, signUpWithEmail, isGuest, upgradeUser, updateUserPassword } = useAuth();
+  const { user, continueAsGuest, signInWithGoogle, signInWithEmail, signUpWithEmail, isGuest, upgradeUser, updateUserPassword } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -45,34 +45,39 @@ export function AuthModal({
   const [formHint, setFormHint] = useState<string>("");
   const navigate = useNavigate();
 
+  const triggerGuestContinuation = () => {
+    // Close the modal first so UI can update immediately
+    onClose();
+
+    if (onGuestContinue) {
+      // Trigger game start asynchronously; do not await to avoid blocking UI updates
+      setTimeout(() => {
+        try { onGuestContinue(); } catch (e) { console.error('onGuestContinue error', e); }
+      }, 0);
+      return;
+    }
+
+    // Default behavior if no callback provided
+    setTimeout(() => {
+      navigate('/home', { replace: true });
+    }, 100);
+  };
+
   const handleGuestLogin = async () => {
     try {
       console.log("Starting guest login from modal");
       setIsLoading(true);
-      
-      // If there's a custom guest continue handler, use it
-      if (onGuestContinue) {
-        await continueAsGuest();
-        // Close the modal immediately so UI can update and overlay can show
-        onClose();
-        // Trigger game start asynchronously; do not await to avoid blocking UI updates
-        setTimeout(() => {
-          try { onGuestContinue(); } catch (e) { console.error('onGuestContinue error', e); }
-        }, 0);
+
+      // If the visitor is already a guest, we simply continue their session
+      if (isGuest) {
+        triggerGuestContinuation();
         return;
       }
-      
-      // Fallback to default behavior if no onGuestContinue provided
+
       await continueAsGuest();
       console.log("Guest login successful");
-      
-      // Close the modal first
-      onClose();
-      
-      // Then navigate to Home after a small delay to ensure the modal is closed
-      setTimeout(() => {
-        navigate('/home', { replace: true });
-      }, 100);
+
+      triggerGuestContinuation();
     } catch (error) {
       console.error("Guest login error:", error);
       toast({
@@ -236,7 +241,7 @@ export function AuthModal({
         </DialogHeader>
         <div className="flex flex-col gap-8 flex-1 justify-between px-6 pb-6">
           <div className={`flex flex-col gap-4 ${isGuest ? "mt-4" : "mt-0"}`}>
-          {!isGuest && (
+          {(!user) && (
             <Button
               variant="hintGradient"
               onClick={handleGuestLogin}
@@ -247,24 +252,30 @@ export function AuthModal({
               Continue as guest
             </Button>
           )}
-          
-          {!isGuest && (
-            <div className="space-y-2">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
+
+          <div className="space-y-2">
+            {(!user) ? (
+              <>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground tracking-wide">
+                      OR SIGN IN
+                    </span>
+                  </div>
                 </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground tracking-wide">
-                    OR SIGN IN
-                  </span>
-                </div>
-              </div>
+                <p className="text-center text-xs text-muted-foreground">
+                  to track your progress and compete with others.
+                </p>
+              </>
+            ) : isGuest ? (
               <p className="text-center text-xs text-muted-foreground">
-                to track your progress and compete with others.
+                You&apos;re already playing as a guest. Sign in below to save your progress permanently.
               </p>
-            </div>
-          )}
+            ) : null}
+          </div>
           
           <Button
             onClick={handleGoogleSignIn}

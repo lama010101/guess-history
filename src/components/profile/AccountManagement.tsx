@@ -23,6 +23,7 @@ const AccountManagement = () => {
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const currentEmail = user?.email ?? 'Guest account (no email on file)';
 
   const handleEmailChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,7 +88,10 @@ const AccountManagement = () => {
 
       {/* Change Email */}
       <div className='glass-card rounded-xl p-6'>
-        <h4 className="text-md font-semibold mb-4 text-history-primary dark:text-history-light">Change Email</h4>
+        <h4 className="text-md font-semibold mb-2 text-history-primary dark:text-history-light">Change Email</h4>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          Current email: <span className="font-medium text-history-primary dark:text-white">{currentEmail}</span>
+        </p>
         <form onSubmit={handleEmailChange} className="space-y-4">
           <div>
             <Label htmlFor="new-email">New Email Address</Label>
@@ -101,7 +105,7 @@ const AccountManagement = () => {
               className="max-w-sm"
             />
           </div>
-          <Button type="submit" disabled={loading || !newEmail}>
+          <Button type="submit" variant="hintGradient" disabled={loading || !newEmail}>
             {loading ? 'Updating...' : 'Update Email'}
           </Button>
         </form>
@@ -124,7 +128,7 @@ const AccountManagement = () => {
               className="max-w-sm"
             />
           </div>
-          <Button type="submit" disabled={loading || !newPassword}>
+          <Button type="submit" variant="hintGradient" disabled={loading || !newPassword}>
             {loading ? 'Updating...' : 'Update Password'}
           </Button>
         </form>
@@ -151,7 +155,10 @@ const AccountManagement = () => {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteAccount} className='bg-red-600 hover:bg-red-700'>
+              <AlertDialogAction
+                onClick={handleDeleteAccount}
+                className='inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-transparent bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50'
+              >
                 Yes, delete my account
               </AlertDialogAction>
             </AlertDialogFooter>

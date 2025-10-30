@@ -368,47 +368,50 @@ const RoundResultsPage = () => {
 
     return {
       total: miniLeaderboards.total.map<LayoutLeaderboardRow>((row) => {
-        const peer = peerMap.get(row.userId);
-        const value = peer ? normalizePercent(peer.netAccuracy ?? peer.accuracy ?? row.value) : normalizePercent(row.value);
-        const penalty = peer ? normalizePercent(peer.accDebt) : 0;
-        const hints = peer ? normalizeCount(peer.hintsUsed) : normalizeCount(row.hintsUsed);
+        const totalPeer = peerMap.get(row.userId);
+        const resolvedAvatar = totalPeer?.avatarUrl ?? row.avatarUrl ?? null;
+        const value = totalPeer ? normalizePercent(totalPeer.netAccuracy ?? totalPeer.accuracy ?? row.value) : normalizePercent(row.value);
+        const penalty = totalPeer ? normalizePercent(totalPeer.accDebt) : 0;
+        const hints = totalPeer ? normalizeCount(totalPeer.hintsUsed) : normalizeCount(row.hintsUsed);
         return {
           userId: row.userId,
           displayName: row.displayName,
           value,
           hintsUsed: hints,
           penalty,
-          avatarUrl: peer?.avatarUrl ?? null,
+          avatarUrl: resolvedAvatar,
         };
       }),
       when: miniLeaderboards.time.map<LayoutLeaderboardRow>((row) => {
-        const peer = peerMap.get(row.userId);
-        const base = peer ? normalizePercent(peer.timeAccuracy) : normalizePercent(row.value);
-        const penalty = peer ? normalizePercent(peer.whenAccDebt) : 0;
+        const timePeer = peerMap.get(row.userId);
+        const resolvedAvatar = timePeer?.avatarUrl ?? row.avatarUrl ?? null;
+        const base = timePeer ? normalizePercent(timePeer.timeAccuracy) : normalizePercent(row.value);
+        const penalty = timePeer ? normalizePercent(timePeer.whenAccDebt) : 0;
         const value = Math.max(0, base - penalty);
-        const hints = peer ? normalizeCount(peer.whenHints) : normalizeCount(row.hintsUsed);
+        const hints = timePeer ? normalizeCount(timePeer.whenHints) : normalizeCount(row.hintsUsed);
         return {
           userId: row.userId,
           displayName: row.displayName,
           value,
           hintsUsed: hints,
           penalty,
-          avatarUrl: peer?.avatarUrl ?? null,
+          avatarUrl: resolvedAvatar,
         };
       }),
       where: miniLeaderboards.location.map<LayoutLeaderboardRow>((row) => {
-        const peer = peerMap.get(row.userId);
-        const base = peer ? normalizePercent(peer.locationAccuracy) : normalizePercent(row.value);
-        const penalty = peer ? normalizePercent(peer.whereAccDebt) : 0;
+        const wherePeer = peerMap.get(row.userId);
+        const resolvedAvatar = wherePeer?.avatarUrl ?? row.avatarUrl ?? null;
+        const base = wherePeer ? normalizePercent(wherePeer.locationAccuracy) : normalizePercent(row.value);
+        const penalty = wherePeer ? normalizePercent(wherePeer.whereAccDebt) : 0;
         const value = Math.max(0, base - penalty);
-        const hints = peer ? normalizeCount(peer.whereHints) : normalizeCount(row.hintsUsed);
+        const hints = wherePeer ? normalizeCount(wherePeer.whereHints) : normalizeCount(row.hintsUsed);
         return {
           userId: row.userId,
           displayName: row.displayName,
           value,
           hintsUsed: hints,
           penalty,
-          avatarUrl: peer?.avatarUrl ?? null,
+          avatarUrl: resolvedAvatar,
         };
       }),
       currentUserId: user?.id ?? null,
@@ -802,7 +805,7 @@ const RoundResultsPage = () => {
               className="rounded-xl bg-orange-500 text-white font-semibold text-sm px-5 py-2 shadow-lg hover:bg-orange-500 active:bg-orange-500 transition-colors min-w-[120px]"
             >
               {navigating ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
-              <span className="ml-2">{roundNumber === images.length ? 'Finish Game' : 'Next Round'}</span>
+              <span className="ml-2">{roundNumber === images.length ? 'Final Results' : 'Next Round'}</span>
             </Button>
           </div>
         }

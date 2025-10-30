@@ -29,24 +29,25 @@ export const NavMenu = () => {
   const navigate = useNavigate();
   const { user, isGuest, signOut } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [profile, setProfile] = useState<{ 
-    first_name: string | null; 
+  const [profile, setProfile] = useState<{
+    first_name: string | null;
     last_name: string | null;
     avatar_url: string | null;
     avatar_image_url: string | null;
     avatar_id: string | null;
     avatar_name: string | null;
     display_name: string | null;
+    username: string | null;
   } | null>(null);
   const [avatar, setAvatar] = useState<Avatar | null>(null);
 
   // Fetch profile data helper
-  const fetchProfileData = async () => {
+  const fetchProfileData = useCallback(async () => {
     if (!user) return;
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('first_name, last_name, avatar_url, avatar_image_url, avatar_id, avatar_name, display_name')
+        .select('first_name, last_name, avatar_url, avatar_image_url, avatar_id, avatar_name, display_name, username')
         .eq('id', user.id)
         .single();
 
@@ -68,7 +69,7 @@ export const NavMenu = () => {
     } catch (error) {
       console.error('Error in profile fetch:', error);
     }
-  };
+  }, [user]);
 
   // Fetch profile data when user changes
   useEffect(() => {
@@ -78,17 +79,20 @@ export const NavMenu = () => {
       setProfile(null);
       setAvatar(null);
     }
-  }, [user]);
+  }, [user, fetchProfileData]);
 
   // Listen for avatarUpdated and usernameUpdated events to refresh data
   useEffect(() => {
-    window.addEventListener('avatarUpdated', fetchProfileData);
-    window.addEventListener('usernameUpdated', fetchProfileData);
+    const handler = () => fetchProfileData();
+    window.addEventListener('avatarUpdated', handler);
+    window.addEventListener('usernameUpdated', handler);
+    window.addEventListener('profileUpdated', handler);
     return () => {
-      window.removeEventListener('avatarUpdated', fetchProfileData);
-      window.removeEventListener('usernameUpdated', fetchProfileData);
+      window.removeEventListener('avatarUpdated', handler);
+      window.removeEventListener('usernameUpdated', handler);
+      window.removeEventListener('profileUpdated', handler);
     };
-  }, [user, fetchProfileData]);
+  }, [fetchProfileData]);
 
   const handleRestrictedFeatureClick = (e: React.MouseEvent) => {
     if (isGuest) {
@@ -140,7 +144,10 @@ export const NavMenu = () => {
                 </div>
                 <div className="flex flex-col">
                   <span className="text-sm font-medium">
-                    {profile.avatar_name || profile.display_name || 'Anonymous User'}
+                    {(profile.display_name?.trim() ? profile.display_name.trim() : null) ??
+                      (profile.username?.trim() ? profile.username.trim() : null) ??
+                      (profile.avatar_name?.trim() ? profile.avatar_name.trim() : null) ??
+                      'Anonymous User'}
                   </span>
                   <span className="text-xs text-gray-500">
                     {isGuest ? 'Playing as guest' : 'Signed in'}

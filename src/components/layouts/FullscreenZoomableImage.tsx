@@ -762,7 +762,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({
       )}
 
       {/* Zoom controls */}
-      <div className="fixed top-6 right-6 z-[10002] flex flex-col items-center gap-2 pointer-events-auto">
+      <div className="fixed top-6 right-6 z-[10002] flex flex-row items-center gap-2 pointer-events-auto">
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); zoomIn(); }}
@@ -780,7 +780,7 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({
             resetZoom();
           }}
           onPointerDown={(e) => e.stopPropagation()}
-          className={`min-w-[3rem] rounded-full bg-black/70 text-white text-xs font-semibold px-3 py-1 text-center shadow-lg select-none transition ${zoomAtMin ? 'cursor-default' : 'hover:bg-black/80 active:scale-[0.97]'}`}
+          className={`inline-flex items-center justify-center min-w-[3rem] h-12 rounded-full bg-black/70 text-white text-xs font-semibold px-3 text-center shadow-lg select-none transition ${zoomAtMin ? 'cursor-default' : 'hover:bg-black/80 active:scale-[0.97]'}`}
           aria-label="Reset zoom to 100%"
         >
           {Math.round(zoom * 100)}%

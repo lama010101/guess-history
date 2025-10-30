@@ -13,6 +13,7 @@ import { useSettingsStore } from '@/lib/useSettingsStore';
 import { HINT_TYPE_NAMES } from '@/constants/hints';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getAvatarFrameGradient } from '@/utils/avatarGradient';
 import { cn } from '@/lib/utils';
 import type { PeerRoundRow } from '@/hooks/useRoundPeers';
 
@@ -37,8 +38,8 @@ const correctIcon = L.divIcon({
   html: `<div style="background-color: hsl(var(--success)); width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px hsl(var(--success) / 0.6);"></div>`,
   className: 'correct-marker',
   iconSize: [30, 30],
-  iconAnchor: [15, 30],
-  popupAnchor: [0, -30]
+  iconAnchor: [15, 15],
+  popupAnchor: [0, -20]
 });
 
 // Helper to get hint label if not present in debt object
@@ -477,13 +478,19 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                 >
                   <td className="py-2 px-3">
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-7 w-7">
-                        {entry.avatarUrl ? (
-                          <AvatarImage src={entry.avatarUrl} alt={rawName} />
-                        ) : (
-                          <AvatarFallback>{getInitial(rawName)}</AvatarFallback>
-                        )}
-                      </Avatar>
+                      <div
+                        className="rounded-full p-[2px]"
+                        style={{ background: getAvatarFrameGradient(entry.userId || rawName) }}
+                      >
+                        <Avatar className="h-7 w-7 border border-[#1d2026] bg-[#262930]">
+                          {entry.avatarUrl ? (
+                            <AvatarImage src={entry.avatarUrl} alt={rawName} />
+                          ) : null}
+                          <AvatarFallback className="bg-transparent text-xs font-semibold text-white">
+                            {getInitial(rawName)}
+                          </AvatarFallback>
+                        </Avatar>
+                      </div>
                       <div className="flex flex-col">
                         <span className={cn(baseNameClass, isHighlighted && highlightedNameClass)}>{rowName}</span>
                         {hintText ? (
@@ -505,13 +512,46 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   };
 
   const renderLeaderboard = (metric: 'total' | 'when' | 'where', variant: 'default' | 'embedded' = 'default') => {
+    const buildFallbackRow = (entry: LeaderboardEntry) => {
+      return {
+        userId: entry.userId,
+        displayName: entry.displayName,
+        value: Math.round(metric === 'when' ? entry.whenMetric : metric === 'where' ? entry.whereMetric : entry.totalMetric),
+        hintsUsed: Math.max(0, Math.round(metric === 'when' ? entry.whenHints : metric === 'where' ? entry.whereHints : entry.totalHints)),
+        penalty: Math.max(0, Math.round(metric === 'when' ? entry.whenPenalty : metric === 'where' ? entry.wherePenalty : entry.totalPenalty)),
+        avatarUrl: entry.avatarUrl ?? null,
+      };
+    };
+
+    const mergeRows = (rows: Array<{ userId: string; displayName: string; value: number; hintsUsed?: number; penalty?: number; avatarUrl?: string | null }>) => {
+      const rowMap = new Map<string, { userId: string; displayName: string; value: number; hintsUsed?: number; penalty?: number; avatarUrl?: string | null }>();
+      for (const row of rows) {
+        rowMap.set(row.userId, row);
+      }
+
+      for (const entry of leaderboardEntries) {
+        if (!rowMap.has(entry.userId)) {
+          rowMap.set(entry.userId, buildFallbackRow(entry));
+        }
+      }
+
+      const merged = Array.from(rowMap.values());
+      merged.sort((a, b) => {
+        const diff = (b.value ?? 0) - (a.value ?? 0);
+        if (diff !== 0) return diff;
+        return a.displayName.localeCompare(b.displayName);
+      });
+
+      return merged.slice(0, 5);
+    };
+
     if (leaderboards) {
       const sourceRows = metric === 'total'
         ? leaderboards.total
         : metric === 'when'
           ? leaderboards.when
           : leaderboards.where;
-      const rows = sourceRows.map((row) => {
+      let rows = sourceRows.map((row) => {
         const penalty = Math.max(0, Math.round(Number(row.penalty ?? 0)));
         const hintsUsed = Math.max(0, Math.round(Number(row.hintsUsed ?? 0)));
         const value = Math.round(Number(row.value ?? 0));
@@ -524,6 +564,18 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
           avatarUrl: row.avatarUrl ?? null,
         };
       });
+
+      rows = mergeRows(rows);
+
+      // Ensure self row is present even if miniLeaderboards omitted it (timing/RLS)
+      const highlightId = leaderboards.currentUserId ?? null;
+      if (highlightId && !rows.some(r => r.userId === highlightId)) {
+        const selfEntry = leaderboardEntries.find(e => e.userId === highlightId);
+        if (selfEntry) {
+          rows = mergeRows([...rows, buildFallbackRow(selfEntry)]);
+        }
+      }
+
       return renderLeaderboardTable(rows, leaderboards.currentUserId ?? null, metric, variant);
     }
 
@@ -832,7 +884,10 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                     </AvatarMarker>
                   )}
                   {result.guessLat != null && result.guessLng != null && (
-                    <Polyline positions={[[result.guessLat, result.guessLng], [result.eventLat, result.eventLng]]} color="white" dashArray="5, 10" />
+                    <Polyline
+                      positions={[[result.guessLat, result.guessLng], [result.eventLat, result.eventLng]]}
+                      pathOptions={{ color: '#000000', weight: 2, dashArray: '5 10', opacity: 0.85 }}
+                    />
                   )}
                   {/* Show peers' guesses */}
                   {peerDisplayMarkers && peerDisplayMarkers.length > 0 && (
@@ -858,7 +913,10 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                               </div>
                             </Popup>
                           </AvatarMarker>
-                          <Polyline positions={[[p.lat, p.lng], [result.eventLat, result.eventLng]]} color="hsla(var(--secondary) / 0.6)" opacity={0.7} dashArray="4,8" />
+                          <Polyline
+                            positions={[[p.lat, p.lng], [result.eventLat, result.eventLng]]}
+                            pathOptions={{ color: '#000000', weight: 1.5, dashArray: '4 8', opacity: 0.75 }}
+                          />
                         </React.Fragment>
                       ))}
                     </>

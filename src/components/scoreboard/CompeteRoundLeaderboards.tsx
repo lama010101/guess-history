@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Loader } from 'lucide-react';
 import { useCompeteRoundLeaderboards, LeaderRow } from '@/hooks/useCompeteRoundLeaderboards';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getAvatarFrameGradient } from '@/utils/avatarGradient';
 
 export interface CompeteRoundLeaderboardsProps {
   roomId: string;
@@ -19,6 +21,11 @@ const formatPenalty = (accDebt?: number) => {
 };
 
 const LeaderboardCard: React.FC<LeaderboardCardProps> = ({ title, rows, currentUserId }) => {
+  const getInitial = useMemo(() => (name: string | null | undefined) => {
+    const trimmed = (name ?? '').trim();
+    return trimmed.length > 0 ? trimmed[0]!.toUpperCase() : '?';
+  }, []);
+
   return (
     <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4 text-white shadow-md">
       <h3 className="text-lg font-semibold mb-4">{title}</h3>
@@ -44,6 +51,8 @@ const LeaderboardCard: React.FC<LeaderboardCardProps> = ({ title, rows, currentU
                 const hintsLabel = hintsUsed > 0
                   ? `${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'}`
                   : null;
+                const gradientSeed = row.userId || displayName;
+                const frameStyle = { background: getAvatarFrameGradient(gradientSeed) };
 
                 return (
                   <tr
@@ -53,18 +62,18 @@ const LeaderboardCard: React.FC<LeaderboardCardProps> = ({ title, rows, currentU
                     <td className="py-2 pl-3 pr-2 text-neutral-400 font-medium">#{rank}</td>
                     <td className="py-2 pr-2">
                       <div className="flex items-center gap-3">
-                        <div className="relative h-8 w-8 flex-shrink-0 overflow-hidden rounded-full border border-white/20 bg-neutral-700/70">
-                          {row.avatarUrl ? (
-                            <img
-                              src={row.avatarUrl}
-                              alt={displayName}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-white/80">
-                              {displayName.slice(0, 1).toUpperCase()}
-                            </div>
-                          )}
+                        <div
+                          className="rounded-full p-[2px]"
+                          style={frameStyle}
+                        >
+                          <Avatar className="h-8 w-8 border border-[#1d2026] bg-[#262930]">
+                            {row.avatarUrl ? (
+                              <AvatarImage src={row.avatarUrl} alt={displayName} />
+                            ) : null}
+                            <AvatarFallback className="bg-transparent text-xs font-semibold text-white">
+                              {getInitial(displayName)}
+                            </AvatarFallback>
+                          </Avatar>
                         </div>
                         <div className="flex flex-col">
                           <span className={isCurrent ? 'font-semibold text-white' : 'text-neutral-200'}>

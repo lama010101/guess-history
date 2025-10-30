@@ -308,6 +308,7 @@ export default function ZoomYearPicker({
       return;
     }
     if (
+      !hasInteractedRef.current &&
       value != null &&
       !Number.isNaN(value) &&
       value !== 0 &&
@@ -742,7 +743,7 @@ export default function ZoomYearPicker({
                 x2={0}
                 y1={height / 2 - Math.min(26, height * 0.6) + 8}
                 y2={height / 2 + Math.min(14, height * 0.25)}
-                stroke="var(--history-primary, #f97316)"
+                stroke="hsl(var(--secondary))"
                 strokeWidth={4}
                 strokeLinecap="round"
               />

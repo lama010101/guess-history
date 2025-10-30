@@ -6,6 +6,17 @@
 - **Usage**: `src/components/layouts/ResultsLayout2.tsx`
   - Continue toggling `isSourceModalOpen` via the Source button; no additional layout overrides are required now that the modal self-manages its fullscreen styling.
 
+### Timeout Toast Styling (2025-10-29)
+
+- **Component**: `src/pages/GameRoundPage.tsx`
+  - The "Time's Up" toast now renders with an 80% opaque white background (`bg-white/80`) to improve legibility over gameplay visuals.
+  - The toast close button is forced visible via `[toast-close]` selectors so players can always dismiss the notification immediately after automatic submission.
+
+### Toast Stacking Order Above Auth Modal (2025-10-30)
+
+- **Component**: `src/components/ui/toast.tsx`
+  - Raised the `ToastViewport` z-index to `1400` so error toasts render above the authentication dialog’s blurred overlay (`z-[1100]`). Keep future overlays below this threshold or increase it accordingly if new modals require higher stacking contexts.
+
 ### Gameplay History Lock Reinforcement (2025-10-29)
 
 - **Component**: `src/pages/GameRoundPage.tsx`
@@ -20,8 +31,11 @@
   - Defaults shown in the modal reflect the 120-second timer and persist this value to local storage when saved.
 - **Compete Lobby**: `src/pages/Room.tsx`
   - The host slider/input fall back to 120 seconds when no authoritative timer is present, keeping multiplayer sessions aligned with the new default.
+- **Update (2025-10-30)**: `src/pages/Room.tsx` centralizes the compete timer default via `DEFAULT_COMPETE_TIMER_SEC` (120s) so all lobby UI fallbacks and PartyKit broadcasts stay in sync.
 - **Game Runtime**: `src/contexts/GameContext.tsx`
   - `roundTimerSec` now uses the settings store’s value (120 seconds when unset) to drive in-round countdowns for all modes unless overridden by an authoritative multiplayer timer.
+
+- **Update (2025-10-30)**: Year range selections enforce a minimum 200-year span via `sanitizeYearRange()` in `src/lib/useSettingsStore.ts`. The Compete lobby slider (`src/pages/Room.tsx`) now shows live values while dragging by relying on a `displayedYearRange` helper that mirrors the timer slider pattern.
 
 ### Leaderboard Current User Card (2025-10-28)
 
@@ -48,6 +62,14 @@
 - **Component**: `src/pages/FriendsPage.tsx`
   - Friends and search listings now prefer `avatar_image_url` sourced from Supabase profiles before falling back to `avatar_url` or initials, ensuring curated avatars appear wherever available.
   - Supabase profile fetches include `avatar_image_url`, and local Friend/User types persist this field so subsequent actions (add/remove) maintain the same image data without additional queries.
+
+### Manage Friends Filters & Icon Buttons (2025-10-30)
+
+- **Component**: `src/pages/FriendsPage.tsx`
+  - Both tabs render in-card search inputs: "Your Friends" filters the existing list client-side, while "Find Users" reuses the same pattern for search queries. Keep the ShadCN `<Input>` with leading search icon and the memoized filtering logic when extending the UI.
+  - Friend invite/remove actions now use icon-only outline buttons with accessible labels. Preserve the green invite (UserPlus) and red remove (UserMinus) variants to stay aligned with compete lobby styling.
+- **Component**: `src/pages/Room.tsx`
+  - The Manage Friends modal hides the default Radix close icon and renders a custom circular close button (`bg-[#22d3ee]`, hover `#1cbfdb`) in the top-right corner. Trigger it via `setFriendsModalOpen(false)` so the lobby refresh logic still runs on close.
 
 ### Auth Modal Guest CTA & Spacing (2025-10-28)
 
@@ -85,7 +107,7 @@
 ### Friends/Leaderboard/Profile Navbar Home Link (2025-10-28)
 
 - **Layout**: `src/layouts/MainLayout.tsx`
-  - The sticky top nav centers a compact "G-H" home link between stats and profile controls. The `G-` segment renders white while the `H` uses the shared multi-stop gradient to match other CTA accents.
+  - The sticky top nav centers a compact "G-HISTORY" home link between stats and profile controls. The `G-` segment renders white while the `HISTORY` portion uses the shared multi-stop gradient to match other CTA accents.
   - Tracking between the two characters is default (no extra spacing) and the link now renders without a surrounding frame/border—just text with a subtle hover fade.
   - The link hides when the current route is `/home` to avoid redundant navigation.
   - Clicking the text on other routes navigates to `/home` and replaces the previous empty center space, keeping the nav balanced across Friends, Leaderboard, and Profile pages that use `MainLayout`.
@@ -109,6 +131,36 @@
   - Guest-oriented buttons (**Register to save progress**, **Share Results**) now use the shared `hintGradient` button variant to reuse the vibrant gradient already used for Hint CTAs.
   - Keeps guest prompts visually consistent and ensures the gradient style definition lives centrally in `src/components/ui/button.tsx`.
 
+### Profile Account Management Buttons (2025-10-29)
+
+- **Component**: `src/components/profile/AccountManagement.tsx`
+  - The Change Email card now surfaces the signed-in email directly under the heading (falls back to a guest message when no email exists).
+  - Email and password update actions reuse the `hintGradient` button styling; destructive account deletion flows switch to the red `destructive` styling so critical actions stand out.
+
+### Nav Profile Guest Header Alignment (2025-10-30)
+
+- **Component**: `src/components/NavProfile.tsx`
+  - Dropdown header content is explicitly centered so the gradient username and the "Playing as guest" helper copy line up with the circular avatar.
+  - Guest CTA below the helper text stays within the centered stack for better hierarchy and alignment with the profile mockups.
+
+### Profile Username Sync Across Navigation (2025-10-30)
+
+- **Components**: `src/components/NavProfile.tsx`, `src/components/NavMenu.tsx`
+  - Both nav dropdowns now read `display_name` and `username` from Supabase profiles in addition to legacy `avatar_name` fields.
+  - Name selection always prefers trimmed `display_name`, then `username`, then older avatar seeds so freshly changed usernames update immediately without waiting for a full refresh.
+  - Profile dropdown listeners continue to use the shared `usernameUpdated` event emitted by `UsernameChangeModal`, so any future profile edits should keep dispatching that event to stay in sync.
+
+### Username Change Modal Buttons (2025-10-30)
+
+- **Component**: `src/components/profile/UsernameChangeModal.tsx`
+  - Added vertical spacing (`mb-3` on the primary action for small screens) so the stacked buttons in the dialog no longer touch.
+  - Spacing collapses on larger screens, keeping the horizontal layout tight while preserving the gap on mobile.
+
+### Home Level Up Card Label (2025-10-30)
+
+- **Component**: `src/pages/HomePage.tsx`
+  - The badge on the Level Up hero card now spells out `Level {n}` instead of `Lv n` and uses a centered flex container so the text looks balanced next to the icon.
+
 ### Profile Gradient Refresh (2025-10-28)
 
 - **Utilities**: `src/index.css`
@@ -131,6 +183,12 @@
 - **Component**: `src/components/layouts/GameLayout1.tsx`
   - Manual typing now stores a draft value while focused; the year commits on blur/Enter after clamping to `YEAR_RANGE_MIN/MAX`.
   - Prevents the default dataset year from being re-inserted mid-typing while still syncing the chosen year once the player finishes editing.
+
+### Year Input Blur Persistence (2025-10-30)
+
+- **Component**: `src/components/layouts/GameLayout1.tsx`
+  - The pending draft year is now tracked via a ref so we preserve the last typed value through blur handlers.
+  - Invalid numeric input no longer clears the field; we fall back to the raw draft so players can correct typos without losing their entry.
 
 ### Year Picker Auto-Center (2025-10-28)
 
@@ -163,6 +221,7 @@
   - Added floating zoom buttons (ZoomIn/ZoomOut) anchored bottom-right when fullscreen is open.
   - Buttons adjust the existing zoom state, keep focus within the viewer, and disable at min/max bounds while stopping propagation so drags aren’t disrupted.
   - Uses existing `handleZoomStep` logic, keeping pinch/wheel gestures and hint dismissal intact.
+  - **Update (2025-10-29 PM)**: The zoom control group stays in a single horizontal row (`flex-row`) with consistent `h-12` sizing on all three buttons so fullscreen layouts don’t stack controls vertically on wider screens.
 
 ### Fullscreen Zoom Reset Click (2025-10-29)
 
@@ -304,6 +363,8 @@
 - **Component**: `src/components/scoreboard/CompeteRoundLeaderboards.tsx`
   - Rows render the supplied `avatarUrl` (with initial fallback) to match the compete HUD and room roster visuals.
 - **Result**: Players see their actual profile avatars across the compete HUD and round leaderboards, keeping visual identity consistent with the lobby/room view.
+- **Update (2025-10-29 PM)**: `src/components/navigation/GameOverlayHUD.tsx` now reuses the shared `Avatar` primitives for the peer roster, preferring Supabase-provided `avatarUrl` values and falling back to seeded initials. This keeps HUD styling aligned with Friends/Lobby surfaces while preserving readable initials when no image is available.
+- **Update (2025-10-29 PM2)**: Compete results surfaces now use the seeded pastel avatar gradients everywhere leaderboards appear. `src/components/scoreboard/CompeteRoundLeaderboards.tsx`, the inline leaderboard in `src/pages/compete/results/CompeteSyncRoundResultsPage.tsx`, and the embedded tables rendered by `src/components/layouts/ResultsLayout2.tsx` all wrap avatars in `getAvatarFrameGradient` frames with shared `Avatar` primitives and gradient-backed fallbacks.
 
 ### Compete Round Results Map — Avatar Markers (2025-10-25)
 
@@ -322,6 +383,7 @@
   - Inline round leaderboard entries now render `Avatar` alongside each display name, falling back to initials when no image is present.
   - Keeps the "(You)" label and hint penalty summary while ensuring avatars are visible for all players to match the Compete branding requirement.
 - **Result**: Every player row in compete round results shows their avatar next to their name, improving quick recognition across the leaderboard summary.
+- **Update (2025-10-30 AM)**: `src/hooks/useRoundPeers.ts` pipes avatar URLs into `miniLeaderboards` rows and `src/pages/RoundResultsPage.tsx` consumes them so the embedded compete leaderboards and map markers always reuse the same profile images seen in the lobby.
 
 ### Compete In-Round HUD — Avatar Synchronization (2025-10-23)
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Maximize, Target, Zap, Sparkles, MessageCircle } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { formatInteger } from '@/utils/format';
@@ -80,6 +81,11 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
   totalParticipants,
   submissionNotice = null,
 }) => {
+  const getInitial = (value: string | null | undefined) => {
+    const trimmed = (value ?? '').trim();
+    return trimmed.length > 0 ? trimmed[0]!.toUpperCase() : '?';
+  };
+
   // Show hint counter as X/Y where Y is the total allowed hints
   const isHintDisabled = hintsUsed >= hintsAllowed;
   const formattedChatCount = chatMessageCount > 99 ? '99+' : String(chatMessageCount ?? 0);
@@ -169,19 +175,18 @@ const GameOverlayHUD: React.FC<GameOverlayHUDProps> = ({
                           GUESS
                         </span>
                       )}
-                      <span className="flex h-full w-full items-center justify-center rounded-full overflow-hidden bg-gradient-to-br from-orange-400 to-pink-500">
+                      <Avatar className="h-full w-full">
                         {peer.avatarUrl ? (
-                          <img
+                          <AvatarImage
                             src={peer.avatarUrl}
-                            alt={peer.displayName}
-                            className="h-full w-full object-cover"
+                            alt={peer.displayName ?? 'Player avatar'}
+                            className="object-cover"
                           />
-                        ) : (
-                          <span className="flex h-full w-full items-center justify-center text-sm font-semibold text-white">
-                            {(peer.displayName || '?').slice(0, 1).toUpperCase()}
-                          </span>
-                        )}
-                      </span>
+                        ) : null}
+                        <AvatarFallback className="bg-gradient-to-br from-orange-400 to-pink-500 text-sm font-semibold text-white">
+                          {getInitial(peer.displayName ?? 'Player')}
+                        </AvatarFallback>
+                      </Avatar>
                     </button>
                   );
                 })}

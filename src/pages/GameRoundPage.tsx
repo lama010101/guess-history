@@ -157,6 +157,7 @@ const GameRoundPage: React.FC = () => {
   const awaitingSubmissionAckRef = useRef(false);
   const recentSubmitterIdsRef = useRef<Record<string, boolean>>({});
   const [recentSubmitterIds, setRecentSubmitterIds] = useState<Record<string, boolean>>({});
+  const maxExpectedTotalRef = useRef(0);
   const [peerProfileCache, setPeerProfileCache] = useState<Record<string, { displayName: string; avatarUrl: string | null }>>({});
   const [cachedPeerRoster, setCachedPeerRoster] = useState<Array<{
     id: string;
@@ -168,6 +169,12 @@ const GameRoundPage: React.FC = () => {
   }>>([]);
   const [lobbyRoster, setLobbyRoster] = useState<Array<{ id: string; name: string; ready: boolean; host: boolean }>>([]);
   const [lobbyParticipantCount, setLobbyParticipantCount] = useState<number>(0);
+  const debugCompete = useCallback((label: string, payload?: Record<string, unknown>) => {
+    if (!import.meta.env.DEV) return;
+    try {
+      console.debug(`[GameRoundPage][Compete] ${label}`, payload ?? {});
+    } catch {}
+  }, []);
   const makeRosterId = useCallback((userId?: string | null, fallbackName?: string | null) => {
     if (userId && userId.trim().length > 0) {
       return userId;
@@ -501,16 +508,34 @@ const GameRoundPage: React.FC = () => {
     if (!isCompeteMode) return;
     if (!Number.isFinite(roundNumber) || payload.roundNumber !== roundNumber) return;
 
-    setSubmittedCounts((prev) => ({
-      submitted: Math.max(prev.submitted, payload.submittedCount),
-      total: Math.max(prev.total, payload.totalPlayers),
-    }));
+    setSubmittedCounts((prev) => {
+      const nextSubmitted = Math.max(prev.submitted, payload.submittedCount);
+      const totalFromPayload = Math.max(0, payload.totalPlayers ?? 0, payload.lobbySize ?? 0);
+      const nextTotal = Math.max(prev.total, totalFromPayload);
+      maxExpectedTotalRef.current = Math.max(maxExpectedTotalRef.current, nextTotal);
+      const nextCounts = {
+        submitted: nextSubmitted,
+        total: nextTotal,
+      };
+      debugCompete('submission:updateCounts', {
+        payload,
+        prev,
+        next: nextCounts,
+        maxExpectedTotal: maxExpectedTotalRef.current,
+      });
+      return nextCounts;
+    });
 
     const totalPlayers = payload.totalPlayers;
     const submittedCount = payload.submittedCount;
     const currentUserId = user?.id ?? null;
     const isSelf = !!currentUserId && payload.userId && payload.userId === currentUserId;
     if (!isSelf) {
+      debugCompete('submission:peerNotice', {
+        from: payload.from,
+        submittedCount,
+        totalPlayers,
+      });
       const name = payload.from?.trim() ? payload.from : 'Another player';
       const progressLabel = totalPlayers > 0 ? ` (${submittedCount}/${totalPlayers})` : '';
       showSubmissionNotice(`${name} submitted${progressLabel}`);
@@ -523,6 +548,11 @@ const GameRoundPage: React.FC = () => {
     }
 
     if (!hasSubmittedThisRound && currentUserId && payload.userId && payload.userId === currentUserId) {
+      debugCompete('submission:selfAcknowledged', {
+        roundNumber,
+        submittedCount,
+        totalPlayers,
+      });
       setHasSubmittedThisRound(true);
       setWaitingForPeers(true);
     }
@@ -537,6 +567,7 @@ const GameRoundPage: React.FC = () => {
     showSubmissionNotice,
     applyCountdownRush,
     registerRecentSubmitter,
+    debugCompete,
   ]);
 
   const handleRoundCompleteBroadcast = useCallback((payload: RoundCompleteBroadcast) => {
@@ -551,16 +582,35 @@ const GameRoundPage: React.FC = () => {
     const submittedCount = payload.submittedCount ?? 0;
     const allSubmitted = reportedTotal > 0 && submittedCount >= reportedTotal;
 
-    setSubmittedCounts((prev) => ({
-      submitted: Math.max(prev.submitted, submittedCount),
-      total: Math.max(prev.total, reportedTotal),
-    }));
+    setSubmittedCounts((prev) => {
+      const nextCounts = {
+        submitted: Math.max(prev.submitted, submittedCount),
+        total: Math.max(prev.total, reportedTotal),
+      };
+      debugCompete('roundComplete:updateCounts', {
+        payload,
+        prev,
+        next: nextCounts,
+        allSubmitted,
+      });
+      return nextCounts;
+    });
     setWaitingForPeers(!allSubmitted);
+    debugCompete('roundComplete:waitingState', {
+      roundNumber,
+      reportedTotal,
+      submittedCount,
+      allSubmitted,
+    });
 
     if (allSubmitted && roomId && !hasNavigatedToResultsRef.current) {
+      debugCompete('roundComplete:requestNavigate', {
+        roundNumber,
+        roomId,
+      });
       requestNavigateToResults();
     }
-  }, [isCompeteMode, roundNumber, roomId, requestNavigateToResults]);
+  }, [isCompeteMode, roundNumber, roomId, requestNavigateToResults, debugCompete]);
 
   const {
     messages: chatMessages,
@@ -1257,15 +1307,18 @@ const GameRoundPage: React.FC = () => {
 
     const currentPlayerKey = user?.id ?? (displayName ? `name:${displayName.trim().toLowerCase()}` : null);
 
-    // Determine expected participants using current sources only to prevent sticky inflation
-    const expectedFromBroadcast = Math.max(0, submittedCounts.total);
-    const hasAuthoritativeCount = expectedFromBroadcast > 0;
-    const expectedTotal = Math.max(
+    // Observe current signals and clamp to a historical maximum so drops don't shrink expectations mid-round
+    const observedNow = Math.max(
       hasSubmittedThisRound ? 1 : 0,
       roundPeers.length,
       lobbyParticipantCount,
-      expectedFromBroadcast,
+      submittedCounts.total,
     );
+    if (observedNow > maxExpectedTotalRef.current) {
+      maxExpectedTotalRef.current = observedNow;
+      debugCompete('expected:raiseMax', { roundNumber, observedNow, maxExpected: maxExpectedTotalRef.current });
+    }
+    const expectedTotal = Math.max(observedNow, maxExpectedTotalRef.current);
     const submitted = roundPeers.filter((peer) => peer.submitted).length;
     // Fallback: if we locally submitted but our DB row hasn't appeared yet,
     // treat self as submitted for the purpose of progressing to results.
@@ -1279,7 +1332,15 @@ const GameRoundPage: React.FC = () => {
       if (prev.submitted === submittedAdj && prev.total === expectedTotal) {
         return prev;
       }
-      return { submitted: submittedAdj, total: expectedTotal };
+      const nextCounts = { submitted: submittedAdj, total: expectedTotal };
+      debugCompete('roundPeers:updateCounts', {
+        roundNumber,
+        expectedTotal,
+        submittedAdj,
+        lobbyParticipantCount,
+        roundPeers: roundPeers.map((peer) => ({ id: peer.userId ?? peer.displayName, submitted: peer.submitted })),
+      });
+      return nextCounts;
     });
 
     const otherSubmitters = roundPeers.filter((peer) => {
@@ -1320,20 +1381,16 @@ const GameRoundPage: React.FC = () => {
     }
 
     if (isCompeteMode) {
-      if (import.meta.env.DEV) {
-        try {
-          console.debug('[GameRoundPage][CompeteSubmit] peer status', {
-            roundNumber,
-            expectedTotal,
-            submittedAdj,
-            lobbySize: lobbyRoster.length,
-            peerCount: roundPeers.length,
-            hasSubmittedThisRound,
-            allSubmitted,
-            hasNavigated: hasNavigatedToResultsRef.current,
-          });
-        } catch {}
-      }
+      debugCompete('roundPeers:status', {
+        roundNumber,
+        expectedTotal,
+        submittedAdj,
+        lobbySize: lobbyRoster.length,
+        peerCount: roundPeers.length,
+        hasSubmittedThisRound,
+        allSubmitted,
+        hasNavigated: hasNavigatedToResultsRef.current,
+      });
 
       // In Compete mode, automatically navigate to the results page once everyone has submitted
       if (allSubmitted && !hasNavigatedToResultsRef.current) {
@@ -1345,11 +1402,28 @@ const GameRoundPage: React.FC = () => {
             });
           } catch {}
         }
-        setWaitingForPeers((prev) => (prev === false ? prev : false));
+        setWaitingForPeers((prev) => {
+          const next = prev === false ? prev : false;
+          debugCompete('roundPeers:allSubmittedNavigate', {
+            roundNumber,
+            roomId,
+            nextWaiting: next,
+          });
+          return next;
+        });
         requestNavigateToResults();
       } else {
         const shouldWait = effectiveExpected === 0 ? true : !allSubmitted;
-        setWaitingForPeers((prev) => (prev === shouldWait ? prev : shouldWait));
+        setWaitingForPeers((prev) => {
+          if (prev === shouldWait) return prev;
+          debugCompete('roundPeers:updateWaiting', {
+            roundNumber,
+            shouldWait,
+            submittedAdj,
+            expectedTotal,
+          });
+          return shouldWait;
+        });
         if (shouldWait && timerEnabledRef.current) {
           setIsTimerActive((prev) => (prev === true ? prev : true));
         }
@@ -1376,7 +1450,46 @@ const GameRoundPage: React.FC = () => {
     displayName,
     submittedCounts,
     lobbyParticipantCount,
+    debugCompete,
   ]);
+
+  useEffect(() => {
+    if (!isCompeteMode) return;
+    debugCompete('roster:update', {
+      lobbyRoster,
+      lobbyParticipantCount,
+    });
+  }, [isCompeteMode, lobbyRoster, lobbyParticipantCount, debugCompete]);
+
+  useEffect(() => {
+    if (!isCompeteMode) return;
+    debugCompete('roundPeers:change', {
+      roundNumber,
+      peerCount: roundPeers.length,
+      peers: roundPeers.map((peer) => ({
+        id: peer.userId ?? peer.displayName,
+        submitted: peer.submitted,
+      })),
+    });
+  }, [isCompeteMode, roundPeers, roundNumber, debugCompete]);
+
+  useEffect(() => {
+    if (!isCompeteMode) return;
+    debugCompete('submittedCounts:change', {
+      submittedCounts,
+      waitingForPeers,
+      hasSubmittedThisRound,
+    });
+  }, [isCompeteMode, submittedCounts, waitingForPeers, hasSubmittedThisRound, debugCompete]);
+
+  useEffect(() => {
+    if (!isCompeteMode) return;
+    debugCompete('waitingForPeers:change', {
+      waitingForPeers,
+      roundNumber,
+      hasSubmittedThisRound,
+    });
+  }, [isCompeteMode, waitingForPeers, hasSubmittedThisRound, roundNumber, debugCompete]);
 
   useEffect(() => {
     if (!isCompeteMode) return;
@@ -1427,6 +1540,7 @@ const GameRoundPage: React.FC = () => {
     submittedPeerIdsRef.current.clear();
     recentSubmitterIdsRef.current = {};
     awaitingSubmissionAckRef.current = false;
+    maxExpectedTotalRef.current = 0;
     setRecentSubmitterIds({});
     setCachedPeerRoster([]);
     setCurrentGuess(null);
@@ -1442,7 +1556,7 @@ const GameRoundPage: React.FC = () => {
       }
       setIsTimerActive(false);
     }
-  }, [roomId, roundNumber, isCompeteMode, timerEnabled, roundTimerSec]);
+  }, [roomId, roundNumber]);
 
   useEffect(() => {
     if (!timerEnabled) {
@@ -1484,30 +1598,51 @@ const GameRoundPage: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     if (!isCompeteMode || !roomId || !hasSubmittedThisRound || !waitingForPeers) return;
+    const expectedMem = Math.max(
+      0,
+      maxExpectedTotalRef.current || 0,
+      submittedCounts.total || 0,
+      (roundPeers?.length ?? 0),
+      lobbyParticipantCount || 0,
+    );
     const run = async () => {
       try {
-        const { data: players } = await supabase
-          .from('session_players')
-          .select('user_id')
-          .eq('room_id', roomId);
-        const participantCount = Array.isArray(players) ? players.length : 0;
         const { data: results } = await supabase
           .from('round_results')
           .select('user_id')
           .eq('room_id', roomId)
           .eq('round_index', currentRoundIndex);
         const submittedCount = Array.isArray(results) ? new Set(results.map((r: any) => r.user_id)).size : 0;
-        if (!cancelled && participantCount > 0 && submittedCount >= participantCount) {
+        const expected = Math.max(1, expectedMem);
+        const shouldComplete = expected > 1 ? submittedCount >= expected : submittedCount >= 1;
+        debugCompete('dbFallback:check', {
+          roundNumber,
+          expectedMem,
+          expected,
+          submittedCount,
+          hasNavigated: hasNavigatedToResultsRef.current,
+        });
+        if (!cancelled && shouldComplete && !hasNavigatedToResultsRef.current) {
           setWaitingForPeers(false);
-          if (roomId && !hasNavigatedToResultsRef.current) {
-            requestNavigateToResults();
-          }
+          requestNavigateToResults();
         }
       } catch {}
     };
-    const t = setTimeout(run, 1500);
+    const t = setTimeout(run, 1200);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [isCompeteMode, roomId, hasSubmittedThisRound, waitingForPeers, currentRoundIndex, requestNavigateToResults, roundNumber]);
+  }, [
+    isCompeteMode,
+    roomId,
+    hasSubmittedThisRound,
+    waitingForPeers,
+    currentRoundIndex,
+    requestNavigateToResults,
+    roundNumber,
+    roundPeers,
+    lobbyParticipantCount,
+    submittedCounts.total,
+    debugCompete,
+  ]);
 
   const peerMarkers = useMemo(() => {
     if (!isCompeteMode) {
@@ -1697,15 +1832,40 @@ const GameRoundPage: React.FC = () => {
     if (!isCompeteMode) return [] as typeof cachedPeerRoster;
     const base = computedPeerRoster.length > 0 ? computedPeerRoster : cachedPeerRoster;
     if (base.length === 0) return [];
+
+    const normalizeId = (value: string | null | undefined) => (value || '').trim();
+    const normalizeName = (value: string | null | undefined) => (value || '').trim().toLowerCase();
+    const isTransientId = (id: string) => {
+      const lc = id.toLowerCase();
+      return lc.length === 0 || lc.startsWith('conn:') || lc.startsWith('name:') || lc.startsWith('anon:');
+    };
+    const preferCandidate = (current: typeof base[number], candidate: typeof base[number]) => {
+      const currentId = normalizeId(current.id);
+      const candidateId = normalizeId(candidate.id);
+      const currentTransient = isTransientId(currentId);
+      const candidateTransient = isTransientId(candidateId);
+
+      if (currentTransient !== candidateTransient) {
+        return currentTransient && !candidateTransient;
+      }
+      if (!current.avatarUrl && !!candidate.avatarUrl) return true;
+      if (!!current.avatarUrl && !candidate.avatarUrl) return false;
+      if (!current.submitted && !!candidate.submitted) return true;
+      if (!!current.submitted && !candidate.submitted) return false;
+      if (!current.recentlySubmitted && !!candidate.recentlySubmitted) return true;
+      if (!!current.recentlySubmitted && !candidate.recentlySubmitted) return false;
+      return false;
+    };
+
     const deduped = new Map<string, typeof base[number]>();
     base.forEach((peer, index) => {
       if (peer.isSelf) return;
-      const id = (peer.id || '').trim();
-      const nameLc = (peer.displayName || '').trim().toLowerCase();
-      // For transient connection-backed entries (conn:*), dedupe by name instead of connection id
-      const key = (id.startsWith('conn:') && nameLc)
-        ? `name:${nameLc}`
-        : (id || (nameLc ? `name:${nameLc}` : `idx:${index}`));
+      const trimmedId = normalizeId(peer.id);
+      const nameLc = normalizeName(peer.displayName);
+      const transient = isTransientId(trimmedId);
+      const key = (!transient && trimmedId)
+        ? trimmedId
+        : (nameLc ? `name:${nameLc}` : (trimmedId || `idx:${index}`));
 
       const existing = deduped.get(key);
       if (!existing) {
@@ -1713,35 +1873,65 @@ const GameRoundPage: React.FC = () => {
         return;
       }
 
-      // Prefer stable ids over conn ids, then prefer entries with avatar, then submitted/recent flags
-      const preferNew = (
-        (existing.id.startsWith('conn:') && !id.startsWith('conn:')) ||
-        (!existing.avatarUrl && !!peer.avatarUrl) ||
-        (!existing.submitted && !!peer.submitted) ||
-        (!existing.recentlySubmitted && !!peer.recentlySubmitted)
-      );
-      if (preferNew) {
+      if (preferCandidate(existing, peer)) {
         deduped.set(key, peer);
       }
     });
-    const roster = Array.from(deduped.values());
-    const selfUserId = user?.id?.trim() ?? null;
+
+    const firstPass = Array.from(deduped.values());
+    if (firstPass.length === 0) {
+      return [];
+    }
+
+    const roster = firstPass.reduce<Array<typeof base[number]>>((acc, peer) => {
+      const trimmedId = normalizeId(peer.id);
+      const nameLc = normalizeName(peer.displayName);
+      const transient = isTransientId(trimmedId);
+
+      const matchIdx = acc.findIndex((existing) => {
+        const existingId = normalizeId(existing.id);
+        const existingTransient = isTransientId(existingId);
+        if (!transient && !existingTransient && existingId === trimmedId) {
+          return true;
+        }
+        if (!transient && existingTransient && nameLc && nameLc === normalizeName(existing.displayName)) {
+          return true;
+        }
+        if (transient && !existingTransient && nameLc && nameLc === normalizeName(existing.displayName)) {
+          return true;
+        }
+        if (transient && existingTransient && trimmedId && existingId === trimmedId) {
+          return true;
+        }
+        return false;
+      });
+
+      if (matchIdx >= 0) {
+        const current = acc[matchIdx];
+        if (preferCandidate(current, peer)) {
+          acc[matchIdx] = peer;
+        }
+        return acc;
+      }
+
+      acc.push(peer);
+      return acc;
+    }, []);
+
+    const selfUserId = normalizeId(user?.id ?? null);
     const filtered = roster.filter((peer) => {
-      const peerId = (peer.id || '').trim();
-      if (selfUserId && peerId === selfUserId) {
-        return false;
-      }
-      if (selfRosterId && peerId === selfRosterId) {
-        return false;
-      }
-      const nameLc = (peer.displayName || '').trim().toLowerCase();
-      if (selfNameLc && nameLc === selfNameLc) {
-        if (!peerId || peerId.startsWith('conn:') || peerId.startsWith('name:') || peerId.startsWith('anon:')) {
+      const peerId = normalizeId(peer.id);
+      if (selfUserId && peerId === selfUserId) return false;
+      if (selfRosterId && peerId === selfRosterId) return false;
+      const peerName = normalizeName(peer.displayName);
+      if (selfNameLc && peerName === selfNameLc) {
+        if (isTransientId(peerId)) {
           return false;
         }
       }
       return true;
     });
+
     if (filtered.length === 0) {
       return [];
     }
@@ -2165,9 +2355,10 @@ const GameRoundPage: React.FC = () => {
 
       toast({
         title: "Time's Up!",
-        description: "Submitting your current guess automatically.",
+        description: "Your guess was automatically submitted.",
         variant: "info",
-        className: "bg-white/70 text-black border border-gray-200",
+        className:
+          "bg-white/80 text-black border border-gray-200 [&_[toast-close]]:opacity-100 [&_[toast-close]]:text-black [&_[toast-close]]:hover:text-black [&_[toast-close]]:focus:opacity-100",
       });
 
       if (!isCompeteMode && roomId) {

@@ -3,16 +3,53 @@ import { supabase } from '@/integrations/supabase/client';
 
 const YEAR_MIN = -500;
 const YEAR_MAX = 2025;
+const YEAR_MIN_SPAN = 200;
 
 export const YEAR_RANGE_MIN = YEAR_MIN;
 export const YEAR_RANGE_MAX = YEAR_MAX;
+export const YEAR_RANGE_MIN_SPAN = YEAR_MIN_SPAN;
 
-const sanitizeYearRange = (range?: [number, number]): [number, number] => {
+export const sanitizeYearRange = (range?: [number, number]): [number, number] => {
   const rawStart = Array.isArray(range) && range.length > 0 ? range[0] : YEAR_MIN;
   const rawEnd = Array.isArray(range) && range.length > 1 ? range[1] : YEAR_MAX;
-  const start = Math.min(Math.max(Number.isFinite(rawStart) ? Number(rawStart) : YEAR_MIN, YEAR_MIN), YEAR_MAX);
-  const endBase = Math.min(Math.max(Number.isFinite(rawEnd) ? Number(rawEnd) : YEAR_MAX, YEAR_MIN), YEAR_MAX);
-  const end = endBase < start ? start : endBase;
+  let start = Math.min(Math.max(Number.isFinite(rawStart) ? Number(rawStart) : YEAR_MIN, YEAR_MIN), YEAR_MAX);
+  let end = Math.min(Math.max(Number.isFinite(rawEnd) ? Number(rawEnd) : YEAR_MAX, YEAR_MIN), YEAR_MAX);
+
+  if (end < start) {
+    const tmp = start;
+    start = end;
+    end = tmp;
+  }
+
+  if (start > YEAR_MAX - YEAR_MIN_SPAN) {
+    start = YEAR_MAX - YEAR_MIN_SPAN;
+  }
+
+  if (end < YEAR_MIN + YEAR_MIN_SPAN) {
+    end = YEAR_MIN + YEAR_MIN_SPAN;
+  }
+
+  if (end - start < YEAR_MIN_SPAN) {
+    const expandedEnd = Math.min(YEAR_MAX, start + YEAR_MIN_SPAN);
+    if (expandedEnd - start >= YEAR_MIN_SPAN) {
+      end = expandedEnd;
+    } else {
+      start = Math.max(YEAR_MIN, end - YEAR_MIN_SPAN);
+      end = Math.min(YEAR_MAX, start + YEAR_MIN_SPAN);
+    }
+  }
+
+  // Final guards to keep values within range after adjustments
+  if (start < YEAR_MIN) {
+    start = YEAR_MIN;
+    end = Math.min(YEAR_MAX, start + YEAR_MIN_SPAN);
+  }
+
+  if (end > YEAR_MAX) {
+    end = YEAR_MAX;
+    start = Math.max(YEAR_MIN, end - YEAR_MIN_SPAN);
+  }
+
   return [start, end];
 };
 

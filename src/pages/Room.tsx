@@ -22,7 +22,7 @@ import GradientName from '@/components/ui/GradientName';
 import { fetchAvatarUrlsForUserIds } from '@/utils/profile/avatarLoader';
 import { getAvatarFrameGradient } from '@/utils/avatarGradient';
 import { Slider } from '@/components/ui/slider';
-import { useSettingsStore, YEAR_RANGE_MIN, YEAR_RANGE_MAX } from '@/lib/useSettingsStore';
+import { useSettingsStore, YEAR_RANGE_MIN, YEAR_RANGE_MAX, sanitizeYearRange } from '@/lib/useSettingsStore';
 
 interface ChatItem {
   id: string;
@@ -40,6 +40,8 @@ function isoNow() {
 
 type RosterEntry = { id: string; name: string; ready: boolean; host: boolean; userId?: string | null };
 type DisplayRosterEntry = RosterEntry & { avatarUrl: string | null; _inviteId?: string };
+
+const DEFAULT_COMPETE_TIMER_SEC = 120;
 
 const Room: React.FC = () => {
   const { roomCode = '' } = useParams<{ roomCode: string }>();
@@ -78,7 +80,7 @@ const Room: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [ownId, setOwnId] = useState<string>('');
   const [friendsModalOpen, setFriendsModalOpen] = useState(false);
-  const [localTimerSec, setLocalTimerSec] = useState<number>(Number(roundTimerSec || 120));
+  const [localTimerSec, setLocalTimerSec] = useState<number>(Number(roundTimerSec || DEFAULT_COMPETE_TIMER_SEC));
   const [draggingTimer, setDraggingTimer] = useState(false);
   const settings = useSettingsStore();
   const [yearRange, setYearRange] = useState<[number, number]>(settings.yearRange);
@@ -336,11 +338,10 @@ const Room: React.FC = () => {
               if (typeof (data as any).yearMin === 'number' || typeof (data as any).yearMax === 'number') {
                 const rawMin = typeof (data as any).yearMin === 'number' ? Math.round((data as any).yearMin) : yearRangeRef.current[0];
                 const rawMax = typeof (data as any).yearMax === 'number' ? Math.round((data as any).yearMax) : yearRangeRef.current[1];
-                const start = Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, Math.min(rawMin, rawMax)));
-                const end = Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, Math.max(rawMin, rawMax)));
-                if (!draggingYear && (start !== yearRangeRef.current[0] || end !== yearRangeRef.current[1])) {
-                  setYearRange([start, end]);
-                  try { settings.setYearRange([start, end]); } catch {}
+                const sanitized = sanitizeYearRange([rawMin, rawMax]);
+                if (!draggingYear && (sanitized[0] !== yearRangeRef.current[0] || sanitized[1] !== yearRangeRef.current[1])) {
+                  setYearRange(sanitized);
+                  try { settings.setYearRange(sanitized); } catch {}
                 }
               }
               break;
@@ -462,7 +463,7 @@ const Room: React.FC = () => {
   // Keep local slider value in sync when not dragging
   useEffect(() => {
     if (draggingTimer) return;
-    const val = Number(roundTimerSec || 120);
+    const val = Number(roundTimerSec || DEFAULT_COMPETE_TIMER_SEC);
     setLocalTimerSec(Math.max(5, Math.min(300, Math.round(val / 5) * 5)));
   }, [roundTimerSec, draggingTimer]);
 
@@ -725,7 +726,7 @@ const Room: React.FC = () => {
     let payload: LobbyClientMessage | null = null as any;
     if (enabled) {
       // Normalize to UI range (5–300) and step to avoid server/client mismatches
-      const raw = Number(roundTimerSec) || 120;
+      const raw = Number(roundTimerSec) || DEFAULT_COMPETE_TIMER_SEC;
       const clamped = Math.max(5, Math.min(300, Math.round(raw / 5) * 5));
       next = { sec: clamped, enabled: true };
       payload = { type: 'settings', timerSeconds: clamped, timerEnabled: true, yearMin: yearRangeRef.current[0], yearMax: yearRangeRef.current[1] } as any;
@@ -843,6 +844,10 @@ const Room: React.FC = () => {
     setRoundTimerSec(clamped);
   }, [parseTimerInput, timerInput, setRoundTimerSec]);
 
+  const displayedYearRange = useMemo<[number, number]>(() => {
+    return draggingYear && localYearRange ? localYearRange : yearRange;
+  }, [draggingYear, localYearRange, yearRange]);
+
   const commitYearFromInput = useCallback((side: 'min' | 'max') => {
     const raw = Math.round(Number((yearInput || '').trim()));
     if (!Number.isFinite(raw)) {
@@ -850,12 +855,12 @@ const Room: React.FC = () => {
       return;
     }
     const clamped = Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, raw));
-    let next: [number, number] = [...yearRange] as [number, number];
-    if (side === 'min') next = [clamped, next[1]]; else next = [next[0], clamped];
-    if (next[1] < next[0]) next = [Math.min(...next), Math.max(...next)];
+    const base: [number, number] = [...yearRange] as [number, number];
+    const next: [number, number] = side === 'min' ? [clamped, base[1]] : [base[0], clamped];
+    const sanitized = sanitizeYearRange(next);
     setEditingYearSide(null);
-    setYearRange(next);
-    try { settings.setYearRange(next); } catch {}
+    setYearRange(sanitized);
+    try { settings.setYearRange(sanitized); } catch {}
   }, [yearInput, yearRange, settings]);
 
   return (
@@ -922,7 +927,7 @@ const Room: React.FC = () => {
           {isHost && (
             <div className="mt-4 room-timer">
               <Slider
-                value={[Number(draggingTimer ? localTimerSec : (roundTimerSec || 120))]}
+                value={[Number(draggingTimer ? localTimerSec : (roundTimerSec || DEFAULT_COMPETE_TIMER_SEC))]}
                 min={5}
                 max={300}
                 step={5}
@@ -970,7 +975,7 @@ const Room: React.FC = () => {
                   className="hover:text-[#b6ecff]"
                   aria-label="Edit minimum year"
                 >
-                  {yearRange[0]}
+                  {displayedYearRange[0]}
                 </button>
               )}
               <span className="px-1">—</span>
@@ -991,7 +996,7 @@ const Room: React.FC = () => {
                   className="hover:text-[#b6ecff]"
                   aria-label="Edit maximum year"
                 >
-                  {yearRange[1]}
+                  {displayedYearRange[1]}
                 </button>
               )}
             </div>
@@ -999,7 +1004,7 @@ const Room: React.FC = () => {
           {isHost && (
             <div className="mt-4 room-year-range">
               <Slider
-                value={(draggingYear && localYearRange) ? localYearRange : yearRange}
+                value={displayedYearRange}
                 min={YEAR_RANGE_MIN}
                 max={YEAR_RANGE_MAX}
                 step={5}
@@ -1008,20 +1013,19 @@ const Room: React.FC = () => {
                   const a = Math.round(Number(vals[0]));
                   const b = Math.round(Number(vals[1]));
                   if (!draggingYear) setDraggingYear(true);
-                  setLocalYearRange([a, b]);
+                  const sanitized = sanitizeYearRange([a, b] as [number, number]);
+                  setLocalYearRange(sanitized);
                 }}
                 onPointerDown={() => setDraggingYear(true)}
                 onValueCommit={(vals) => {
                   if (!Array.isArray(vals) || vals.length !== 2) return;
                   const a = Math.round(Number(vals[0]));
                   const b = Math.round(Number(vals[1]));
-                  const start = Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, Math.min(a, b)));
-                  const end = Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, Math.max(a, b)));
-                  const next: [number, number] = [start, end];
+                  const sanitized = sanitizeYearRange([a, b] as [number, number]);
                   setDraggingYear(false);
                   setLocalYearRange(null);
-                  setYearRange(next);
-                  try { settings.setYearRange(next); } catch {}
+                  setYearRange(sanitized);
+                  try { settings.setYearRange(sanitized); } catch {}
                 }}
                 className="w-full"
               />
@@ -1076,7 +1080,15 @@ const Room: React.FC = () => {
                     <Input
                       placeholder="Filter your friends by name..."
                       value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setSearchTerm(value);
+                        if (value.trim().length > 0) {
+                          setFriendsListVisible(true);
+                        } else {
+                          setFriendsListVisible(false);
+                        }
+                      }}
                       className="rounded-lg border border-[#454852] bg-[#1d2026] pl-9 text-sm text-white placeholder:text-neutral-500"
                     />
                   </div>
@@ -1341,9 +1353,25 @@ const Room: React.FC = () => {
           }
         }}
       >
-        <DialogContent className="max-w-4xl w-[92vw] max-h-[85vh] overflow-y-auto border border-neutral-800 bg-black p-0 text-white">
-          <div className="p-4">
-            <FriendsPage />
+        <DialogContent
+          data-hide-close
+          className="max-w-4xl w-[92vw] max-h-[85vh] overflow-y-auto border border-neutral-800 bg-black p-0 text-white"
+        >
+          <div className="sticky top-0 z-20 bg-black/85 px-4 py-4 backdrop-blur">
+            <div className="relative flex items-center justify-center">
+              <h2 className="text-xl font-semibold text-white">Friends</h2>
+              <button
+                type="button"
+                aria-label="Close manage friends"
+                onClick={() => setFriendsModalOpen(false)}
+                className="absolute right-0 grid h-10 w-10 place-items-center rounded-full bg-[#22d3ee] text-black transition-colors hover:bg-[#1cbfdb] focus:outline-none focus:ring-2 focus:ring-[#22d3ee]/60 focus:ring-offset-2 focus:ring-offset-black"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          <div className="p-4 pt-2">
+            <FriendsPage showHeading={false} />
           </div>
         </DialogContent>
       </Dialog>

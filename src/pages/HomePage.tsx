@@ -547,8 +547,8 @@ const HomePage = () => {
                 >
                   <div className="relative w-full h-full flex items-center justify-center">
                    <img src="/icons/level.webp" alt="Level Up" className="w-[66%] h-[66%] object-contain drop-shadow-[0_10px_18px_rgba(0,0,0,0.5)]" />
-                    <div className="absolute top-2 right-2 bg-black/60 text-white text-xs font-bold px-2 py-1 rounded">
-                      Lv {Math.max(1, Number((profile as any)?.level_up_best_level || 1))}
+                    <div className="absolute top-2 right-2 flex items-center justify-center rounded bg-black/60 px-2 py-1 text-xs font-semibold text-white">
+                      Level {Math.max(1, Number((profile as any)?.level_up_best_level || 1))}
                     </div>
                   </div>
                 </div>

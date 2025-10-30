@@ -129,6 +129,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const [highlightWhen, setHighlightWhen] = useState(false);
   const [highlightWhere, setHighlightWhere] = useState(false);
   const [pendingYearDraft, setPendingYearDraft] = useState<string>('');
+  const pendingYearDraftRef = useRef<string>('');
   // Loading state after submitting guess
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Inline editable year input state for header (draft when typing)
@@ -150,13 +151,13 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const yearInputRef = useRef<HTMLInputElement>(null);
   const submitButtonDebugRef = useRef<string>('');
   useEffect(() => {
-    if (pendingYearDraft !== '') return;
+    if (pendingYearDraftRef.current !== '') return;
     if (typeof selectedYear === 'number') {
       setYearInput(String(selectedYear));
     } else if (!yearInteracted) {
       setYearInput('');
     }
-  }, [selectedYear, yearInteracted, pendingYearDraft]);
+  }, [selectedYear, yearInteracted]);
 
   // Admin-configurable flags via env (fallbacks match spec defaults)
   const immersiveEnabled = ((import.meta as any).env?.VITE_IMMERSIVE_ENABLED ?? 'true') === 'true';
@@ -547,6 +548,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                       setYearInteracted(true);
                       setYearInput(raw);
                       setPendingYearDraft(raw);
+                      pendingYearDraftRef.current = raw;
                     }}
                     ref={yearInputRef}
                     onFocus={(event) => {
@@ -563,20 +565,34 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                       }, 0);
                     }}
                     onBlur={() => {
-                      if (pendingYearDraft.trim() !== '') {
-                        const parsed = parseInt(pendingYearDraft, 10);
+                      const draft = pendingYearDraftRef.current.trim();
+                      if (draft !== '') {
+                        const parsed = parseInt(draft, 10);
                         if (!Number.isNaN(parsed)) {
                           const clamped = Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, parsed));
                           if (clamped !== selectedYear) onYearChange(clamped);
                           setYearInput(String(clamped));
-                        } else {
-                          setYearInput('');
+                          setPendingYearDraft('');
+                          pendingYearDraftRef.current = '';
+                          return;
                         }
                       }
-                      setPendingYearDraft('');
+                      setYearInput(pendingYearDraftRef.current);
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
+                        const draft = pendingYearDraftRef.current.trim();
+                        if (draft !== '') {
+                          const parsed = parseInt(draft, 10);
+                          if (!Number.isNaN(parsed)) {
+                            const clamped = Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, parsed));
+                            if (clamped !== selectedYear) onYearChange(clamped);
+                            setYearInput(String(clamped));
+                            setPendingYearDraft('');
+                            pendingYearDraftRef.current = '';
+                            return;
+                          }
+                        }
                         (e.currentTarget as HTMLInputElement).blur();
                       } else if (e.key === 'Escape') {
                         setYearInput('');

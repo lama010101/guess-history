@@ -21,7 +21,7 @@ const MainLayout = () => {
                 >
                   <span className="text-white">G-</span>
                   <span className="bg-[linear-gradient(135deg,_#c4b5fd_0%,_#f9a8d4_20%,_#fdba74_45%,_#fde68a_70%,_#86efac_100%)] bg-clip-text text-transparent">
-                    H
+                    HISTORY
                   </span>
                 </a>
               )}

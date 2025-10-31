@@ -6,10 +6,11 @@ import InvitesBell from "@/components/navigation/InvitesBell";
 const MainLayout = () => {
   const location = useLocation();
   const showHomeLink = location.pathname !== "/home";
+  const isCompeteRoute = location.pathname.startsWith("/compete");
 
   return (
     <div className="min-h-screen flex flex-col bg-history-light dark:bg-black">
-      <nav className="sticky top-0 z-50 bg-black/0 backdrop-blur-none">
+      <nav className={`sticky top-0 z-50 ${isCompeteRoute ? "bg-black/90" : "bg-black/0"} backdrop-blur-none`}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <StatsDisplay />

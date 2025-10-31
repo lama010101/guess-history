@@ -54,7 +54,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ stats, isLoading }) => {
   
   return (
     <div className="rounded-xl p-6 bg-[#333333]">
-      <h3 className="text-lg font-semibold mb-6 text-history-primary dark:text-history-light">Your Statistics</h3>
+      <h3 className="text-lg font-semibold mb-6 text-history-primary dark:text-history-light">Statistics</h3>
       
       {!hasPlayedGames ? (
         <div className="text-center py-8 text-muted-foreground">

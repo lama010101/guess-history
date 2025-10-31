@@ -1,3 +1,15 @@
+### Compete Round Results Peer Merge (2025-10-31)
+
+- **Component**: `src/pages/compete/results/CompeteSyncRoundResultsPage.tsx`
+  - The results screen now builds a unified peer list by combining live PartyKit roster data, Supabase `sync_round_scores` snapshots, and leaderboard rows. This ensures every player appears even if they submitted early or missed a realtime broadcast.
+  - Cache writes (`mergePeerProfiles`) only occur inside effects. `combinedPeerState` returns both the rendered peers and the side-effect payload, keeping render phases pure.
+  - Any future peer enrichments (e.g., extra stats) should be added to this merge so all downstream surfaces stay in sync.
+
+### Account Dropdown PWA Entry (2025-10-31)
+
+- **Component**: `src/components/NavProfile.tsx`
+  - Added an **Account** dropdown item that routes to `/solo/account` so registered users can open the Account Settings card where the **Install App** action lives. Protects guests by reusing the existing auth modal gate before navigation.
+
 ### Compete Chat Input Affordance (2025-10-30)
 
 - **Component**: `src/pages/GameRoundPage.tsx`
@@ -36,8 +48,35 @@
 - **Component**: `src/pages/Room.tsx`
   - The top header bar uses `bg-black/90` with a subtle blur/shadow so the compete background art shows through while keeping enough contrast for the white text and counters. Preserve this surface when adjusting header spacing or adding buttons to maintain readability.
 
+### Compete Lobby Timer & Range Alignment (2025-10-31)
+
+- **Component**: `src/pages/Room.tsx`
+  - Round Timer and Year Range cards now keep their values inline with the section titles. Use the existing `flex` wrappers that push the value group with `ml-auto` so any future controls stay right-aligned without wrapping beneath the heading.
+
   - The post-game chat uses the same rounded card container and cyan-accented input as the lobby/round panels, clarifying the entry field against the dark results backdrop.
   - Keep the wrapper classes (`rounded-2xl border-white/15 bg-[#2a2a2a] shadow-[0_-6px_16px_rgba(0,0,0,0.28)]`) if additional controls (emoji picker, attachments) are added so the card footprint remains consistent across compete chat surfaces.
+
+### Compete Lobby Share Link (2025-10-31)
+
+- **Component**: `src/pages/Room.tsx`
+  - The "Invite Your Friends" accordion now shows an additional line under the room code with a clipboard-only "link" action instead of the raw URL. It reuses `updateShareInviteUrl()` to keep the copied value current whenever the invite token changes.
+
+### Compete Lobby Invite List Simplification (2025-10-31)
+
+- **Component**: `src/pages/Room.tsx`
+  - Hosts no longer see a separate "Pending Invites" block after sending friend invites. Each invited friend keeps the inline **Invited** tag beside their name, so the extra list and cancel button were removed from the accordion content.
+
+### Compete Lobby Friend Sync (2025-10-31)
+
+- **Component**: `src/pages/Room.tsx`
+  - The invite card now listens for the `gh:friends:added` / `gh:friends:removed` events emitted by the Manage Friends modal. Whenever the modal closes or a realtime change fires, the lobby reloads the host's friend list so the "View Friends" list stays in sync without a manual refresh.
+
+### Compete Round Results Player Avatars (2025-10-31)
+
+- **Component**: `src/pages/compete/results/CompeteSyncRoundResultsPage.tsx`
+  - Round results now reuse the lobby roster logic to fetch and cache peer avatars. `combinedPeers` prefers any avatar supplied by the PartyKit peer payload, then falls back to a local cache built via `fetchAvatarUrlsForUserIds`, and finally to initials when nothing resolves.
+  - The component keeps a local `avatarUrls` state keyed by Supabase profile `userId`. On every render it checks for missing IDs and runs the Supabase-backed loader, then merges results into the peer profile cache so future screens benefit from the resolved avatars.
+  - Map markers, leaderboard rows, and player cards automatically receive the enriched `avatarUrl` because they all read from the shared `combinedPeers` array. When introducing new peer surfaces, prefer this array instead of re-querying profiles so we avoid redundant network calls.
 
 ### Final Results Desktop Layout (2025-10-30)
 
@@ -46,6 +85,14 @@
   - Accuracy breakdown tiles moved to bordered cards with fuller width progress bars for better legibility on large screens. Reuse the `border-neutral-700 bg-black/30` surface for any additional accuracy tiles to keep the visual hierarchy intact.
   - The synced compete leaderboard and chat now render in a responsive two-column layout (`lg:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]`) so the chat column maintains a stable width on desktop while stacking vertically on smaller viewports.
 
+### Final Results Layout Refresh (2025-10-31)
+
+- **Components**: `src/pages/FinalResultsPage.tsx`, `src/components/scoreboard/FinalScoreboard.tsx`
+  - Mobile accuracy tiles drop their dark card backgrounds (`bg-transparent` + borderless) so progress bars sit directly on the primary surface while desktop keeps the bordered cards via responsive classes.
+  - Session stats now render as a 2×2 grid at the base breakpoint; hint metrics always use white text so penalties remain legible on all themes.
+  - Final leaderboard and chat live inside matching `bg-[#333333]` cards, and the leaderboard title mirrors the `FINAL SCORE` typography (uppercase, 2xl/3xl).
+  - Increased the desktop max width to `max-w-6xl` and widened the leaderboard/chat grid (`lg:grid-cols-[minmax(0,3.5fr)_minmax(320px,1.5fr)]`) so all table columns stay visible without horizontal scrolling on large screens.
+
 ### Compete Lobby Host Kick Control (2025-10-30)
 
 - **Component**: `src/pages/Room.tsx`
@@ -53,11 +100,23 @@
   - The button hides for invite placeholders, the host’s own row, and non-host clients to prevent accidental self-removal or exposing the control to guests.
 - **Server**: `server/lobby.ts`
   - No server changes were required; the restored UI uses the existing `kick` message handling that closes the target connection, promotes the next host when necessary, and rebroadcasts the roster.
+- **Update (2025-10-31)**: `src/pages/Room.tsx`
+  - Clients now detect PartyKit close code `4000` to flag the user as kicked. When that happens we cancel reconnect attempts, show a destructive toast explaining the removal, and navigate the player back to `/compete` so they fully exit the lobby.
+- **Update (2025-10-31 PM)**: `src/pages/Room.tsx`
+  - Restored host detection to consider both connection IDs and Supabase user IDs so the roster keeps honoring the host role even when the host reconnects on a new tab. Re-enabled the live roster refresh that depends on `isHost` truthiness when broadcasting settings.
+- **Update (2025-10-31 PM)**: `src/pages/Room.tsx`
+  - Host kick actions now open a stylized alert dialog before sending the PartyKit `kick` message. The dialog mirrors our destructive action pattern (cyan outline cancel, red confirm) so the confirmation feels consistent with other modals while preventing accidental removals.
 
 ### Compete Waiting Overlay Peer Detection (2025-10-30)
 
 - **Hook**: `src/hooks/useRoundPeers.ts`
   - Submission detection no longer treats scoreboard rows with only default zeros as valid submissions. We now only flag a peer as submitted when the RPC returns meaningful metrics (accuracy, distance, guess year, XP debt values). This avoids marking every roster entry as submitted during gaps in `round_results`, keeping the in-round “Waiting for” overlay populated with actual peer names instead of `+1 more` placeholders.
+
+### Compete Waiting Overlay Countdown (2025-10-31)
+
+- **Component**: `src/components/layouts/GameLayout1.tsx`
+  - The waiting overlay now reads the live round countdown (including the 15s rush clamp) and renders the remaining time directly beneath the pending player list in vivid red (`text-red-500 tracking-[0.3em]`). Leave at least three lines of spacing between the roster and timer if adjusting layout.
+  - Only shows the `+X more` line when no identified peers are pending, avoiding redundant entries when everyone is listed.
 
 ### Accordion Header Click Target (2025-10-30)
 
@@ -84,6 +143,13 @@
 - **Component**: `src/pages/GameRoundPage.tsx`
   - The "Time's Up" toast now renders with an 80% opaque white background (`bg-white/80`) to improve legibility over gameplay visuals.
   - The toast close button is forced visible via `[toast-close]` selectors so players can always dismiss the notification immediately after automatic submission.
+
+### Timeout Toast Copy & Timing (2025-10-31)
+
+- **Component**: `src/pages/GameRoundPage.tsx`
+  - Auto-dismisses after 3 seconds by passing `duration: 3000` to the toast call inside `handleTimeComplete`.
+  - Title uses `<span className="text-base font-semibold leading-tight">` (roughly +2pt) and description uses `<span className="text-[15px] leading-snug">` (+1pt) to match UX spec.
+  - Opacity remains controlled via the `className` string on that toast (`bg-white/90 …`); tweak the `/90` tailwind opacity there if future adjustments are needed.
 
 ### Timeout Submissions Award Zero XP (2025-10-30)
 
@@ -230,6 +296,12 @@
   - When players focus the year input, the current value is auto-selected via `input.select()` and the state sync mirrors the latest `selectedYear` if it hadn’t been typed yet.
   - Ensures tapping the displayed year immediately highlights the full number so it can be overwritten without manual selection.
 
+### Mode-Aware When/Where Headings (2025-10-31)
+
+- **Components**: `src/components/layouts/GameLayout1.tsx`, `src/components/layouts/ResultsLayout2.tsx`
+  - The When/Where card titles now rely on the shared orange text utilities so Solo renders the orange accent by default, while `.mode-compete` and `.mode-levelup` remap those utilities to turquoise and pink respectively.
+  - When adding new headings that should follow the active mode accent, prefer `text-orange-*` helpers so the existing `.mode-*` overrides keep them synchronized across game and results surfaces.
+
 ### Guest CTA Gradient Alignment (2025-10-28)
 
 - **Components**: `src/components/NavProfile.tsx`, `src/components/layouts/ProfileLayout1.tsx`, `src/pages/FinalResultsPage.tsx`
@@ -298,6 +370,7 @@
   - When blur fires with no draft, the input now re-syncs to the committed `selectedYear` so the field never empties after Enter commits.
   - While the input is blurred and no committed year exists yet, the picker uses the last valid typed year as a temporary value so the rail recenters without fighting the edit session.
   - The input textbox always reflects the raw `yearInput` string—even before a year is committed—so blur/rail sync never drops the user’s typed digits.
+  - A `pendingCommittedYearRef` debounces `selectedYear` feedback: immediately after typing or dragging we hold the committed value locally and ignore intermediate store updates until the same value flows back, eliminating the 763↔typed flicker.
 
 ### Year Picker Auto-Center (2025-10-28)
 

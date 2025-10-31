@@ -23,6 +23,17 @@ import { fetchAvatarUrlsForUserIds } from '@/utils/profile/avatarLoader';
 import { getAvatarFrameGradient } from '@/utils/avatarGradient';
 import { Slider } from '@/components/ui/slider';
 import { useSettingsStore, YEAR_RANGE_MIN, YEAR_RANGE_MAX, sanitizeYearRange } from '@/lib/useSettingsStore';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface ChatItem {
   id: string;
@@ -62,7 +73,9 @@ const Room: React.FC = () => {
   const url = useMemo(() => partyUrl('lobby', roomCode), [roomCode]);
 
   const [players, setPlayers] = useState<string[]>([]);
+  const playersRef = useRef<string[]>([]);
   const [roster, setRoster] = useState<RosterEntry[]>([]);
+  const rosterRef = useRef<RosterEntry[]>([]);
   const [chat, setChat] = useState<ChatItem[]>([]);
   const [chatCollapsed, setChatCollapsed] = useState<boolean>(() => {
     try {
@@ -76,10 +89,12 @@ const Room: React.FC = () => {
   const [playersCollapsed, setPlayersCollapsed] = useState(false);
   const [input, setInput] = useState('');
   const [status, setStatus] = useState<'connecting' | 'open' | 'closed' | 'full'>('connecting');
+  const [kicked, setKicked] = useState(false);
   const [ownReady, setOwnReady] = useState(false);
   const [copied, setCopied] = useState(false);
   const [ownId, setOwnId] = useState<string>('');
   const [friendsModalOpen, setFriendsModalOpen] = useState(false);
+  const [friendsListVisible, setFriendsListVisible] = useState(false);
   const [localTimerSec, setLocalTimerSec] = useState<number>(Number(roundTimerSec || DEFAULT_COMPETE_TIMER_SEC));
   const [draggingTimer, setDraggingTimer] = useState(false);
   const settings = useSettingsStore();
@@ -97,8 +112,6 @@ const Room: React.FC = () => {
   type InviteEntry = { id: string; friend_id: string; display_name: string };
   const [invites, setInvites] = useState<InviteEntry[]>([]);
   const [inviteAccordionOpen, setInviteAccordionOpen] = useState(true);
-  const [friendsListVisible, setFriendsListVisible] = useState(false);
-  const friendsModalOpenedRef = useRef(false);
   const wsRef = useRef<WebSocket | null>(null);
   const inviteTokenRef = useRef<string | null>(null);
   const retryRef = useRef(0);
@@ -107,6 +120,7 @@ const Room: React.FC = () => {
   const lastSentSettingsRef = useRef<{ sec: number; enabled: boolean; yearMin?: number; yearMax?: number } | null>(null);
   const lastSentNameRef = useRef<string>('');
   const clearedInvitesRef = useRef(false);
+  const friendsModalOpenedRef = useRef(false);
   const latestNameRef = useRef<string>('');
   const statusRef = useRef<typeof status>(status);
   const timerEnabledRef = useRef<boolean>(!!timerEnabled);
@@ -115,6 +129,30 @@ const Room: React.FC = () => {
   const [avatarUrls, setAvatarUrls] = useState<Record<string, string | null>>({});
   const yearRangeRef = useRef<[number, number]>(settings.yearRange);
   const initialSettingsSyncedRef = useRef(false);
+  const kickedRef = useRef(false);
+  const kickedHandledRef = useRef(false);
+
+  const removeRosterEntry = useCallback((targetId: string, targetName?: string | null) => {
+    setRoster((prev) => {
+      const filtered = prev.filter((entry) => entry.id !== targetId);
+      if (filtered.length !== prev.length) {
+        rosterRef.current = filtered;
+        return filtered;
+      }
+      return prev;
+    });
+    if (targetName && targetName.trim().length > 0) {
+      const nameToRemove = targetName.trim();
+      setPlayers((prev) => {
+        const filtered = prev.filter((name) => name.trim() !== nameToRemove);
+        if (filtered.length !== prev.length) {
+          playersRef.current = filtered;
+          return filtered;
+        }
+        return prev;
+      });
+    }
+  }, []);
 
   const getInitial = useCallback((value: string | null | undefined) => {
     const trimmed = (value ?? '').trim();
@@ -195,6 +233,9 @@ const Room: React.FC = () => {
   }, []);
 
   const connect = useCallback(async () => {
+    kickedRef.current = false;
+    kickedHandledRef.current = false;
+    setKicked(false);
     cleanupSocket();
     setStatus('connecting');
 
@@ -240,7 +281,11 @@ const Room: React.FC = () => {
           switch (data.type) {
             case 'players':
               if (Array.isArray(data.players)) {
-                setPlayers(data.players.map((p) => String(p)));
+                setPlayers((prev) => {
+                  const next = data.players.map((p) => String(p));
+                  playersRef.current = next;
+                  return next;
+                });
               }
               break;
             case 'roster':
@@ -276,7 +321,10 @@ const Room: React.FC = () => {
                   if (pickNew) deduped.set(key, entry);
                 }
                 const nextRoster = Array.from(deduped.values());
-                setRoster(nextRoster);
+                setRoster((prev) => {
+                  rosterRef.current = nextRoster;
+                  return nextRoster;
+                });
 
                 const rosterFriendIds = nextRoster
                   .map((entry) => entry.userId)
@@ -425,7 +473,20 @@ const Room: React.FC = () => {
       }
     });
 
-    ws.addEventListener('close', () => {
+    ws.addEventListener('close', (event) => {
+      if (event.code === 4000) {
+        kickedRef.current = true;
+        kickedHandledRef.current = false;
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+          timerRef.current = null;
+        }
+        wsRef.current = null;
+        retryRef.current = MAX_RETRIES;
+        setStatus('closed');
+        setKicked(true);
+        return;
+      }
       if (statusRef.current !== 'full') {
         scheduleReconnect();
       }
@@ -444,6 +505,8 @@ const Room: React.FC = () => {
     }
     // If authenticated, wait for profile load to ensure we send the correct name on join.
     if (user?.id && !profileLoaded) return;
+    // Do not connect until we have a user id (compete requires auth)
+    if (!user?.id) return;
     connect();
     return () => {
       cleanupSocket();
@@ -471,6 +534,19 @@ const Room: React.FC = () => {
   useEffect(() => { timerEnabledRef.current = !!timerEnabled; }, [timerEnabled]);
   useEffect(() => { roundTimerSecRef.current = Number(roundTimerSec || 0); }, [roundTimerSec]);
   useEffect(() => { yearRangeRef.current = yearRange; }, [yearRange]);
+
+  useEffect(() => {
+    if (!kicked || kickedHandledRef.current) return;
+    kickedHandledRef.current = true;
+    try {
+      toast({
+        title: 'Removed from room',
+        description: 'The host removed you from the room.',
+        variant: 'destructive',
+      });
+    } catch {}
+    navigate('/compete', { replace: true });
+  }, [kicked, navigate]);
 
   // Keep local slider value in sync when not dragging
   useEffect(() => {
@@ -690,6 +766,19 @@ const Room: React.FC = () => {
       loadInvites();
     }
   }, [isHost, user?.id, loadFriends, loadInvites]);
+
+  useEffect(() => {
+    if (!isHost || !user?.id) return;
+    const handleFriendChanged = () => {
+      void loadFriends();
+    };
+    window.addEventListener('gh:friends:added', handleFriendChanged);
+    window.addEventListener('gh:friends:removed', handleFriendChanged);
+    return () => {
+      window.removeEventListener('gh:friends:added', handleFriendChanged);
+      window.removeEventListener('gh:friends:removed', handleFriendChanged);
+    };
+  }, [isHost, user?.id, loadFriends]);
 
   // Format time similar to Play Solo UI
   const formatTime = useCallback((seconds: number): string => {
@@ -963,8 +1052,8 @@ const Room: React.FC = () => {
         .room-timer .slider-thumb:focus-visible { outline: none; }
       `}</style>
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-28 pt-6 lg:gap-8">
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-black/90 px-4 py-3 shadow-[0_4px_24px_rgba(0,0,0,0.35)] backdrop-blur">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-black/90 px-4 py-3 shadow-[0_4px_24px_rgba(0,0,0,0.35)] backdrop-blur">
+          <div className="flex w-full items-center gap-3">
             <button
               type="button"
               onClick={handleBack}
@@ -973,21 +1062,24 @@ const Room: React.FC = () => {
               <ChevronLeft className="h-4 w-4" />
               Back
             </button>
-            <h1 className="text-2xl font-semibold text-white">Compete</h1>
+            <h1 className="flex-1 text-center text-2xl font-semibold text-white">
+              Compete
+            </h1>
+            <div className="hidden w-[52px] sm:block" aria-hidden="true" />
           </div>
-          <div className="text-xs text-neutral-300 sm:text-right">
+          <div className="flex w-full justify-end text-xs text-neutral-300">
             {(roster.length || players.length)} player{(roster.length || players.length) === 1 ? '' : 's'}
           </div>
         </div>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] lg:gap-8">
           <div className="flex flex-col gap-6">
             <section className="rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="flex items-center gap-2 text-base font-semibold text-white">
+              <div className="flex w-full flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2 text-base font-semibold text-white">
                   <Clock className="h-5 w-5 text-white" />
                   <span>Round Timer</span>
                 </div>
-                <div className="text-sm font-semibold text-[#22d3ee]">
+                <div className="ml-auto flex items-center gap-2 text-sm font-semibold text-[#22d3ee]">
                   {isHost ? (
                     editingTimer ? (
                       <Input
@@ -1042,12 +1134,12 @@ const Room: React.FC = () => {
             </section>
 
             <section className="rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="flex items-center gap-2 text-base font-semibold text-white">
+              <div className="flex w-full flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2 text-base font-semibold text-white">
                   <Calendar className="h-5 w-5 text-white" />
                   <span>Year Range</span>
                 </div>
-                <div className="flex items-center gap-1 text-sm font-semibold text-[#22d3ee]">
+                <div className="ml-auto flex items-center gap-1 text-sm font-semibold text-[#22d3ee]">
                   {isHost && editingYearSide === 'min' ? (
                     <Input
                       autoFocus
@@ -1257,21 +1349,6 @@ const Room: React.FC = () => {
                         </div>
                       )}
                     </div>
-                    {invites.length > 0 && (
-                      <div className="rounded-xl border border-[#3f424b] bg-[#2d2f36] p-4">
-                        <h3 className="text-sm font-semibold text-white">Pending Invites</h3>
-                        <div className="mt-3 space-y-2 text-sm">
-                          {invites.map((inv) => (
-                            <div key={inv.id} className="flex items-center justify-between rounded-lg border border-[#3f424b] bg-[#1d2026] px-3 py-2">
-                              <span className="truncate text-sm text-white">{inv.display_name || 'Friend'}</span>
-                              <Button size="icon" variant="ghost" className="h-7 w-7 text-red-300 hover:text-red-200" onClick={() => cancelInvite(inv.id)}>
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
@@ -1304,7 +1381,7 @@ const Room: React.FC = () => {
                         const showReadyTag = r.ready && typeof r._inviteId !== 'string' && !isYou;
                         const rosterSeed = r.userId || r.id || r.name;
                         return (
-                          <div key={`${r.id}-${index}`} className="flex flex-wrap items-center gap-4 rounded-xl border border-[#3f424b] bg-[#1d2026] px-4 py-3">
+                          <div key={`${r.id}-${index}`} className="flex flex-wrap items-center gap-3 rounded-xl border border-[#3f424b] bg-[#1d2026] px-4 py-3">
                             <div className="flex min-w-0 flex-1 items-center gap-3">
                               <div
                                 className="rounded-full p-[2.5px]"
@@ -1322,50 +1399,82 @@ const Room: React.FC = () => {
                                   <GradientName seed={rosterSeed} className="truncate text-sm font-semibold">
                                     {isYou ? `(You) ${r.name}` : r.name}
                                   </GradientName>
-                                  {isYou && (
-                                    <button
-                                      type="button"
-                                      onClick={toggleReady}
-                                      disabled={status !== 'open'}
-                                      className={`flex-none rounded-xl px-4 py-1.5 text-xs font-semibold shadow-lg transition-colors ${ownReady ? 'bg-[#22d96d] text-black hover:bg-[#1fb862]' : 'attention-pulse bg-[#22d3ee] text-black hover:bg-[#1cbfdb]'}`}
-                                      style={(!ownReady
-                                        ? ({ '--attention-pulse-shadow-color': 'rgba(34, 211, 238, 0.35)' } as React.CSSProperties)
-                                        : undefined)}
-                                    >
-                                      {ownReady ? 'Ready!' : 'Ready?'}
-                                    </button>
-                                  )}
                                   {r.host && <span className="flex-none rounded-full bg-[#22d3ee]/20 px-2 py-0.5 text-[10px] font-semibold text-[#22d3ee]">Host</span>}
                                   {typeof r._inviteId === 'string' && <span className="flex-none rounded-full bg-[#f97316]/15 px-2 py-0.5 text-[10px] font-semibold text-[#f97316]">Invited</span>}
-                                  {showReadyTag && (
-                                    <span className="flex-none rounded-full bg-[#22d96d]/20 px-2 py-0.5 text-[10px] font-semibold text-[#22d96d]">Ready!</span>
-                                  )}
                                 </div>
                               </div>
                             </div>
-                            {typeof r._inviteId === 'string' ? (
-                              isHost && (
-                                <div className="ml-auto flex items-center gap-3">
-                                  <Button size="icon" variant="ghost" className="h-8 w-8 text-red-300 hover:text-red-200" onClick={() => cancelInvite(r._inviteId)}>
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              )
-                            ) : !isYou ? (
-                              <div className="ml-auto flex items-center gap-3">
-                                {!r.ready && <span className="text-sm font-semibold text-neutral-200">Not ready</span>}
-                                {isHost && r.id !== ownId && (
+                            <div className="ml-auto flex shrink-0 items-center gap-3">
+                              {typeof r._inviteId === 'string' ? (
+                                isHost && (
                                   <Button
                                     size="icon"
                                     variant="ghost"
                                     className="h-8 w-8 text-red-300 hover:text-red-200"
-                                    onClick={() => kickPlayer(r.id)}
+                                    onClick={() => cancelInvite(r._inviteId)}
                                   >
                                     <X className="h-4 w-4" />
                                   </Button>
-                                )}
-                              </div>
-                            ) : null}
+                                )
+                              ) : isYou ? (
+                                <button
+                                  type="button"
+                                  onClick={toggleReady}
+                                  disabled={status !== 'open'}
+                                  className={`rounded-xl px-4 py-1.5 text-xs font-semibold shadow-lg transition-colors ${ownReady ? 'bg-[#22d96d] text-black hover:bg-[#1fb862]' : 'attention-pulse bg-[#22d3ee] text-black hover:bg-[#1cbfdb]'}`}
+                                  style={(!ownReady
+                                    ? ({ '--attention-pulse-shadow-color': 'rgba(34, 211, 238, 0.35)' } as React.CSSProperties)
+                                    : undefined)}
+                                >
+                                  {ownReady ? 'Ready!' : 'Ready?'}
+                                </button>
+                              ) : (
+                                <>
+                                  {showReadyTag ? (
+                                    <span className="rounded-full bg-[#22d96d]/20 px-2 py-0.5 text-[10px] font-semibold text-[#22d96d]">Ready!</span>
+                                  ) : (
+                                    !r.ready && <span className="text-sm font-semibold text-neutral-200">Not ready</span>
+                                  )}
+                                  {isHost && r.id !== ownId && (
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-8 w-8 text-red-300 hover:text-red-200"
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent className="max-w-md border border-[#3f424b] bg-[#1d2026] text-white">
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Remove player?</AlertDialogTitle>
+                                          <AlertDialogDescription className="text-sm text-neutral-300">
+                                            {r.name?.trim().length
+                                              ? `Are you sure you want to remove ${r.name.trim()} from this room?`
+                                              : 'Are you sure you want to remove this player from the room?'}
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel className="border border-white/15 bg-transparent text-white hover:bg-white/10">
+                                            Cancel
+                                          </AlertDialogCancel>
+                                          <AlertDialogAction
+                                            onClick={() => {
+                                              removeRosterEntry(r.id, r.name);
+                                              kickPlayer(r.id);
+                                            }}
+                                            className="bg-[#ef4444] text-white hover:bg-[#dc2626]"
+                                          >
+                                            Remove player
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  )}
+                                </>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
@@ -1489,6 +1598,7 @@ const Room: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 };

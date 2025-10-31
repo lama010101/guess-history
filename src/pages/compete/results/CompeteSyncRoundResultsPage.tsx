@@ -21,6 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLobbyChat } from '@/hooks/useLobbyChat';
 import { useSyncRoundScores } from '@/hooks/useSyncRoundScores';
 import { usePeerProfileCacheStore, resolvePeerProfile, makePeerNameKey } from '@/store/peerProfileCacheStore';
+import { fetchAvatarUrlsForUserIds } from '@/utils/profile/avatarLoader';
 
 const getInitial = (value?: string | null) => {
   const trimmed = (value ?? '').trim();
@@ -46,6 +47,24 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
   const { entries: snapshotEntries } = useSyncRoundScores(roomId ?? null, Number.isFinite(oneBasedRound) ? oneBasedRound : null);
   const mergePeerProfiles = usePeerProfileCacheStore((state) => state.mergeEntries);
   const peerProfileCache = usePeerProfileCacheStore((state) => state.cache);
+  const [avatarUrls, setAvatarUrls] = useState<Record<string, string | null>>({});
+
+  const resolveCachedProfile = useCallback((userId?: string | null, displayName?: string | null) => {
+    const entry = resolvePeerProfile(userId, displayName);
+    if (entry) {
+      return entry;
+    }
+    if (userId && userId.trim().length > 0) {
+      const byId = peerProfileCache[userId.trim()];
+      if (byId) return byId;
+    }
+    const nameKey = makePeerNameKey(displayName);
+    if (nameKey) {
+      const byName = peerProfileCache[nameKey];
+      if (byName) return byName;
+    }
+    return null;
+  }, [peerProfileCache]);
   const leaderboard = useCompeteRoundLeaderboards(roomId ?? null, Number.isFinite(oneBasedRound) ? oneBasedRound : null);
 
   useEffect(() => {
@@ -55,105 +74,318 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
     };
   }, []);
 
-  const combinedPeers = useMemo<PeerRoundRow[]>(() => {
-    if (!Array.isArray(peers) || peers.length === 0) {
-      // Try to backfill avatarUrl from computed leaderboards when peers haven't loaded yet
-      const avatarById = new Map<string, string | null>(
-        [
-          ...(leaderboard?.total || []).map(r => [r.userId, r.avatarUrl ?? null]),
-          ...(leaderboard?.when || []).map(r => [r.userId, r.avatarUrl ?? null]),
-          ...(leaderboard?.where || []).map(r => [r.userId, r.avatarUrl ?? null]),
-        ] as Array<[string, string | null]>
-      );
-
-      return (snapshotEntries || []).map((snap) => {
-        const cached = resolvePeerProfile(snap.userId, snap.displayName);
-        return ({
-          userId: snap.userId,
-          displayName: snap.displayName || 'Player',
-          avatarUrl: avatarById.get(snap.userId) ?? cached?.avatarUrl ?? null,
-          score: 0,
-          accuracy: Math.round((snap.timeAccuracy + snap.locationAccuracy) / 2),
-          xpTotal: snap.xpTotal,
-          xpDebt: snap.xpDebt,
-          whenXpDebt: 0,
-          whereXpDebt: 0,
-          accDebt: snap.accDebt,
-          whenAccDebt: 0,
-          whereAccDebt: 0,
-          xpWhere: null,
-          xpWhen: null,
-          locationAccuracy: snap.locationAccuracy,
-          timeAccuracy: snap.timeAccuracy,
-          distanceKm: snap.distanceKm,
-          guessYear: snap.guessYear,
-          guessLat: snap.guessLat,
-          guessLng: snap.guessLng,
-          actualLat: null,
-          actualLng: null,
-          submitted: true,
-          ready: false,
-          hintsUsed: snap.hintsUsed,
-          whenHints: null,
-          whereHints: null,
-          netAccuracy: null,
-        });
-      });
-    }
+  const combinedPeerState = useMemo(() => {
+    const leaderboardAvatarEntries: Array<[string, string | null]> = [
+      ...(leaderboard?.total || []).map((row) => [row.userId, row.avatarUrl ?? null]),
+      ...(leaderboard?.when || []).map((row) => [row.userId, row.avatarUrl ?? null]),
+      ...(leaderboard?.where || []).map((row) => [row.userId, row.avatarUrl ?? null]),
+    ];
+    const avatarById = new Map<string, string | null>(leaderboardAvatarEntries);
 
     const mergePayload: Record<string, { displayName?: string | null; avatarUrl?: string | null }> = {};
+    const mergedMap = new Map<string, PeerRoundRow>();
+    const orderedPeers: PeerRoundRow[] = [];
 
-    const mapped = peers.map((peer, index) => {
-      const resolved = resolvePeerProfile(peer.userId, peer.displayName);
-      const avatarUrl = peer.avatarUrl ?? resolved?.avatarUrl ?? null;
-      const displayName = peer.displayName?.trim().length ? peer.displayName : (resolved?.displayName ?? 'Player');
-
+    const applyCachePayload = (userId?: string | null, displayName?: string | null, avatarUrl?: string | null) => {
       const cacheKeys: string[] = [];
-      if (peer.userId && peer.userId.trim().length > 0) {
-        cacheKeys.push(peer.userId.trim());
+      if (userId && userId.trim().length > 0) {
+        cacheKeys.push(userId.trim());
       }
-      const nameKey = makePeerNameKey(peer.displayName);
+      const nameKey = makePeerNameKey(displayName);
       if (nameKey) cacheKeys.push(nameKey);
 
       cacheKeys.forEach((key) => {
         if (!key) return;
         const existing = peerProfileCache[key];
-        const nextDisplay = displayName || existing?.displayName || '';
+        const nextDisplay = displayName && displayName.trim().length > 0
+          ? displayName.trim()
+          : existing?.displayName || '';
         const nextAvatar = avatarUrl ?? existing?.avatarUrl ?? null;
         if (nextDisplay === '' && nextAvatar === null) return;
+        if (existing && existing.displayName === nextDisplay && existing.avatarUrl === nextAvatar) {
+          return;
+        }
         mergePayload[key] = {
           displayName: nextDisplay,
           avatarUrl: nextAvatar,
         };
       });
+    };
+
+    const resolveAvatar = (userId?: string | null, primary?: string | null) => {
+      const uid = userId && userId.trim().length > 0 ? userId.trim() : null;
+      const explicit = uid ? avatarUrls[uid] ?? null : null;
+      const resolved = resolveCachedProfile(uid, primary)?.avatarUrl ?? null;
+      const leaderboardAvatar = uid ? avatarById.get(uid) ?? null : null;
+      const candidates = [primary, explicit, leaderboardAvatar, resolved];
+      for (const candidate of candidates) {
+        if (typeof candidate === 'string' && candidate.trim().length > 0) {
+          return candidate.trim();
+        }
+      }
+      return null;
+    };
+
+    const mapPeer = (peer: PeerRoundRow) => {
+      const resolved = resolveCachedProfile(peer.userId, peer.displayName);
+      const displayName = peer.displayName && peer.displayName.trim().length > 0
+        ? peer.displayName.trim()
+        : (resolved?.displayName ?? 'Player');
+      const avatarUrl = resolveAvatar(peer.userId, peer.avatarUrl);
+
+      applyCachePayload(peer.userId, displayName, avatarUrl);
 
       return {
         ...peer,
         displayName,
         avatarUrl,
         submitted: peer.submitted ?? false,
+      } satisfies PeerRoundRow;
+    };
+
+    const enrichWithSnapshot = (existing: PeerRoundRow, snap: SyncRoundScoreEntry): PeerRoundRow => {
+      const accuracy = Math.round((Number(snap.timeAccuracy ?? 0) + Number(snap.locationAccuracy ?? 0)) / 2);
+      return {
+        ...existing,
+        score: existing.score ?? 0,
+        accuracy: Number.isFinite(existing.accuracy) && existing.accuracy !== 0 ? existing.accuracy : accuracy,
+        xpTotal: existing.xpTotal ?? snap.xpTotal ?? 0,
+        xpDebt: existing.xpDebt ?? snap.xpDebt ?? 0,
+        accDebt: existing.accDebt ?? snap.accDebt ?? 0,
+        locationAccuracy: existing.locationAccuracy ?? snap.locationAccuracy ?? null,
+        timeAccuracy: existing.timeAccuracy ?? snap.timeAccuracy ?? null,
+        distanceKm: existing.distanceKm ?? snap.distanceKm ?? null,
+        guessYear: existing.guessYear ?? snap.guessYear ?? null,
+        guessLat: existing.guessLat ?? snap.guessLat ?? null,
+        guessLng: existing.guessLng ?? snap.guessLng ?? null,
+        submitted: existing.submitted || true,
+        hintsUsed: existing.hintsUsed ?? snap.hintsUsed ?? null,
       };
+    };
+
+    const buildFromSnapshot = (snap: SyncRoundScoreEntry): PeerRoundRow => {
+      const cached = resolveCachedProfile(snap.userId, snap.displayName);
+      const displayName = snap.displayName && snap.displayName.trim().length > 0
+        ? snap.displayName.trim()
+        : (cached?.displayName ?? 'Player');
+      const avatarUrl = resolveAvatar(snap.userId, avatarById.get(snap.userId) ?? null);
+
+      applyCachePayload(snap.userId, displayName, avatarUrl);
+
+      return {
+        userId: snap.userId,
+        displayName,
+        avatarUrl,
+        score: Math.max(0, Math.round(Number(snap.xpTotal ?? 0))),
+        accuracy: Math.round((Number(snap.timeAccuracy ?? 0) + Number(snap.locationAccuracy ?? 0)) / 2),
+        xpTotal: snap.xpTotal ?? 0,
+        xpDebt: snap.xpDebt ?? 0,
+        whenXpDebt: 0,
+        whereXpDebt: 0,
+        accDebt: snap.accDebt ?? 0,
+        whenAccDebt: 0,
+        whereAccDebt: 0,
+        xpWhere: null,
+        xpWhen: null,
+        locationAccuracy: snap.locationAccuracy ?? null,
+        timeAccuracy: snap.timeAccuracy ?? null,
+        distanceKm: snap.distanceKm ?? null,
+        guessYear: snap.guessYear ?? null,
+        guessLat: snap.guessLat ?? null,
+        guessLng: snap.guessLng ?? null,
+        actualLat: null,
+        actualLng: null,
+        submitted: true,
+        ready: false,
+        hintsUsed: snap.hintsUsed ?? null,
+        whenHints: null,
+        whereHints: null,
+        netAccuracy: null,
+      } satisfies PeerRoundRow;
+    };
+
+    (peers || []).forEach((peer) => {
+      const mapped = mapPeer(peer);
+      mergedMap.set(peer.userId, mapped);
+      orderedPeers.push(mapped);
     });
 
-    if (Object.keys(mergePayload).length > 0) {
-      mergePeerProfiles(mergePayload);
-    }
+    const leaderboardUserIds = new Set<string>([...avatarById.keys()]);
 
-    return mapped;
-  }, [peers, snapshotEntries, leaderboard.total, leaderboard.when, leaderboard.where, mergePeerProfiles, peerProfileCache]);
+    (snapshotEntries || []).forEach((snap) => {
+      if (!snap?.userId) return;
+      leaderboardUserIds.add(snap.userId);
+      if (mergedMap.has(snap.userId)) {
+        const enriched = enrichWithSnapshot(mergedMap.get(snap.userId)!, snap);
+        mergedMap.set(snap.userId, enriched);
+        const idx = orderedPeers.findIndex((peer) => peer.userId === snap.userId);
+        if (idx >= 0) {
+          orderedPeers[idx] = enriched;
+        }
+        return;
+      }
+
+      const mapped = buildFromSnapshot(snap);
+      mergedMap.set(snap.userId, mapped);
+      orderedPeers.push(mapped);
+    });
+
+    (leaderboard?.total || []).forEach((row) => leaderboardUserIds.add(row.userId));
+    (leaderboard?.when || []).forEach((row) => leaderboardUserIds.add(row.userId));
+    (leaderboard?.where || []).forEach((row) => leaderboardUserIds.add(row.userId));
+
+    leaderboardUserIds.forEach((userId) => {
+      if (!userId || mergedMap.has(userId)) return;
+      const row = (leaderboard?.total || []).find((entry) => entry.userId === userId)
+        || (leaderboard?.when || []).find((entry) => entry.userId === userId)
+        || (leaderboard?.where || []).find((entry) => entry.userId === userId);
+      if (!row) return;
+      const cached = resolveCachedProfile(userId, row.displayName);
+      const displayName = row.displayName && row.displayName.trim().length > 0
+        ? row.displayName.trim()
+        : (cached?.displayName ?? 'Player');
+      const avatarUrl = resolveAvatar(userId, row.avatarUrl ?? null);
+
+      applyCachePayload(userId, displayName, avatarUrl);
+
+      const placeholder: PeerRoundRow = {
+        userId,
+        displayName,
+        avatarUrl,
+        score: 0,
+        accuracy: Math.round(Number(row.value ?? 0)),
+        xpTotal: row.xpTotal ?? 0,
+        xpDebt: row.xpDebt ?? 0,
+        whenXpDebt: 0,
+        whereXpDebt: 0,
+        accDebt: row.accDebt ?? 0,
+        whenAccDebt: 0,
+        whereAccDebt: 0,
+        xpWhere: null,
+        xpWhen: null,
+        locationAccuracy: null,
+        timeAccuracy: null,
+        distanceKm: null,
+        guessYear: null,
+        guessLat: null,
+        guessLng: null,
+        actualLat: null,
+        actualLng: null,
+        submitted: true,
+        ready: false,
+        hintsUsed: row.hintsUsed ?? null,
+        whenHints: null,
+        whereHints: null,
+        netAccuracy: Number(row.value ?? 0),
+      };
+
+      mergedMap.set(userId, placeholder);
+      orderedPeers.push(placeholder);
+    });
+
+    const normalizedPeers = orderedPeers.map((peer) => {
+      const existing = mergedMap.get(peer.userId) ?? peer;
+      return existing;
+    });
+
+    return { peers: normalizedPeers, mergePayload };
+  }, [
+    peers,
+    snapshotEntries,
+    leaderboard.total,
+    leaderboard.when,
+    leaderboard.where,
+    peerProfileCache,
+    resolveCachedProfile,
+    avatarUrls,
+  ]);
+
+  const combinedPeers = combinedPeerState.peers;
+  const combinedPeerCachePayload = combinedPeerState.mergePayload;
+
+  useEffect(() => {
+    if (!combinedPeerCachePayload || Object.keys(combinedPeerCachePayload).length === 0) {
+      return;
+    }
+    mergePeerProfiles(combinedPeerCachePayload);
+  }, [combinedPeerCachePayload, mergePeerProfiles]);
+
+  useEffect(() => {
+    if (!combinedPeers || combinedPeers.length === 0) return;
+    const missingUserIds = Array.from(new Set(
+      combinedPeers
+        .map((peer) => (peer.userId && peer.userId.trim().length > 0 ? peer.userId.trim() : null))
+        .filter((id): id is string => !!id && !(id in avatarUrls)),
+    ));
+    if (missingUserIds.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const fetched = await fetchAvatarUrlsForUserIds(missingUserIds);
+        if (cancelled) return;
+
+        const mergedMap: Record<string, string | null> = {};
+        missingUserIds.forEach((id) => {
+          const resolved = Object.prototype.hasOwnProperty.call(fetched, id) ? fetched[id] : null;
+          mergedMap[id] = resolved ?? null;
+        });
+
+        if (Object.keys(mergedMap).length > 0) {
+          setAvatarUrls((prev) => ({ ...prev, ...mergedMap }));
+
+          const payload: Record<string, { displayName?: string | null; avatarUrl?: string | null }> = {};
+          combinedPeers.forEach((peer) => {
+            const uid = peer.userId && peer.userId.trim().length > 0 ? peer.userId.trim() : null;
+            if (!uid || !(uid in mergedMap)) return;
+            const avatarUrl = mergedMap[uid];
+            const cached = resolveCachedProfile(uid, peer.displayName);
+            const displayName = peer.displayName && peer.displayName.trim().length > 0
+              ? peer.displayName
+              : (cached?.displayName ?? null);
+            payload[uid] = {
+              displayName: displayName ?? undefined,
+              avatarUrl,
+            };
+          });
+
+          if (Object.keys(payload).length > 0) {
+            mergePeerProfiles(payload);
+          }
+        }
+      } catch (err) {
+        console.error('[CompeteSyncRoundResultsPage] Failed to fetch peer avatars', err);
+        setAvatarUrls((prev) => ({
+          ...prev,
+          ...Object.fromEntries(missingUserIds.map((id) => [id, prev[id] ?? null])),
+        }));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [combinedPeers, avatarUrls, mergePeerProfiles, resolveCachedProfile]);
 
   const layoutLeaderboards = useMemo(() => {
     const mapper = (rows: typeof leaderboard.total) =>
       [...rows]
-        .map((row) => ({
-          userId: row.userId,
-          displayName: row.displayName,
-          value: row.value,
-          hintsUsed: row.hintsUsed,
-          penalty: row.penalty ?? (row.accDebt ?? 0),
-          accDebt: (row as any).accDebt ?? 0,
-          avatarUrl: row.avatarUrl ?? null,
-        }))
+        .map((row) => {
+          const cached = resolveCachedProfile(row.userId, row.displayName);
+          const displayName = row.displayName && row.displayName.trim().length > 0
+            ? row.displayName
+            : (cached?.displayName ?? 'Player');
+          const avatarUrl = row.avatarUrl ?? cached?.avatarUrl ?? null;
+          return {
+            userId: row.userId,
+            displayName,
+            value: row.value,
+            hintsUsed: row.hintsUsed,
+            penalty: row.penalty ?? (row.accDebt ?? 0),
+            accDebt: (row as any).accDebt ?? 0,
+            avatarUrl,
+          };
+        })
         .sort((a, b) => {
           const valueDiff = (b.value ?? 0) - (a.value ?? 0);
           if (valueDiff !== 0) return valueDiff;
@@ -166,7 +398,7 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
       where: mapper(leaderboard.where),
       currentUserId: leaderboard.currentUserId,
     };
-  }, [leaderboard.total, leaderboard.when, leaderboard.where, leaderboard.currentUserId]);
+  }, [leaderboard.total, leaderboard.when, leaderboard.where, leaderboard.currentUserId, resolveCachedProfile]);
 
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
@@ -195,6 +427,12 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
     if (!playerSummary || !contextResult || !currentImage) return null;
     const derivedAccuracy = Math.round((Math.max(0, playerSummary.timeAccuracy) + Math.max(0, playerSummary.locationAccuracy)) / 2);
 
+    const cachedSelf = resolveCachedProfile(user?.id ?? null, profile?.display_name ?? user?.user_metadata?.display_name ?? null);
+    const selfAvatarUrl = cachedSelf?.avatarUrl
+      ?? profile?.avatar_image_url
+      ?? profile?.avatar_url
+      ?? (typeof user?.user_metadata?.avatar_url === 'string' ? user.user_metadata.avatar_url : null);
+
     return {
       imageId: currentImage.id,
       eventLat: playerSummary.eventLat,
@@ -221,8 +459,9 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
       confidence: playerSummary.confidence ?? 0,
       earnedBadges,
       isCorrect: playerSummary.isCorrect,
+      avatarUrl: selfAvatarUrl,
     };
-  }, [playerSummary, contextResult, currentImage, hintDebts, earnedBadges]);
+  }, [playerSummary, contextResult, currentImage, hintDebts, earnedBadges, profile?.avatar_image_url, profile?.avatar_url, profile?.display_name, user?.id, user?.user_metadata, resolveCachedProfile]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -342,7 +581,7 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
       return;
     }
 
-    const roster = peers || [];
+    const roster = combinedPeers || [];
     if (roster.length === 0) {
       allSubmittedRef.current = false;
       lastSubmittedCountRef.current = 0;
@@ -372,7 +611,7 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
         setForceRefreshingLeaderboards(false);
       })();
     }
-  }, [peers, roomId, layoutResult, refreshLeaderboards, refreshPeers, forceRefreshingLeaderboards]);
+  }, [combinedPeers, roomId, layoutResult, refreshLeaderboards, refreshPeers, forceRefreshingLeaderboards]);
 
   const totalRounds = images.length || 5;
   const isLastRound = oneBasedRound === totalRounds;
@@ -414,10 +653,10 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
       return fromServer;
     }
 
-    const fromPeers = peers.length;
+    const fromPeers = combinedPeers.length;
     const fromSubmissions = allSubmittedRef.current ? lastSubmittedCountRef.current : 0;
     return Math.max(fromPeers || 0, fromSubmissions || 0);
-  }, [resultsReadySummary.roundNumber, resultsReadySummary.totalPlayers, oneBasedRound, peers.length]);
+  }, [resultsReadySummary.roundNumber, resultsReadySummary.totalPlayers, oneBasedRound, combinedPeers.length]);
 
   const serverReadyCount = resultsReadySummary.roundNumber === oneBasedRound ? resultsReadySummary.readyCount : 0;
   const effectiveReadyCount = serverReadyCount + (localFallbackReady ? 1 : 0);
@@ -447,6 +686,18 @@ const CompeteSyncRoundResultsPage: React.FC = () => {
     if (!hasConfirmedAdvanceRef.current) return;
     setPendingAdvance(true);
   }, [allPlayersReady]);
+
+  // Fallback: if countdown hits 0 and server ack doesn’t arrive, auto-advance after a short delay
+  useEffect(() => {
+    if (nextRoundCountdown !== 0) return;
+    if (!hasConfirmedAdvanceRef.current) return;
+    if (navigationTriggeredRef.current) return;
+    // If server didn't ack within 3s after countdown reached 0, advance anyway
+    const t = window.setTimeout(() => {
+      setPendingAdvance(true);
+    }, 3000);
+    return () => window.clearTimeout(t);
+  }, [nextRoundCountdown]);
 
   useEffect(() => {
     if (!pendingAdvance) return;

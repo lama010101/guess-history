@@ -13,12 +13,20 @@ import LazyImage from '@/components/ui/LazyImage';
 import { Card, CardContent } from '@/components/ui/card';
 import { Calendar, MapPin, Settings as SettingsIcon, Send, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import GradientName from '@/components/ui/GradientName';
+import { getAvatarFrameGradient } from '@/utils/avatarGradient';
 
 // Helper function to format time as MM:SS
 const formatTime = (seconds: number): string => {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+const getInitial = (value: string | null | undefined) => {
+  const trimmed = (value ?? '').trim();
+  return trimmed.length > 0 ? trimmed[0]!.toUpperCase() : '?';
 };
 import { GameImage, useGame } from '@/contexts/GameContext';
 import { GuessCoordinates } from '@/types';
@@ -136,6 +144,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const [yearInput, setYearInput] = useState<string>('');
   const [yearInteracted, setYearInteracted] = useState(false);
   const [yearInputFocused, setYearInputFocused] = useState(false);
+  const pendingCommittedYearRef = useRef<number | null>(null);
   // Submit guidance message shown only when clicking a disabled Submit button
   const [submitPrompt, setSubmitPrompt] = useState<string | null>(null);
   // Show red alert messages inline on the relevant cards
@@ -152,6 +161,13 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   const yearInputRef = useRef<HTMLInputElement>(null);
   const submitButtonDebugRef = useRef<string>('');
   useEffect(() => {
+    if (pendingCommittedYearRef.current != null) {
+      if (selectedYear === pendingCommittedYearRef.current) {
+        pendingCommittedYearRef.current = null;
+      } else {
+        return;
+      }
+    }
     if (pendingYearDraftRef.current !== '') return;
     if (typeof selectedYear === 'number') {
       setYearInput(String(selectedYear));
@@ -424,13 +440,14 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
 
   const waitingPeersList = useMemo(() => {
     if (!waitingForPeers) {
-      return [] as Array<{ id: string; name: string }>;
+      return [] as Array<{ id: string; name: string; avatarUrl: string | null }>;
     }
     return peerRoster
       .filter((peer) => !peer.submitted)
       .map((peer) => ({
         id: peer.id,
         name: (peer.displayName || 'Player').trim() || 'Player',
+        avatarUrl: peer.avatarUrl ?? null,
       }));
   }, [waitingForPeers, peerRoster]);
 
@@ -440,6 +457,12 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
     const remaining = Math.max(totalParticipants - submittedCount, 0);
     return Math.max(remaining - waitingPeersList.length, 0);
   }, [waitingForPeers, totalParticipants, submittedCount, waitingPeersList]);
+
+  const waitingCountdown = useMemo(() => {
+    if (!hudTimerEnabled || !waitingForPeers) return null;
+    const seconds = Math.max(0, Math.min(15, Math.ceil(remainingTime)));
+    return formatTime(seconds);
+  }, [hudTimerEnabled, waitingForPeers, remainingTime]);
 
   if (!image) {
     return (
@@ -539,7 +562,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           <Card className={cn("overflow-hidden dark:bg-[#333333] transition-all", (highlightInputs || highlightWhen) && "ring-2 ring-orange-500 animate-pulse")}> 
             <CardContent className="px-4 pt-3 pb-1 flex flex-col min-h-[7.5rem] md:min-h-[9rem]">
               <div className="flex flex-wrap items-center justify-between mb-[0.1875rem] gap-x-2 gap-y-1">
-                <h2 className={cn("font-normal text-base flex items-center min-w-0 h-6 leading-6 md:h-auto md:leading-normal", titlesAnimating ? "text-orange-400" : "text-gray-900 dark:text-white") }>
+                <h2 className={cn("font-normal text-base flex items-center min-w-0 h-6 leading-6 md:h-auto md:leading-normal", titlesAnimating ? "text-orange-400" : "text-orange-500 dark:text-orange-400") }>
                   <Calendar className="mr-2 h-4 w-4 text-gray-400 flex-shrink-0" />
                   <span>{titlesAnimating ? whenFull.slice(0, whenAnimIndex) : whenFull}</span>
                 </h2>
@@ -582,6 +605,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                         if (!Number.isNaN(parsed)) {
                           const clamped = Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, parsed));
                           if (clamped !== selectedYear) onYearChange(clamped);
+                          pendingCommittedYearRef.current = clamped;
                           setYearInput(String(clamped));
                           setPendingYearDraft('');
                           pendingYearDraftRef.current = '';
@@ -604,6 +628,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                           if (!Number.isNaN(parsed)) {
                             const clamped = Math.max(YEAR_RANGE_MIN, Math.min(YEAR_RANGE_MAX, parsed));
                             if (clamped !== selectedYear) onYearChange(clamped);
+                            pendingCommittedYearRef.current = clamped;
                             setYearInput(String(clamped));
                             setPendingYearDraft('');
                             pendingYearDraftRef.current = '';
@@ -616,7 +641,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                         (e.currentTarget as HTMLInputElement).blur();
                       }
                     }}
-                    placeholder={showYearAlert ? 'You must guess the year' : 'Type here or slide the year'}
+                    placeholder={showYearAlert ? 'You must guess the year' : 'Type or slide the year'}
                     className={
                       cn(
                         "appearance-none pl-2 pr-1 py-0 h-6 leading-6 md:h-auto md:leading-normal bg-transparent focus:outline-none focus:ring-1 focus:ring-orange-400 rounded text-right md:shrink-0 text-base relative top-[2px] md:top-0",
@@ -651,6 +676,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
                       const clampedYear = Math.min(Math.max(nextYear, YEAR_RANGE_MIN), YEAR_RANGE_MAX);
                       onYearChange(clampedYear);
                       setYearInteracted(true);
+                      pendingCommittedYearRef.current = clampedYear;
                       setYearInput(String(clampedYear));
                       if (pendingYearDraftRef.current !== '') {
                         setPendingYearDraft('');
@@ -666,7 +692,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
           <Card className={cn("overflow-hidden dark:bg-[#333333] flex-1 transition-all", (highlightInputs || highlightWhere) && "ring-2 ring-orange-500 animate-pulse")}> 
             <CardContent className="p-4 flex flex-col h-full">
               <div className="flex items-center justify-between mb-2">
-                <h2 className={cn("font-normal text-base flex items-center", titlesAnimating ? "text-orange-400" : "text-gray-900 dark:text-white") }>
+                <h2 className={cn("font-normal text-base flex items-center", titlesAnimating ? "text-orange-400" : "text-orange-500 dark:text-orange-400") }>
                   <MapPin className="mr-2 h-4 w-4 text-gray-400" />
                   <span>{titlesAnimating ? whereFull.slice(0, whereAnimIndex) : whereFull}</span>
                 </h2>
@@ -819,28 +845,73 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
       {/* Submitting overlay */}
       {(isSubmitting || waitingForPeers) && (
         <div className="fixed inset-0 z-[10000] bg-black/60 flex items-center justify-center">
-          <div className="flex flex-col items-center">
-            <div className="h-10 w-10 rounded-full border-4 border-white/30 border-t-white animate-spin mb-3" />
-            {waitingForPeers ? (
-              <div className="text-white text-sm text-center">
-                <div className="uppercase tracking-[0.2em] text-xs text-white/60 font-semibold">Waiting for:</div>
-                <ul className="mt-2 space-y-1">
-                  {waitingPeersList.map((peer) => (
-                    <li key={peer.id} className="flex items-center justify-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full bg-amber-300 animate-pulse" aria-hidden="true" />
-                      <span className="font-medium">{peer.name}</span>
-                    </li>
-                  ))}
-                  {waitingPeersList.length === 0 && waitingUnknownCount === 0 && (
-                    <li className="text-white/80 font-medium">Other players…</li>
+          <div
+            className={cn(
+              "flex h-full w-full flex-col items-center px-4 py-8",
+              waitingForPeers ? "justify-between" : "justify-center",
+            )}
+          >
+            <div
+              className={cn(
+                "flex flex-col items-center justify-center",
+                waitingForPeers ? "flex-1" : undefined,
+              )}
+            >
+              <div className="h-10 w-10 rounded-full border-4 border-white/30 border-t-white animate-spin mb-3" />
+              {waitingForPeers ? (
+                <div className="text-white text-sm text-center">
+                  <div className="uppercase tracking-[0.2em] text-xs text-white/60 font-semibold">Waiting for:</div>
+                  <ul className="mt-3 space-y-2">
+                    {waitingPeersList.map((peer) => {
+                      const seed = peer.id || peer.name;
+                      return (
+                        <li key={peer.id} className="flex items-center justify-center">
+                          <div className="flex items-center gap-3 rounded-full border border-white/10 bg-black/35 px-4 py-2 shadow-sm">
+                            <div
+                              className="rounded-full p-[2px]"
+                              style={{ background: getAvatarFrameGradient(seed) }}
+                            >
+                              <Avatar className="h-9 w-9 border border-[#1d2026] bg-[#262930]">
+                                {peer.avatarUrl ? (
+                                  <AvatarImage src={peer.avatarUrl} alt={`${peer.name} avatar`} />
+                                ) : null}
+                                <AvatarFallback className="bg-transparent text-sm font-semibold text-white">
+                                  {getInitial(peer.name)}
+                                </AvatarFallback>
+                              </Avatar>
+                            </div>
+                            <GradientName seed={seed} className="max-w-[12rem] truncate text-sm font-semibold">
+                              {peer.name}
+                            </GradientName>
+                          </div>
+                        </li>
+                      );
+                    })}
+                    {waitingPeersList.length === 0 && waitingUnknownCount === 0 && (
+                      <li className="text-white/80 font-medium">Other players…</li>
+                    )}
+                    {waitingUnknownCount > 0 && waitingPeersList.length === 0 && (
+                      <li className="text-white/80 font-medium">+{waitingUnknownCount} more</li>
+                    )}
+                  </ul>
+                  {waitingCountdown && (
+                    <div className="mt-12 text-3xl font-bold tracking-[0.3em] text-red-500">
+                      {waitingCountdown}
+                    </div>
                   )}
-                  {waitingUnknownCount > 0 && (
-                    <li className="text-white/80 font-medium">+{waitingUnknownCount} more</li>
-                  )}
-                </ul>
-              </div>
-            ) : (
-              <div className="text-white text-sm">Preparing results...</div>
+                </div>
+              ) : (
+                <div className="text-white text-sm">Preparing results...</div>
+              )}
+            </div>
+            {waitingForPeers && (
+              <Button
+                type="button"
+                className="w-full max-w-sm rounded-full border border-white/30 bg-white/10 px-6 py-3 text-sm font-semibold text-white hover:bg-white/20"
+                onClick={() => onConfirmNavigation(() => onNavigateHome())}
+              >
+                Cancel & Return Home
+              </Button>
             )}
           </div>
         </div>

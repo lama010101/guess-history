@@ -186,7 +186,7 @@ const GameRoundPage: React.FC = () => {
     submitted: boolean;
     recentlySubmitted: boolean;
   }>>([]);
-  const [lobbyRoster, setLobbyRoster] = useState<Array<{ id: string; name: string; ready: boolean; host: boolean }>>([]);
+  const [lobbyRoster, setLobbyRoster] = useState<Array<{ id: string; name: string; ready: boolean; host: boolean; userId?: string | null; avatarUrl?: string | null }>>([]);
   const [lobbyParticipantCount, setLobbyParticipantCount] = useState<number>(0);
   const debugCompete = useCallback((label: string, payload?: Record<string, unknown>) => {
     if (!import.meta.env.DEV) return;
@@ -527,18 +527,15 @@ const GameRoundPage: React.FC = () => {
     if (!isCompeteMode) return;
     if (!Number.isFinite(roundNumber) || payload.roundNumber !== roundNumber) return;
 
-    setSubmittedCounts((prev) => {
-      const nextSubmitted = Math.max(prev.submitted, payload.submittedCount);
+    setSubmittedCounts((_prev) => {
       const totalFromPayload = Math.max(0, payload.totalPlayers ?? 0, payload.lobbySize ?? 0);
-      const nextTotal = Math.max(prev.total, totalFromPayload);
-      maxExpectedTotalRef.current = Math.max(maxExpectedTotalRef.current, nextTotal);
       const nextCounts = {
-        submitted: nextSubmitted,
-        total: nextTotal,
+        submitted: Math.max(0, payload.submittedCount ?? 0),
+        total: totalFromPayload,
       };
+      maxExpectedTotalRef.current = Math.max(maxExpectedTotalRef.current, nextCounts.total);
       debugCompete('submission:updateCounts', {
         payload,
-        prev,
         next: nextCounts,
         maxExpectedTotal: maxExpectedTotalRef.current,
       });
@@ -601,17 +598,9 @@ const GameRoundPage: React.FC = () => {
     const submittedCount = payload.submittedCount ?? 0;
     const allSubmitted = reportedTotal > 0 && submittedCount >= reportedTotal;
 
-    setSubmittedCounts((prev) => {
-      const nextCounts = {
-        submitted: Math.max(prev.submitted, submittedCount),
-        total: Math.max(prev.total, reportedTotal),
-      };
-      debugCompete('roundComplete:updateCounts', {
-        payload,
-        prev,
-        next: nextCounts,
-        allSubmitted,
-      });
+    setSubmittedCounts((_prev) => {
+      const nextCounts = { submitted: submittedCount, total: reportedTotal };
+      debugCompete('roundComplete:updateCounts', { payload, next: nextCounts, allSubmitted });
       return nextCounts;
     });
     setWaitingForPeers(!allSubmitted);
@@ -641,7 +630,7 @@ const GameRoundPage: React.FC = () => {
     roomCode: isCompeteMode ? roomId : null,
     displayName,
     userId: user?.id,
-    enabled: isCompeteMode && !!roomId,
+    enabled: isCompeteMode && !!roomId && !!user?.id,
     onSubmission: handleSubmissionBroadcast,
     onRoundComplete: handleRoundCompleteBroadcast,
     onRoster: (players) => {
@@ -659,16 +648,17 @@ const GameRoundPage: React.FC = () => {
         const raw = player as Record<string, unknown>;
         const id = typeof player.id === 'string' ? player.id.trim() : '';
         const name = typeof player.name === 'string' ? player.name.trim() : '';
-        const normalizedKey = name.toLowerCase() || id;
+        const rawUserId = typeof raw.userId === 'string' ? raw.userId.trim() : '';
+        const normalizedKey = rawUserId || id || (name ? `name:${name.toLowerCase()}` : '');
         if (!normalizedKey) return;
         if (!deduped.has(normalizedKey)) {
-          const userId = typeof raw.userId === 'string' ? raw.userId.trim() : undefined;
+          const userId = rawUserId || undefined;
           const avatarPayload = typeof raw.avatar === 'string' ? raw.avatar.trim() : '';
           const avatarUrl = avatarPayload.length > 0
             ? avatarPayload
             : (typeof raw.avatarUrl === 'string' ? raw.avatarUrl.trim() : undefined);
           deduped.set(normalizedKey, {
-            id: id || normalizedKey,
+            id: userId || id || normalizedKey,
             name,
             ready: !!player.ready,
             host: !!player.host,
@@ -1659,27 +1649,41 @@ const GameRoundPage: React.FC = () => {
       })
       .filter((entry) => entry.id.trim().length > 0 && !entry.isSelf);
 
-    if (mappedDbPeers.length > 0) return mappedDbPeers;
+    // Combine DB peers with PartyKit lobby fallback to show non-submitted players too
+    const combinedMap = new Map<string, {
+      id: string;
+      displayName: string;
+      avatarUrl: string | null;
+      isSelf: boolean;
+      submitted: boolean;
+      recentlySubmitted: boolean;
+    }>();
+    mappedDbPeers.forEach((p) => combinedMap.set(p.id, p));
 
-    // Fallback to PartyKit lobby roster when DB peers are unavailable
-    const mappedLobby = (lobbyRoster || [])
+    (lobbyRoster || [])
       .filter((p) => (p?.name || '').trim().length > 0)
-      .map((p) => {
+      .forEach((p) => {
         const trimmedName = (p.name || '').trim();
+        const uid = (typeof p.userId === 'string' && p.userId.trim().length > 0) ? p.userId.trim() : '';
+        const idVal = uid || `conn:${p.id}`;
+        if (combinedMap.has(idVal)) return;
         const nameKey = trimmedName ? `name:${trimmedName.toLowerCase()}` : '';
         const cached = nameKey ? peerProfileCache[nameKey] : undefined;
-        return {
-          id: `conn:${p.id}`,
+        const entry = {
+          id: idVal,
           displayName: cached?.displayName ?? trimmedName,
           avatarUrl: cached?.avatarUrl ?? null,
-          isSelf: trimmedName.toLowerCase() === selfNameLc,
+          isSelf: (uid && uid === (user?.id ?? '')) || trimmedName.toLowerCase() === selfNameLc,
           submitted: false,
           recentlySubmitted: !!recentSubmitterIds[nameKey],
         };
-      })
-      .filter((entry) => !entry.isSelf);
+        if (!entry.isSelf) {
+          combinedMap.set(idVal, entry);
+        }
+      });
 
-    if (mappedLobby.length > 0) return mappedLobby;
+    const combinedList = Array.from(combinedMap.values());
+    if (combinedList.length > 0) return combinedList;
 
     // Final fallback: build roster from cached profiles (by name AND userId keys)
     const cachedMap = new Map<string, { id: string; displayName: string; avatarUrl: string | null; isNameKey: boolean }>();
@@ -1783,6 +1787,19 @@ const GameRoundPage: React.FC = () => {
 
     setCachedPeerRoster([]);
   }, [isCompeteMode, computedPeerRoster]);
+
+  // Reset waiting/submission counters on round change to avoid stale totals bleeding into next rounds
+  useEffect(() => {
+    if (!isCompeteMode) return;
+    setWaitingForPeers(false);
+    setSubmittedCounts({ submitted: 0, total: 0 });
+    setHasSubmittedThisRound(false);
+    setHasTimedOut(false);
+    submittedPeerIdsRef.current.clear();
+    recentSubmitterIdsRef.current = {};
+    setRecentSubmitterIds({});
+    maxExpectedTotalRef.current = 0;
+  }, [isCompeteMode, roomId, roundNumber]);
 
   const peerRoster = useMemo(() => {
     if (!isCompeteMode) return [] as typeof cachedPeerRoster;
@@ -2310,11 +2327,16 @@ const GameRoundPage: React.FC = () => {
       emitSubmission();
 
       toast({
-        title: "Time's Up!",
-        description: "Your guess was automatically submitted.",
+        duration: 3000,
+        title: <span className="text-base font-semibold leading-tight">Time's Up!</span>,
+        description: (
+          <span className="text-[15px] leading-snug">
+            Your guess was automatically submitted.
+          </span>
+        ),
         variant: "info",
         className:
-          "bg-white/80 text-black border border-gray-200 [&_[toast-close]]:opacity-100 [&_[toast-close]]:text-black [&_[toast-close]]:hover:text-black [&_[toast-close]]:focus:opacity-100",
+          "bg-white/90 text-black border border-gray-200 [&_[toast-close]]:opacity-100 [&_[toast-close]]:text-black [&_[toast-close]]:hover:text-black [&_[toast-close]]:focus:opacity-100",
       });
 
       if (!isCompeteMode && roomId) {

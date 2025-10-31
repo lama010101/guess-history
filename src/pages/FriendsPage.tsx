@@ -303,7 +303,11 @@ const FriendsPage = ({ showHeading = true }: FriendsPageProps) => {
       // Remove from search results and all users
       setSearchResults(searchResults.filter(u => u.id !== friend.id));
       setAllUsers(allUsers.filter(u => u.id !== friend.id));
-      
+
+      try {
+        window.dispatchEvent(new CustomEvent('gh:friends:added', { detail: { friendId: friend.id } }));
+      } catch {}
+
       toast.success(`Added ${friend.display_name || 'User'} as a friend`);
     } catch (error) {
       console.error('Error adding friend:', error);
@@ -340,7 +344,11 @@ const FriendsPage = ({ showHeading = true }: FriendsPageProps) => {
         };
         setAllUsers([...allUsers, userToAdd]);
       }
-      
+
+      try {
+        window.dispatchEvent(new CustomEvent('gh:friends:removed', { detail: { friendId } }));
+      } catch {}
+
       toast.success('Friend removed');
     } catch (error) {
       console.error('Error removing friend:', error);

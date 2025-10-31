@@ -287,6 +287,21 @@ export const NavProfile = () => {
               <span>Profile</span>
             </Link>
           </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link
+              to="/solo/account"
+              className="flex items-center"
+              onClick={(e) => {
+                if (isGuest) {
+                  e.preventDefault();
+                  setShowAuthModal(true);
+                }
+              }}
+            >
+              <UserCog className="mr-2 h-4 w-4" />
+              <span>Account</span>
+            </Link>
+          </DropdownMenuItem>
 
 
           <DropdownMenuItem

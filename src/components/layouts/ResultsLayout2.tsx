@@ -13,6 +13,7 @@ import { useSettingsStore } from '@/lib/useSettingsStore';
 import { HINT_TYPE_NAMES } from '@/constants/hints';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { GradientName } from '@/components/ui/GradientName';
 import { getAvatarFrameGradient } from '@/utils/avatarGradient';
 import { cn } from '@/lib/utils';
 import type { PeerRoundRow } from '@/hooks/useRoundPeers';
@@ -492,7 +493,12 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
                         </Avatar>
                       </div>
                       <div className="flex flex-col">
-                        <span className={cn(baseNameClass, isHighlighted && highlightedNameClass)}>{rowName}</span>
+                        <GradientName
+                          seed={entry.userId || rawName}
+                          className={cn('text-sm', baseNameClass, isHighlighted && highlightedNameClass)}
+                        >
+                          {rowName}
+                        </GradientName>
                         {hintText ? (
                           <span className="text-xs text-red-400 font-semibold">{hintText}</span>
                         ) : null}
@@ -766,7 +772,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
           <div className="space-y-4">
             <div className="bg-white dark:bg-[#333333] rounded-2xl shadow-lg p-4">
               <div className="border-b border-border pb-3 mb-3 flex justify-between items-center">
-                <h2 className="font-normal text-lg text-gray-900 dark:text-gray-100 flex items-center">
+                <h2 className="font-normal text-lg text-orange-500 dark:text-orange-400 flex items-center">
                   <Calendar className="mr-2 h-4 w-4" />
                   When
                 </h2>
@@ -821,7 +827,7 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
 
             <div className="bg-white dark:bg-[#333333] rounded-2xl shadow-lg p-4">
               <div className="border-b border-border pb-3 mb-3 flex justify-between items-center">
-                <h2 className="font-normal text-lg text-gray-900 dark:text-gray-100 flex items-center">
+                <h2 className="font-normal text-lg text-orange-500 dark:text-orange-400 flex items-center">
                   <MapPin className="mr-2 h-4 w-4" />
                   Where
                 </h2>

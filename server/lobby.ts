@@ -165,7 +165,7 @@ export default class Lobby implements Party.Server {
   private playerUserIds = new Map<string, string | null>();
   private devInviteBypassLogged = false;
   // First join becomes host
-  private hostId: string | null = null;
+  private hostKey: string | null = null;
   // Start flag to avoid duplicate starts
   private started = false;
   // Timer settings (host-controlled)
@@ -182,10 +182,13 @@ export default class Lobby implements Party.Server {
   private expectedParticipants = 0;
   private expectedParticipantsByRound = new Map<number, number>();
   private resultsReadyByRound = new Map<number, Set<string>>();
+  // Delay host reassignment to survive brief reconnects/HMR
+  private hostReassignTimeout: any = null;
+  private hostReassignGraceMs: number = 15000;
 
   constructor(readonly room: Party.Room) {}
 
-  // TODO: enforceInviteToken(token: string): Promise<boolean>
+  // TODO: enforceInviteToken(token: string): Promise<boolean)
   // Validate invite token using HMAC when implemented
   private async enforceInviteToken(token?: string): Promise<boolean> {
     const env = (this.room.env as unknown as Env) || {};
@@ -231,6 +234,25 @@ export default class Lobby implements Party.Server {
     } catch (e) {
       console.warn("lobby: invite token verification failed", e);
       return false;
+    }
+  }
+
+  // Load previously persisted host user_id for this room, if any
+  private async fetchPersistedHostUserId(): Promise<string | null> {
+    const env = (this.room.env as unknown as Env) || {};
+    if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return null;
+    const headers = this.supabaseHeaders(env)!;
+    const url = `${env.SUPABASE_URL}/rest/v1/session_players?room_id=eq.${encodeURIComponent(this.room.id)}&is_host=eq.true&select=user_id&limit=1`;
+    try {
+      const res = await fetch(url, { headers });
+      if (!res.ok) return null;
+      type Row = { user_id?: string | null };
+      const rows = (await res.json()) as Row[];
+      const uid = rows && rows[0] && typeof rows[0].user_id === 'string' ? rows[0].user_id!.trim() : '';
+      return uid && uid.length > 0 ? uid : null;
+    } catch (err) {
+      console.warn('lobby: fetchPersistedHostUserId exception', err);
+      return null;
     }
   }
 
@@ -427,19 +449,27 @@ export default class Lobby implements Party.Server {
     }
   }
 
-  private async markHostFlags(previousHostConn: string | null, nextHostConn: string | null) {
-    if (previousHostConn && previousHostConn !== nextHostConn) {
-      const prevUserId = this.playerUserIds.get(previousHostConn);
-      if (prevUserId) {
-        await this.patchSessionPlayerRow(prevUserId, { is_host: false });
-      }
+  private async markHostFlags(previousHostKey: string | null, nextHostKey: string | null) {
+    const prevUserId = previousHostKey && previousHostKey.startsWith('user:') ? previousHostKey.slice(5) : null;
+    const nextUserId = nextHostKey && nextHostKey.startsWith('user:') ? nextHostKey.slice(5) : null;
+    if (prevUserId && prevUserId !== nextUserId) {
+      await this.patchSessionPlayerRow(prevUserId, { is_host: false });
     }
-    if (nextHostConn) {
-      const nextUserId = this.playerUserIds.get(nextHostConn);
-      if (nextUserId) {
-        await this.patchSessionPlayerRow(nextUserId, { is_host: true });
-      }
+    if (nextUserId) {
+      await this.patchSessionPlayerRow(nextUserId, { is_host: true });
     }
+  }
+
+  private logHostChange(previousHostKey: string | null, nextHostKey: string | null, reason: string) {
+    try {
+      console.warn('lobby: host change', {
+        roomId: this.room.id,
+        previousHostKey,
+        nextHostKey,
+        reason,
+        connected: Array.from(this.players.keys()).length,
+      });
+    } catch {}
   }
 
   private async persistChat(message: string) {
@@ -563,10 +593,127 @@ export default class Lobby implements Party.Server {
       id,
       name,
       ready: this.ready.get(id) === true,
-      host: this.hostId === id,
+      host: this.hostKey === this.participantKey(id),
       userId: this.playerUserIds.get(id) ?? null,
     }));
     this.broadcast({ type: "roster", players: roster });
+  }
+
+  private async removeParticipant(
+    connId: string,
+    options: { closeCode?: number; closeReason?: string; reason?: "kick" | "leave" } = {},
+  ) {
+    const { closeCode, closeReason, reason } = options;
+
+    if (typeof closeCode === "number") {
+      const targetConn = this.conns.get(connId);
+      if (targetConn) {
+        try {
+          targetConn.close(closeCode, closeReason ?? "");
+        } catch (err) {
+          console.warn("lobby: error closing target connection during removal", err);
+        }
+      }
+    }
+
+    this.conns.delete(connId);
+
+    const name = this.players.get(connId);
+    if (!name) return;
+
+    this.players.delete(connId);
+    this.ready.delete(connId);
+
+    const userId = this.playerUserIds.get(connId) ?? null;
+    const participantKey = userId && userId.length > 0 ? `user:${userId}` : `conn:${connId}`;
+
+    if (userId) {
+      await this.patchSessionPlayerRow(userId, { ready: false });
+    }
+    this.playerUserIds.delete(connId);
+
+    this.submissionsByRound.forEach((set) => {
+      set.delete(participantKey);
+    });
+
+    this.activeByRound.forEach((set, roundNumber) => {
+      if (set.delete(participantKey)) {
+        const lobbySizeNow = this.uniqueParticipantCount();
+        const submissionsCount = this.submissionsByRound.get(roundNumber)?.size ?? 0;
+        const newExpected = Math.max(set.size, submissionsCount, lobbySizeNow);
+        this.expectedParticipantsByRound.set(roundNumber, newExpected);
+      }
+    });
+
+    for (const [roundNumber, readySet] of this.resultsReadyByRound.entries()) {
+      readySet.delete(participantKey);
+      await this.broadcastResultsReadyForRound(roundNumber);
+    }
+
+    const lobbySizeAfterRemoval = this.uniqueParticipantCount();
+    this.expectedParticipants = Math.max(lobbySizeAfterRemoval, this.expectedParticipants - 1);
+
+    for (const [roundNumber, submissions] of this.submissionsByRound.entries()) {
+      const submittedCount = submissions.size;
+      const activeSize = this.activeByRound.get(roundNumber)?.size ?? 0;
+      const totalPlayers = Math.max(activeSize, submittedCount, lobbySizeAfterRemoval);
+      if (submittedCount >= totalPlayers && !this.completedRounds.has(roundNumber)) {
+        this.completedRounds.add(roundNumber);
+        const completePayload: RoundCompleteMsg = {
+          type: "round-complete",
+          roundNumber,
+          submittedCount,
+          totalPlayers,
+          lobbySize: lobbySizeAfterRemoval,
+        };
+        this.broadcast(completePayload);
+        await this.logEvent("round-complete", completePayload);
+        this.submissionsByRound.delete(roundNumber);
+        const nextExpected = Math.max(this.expectedParticipants, submittedCount);
+        this.expectedParticipants = nextExpected;
+        this.expectedParticipantsByRound.set(roundNumber + 1, nextExpected);
+      }
+    }
+
+    if (this.hostKey && this.hostKey === participantKey) {
+      const stillPresent = Array.from(this.players.keys()).some((id) => this.participantKey(id) === this.hostKey);
+      if (!stillPresent) {
+        // If host was kicked, reassign immediately. Otherwise, delay to survive brief reconnects.
+        if (reason === 'kick') {
+          const previousHost = this.hostKey;
+          const first = this.players.keys().next();
+          this.hostKey = first.done ? null : this.participantKey(first.value);
+          await this.markHostFlags(previousHost, this.hostKey);
+          this.logHostChange(previousHost, this.hostKey, 'kick-reassign');
+        } else {
+          if (this.hostReassignTimeout) {
+            try { clearTimeout(this.hostReassignTimeout); } catch {}
+            this.hostReassignTimeout = null;
+          }
+          const prev = this.hostKey;
+          this.hostReassignTimeout = setTimeout(async () => {
+            try {
+              const hostStillAbsent = Array.from(this.players.keys()).every((id) => this.participantKey(id) !== prev);
+              if (hostStillAbsent && this.hostKey === prev) {
+                const previousHost = this.hostKey;
+                const first = this.players.keys().next();
+                this.hostKey = first.done ? null : this.participantKey(first.value);
+                await this.markHostFlags(previousHost, this.hostKey);
+                this.logHostChange(previousHost, this.hostKey, 'grace-reassign');
+                this.broadcastRoster();
+              }
+            } catch (err) {
+              console.warn("lobby: error during delayed host reassignment", err);
+            } finally {
+              this.hostReassignTimeout = null;
+            }
+          }, this.hostReassignGraceMs);
+        }
+      }
+    }
+
+    this.broadcastRoster();
+    await this.logEvent(reason === "kick" ? "kick" : "leave", { id: connId, name });
   }
 
   async onConnect(conn: Party.Connection, _ctx: Party.ConnectionContext) {
@@ -605,19 +752,35 @@ export default class Lobby implements Party.Server {
 
           this.players.set(conn.id, effectiveName);
           this.playerUserIds.set(conn.id, msg.userId ?? null);
-          // Assign host if none
-          const previousHost = this.hostId;
-          if (!this.hostId) this.hostId = conn.id;
+          // Assign host if none (prefer persisted host from DB to survive server restarts)
+          const previousHost = this.hostKey;
+          const connKey = this.participantKey(conn.id);
+          if (!this.hostKey) {
+            const persistedHostUserId = await this.fetchPersistedHostUserId().catch(() => null);
+            if (persistedHostUserId && persistedHostUserId.length > 0 && msg.userId && msg.userId === persistedHostUserId) {
+              this.hostKey = `user:${persistedHostUserId}`;
+              this.logHostChange(previousHost, this.hostKey, 'adopt-persisted-host');
+            } else {
+              this.hostKey = connKey;
+              this.logHostChange(previousHost, this.hostKey, 'first-join');
+            }
+          }
+          // If the original host participant just rejoined, cancel any pending reassignment
+          if (this.hostReassignTimeout && this.hostKey && this.hostKey === connKey) {
+            try { clearTimeout(this.hostReassignTimeout); } catch {}
+            this.hostReassignTimeout = null;
+            this.logHostChange(previousHost, this.hostKey, 'cancel-reassign-on-rejoin');
+          }
           // New joins are not ready by default
           this.ready.set(conn.id, false);
           if (msg.userId) {
             await this.ensureSessionPlayerRow(msg.userId, {
               display_name: effectiveName,
-              is_host: this.hostId === conn.id,
+              is_host: this.hostKey === connKey,
               ready: false,
             });
-            if (previousHost !== this.hostId) {
-              await this.markHostFlags(previousHost, this.hostId);
+            if (previousHost !== this.hostKey) {
+              await this.markHostFlags(previousHost, this.hostKey);
             }
           }
           this.broadcastRoster();
@@ -625,7 +788,7 @@ export default class Lobby implements Party.Server {
           conn.send(
             JSON.stringify({
               type: "hello",
-              you: { id: conn.id, name: effectiveName, host: this.hostId === conn.id },
+              you: { id: conn.id, name: effectiveName, host: this.hostKey === this.participantKey(conn.id) },
             } satisfies HelloMsg)
           );
           // Send current timer settings to the newly joined client
@@ -658,8 +821,8 @@ export default class Lobby implements Party.Server {
         }
 
         if (msg.type === "settings") {
-          // Only host can adjust settings
-          if (conn.id !== this.hostId) return;
+          // Only host participant can adjust settings
+          if (this.participantKey(conn.id) !== this.hostKey) return;
           if (typeof msg.timerSeconds === "number") {
             // Clamp as defense in depth; zod already validates
             const clamped = Math.max(5, Math.min(600, msg.timerSeconds));
@@ -785,32 +948,11 @@ export default class Lobby implements Party.Server {
         }
 
         if (msg.type === "kick") {
-          // Only host can kick other players
-          if (conn.id !== this.hostId) return;
+          // Only host participant can kick other players
+          if (this.participantKey(conn.id) !== this.hostKey) return;
           const targetId = msg.targetId;
           if (!this.players.has(targetId)) return;
-          try {
-            const target = this.conns.get(targetId);
-            if (target) {
-              target.close(4000, "kicked by host");
-            }
-          } catch (err) {
-            console.warn("lobby: error closing target connection during kick", err);
-          }
-          // Cleanup state in case close event arrives later
-          this.players.delete(targetId);
-          this.ready.delete(targetId);
-          const targetUserId = this.playerUserIds.get(targetId);
-          if (targetUserId) {
-            await this.patchSessionPlayerRow(targetUserId, { ready: false, is_host: false });
-          }
-          if (this.hostId === targetId) {
-            const first = this.players.keys().next();
-            const previousHost = this.hostId;
-            this.hostId = first.done ? null : first.value;
-            await this.markHostFlags(previousHost, this.hostId);
-          }
-          this.broadcastRoster();
+          await this.removeParticipant(targetId, { closeCode: 4000, closeReason: "kicked by host", reason: "kick" });
           return;
         }
 
@@ -871,18 +1013,10 @@ export default class Lobby implements Party.Server {
           submissions.add(participantKey);
 
           const submittedCount = submissions.size;
-          const expectedFromHistory = this.expectedParticipantsByRound.get(roundNumber) ?? this.expectedParticipants;
-          const totalPlayers = Math.max(
-            expectedFromHistory,
-            active.size,
-            submittedCount,
-            lobbySize,
-          );
-          this.expectedParticipantsByRound.set(
-            roundNumber,
-            Math.max(totalPlayers, this.expectedParticipantsByRound.get(roundNumber) ?? 0, this.expectedParticipants),
-          );
-          this.expectedParticipants = Math.max(this.expectedParticipants, totalPlayers, lobbySize);
+          const totalPlayers = Math.max(active.size, submittedCount, lobbySize);
+          // Keep historical fields updated but do not rely on them for totals
+          this.expectedParticipantsByRound.set(roundNumber, Math.max(totalPlayers, active.size, lobbySize));
+          this.expectedParticipants = Math.max(this.uniqueParticipantCount(), totalPlayers);
 
           const submissionPayload: SubmissionBroadcastMsg = {
             type: "submission",
@@ -951,76 +1085,7 @@ export default class Lobby implements Party.Server {
   }
 
   async onClose(conn: Party.Connection) {
-    // Remove from connection map
-    this.conns.delete(conn.id);
-    const name = this.players.get(conn.id);
-    if (name) {
-      this.players.delete(conn.id);
-      this.ready.delete(conn.id);
-      const userId = this.playerUserIds.get(conn.id) || null;
-      if (userId) {
-        await this.patchSessionPlayerRow(userId, { ready: false, is_host: false });
-      }
-      this.playerUserIds.delete(conn.id);
-      const participantKey = this.participantKey(conn.id);
-      this.submissionsByRound.forEach((set) => {
-        set.delete(participantKey);
-      });
-      // Remove from active participants and recompute expected counts for affected rounds
-      this.activeByRound.forEach((set, roundNumber) => {
-        if (set.delete(participantKey)) {
-          const lobbySizeNow = this.uniqueParticipantCount();
-          const submissionsCount = this.submissionsByRound.get(roundNumber)?.size ?? 0;
-          // Update expected participants for this round to reflect current reality
-          const newExpected = Math.max(set.size, submissionsCount, lobbySizeNow);
-          this.expectedParticipantsByRound.set(roundNumber, newExpected);
-        }
-      });
-      // Also remove from results-ready sets and broadcast updated counts so
-      // clients no longer wait for a disconnected participant.
-      for (const [roundNumber, readySet] of this.resultsReadyByRound.entries()) {
-        const changed = readySet.delete(participantKey);
-        // Even if ready set didn't change, totalPlayers may have decreased due to
-        // active set shrinkage; broadcast to update client expectations.
-        await this.broadcastResultsReadyForRound(roundNumber);
-      }
-      // Update global expected participants floor based on current lobby size
-      this.expectedParticipants = Math.max(this.uniqueParticipantCount(), this.expectedParticipants - 1);
-
-      // After recalculating expectations, check if any rounds are now complete
-      const lobbySizeNow = this.uniqueParticipantCount();
-      for (const [roundNumber, submissions] of this.submissionsByRound.entries()) {
-        const submittedCount = submissions.size;
-        const activeSize = this.activeByRound.get(roundNumber)?.size ?? 0;
-        const expectedFromHistory = this.expectedParticipantsByRound.get(roundNumber) ?? 0;
-        const totalPlayers = Math.max(expectedFromHistory, activeSize, submittedCount, lobbySizeNow);
-        if (submittedCount >= totalPlayers && !this.completedRounds.has(roundNumber)) {
-          this.completedRounds.add(roundNumber);
-          const completePayload: RoundCompleteMsg = {
-            type: "round-complete",
-            roundNumber,
-            submittedCount,
-            totalPlayers,
-            lobbySize: lobbySizeNow,
-          };
-          this.broadcast(completePayload);
-          await this.logEvent("round-complete", completePayload);
-          this.submissionsByRound.delete(roundNumber);
-          const nextExpected = Math.max(this.expectedParticipants, submittedCount);
-          this.expectedParticipants = nextExpected;
-          this.expectedParticipantsByRound.set(roundNumber + 1, nextExpected);
-        }
-      }
-      // Reassign host if needed
-      if (this.hostId === conn.id) {
-        const previousHost = this.hostId;
-        const first = this.players.keys().next();
-        this.hostId = first.done ? null : first.value;
-        await this.markHostFlags(previousHost, this.hostId);
-      }
-      this.broadcastRoster();
-      await this.logEvent("leave", { id: conn.id, name });
-    }
+    await this.removeParticipant(conn.id, { reason: "leave" });
   }
 }
 

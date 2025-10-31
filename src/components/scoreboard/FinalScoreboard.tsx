@@ -4,7 +4,7 @@ import { fetchFinalScoreboard } from '@/integrations/supabase/scoreboards';
 import { Loader } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { fetchAvatarUrlsForUserIds } from '@/utils/profile/avatarLoader';
-import { getAvatarFrameGradient } from '@/utils/avatarGradient';
+import { getAvatarFrameGradient, getAvatarTextGradientStyle } from '@/utils/avatarGradient';
 import { cn } from '@/lib/utils';
 
 interface FinalScoreboardProps {
@@ -124,22 +124,22 @@ const FinalScoreboard: React.FC<FinalScoreboardProps> = ({ roomId, className }) 
 
   if (loading) {
     return (
-      <div className={cn('w-full rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 text-white flex items-center gap-2', className)}>
+      <div className={cn('w-full rounded-xl border border-neutral-800 bg-[#333333] p-4 text-white flex items-center gap-2', className)}>
         <Loader className="h-4 w-4 animate-spin" /> <span>Loading final leaderboard…</span>
       </div>
     );
   }
   if (error) {
     return (
-      <div className={cn('w-full rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 text-red-300', className)}>
+      <div className={cn('w-full rounded-xl border border-neutral-800 bg-[#333333] p-4 text-red-300', className)}>
         {error}
       </div>
     );
   }
   return (
-    <div className={cn('w-full rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 text-white', className)}>
+    <div className={cn('w-full rounded-xl border border-neutral-800 bg-[#333333] p-4 text-white', className)}>
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-        <h3 className="text-center text-lg font-semibold lg:text-left">Final Leaderboard</h3>
+        <h3 className="text-center text-2xl sm:text-3xl font-bold uppercase lg:text-left">Final Leaderboard</h3>
         {rows && rows.length > 0 ? (
           <span className="text-xs text-neutral-400 text-center lg:text-right">Sorted by net accuracy, then XP.</span>
         ) : null}
@@ -168,8 +168,11 @@ const FinalScoreboard: React.FC<FinalScoreboardProps> = ({ roomId, className }) 
                 const avgAccuracy = Math.max(0, Math.round(Number(r.avg_accuracy ?? 0)));
                 const netAccuracy = Math.max(0, Math.round(Number(r.net_avg_accuracy ?? r.avg_accuracy ?? 0)));
                 const penaltyPercent = Math.max(0, Math.round(Number(r.total_acc_debt ?? 0)));
+                const netXp = Math.max(0, Math.round(Number(r.net_xp ?? r.total_xp ?? r.total_score ?? 0)));
                 const avatarUrl = (r.user_id && avatarUrls?.[r.user_id]) || null;
                 const gradientSeed = r.user_id || name;
+                const gradientNameStyle = getAvatarTextGradientStyle(gradientSeed);
+                const formattedNetXp = netXp.toLocaleString();
                 return (
                   <tr
                     key={r.user_id}
@@ -193,11 +196,16 @@ const FinalScoreboard: React.FC<FinalScoreboardProps> = ({ roomId, className }) 
                           </Avatar>
                         </div>
                         <div className="flex min-w-0 flex-1 flex-col gap-1">
-                          <span className={isMe ? 'font-semibold text-white truncate' : 'text-neutral-200 truncate'}>{nameWithYou}</span>
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400 lg:hidden">
-                            <span>{avgAccuracy}% avg</span>
+                          <span
+                            className={cn('truncate font-semibold', isMe ? 'text-white' : 'text-transparent bg-clip-text')}
+                            style={isMe ? undefined : gradientNameStyle}
+                          >
+                            {nameWithYou}
+                          </span>
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-white lg:hidden">
+                            <span>{formattedNetXp} XP</span>
                             {hintsUsed > 0 ? (
-                              <span className="text-red-400 font-semibold">
+                              <span className="font-semibold">
                                 {`${hintsUsed} ${hintsUsed === 1 ? 'hint' : 'hints'} = -${penaltyPercent}%`}
                               </span>
                             ) : (
@@ -211,9 +219,9 @@ const FinalScoreboard: React.FC<FinalScoreboardProps> = ({ roomId, className }) 
                     <td className="hidden py-3 pr-3 text-right text-neutral-200 lg:table-cell">{avgAccuracy}%</td>
                     <td className="hidden py-3 pr-3 text-right text-neutral-200 lg:table-cell">
                       {hintsUsed > 0 ? (
-                        <span className="text-red-400 font-semibold">-{penaltyPercent}%</span>
+                        <span className="font-semibold text-white">-{penaltyPercent}%</span>
                       ) : (
-                        <span className="text-neutral-400">None</span>
+                        <span className="text-neutral-300">None</span>
                       )}
                     </td>
                   </tr>

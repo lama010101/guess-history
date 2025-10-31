@@ -728,7 +728,7 @@ const FinalResultsPage = () => {
       ) : (
         <>
           <main className="flex-grow p-4 sm:p-6 md:p-8 pb-36">
-            <div className="max-w-4xl mx-auto w-full">
+            <div className="max-w-6xl mx-auto w-full">
               {isLevelUp && (
                 <div className="bg-[#333333] rounded-lg p-4 sm:p-6 mb-6">
                   <div className="space-y-3">
@@ -749,11 +749,26 @@ const FinalResultsPage = () => {
                 </div>
               )}
               <div className="bg-[#333333] rounded-lg p-6 text-white mb-8 sm:mb-12">
+                <div className="hidden lg:block text-center mb-3">
+                  <h1 className="text-3xl font-bold">FINAL SCORE</h1>
+                </div>
+                <div className="hidden lg:flex items-center justify-center mb-4">
+                  <div className="flex flex-wrap items-center justify-center gap-4">
+                    <Badge variant="accuracy" className="text-lg flex items-center gap-1" aria-label={`Accuracy: ${totalPercentage}%`}>
+                      <Target className="h-4 w-4" />
+                      <span>{totalPercentage}%</span>
+                    </Badge>
+                    <Badge variant="xp" className="text-lg flex items-center gap-1" aria-label={`XP: ${totalScore}`}>
+                      <Zap className="h-4 w-4" />
+                      <span>{totalScore}</span>
+                    </Badge>
+                  </div>
+                </div>
                 <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)] lg:items-start lg:gap-10">
                   <div className="flex flex-col items-center gap-6 text-center lg:items-start lg:text-left">
                     <div className="flex flex-col items-center gap-2 lg:items-start">
-                      <h1 className="text-2xl sm:text-3xl font-bold">FINAL SCORE</h1>
-                      <div className="flex flex-wrap items-center justify-center gap-4 lg:justify-start">
+                      <h1 className="text-2xl sm:text-3xl font-bold lg:hidden">FINAL SCORE</h1>
+                      <div className="flex flex-wrap items-center justify-center gap-4 lg:hidden">
                         <Badge variant="accuracy" className="text-lg flex items-center gap-1" aria-label={`Accuracy: ${totalPercentage}%`}>
                           <Target className="h-4 w-4" />
                           <span>{totalPercentage}%</span>
@@ -765,8 +780,8 @@ const FinalResultsPage = () => {
                       </div>
                     </div>
 
-                    <div className="grid w-full gap-4 sm:grid-cols-2" role="group" aria-label="Accuracy breakdown">
-                      <div className="rounded-lg border border-neutral-700 bg-black/30 p-4">
+                    <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-end lg:gap-6" role="group" aria-label="Accuracy breakdown">
+                      <div className="rounded-lg border border-transparent bg-transparent p-2 sm:p-4 lg:col-[auto]">
                         <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-300">
                           <span>Time Accuracy</span>
                           <span>{formatInteger(totalWhenAccuracy)}%</span>
@@ -779,7 +794,13 @@ const FinalResultsPage = () => {
                           />
                         </div>
                       </div>
-                      <div className="rounded-lg border border-neutral-700 bg-black/30 p-4">
+                      <div className="hidden lg:flex items-center justify-center lg:col-[auto] lg:self-end lg:pb-1">
+                        <Button onClick={handleShare} variant="hintGradient" className="gap-2">
+                          <Share2 className="h-5 w-5" />
+                          Share Results
+                        </Button>
+                      </div>
+                      <div className="rounded-lg border border-transparent bg-transparent p-2 sm:p-4 lg:col-[auto]">
                         <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-300">
                           <span>Location Accuracy</span>
                           <span>{formatInteger(totalWhereAccuracy)}%</span>
@@ -792,38 +813,32 @@ const FinalResultsPage = () => {
                           />
                         </div>
                       </div>
-                    </div>
-
-                    <div className="flex w-full justify-center lg:justify-start">
-                      <Button onClick={handleShare} variant="hintGradient" className="gap-2">
-                        <Share2 className="h-5 w-5" />
-                        Share Results
-                      </Button>
+                      <div className="hidden lg:block" />
                     </div>
                   </div>
 
-                  <aside className="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 p-5 shadow-inner">
+                  <aside className="w-full bg-transparent p-5">
                     <div className="flex items-center justify-between text-xs uppercase tracking-wide text-neutral-400">
                       <span>Session Stats</span>
                       <span>{roundResults.length} rounds</span>
                     </div>
-                    <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                      <div className="rounded-lg border border-neutral-800 bg-black/40 p-3">
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                      <div className="rounded-lg border border-neutral-800/80 bg-[#1f1f1f] p-3">
                         <div className="text-xs uppercase tracking-wide text-neutral-400">Avg Years Off</div>
                         <div className="mt-1 text-lg font-semibold text-white">{formatInteger(avgYearsOff)}</div>
                       </div>
-                      <div className="rounded-lg border border-neutral-800 bg-black/40 p-3">
+                      <div className="rounded-lg border border-neutral-800/80 bg-[#1f1f1f] p-3">
                         <div className="text-xs uppercase tracking-wide text-neutral-400">Avg {avgDistanceUnit.toUpperCase()} Away</div>
                         <div className="mt-1 text-lg font-semibold text-white">{avgDistanceValue}</div>
                       </div>
-                      <div className="rounded-lg border border-neutral-800 bg-black/40 p-3">
+                      <div className="rounded-lg border border-neutral-800/80 bg-[#1f1f1f] p-3">
                         <div className="text-xs uppercase tracking-wide text-neutral-400">Hints Used</div>
                         <div className="mt-1 text-lg font-semibold text-white">{totalHintsUsed}</div>
                       </div>
-                      <div className="rounded-lg border border-neutral-800 bg-black/40 p-3">
+                      <div className="rounded-lg border border-neutral-800/80 bg-[#1f1f1f] p-3">
                         <div className="text-xs uppercase tracking-wide text-neutral-400">Hint Penalties</div>
                         {totalAccDebtPercent > 0 || (totalXpDebtState ?? 0) > 0 ? (
-                          <div className="mt-1 flex flex-wrap items-baseline gap-2 text-lg font-semibold text-red-400">
+                          <div className="mt-1 flex flex-wrap items-baseline gap-2 text-lg font-semibold text-white">
                             {totalAccDebtPercent > 0 ? <span>-{totalAccDebtPercent}%</span> : null}
                             {(totalXpDebtState ?? 0) > 0 ? <span>-{formatInteger(totalXpDebtState || 0)} XP</span> : null}
                           </div>
@@ -834,13 +849,19 @@ const FinalResultsPage = () => {
                     </div>
                   </aside>
                 </div>
+                <div className="mt-6 flex w-full justify-center lg:hidden">
+                  <Button onClick={handleShare} variant="hintGradient" className="gap-2">
+                    <Share2 className="h-5 w-5" />
+                    Share Results
+                  </Button>
+                </div>
               </div>
 
               {/* SYNC Compete: show final leaderboard for all participants */}
               {isSyncCompeteRoute && effectiveRoomId ? (
-                <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]">
+                <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,3.5fr)_minmax(320px,1.5fr)]">
                   <FinalScoreboard roomId={effectiveRoomId} className="h-full" />
-                  <div className="w-full rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 text-white flex flex-col">
+                  <div className="w-full rounded-xl border border-neutral-800 bg-[#333333] p-4 text-white flex flex-col">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <MessageSquare className="h-4 w-4 text-white" />
@@ -911,7 +932,7 @@ const FinalResultsPage = () => {
 
               {/* GAME SUMMARY removed per new design; metrics are now in the final score card */}
 
-              <h2 className="text-lg font-bold text-history-primary dark:text-history-light mb-2">BREAKDOWN</h2>
+              <h2 className="mt-12 text-lg font-bold text-history-primary dark:text-history-light mb-3">BREAKDOWN</h2>
 
               <section className="grid gap-6 mb-8">
                 {images.map((image, index) => {

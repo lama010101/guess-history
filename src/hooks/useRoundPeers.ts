@@ -239,11 +239,11 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
 
       // 2. Fetch the list of participants (ensures we include everyone by name)
       const { data: spRows, error: spErr } = await (supabase as any)
-        .from('session_players')
-        .select('user_id, display_name, ready')
+        .from('sync_room_players')
+        .select('user_id, display_name')
         .eq('room_id', roomId);
       if (spErr) {
-        console.warn('[useRoundPeers] session_players fetch failed', spErr);
+        console.warn('[useRoundPeers] sync_room_players fetch failed', spErr);
       }
 
       // 3. Fetch round_results for lat/lng enrichment
@@ -460,7 +460,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
           actualLat: rr?.actual_lat ?? null,
           actualLng: rr?.actual_lng ?? null,
           submitted: hasRoundResult || hasScoreboardEntry || hasSyncSnapshot,
-          ready: sp?.ready === true,
+          ready: false,
           hintsUsed: numericHintsUsed,
           whenHints,
           whereHints,
@@ -495,7 +495,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
             actualLat: null,
             actualLng: null,
             submitted: false,
-            ready: sp?.ready === true,
+            ready: false,
             hintsUsed: 0,
             whenAccDebt: 0,
             whereAccDebt: 0,
@@ -679,18 +679,18 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
   useEffect(() => {
     if (!roomId) return;
 
-    const sessionHandle = acquireChannel(`session_players:${roomId}`);
-    sessionHandle.channel.on('postgres_changes', {
+    const rosterHandle = acquireChannel(`sync_room_players:${roomId}`);
+    rosterHandle.channel.on('postgres_changes', {
       event: '*',
       schema: 'public',
-      table: 'session_players',
+      table: 'sync_room_players',
       filter: `room_id=eq.${roomId}`,
     }, () => {
       refresh();
     });
 
     return () => {
-      sessionHandle.release();
+      rosterHandle.release();
     };
   }, [roomId, refresh]);
 

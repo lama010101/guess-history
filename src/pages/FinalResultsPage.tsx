@@ -780,8 +780,8 @@ const FinalResultsPage = () => {
                       </div>
                     </div>
 
-                    <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-end lg:gap-6" role="group" aria-label="Accuracy breakdown">
-                      <div className="rounded-lg border border-transparent bg-transparent p-2 sm:p-4 lg:col-[auto]">
+                    <div className="grid w-full gap-4 sm:grid-cols-2" role="group" aria-label="Accuracy breakdown">
+                      <div className="rounded-lg border border-transparent bg-transparent p-2 sm:p-4">
                         <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-300">
                           <span>Time Accuracy</span>
                           <span>{formatInteger(totalWhenAccuracy)}%</span>
@@ -794,13 +794,7 @@ const FinalResultsPage = () => {
                           />
                         </div>
                       </div>
-                      <div className="hidden lg:flex items-center justify-center lg:col-[auto] lg:self-end lg:pb-1">
-                        <Button onClick={handleShare} variant="hintGradient" className="gap-2">
-                          <Share2 className="h-5 w-5" />
-                          Share Results
-                        </Button>
-                      </div>
-                      <div className="rounded-lg border border-transparent bg-transparent p-2 sm:p-4 lg:col-[auto]">
+                      <div className="rounded-lg border border-transparent bg-transparent p-2 sm:p-4">
                         <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-300">
                           <span>Location Accuracy</span>
                           <span>{formatInteger(totalWhereAccuracy)}%</span>
@@ -813,7 +807,12 @@ const FinalResultsPage = () => {
                           />
                         </div>
                       </div>
-                      <div className="hidden lg:block" />
+                      <div className="hidden lg:flex col-span-2 justify-end">
+                        <Button onClick={handleShare} variant="hintGradient" className="gap-2">
+                          <Share2 className="h-5 w-5" />
+                          Share Results
+                        </Button>
+                      </div>
                     </div>
                   </div>
 

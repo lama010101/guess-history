@@ -154,6 +154,43 @@ export function useSyncRoundScores(roomId: string | null, roundNumber: number | 
     };
   }, [roomId, roundNumber, fetchScores]);
 
+  useEffect(() => {
+    if (!roomId || !roundNumber || !Number.isFinite(roundNumber)) {
+      return;
+    }
+    const spHandle = acquireChannel(`session_players:${roomId}`);
+    spHandle.channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'session_players', filter: `room_id=eq.${roomId}` },
+      () => {
+        fetchScores();
+      }
+    );
+
+    return () => {
+      spHandle.release();
+    };
+  }, [roomId, roundNumber, fetchScores]);
+
+  useEffect(() => {
+    if (!roomId || !roundNumber || !Number.isFinite(roundNumber)) {
+      return;
+    }
+    const dbRoundIndex = Math.max(0, Number(roundNumber) - 1);
+    const rrHandle = acquireChannel(`round_results:${roomId}:${dbRoundIndex}`);
+    rrHandle.channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'round_results', filter: `room_id=eq.${roomId},round_index=eq.${dbRoundIndex}` },
+      () => {
+        fetchScores();
+      }
+    );
+
+    return () => {
+      rrHandle.release();
+    };
+  }, [roomId, roundNumber, fetchScores]);
+
   const sortedEntries = useMemo(() => {
     return [...entries].sort((a, b) => {
       if (b.xpTotal !== a.xpTotal) return b.xpTotal - a.xpTotal;

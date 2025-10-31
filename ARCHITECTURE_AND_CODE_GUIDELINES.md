@@ -36,12 +36,14 @@
   - The compete lobby now uses a responsive two-column shell (`lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]`): timer/year controls stack on the left while invites and roster live in a right rail that keeps a steady width on desktop.
   - Timer and year cards share a consistent header/footer pattern with host-only controls aligned to the right, matching the final results layout hierarchy. Any added cards should reuse the `rounded-2xl border-[#3f424b] bg-[#333333] p-6` scaffold for parity.
   - Player rows stretch to fill desktop width with avatar, status chips, and action buttons aligned via `lg:flex-row` wrappers. Maintain the `attention-pulse` ready button placement and chip order when adding new per-player actions.
+  - **Update (2025-10-31 PM)**: The desktop chat card now sits beneath Year Range in the left column (`hidden lg:block`) and reuses a shared `renderChatCard()` helper so the mobile version can render after the grid with `lg:hidden`.
 
 ### Compete Lobby Mobile Header Alignment (2025-10-30)
 
 - **Component**: `src/pages/Room.tsx`
   - The mobile header now groups the Back chevron and `Compete` title in a single inline stack so navigation and context share the same row. The player count sits opposite in the flex container to avoid wrapping beneath the title on narrow devices.
   - Player roster rows keep the Ready toggle directly beside the local user’s gradient name. Host-only kick buttons and invite dismissal controls stay in the trailing slot so actions remain discoverable when rows wrap.
+  - **Update (2025-10-31 PM)**: Player count now stays inline with the `Compete` title using a centered flex group so the label (“2 players”) always appears on the same row across breakpoints.
 
 ### Compete Lobby Header Surface (2025-10-30)
 
@@ -60,6 +62,7 @@
 
 - **Component**: `src/pages/Room.tsx`
   - The "Invite Your Friends" accordion now shows an additional line under the room code with a clipboard-only "link" action instead of the raw URL. It reuses `updateShareInviteUrl()` to keep the copied value current whenever the invite token changes.
+  - 2025-10-31 regression fix: `updateShareInviteUrl()` is stored via `shareInviteUrl` state so the clipboard action stays in sync after token refreshes triggered by joining or ensuring a new invite token.
 
 ### Compete Lobby Invite List Simplification (2025-10-31)
 
@@ -92,6 +95,11 @@
   - Session stats now render as a 2×2 grid at the base breakpoint; hint metrics always use white text so penalties remain legible on all themes.
   - Final leaderboard and chat live inside matching `bg-[#333333]` cards, and the leaderboard title mirrors the `FINAL SCORE` typography (uppercase, 2xl/3xl).
   - Increased the desktop max width to `max-w-6xl` and widened the leaderboard/chat grid (`lg:grid-cols-[minmax(0,3.5fr)_minmax(320px,1.5fr)]`) so all table columns stay visible without horizontal scrolling on large screens.
+
+### Final Leaderboard Username Gradient (2025-10-31)
+
+- **Component**: `src/components/scoreboard/FinalScoreboard.tsx`
+  - The current player's display name now uses the same gradient text styling as peers while keeping the highlight ring via a subtle drop shadow. Everyone's name shares `getAvatarTextGradientStyle(seed)` so avatar frames and usernames always align.
 
 ### Compete Lobby Host Kick Control (2025-10-30)
 

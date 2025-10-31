@@ -92,6 +92,7 @@ const Room: React.FC = () => {
   const [kicked, setKicked] = useState(false);
   const [ownReady, setOwnReady] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [shareInviteUrl, setShareInviteUrl] = useState('');
   const [ownId, setOwnId] = useState<string>('');
   const [friendsModalOpen, setFriendsModalOpen] = useState(false);
   const [friendsListVisible, setFriendsListVisible] = useState(false);
@@ -131,6 +132,21 @@ const Room: React.FC = () => {
   const initialSettingsSyncedRef = useRef(false);
   const kickedRef = useRef(false);
   const kickedHandledRef = useRef(false);
+
+  const updateShareInviteUrl = useCallback((token: string | null): string => {
+    if (typeof window === 'undefined' || !roomCode) {
+      setShareInviteUrl((prev) => (prev === '' ? prev : ''));
+      return '';
+    }
+    const baseUrl = `${window.location.origin}/room/${encodeURIComponent(roomCode)}`;
+    const url = token ? `${baseUrl}?token=${encodeURIComponent(token)}` : baseUrl;
+    setShareInviteUrl((prev) => (prev === url ? prev : url));
+    return url;
+  }, [roomCode]);
+
+  useEffect(() => {
+    updateShareInviteUrl(inviteTokenRef.current ?? null);
+  }, [updateShareInviteUrl]);
 
   const removeRosterEntry = useCallback((targetId: string, targetName?: string | null) => {
     setRoster((prev) => {
@@ -251,6 +267,8 @@ const Room: React.FC = () => {
     if (!inviteTokenRef.current && roomCode) {
       inviteTokenRef.current = await ensureRoomInviteToken(roomCode, 'sync');
     }
+
+    updateShareInviteUrl(inviteTokenRef.current ?? null);
 
     initialSettingsSyncedRef.current = false;
 
@@ -897,24 +915,33 @@ const Room: React.FC = () => {
   }, [isHost, roundTimerSec, timerEnabled, yearRange[0], yearRange[1], draggingYear]);
 
   const copyInvite = useCallback(async () => {
+    if (!roomCode) return;
+
+    const computeInviteUrl = () => {
+      const baseUrl = typeof window !== 'undefined' ? `${window.location.origin}/room/${encodeURIComponent(roomCode)}` : '';
+      return updateShareInviteUrl(inviteTokenRef.current ?? null) || shareInviteUrl || baseUrl;
+    };
+
     try {
-      if (!inviteTokenRef.current && roomCode) {
-        inviteTokenRef.current = await ensureRoomInviteToken(roomCode, 'sync');
+      if (!inviteTokenRef.current) {
+        const ensured = await ensureRoomInviteToken(roomCode, 'sync');
+        if (ensured) {
+          inviteTokenRef.current = ensured;
+        }
       }
-      // Share a clean invite URL without any query params like host=1
-      const baseUrl = `${window.location.origin}/room/${encodeURIComponent(roomCode)}`;
-      const inviteUrl = inviteTokenRef.current ? `${baseUrl}?token=${encodeURIComponent(inviteTokenRef.current)}` : baseUrl;
+      const inviteUrl = computeInviteUrl();
+      if (!inviteUrl) return;
       await navigator.clipboard.writeText(inviteUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch (e) {
+      const inviteUrl = computeInviteUrl();
+      if (!inviteUrl) return;
       // Fallback: open prompt
       // eslint-disable-next-line no-alert
-      const baseUrl = `${window.location.origin}/room/${encodeURIComponent(roomCode)}`;
-      const inviteUrl = inviteTokenRef.current ? `${baseUrl}?token=${encodeURIComponent(inviteTokenRef.current)}` : baseUrl;
       window.prompt('Copy invite link:', inviteUrl);
     }
-  }, [roomCode]);
+  }, [roomCode, shareInviteUrl, updateShareInviteUrl]);
 
   const copyCode = useCallback(async () => {
     try {
@@ -1040,6 +1067,77 @@ const Room: React.FC = () => {
     try { settings.setYearRange(sanitized); } catch {}
   }, [yearInput, yearRange, settings]);
 
+  const playerCount = roster.length || players.length;
+
+  const renderChatCard = (extraClasses?: string) => (
+    <section
+      className={`rounded-2xl border border-[#3f424b] bg-[#333333] p-6${extraClasses ? ` ${extraClasses}` : ''}`}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <MessageSquare className="h-4 w-4 text-white" />
+          <h2 className="text-base font-semibold text-white">Chat</h2>
+          <span className="text-xs text-neutral-400">{chat.length} message{chat.length === 1 ? '' : 's'}</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setChatCollapsed((v) => !v)}
+          className="text-neutral-300 hover:text-white"
+          aria-label={chatCollapsed ? 'Expand chat' : 'Collapse chat'}
+        >
+          {chatCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+        </button>
+      </div>
+      {!chatCollapsed && (
+        <>
+          <div
+            ref={chatListRef}
+            className="mt-4 max-h-60 overflow-y-auto rounded-xl border border-[#3f424b] bg-[#1d2026] px-4 py-3"
+            aria-label="Chat messages"
+          >
+            {chat.length === 0 ? (
+              <div className="text-sm text-neutral-400">No messages yet…</div>
+            ) : (
+              chat.map((c) => (
+                <div key={c.id} className="pb-3 last:pb-0">
+                  <div className="flex items-center justify-between">
+                    <span className="max-w-[70%] truncate text-sm font-semibold text-[#22d3ee]">{c.from}</span>
+                    <span className="text-[10px] text-neutral-400">{formatChatTime(c.timestamp)}</span>
+                  </div>
+                  <div className="mt-1 break-words whitespace-pre-wrap text-sm text-neutral-200">{c.message}</div>
+                </div>
+              ))
+            )}
+          </div>
+          <div className="mt-4 flex items-center gap-3 pt-4">
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  sendChat();
+                }
+              }}
+              placeholder={status === 'open' ? 'Type a message…' : 'Connecting…'}
+              className="flex-1 rounded-xl border border-white/25 bg-[#35373d] px-3 py-2 text-sm text-white caret-[#22d3ee] placeholder:text-[#22d3ee] placeholder:opacity-80 transition-colors focus-visible:ring-2 focus-visible:ring-[#22d3ee] focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-60"
+              aria-label="Type a chat message"
+              disabled={status !== 'open' || (isHost && !hasOtherParticipants)}
+            />
+            <Button
+              type="button"
+              onClick={sendChat}
+              className="rounded-lg bg-[#22d3ee] px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-[#1cbfdb] disabled:bg-white/20 disabled:text-white/50"
+              disabled={!input.trim() || status !== 'open' || (isHost && !hasOtherParticipants)}
+            >
+              Send
+            </Button>
+          </div>
+        </>
+      )}
+    </section>
+  );
+
   return (
     <div className="min-h-screen w-full bg-[#0b0b0f] text-white">
       <style>{`
@@ -1062,13 +1160,10 @@ const Room: React.FC = () => {
               <ChevronLeft className="h-4 w-4" />
               Back
             </button>
-            <h1 className="flex-1 text-center text-2xl font-semibold text-white">
-              Compete
-            </h1>
+            <div className="flex flex-1 items-center justify-center text-center">
+              <h1 className="text-2xl font-semibold text-white">Compete</h1>
+            </div>
             <div className="hidden w-[52px] sm:block" aria-hidden="true" />
-          </div>
-          <div className="flex w-full justify-end text-xs text-neutral-300">
-            {(roster.length || players.length)} player{(roster.length || players.length) === 1 ? '' : 's'}
           </div>
         </div>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] lg:gap-8">
@@ -1256,6 +1351,20 @@ const Room: React.FC = () => {
                         </Button>
                       </div>
                       <p className="mt-2 text-xs text-neutral-400">Share this room code so friends can join.</p>
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                        <span className="flex items-center gap-2 text-neutral-400">
+                          Or send them this link
+                          <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                        </span>
+                        <button
+                          type="button"
+                          onClick={copyInvite}
+                          className="inline-flex items-center gap-1 text-[#22d3ee] hover:text-[#b6ecff]"
+                          aria-label="Copy invite link"
+                        >
+                          Copy link
+                        </button>
+                      </div>
                     </div>
                     <div className="space-y-3">
                       <Label className="text-xs text-neutral-200">Send Invite</Label>
@@ -1352,13 +1461,15 @@ const Room: React.FC = () => {
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
-            )}
+            </section>
+
+            {renderChatCard('hidden lg:block')}
 
             <section className="rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-white" />
-                  <h2 className="text-base font-semibold text-white">Players ({roster.length || players.length})</h2>
+                  <h2 className="text-base font-semibold text-white">Players ({playerCount})</h2>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-neutral-400">
                   <span>Room {roomCode.toUpperCase()} · Status: {status}</span>
@@ -1488,77 +1599,13 @@ const Room: React.FC = () => {
           </aside>
         </div>
 
-        <section className="rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <MessageSquare className="h-4 w-4 text-white" />
-              <h2 className="text-base font-semibold text-white">Chat</h2>
-              <span className="text-xs text-neutral-400">{chat.length} message{chat.length === 1 ? '' : 's'}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setChatCollapsed((v) => !v)}
-              className="text-neutral-300 hover:text-white"
-              aria-label={chatCollapsed ? 'Expand chat' : 'Collapse chat'}
-            >
-              {chatCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-            </button>
-          </div>
-          {!chatCollapsed && (
-            <>
-              <div
-                ref={chatListRef}
-                className="mt-4 max-h-60 overflow-y-auto rounded-xl border border-[#3f424b] bg-[#1d2026] px-4 py-3"
-                aria-label="Chat messages"
-              >
-                {chat.length === 0 ? (
-                  <div className="text-sm text-neutral-400">No messages yet…</div>
-                ) : (
-                  chat.map((c) => (
-                    <div key={c.id} className="pb-3 last:pb-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold text-[#22d3ee] truncate max-w-[70%]">{c.from}</span>
-                        <span className="text-[10px] text-neutral-400">{formatChatTime(c.timestamp)}</span>
-                      </div>
-                      <div className="mt-1 text-sm text-neutral-200 whitespace-pre-wrap break-words">{c.message}</div>
-                    </div>
-                  ))
-                )}
-              </div>
-              <div className="mt-4 flex items-center gap-3 pt-4">
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      sendChat();
-                    }
-                  }}
-                  placeholder={status === 'open' ? 'Type a message…' : 'Connecting…'}
-                  className="flex-1 rounded-xl border border-white/25 bg-[#35373d] px-3 py-2 text-sm text-white caret-[#22d3ee] placeholder:text-[#22d3ee] placeholder:opacity-80 focus-visible:ring-2 focus-visible:ring-[#22d3ee] focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
-                  aria-label="Type a chat message"
-                  disabled={isHost && !hasOtherParticipants}
-                />
-                <Button
-                  onClick={sendChat}
-                  disabled={
-                    !input.trim() || status !== 'open' || (isHost && !hasOtherParticipants)
-                  }
-                  className="rounded-lg bg-[#22d3ee] px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-[#1cbfdb] disabled:bg-white/20 disabled:text-white/50"
-                >
-                  Send
-                </Button>
-              </div>
-            </>
-          )}
-        </section>
+        {renderChatCard('lg:hidden')}
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40">
         <div className="mx-auto max-w-4xl px-4 pb-4">
           <div className="rounded-2xl border border-[#165f70] bg-[#0a2f3d] px-5 py-3 text-center">
-            <div className="text-sm font-semibold text-[#22d3ee]">Waiting for players ({readyCount}/{roster.length || players.length} ready)</div>
+            <div className="text-sm font-semibold text-[#22d3ee]">Waiting for players ({readyCount}/{playerCount} ready)</div>
             <div className="mt-1 text-xs text-neutral-200">All players must be ready to start</div>
           </div>
         </div>

@@ -172,6 +172,7 @@ const FinalScoreboard: React.FC<FinalScoreboardProps> = ({ roomId, className }) 
                 const avatarUrl = (r.user_id && avatarUrls?.[r.user_id]) || null;
                 const gradientSeed = r.user_id || name;
                 const gradientNameStyle = getAvatarTextGradientStyle(gradientSeed);
+                const nameTextClass = 'truncate font-semibold text-transparent bg-clip-text';
                 const formattedNetXp = netXp.toLocaleString();
                 return (
                   <tr
@@ -197,8 +198,8 @@ const FinalScoreboard: React.FC<FinalScoreboardProps> = ({ roomId, className }) 
                         </div>
                         <div className="flex min-w-0 flex-1 flex-col gap-1">
                           <span
-                            className={cn('truncate font-semibold', isMe ? 'text-white' : 'text-transparent bg-clip-text')}
-                            style={isMe ? undefined : gradientNameStyle}
+                            className={cn(nameTextClass, isMe ? 'drop-shadow-[0_0_12px_rgba(0,0,0,0.65)]' : undefined)}
+                            style={gradientNameStyle}
                           >
                             {nameWithYou}
                           </span>

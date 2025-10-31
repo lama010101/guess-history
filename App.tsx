@@ -22,6 +22,7 @@ import TestFinalPage from "./pages/test/final";
 import TestRoomPage from "./pages/test/TestRoomPage";
 import TestFriendsPage from "./pages/test/TestFriendsPage";
 import TestAuthPage from "./pages/test/TestAuthPage";
+import CompeteHooksProbe from "./pages/test/CompeteHooksProbe";
 import LandingPage from './src/pages/LandingPage';
 import HomePage from './src/pages/HomePage';
 import RoundResultsPage from './src/pages/RoundResultsPage';
@@ -164,6 +165,7 @@ const App = () => {
                     <Route path="settings" element={<TestSettingsPage />} />
                     <Route path="room" element={<TestRoomPage />} />
                     <Route path="friends" element={<TestFriendsPage />} />
+                    <Route path="compete-probe" element={<CompeteHooksProbe />} />
                   </Route>
                   <Route path="/room/:roomCode" element={<Room />} />
                   <Route path="*" element={<Navigate to="/home" replace />} />

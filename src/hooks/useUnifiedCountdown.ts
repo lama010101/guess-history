@@ -180,7 +180,12 @@ export function useUnifiedCountdown(options: UseUnifiedCountdownOptions): UseUni
     durationMs: localDurationMs,
     startAt: localStartAt ?? Date.now() + localDurationMs, // if not started, pretend far-future so remaining==duration
     onFinished: () => {
+      // Do not mark expired or emit onExpire if the timer hasn't actually started
+      // or if the duration is zero. This avoids immediate timeouts in Solo mode.
       if (localExpired) return;
+      if (!autoStart || localDurationMs <= 0 || localStartAt == null) {
+        return;
+      }
       // cross-tab guard: set ended sentinel first
       try {
         if (!readEnded(timerId)) {

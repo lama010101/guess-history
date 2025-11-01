@@ -750,7 +750,7 @@ const FinalResultsPage = () => {
               )}
               <div className="bg-[#333333] rounded-lg p-6 text-white mb-8 sm:mb-12">
                 <div className="hidden lg:block text-center mb-3">
-                  <h1 className="text-3xl font-bold">FINAL SCORE</h1>
+                  <h1 className="text-3xl font-bold">YOUR FINAL SCORE</h1>
                 </div>
                 <div className="hidden lg:flex items-center justify-center mb-4">
                   <div className="flex flex-wrap items-center justify-center gap-4">
@@ -764,10 +764,10 @@ const FinalResultsPage = () => {
                     </Badge>
                   </div>
                 </div>
-                <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)] lg:items-start lg:gap-10">
-                  <div className="flex flex-col items-center gap-6 text-center lg:items-start lg:text-left">
+                <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)] lg:items-start lg:gap-7">
+                  <div className="flex flex-col items-center gap-4 text-center lg:items-start lg:text-left lg:h-full">
                     <div className="flex flex-col items-center gap-2 lg:items-start">
-                      <h1 className="text-2xl sm:text-3xl font-bold lg:hidden">FINAL SCORE</h1>
+                      <h1 className="text-2xl sm:text-3xl font-bold lg:hidden">YOUR FINAL SCORE</h1>
                       <div className="flex flex-wrap items-center justify-center gap-4 lg:hidden">
                         <Badge variant="accuracy" className="text-lg flex items-center gap-1" aria-label={`Accuracy: ${totalPercentage}%`}>
                           <Target className="h-4 w-4" />
@@ -780,39 +780,42 @@ const FinalResultsPage = () => {
                       </div>
                     </div>
 
-                    <div className="grid w-full gap-4 sm:grid-cols-2" role="group" aria-label="Accuracy breakdown">
-                      <div className="rounded-lg border border-transparent bg-transparent p-2 sm:p-4">
-                        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-300">
-                          <span>Time Accuracy</span>
-                          <span>{formatInteger(totalWhenAccuracy)}%</span>
+                    <div className="w-full" role="group" aria-label="Accuracy breakdown">
+                      <div className="grid w-full gap-2 sm:grid-cols-2">
+                        <div className="rounded-lg border border-transparent bg-transparent p-2 sm:p-3">
+                          <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-300">
+                            <span>Time Accuracy</span>
+                            <span>{formatInteger(totalWhenAccuracy)}%</span>
+                          </div>
+                          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-700">
+                            <div
+                              className="h-full bg-history-secondary"
+                              style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhenAccuracy)))}%` }}
+                              aria-label={`Time accuracy ${formatInteger(totalWhenAccuracy)}%`}
+                            />
+                          </div>
                         </div>
-                        <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-700">
-                          <div
-                            className="h-full bg-history-secondary"
-                            style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhenAccuracy)))}%` }}
-                            aria-label={`Time accuracy ${formatInteger(totalWhenAccuracy)}%`}
-                          />
+                        <div className="rounded-lg border border-transparent bg-transparent p-2 sm:p-3">
+                          <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-300">
+                            <span>Location Accuracy</span>
+                            <span>{formatInteger(totalWhereAccuracy)}%</span>
+                          </div>
+                          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-700">
+                            <div
+                              className="h-full bg-history-secondary"
+                              style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhereAccuracy)))}%` }}
+                              aria-label={`Location accuracy ${formatInteger(totalWhereAccuracy)}%`}
+                            />
+                          </div>
                         </div>
                       </div>
-                      <div className="rounded-lg border border-transparent bg-transparent p-2 sm:p-4">
-                        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-300">
-                          <span>Location Accuracy</span>
-                          <span>{formatInteger(totalWhereAccuracy)}%</span>
-                        </div>
-                        <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-700">
-                          <div
-                            className="h-full bg-history-secondary"
-                            style={{ width: `${Math.max(0, Math.min(100, Math.round(totalWhereAccuracy)))}%` }}
-                            aria-label={`Location accuracy ${formatInteger(totalWhereAccuracy)}%`}
-                          />
-                        </div>
-                      </div>
-                      <div className="hidden lg:flex col-span-2 justify-end">
-                        <Button onClick={handleShare} variant="hintGradient" className="gap-2">
-                          <Share2 className="h-5 w-5" />
-                          Share Results
-                        </Button>
-                      </div>
+                    </div>
+
+                    <div className="hidden lg:flex w-full flex-1 items-center justify-center pt-4 pb-2">
+                      <Button onClick={handleShare} variant="hintGradient" className="gap-2">
+                        <Share2 className="h-5 w-5" />
+                        Share Results
+                      </Button>
                     </div>
                   </div>
 
@@ -821,34 +824,37 @@ const FinalResultsPage = () => {
                       <span>Session Stats</span>
                       <span>{roundResults.length} rounds</span>
                     </div>
-                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                      <div className="rounded-lg border border-neutral-800/80 bg-[#1f1f1f] p-3">
-                        <div className="text-xs uppercase tracking-wide text-neutral-400">Avg Years Off</div>
-                        <div className="mt-1 text-lg font-semibold text-white">{formatInteger(avgYearsOff)}</div>
+                    <div className="mt-3 flex flex-col gap-2 text-sm">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-xs uppercase tracking-wide text-neutral-400">Avg Years Off</span>
+                        <span className="text-base font-semibold text-white">{formatInteger(avgYearsOff)}</span>
                       </div>
-                      <div className="rounded-lg border border-neutral-800/80 bg-[#1f1f1f] p-3">
-                        <div className="text-xs uppercase tracking-wide text-neutral-400">Avg {avgDistanceUnit.toUpperCase()} Away</div>
-                        <div className="mt-1 text-lg font-semibold text-white">{avgDistanceValue}</div>
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-xs uppercase tracking-wide text-neutral-400">Avg {avgDistanceUnit.toUpperCase()} Away</span>
+                        <span className="text-base font-semibold text-white">{avgDistanceValue}</span>
                       </div>
-                      <div className="rounded-lg border border-neutral-800/80 bg-[#1f1f1f] p-3">
-                        <div className="text-xs uppercase tracking-wide text-neutral-400">Hints Used</div>
-                        <div className="mt-1 text-lg font-semibold text-white">{totalHintsUsed}</div>
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-xs uppercase tracking-wide text-neutral-400">Hints Used</span>
+                        <span className="text-base font-semibold text-white">{totalHintsUsed}</span>
                       </div>
-                      <div className="rounded-lg border border-neutral-800/80 bg-[#1f1f1f] p-3">
-                        <div className="text-xs uppercase tracking-wide text-neutral-400">Hint Penalties</div>
-                        {totalAccDebtPercent > 0 || (totalXpDebtState ?? 0) > 0 ? (
-                          <div className="mt-1 flex flex-wrap items-baseline gap-2 text-lg font-semibold text-white">
-                            {totalAccDebtPercent > 0 ? <span>-{totalAccDebtPercent}%</span> : null}
-                            {(totalXpDebtState ?? 0) > 0 ? <span>-{formatInteger(totalXpDebtState || 0)} XP</span> : null}
-                          </div>
-                        ) : (
-                          <div className="mt-1 text-lg font-semibold text-white">0</div>
-                        )}
-                      </div>
+                      {totalHintsUsed > 0 ? (
+                        <div className="flex items-baseline justify-between">
+                          <span className="text-xs uppercase tracking-wide text-neutral-400">Hint Penalties</span>
+                          {totalAccDebtPercent > 0 || (totalXpDebtState ?? 0) > 0 ? (
+                            <span className="text-base font-semibold text-white">
+                              {totalAccDebtPercent > 0 ? `-${totalAccDebtPercent}%` : null}
+                              {totalAccDebtPercent > 0 && (totalXpDebtState ?? 0) > 0 ? ' ' : null}
+                              {(totalXpDebtState ?? 0) > 0 ? `-${formatInteger(totalXpDebtState || 0)} XP` : null}
+                            </span>
+                          ) : (
+                            <span className="text-base font-semibold text-white">0</span>
+                          )}
+                        </div>
+                      ) : null}
                     </div>
                   </aside>
                 </div>
-                <div className="mt-6 flex w-full justify-center lg:hidden">
+                <div className="mt-3 flex w-full justify-center lg:hidden">
                   <Button onClick={handleShare} variant="hintGradient" className="gap-2">
                     <Share2 className="h-5 w-5" />
                     Share Results

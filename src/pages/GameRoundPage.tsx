@@ -145,6 +145,8 @@ const GameRoundPage: React.FC = () => {
   const [submittedCounts, setSubmittedCounts] = useState<{ submitted: number; total: number }>({ submitted: 0, total: 0 });
   const [submissionNotice, setSubmissionNotice] = useState<string | null>(null);
   const submissionNoticeTimeoutRef = useRef<number | null>(null);
+  const waitingPeerTimerCapRef = useRef<number | null>(null);
+  const [waitingPeerTimerCap, setWaitingPeerTimerCap] = useState<number | null>(null);
   const [flashActive, setFlashActive] = useState(false);
   const flashTimeoutRef = useRef<number | null>(null);
   const pendingClampRef = useRef(false);
@@ -1167,9 +1169,6 @@ const GameRoundPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCompeteMode, timerEnabled, soloCountdown.expired, hasTimedOut, hasSubmittedThisRound]);
 
-  
-
-
   // Local timer does not require refetch/hydration
 
   // Persist the current round number to game_sessions so reconnect can restore it
@@ -1496,6 +1495,17 @@ const GameRoundPage: React.FC = () => {
   }, [isCompeteMode, waitingForPeers, hasSubmittedThisRound, roundNumber, debugCompete]);
 
   useEffect(() => {
+    if (!waitingForPeers) {
+      waitingPeerTimerCapRef.current = null;
+      setWaitingPeerTimerCap(null);
+      return;
+    }
+    const cap = remainingTimeRef.current > 15 ? 15 : Math.max(0, Math.ceil(remainingTimeRef.current));
+    waitingPeerTimerCapRef.current = cap;
+    setWaitingPeerTimerCap(cap);
+  }, [waitingForPeers]);
+
+  useEffect(() => {
     if (!timerEnabled) {
       pendingClampRef.current = false;
       return;
@@ -1795,6 +1805,7 @@ const GameRoundPage: React.FC = () => {
     setSubmittedCounts({ submitted: 0, total: 0 });
     setHasSubmittedThisRound(false);
     setHasTimedOut(false);
+    hasClampedThisRound.current = false;
     submittedPeerIdsRef.current.clear();
     recentSubmitterIdsRef.current = {};
     setRecentSubmitterIds({});

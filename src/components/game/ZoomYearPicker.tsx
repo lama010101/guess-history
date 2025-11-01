@@ -301,15 +301,14 @@ export default function ZoomYearPicker({
   useEffect(() => {
     if (!Number.isFinite(selectedYear)) return;
     if (pendingExternalValueRef.current !== null) {
-      if (
-        Math.abs(selectedYear - pendingExternalValueRef.current) < 0.5 ||
-        hasInteractedRef.current
-      ) {
-        pendingExternalValueRef.current = null;
-        lastEmittedValueRef.current = null;
-      } else {
+      const target = pendingExternalValueRef.current;
+      if (Math.abs(selectedYear - target) >= 0.5) {
         return;
       }
+      pendingExternalValueRef.current = null;
+      lastEmittedValueRef.current = target;
+      lastSelectedYearRef.current = target;
+      return;
     }
     if (
       !hasInteractedRef.current &&

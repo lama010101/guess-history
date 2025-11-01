@@ -114,16 +114,18 @@ export function useGameLocalCountdown(options: UseGameLocalCountdownOptions): Us
   useEffect(() => {
     if (!timerId) return;
 
-    // If already ended in another tab, mark as expired
+    // Prefer an existing active session if present
+    const existing = readSession(timerId);
+    // If already ended in another tab/session, only treat as expired when the timer had actually started
+    // (i.e., we either have an existing session or autoStart is true). This avoids false-expire on fresh rounds.
     const endedAt = readEnded(timerId);
-    if (endedAt) {
+    if (endedAt && (existing != null || autoStart) && durationMs > 0) {
       setReady(true);
       setExpired(true);
       setStartAt(null);
       return;
     }
 
-    const existing = readSession(timerId);
     if (existing) {
       // Hydrate both startAt and duration from the persisted session
       setStartAt(existing.startAt);
@@ -168,8 +170,11 @@ export function useGameLocalCountdown(options: UseGameLocalCountdownOptions): Us
           setReady(true);
         }
       } else if (e.key === endedKey) {
-        setExpired(true);
-        setReady(true);
+        // Respect ended sentinel only for active timers
+        if (autoStart && durationMs > 0) {
+          setExpired(true);
+          setReady(true);
+        }
       }
     };
 
@@ -197,7 +202,13 @@ export function useGameLocalCountdown(options: UseGameLocalCountdownOptions): Us
     durationMs,
     startAt: virtualStartAt,
     onFinished: () => {
+      // Do not fire timeout if the timer hasn't actually started yet or has zero duration.
+      // This protects Solo mode when autoStart is false or durationSec is 0.
       if (expired) return;
+      if (startAt == null || durationMs <= 0) {
+        // Not started: keep session in a non-expired, ready state and do not emit onExpire
+        return;
+      }
       writeEnded(timerId);
       setExpired(true);
       try { onExpire?.(); } catch {}

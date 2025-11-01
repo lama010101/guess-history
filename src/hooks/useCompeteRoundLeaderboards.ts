@@ -65,6 +65,17 @@ export function useCompeteRoundLeaderboards(
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserDisplayName, setCurrentUserDisplayName] = useState<string | null>(null);
   const { entries: snapshotEntries, loading: snapshotLoading, refresh: refreshSnapshots } = useSyncRoundScores(resolvedRoomId, resolvedRoundNumber);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+
+  useEffect(() => {
+    setInitialLoadComplete(false);
+  }, [resolvedRoomId, resolvedRoundNumber]);
+
+  useEffect(() => {
+    if (!peersLoading && !snapshotLoading) {
+      setInitialLoadComplete(true);
+    }
+  }, [peersLoading, snapshotLoading]);
 
   const refresh = useMemo(() => {
     return async () => {
@@ -320,7 +331,7 @@ export function useCompeteRoundLeaderboards(
   }, [resolvedRoomId, resolvedRoundNumber, snapshotEntries, peers, actualYear, currentUserId, currentUserDisplayName]);
 
   const hasRows = computed.total.length > 0;
-  const loading = (peersLoading || snapshotLoading) && !hasRows;
+  const loading = !initialLoadComplete;
   const surfacedError = hasRows ? null : peersError;
 
   return {

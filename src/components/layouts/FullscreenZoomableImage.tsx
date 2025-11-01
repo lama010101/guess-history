@@ -94,6 +94,18 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({
     setIsAutoPanning(false);
   };
 
+  const forceStopInteractions = useCallback(() => {
+    cancelAutoPan();
+    cancelInertia();
+    setDragging(false);
+    setIsInertia(false);
+    activePointerIdRef.current = null;
+    isPinchingRef.current = false;
+    lastTouchDist.current = null;
+    velocityRef.current = { x: 0, y: 0 };
+    if (imgRef.current) imgRef.current.style.cursor = 'grab';
+  }, [cancelAutoPan, cancelInertia]);
+
   const getMaxOffsets = () => {
     if (!imgRef.current || !containerRef.current) return { maxX: 0, maxY: 0 };
     const img = imgRef.current.getBoundingClientRect();
@@ -800,11 +812,17 @@ const FullscreenZoomableImage: React.FC<FullscreenZoomableImageProps> = ({
       {/* Close Fullscreen button (bottom-center, themed by --secondary to follow mode highlight) */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000]">
         <button
-          onClick={onExit}
+          onClick={(e) => {
+            e.stopPropagation();
+            forceStopInteractions();
+            onExit();
+          }}
           onPointerDown={(e) => { e.stopPropagation(); }}
+          onPointerUp={(e) => { e.stopPropagation(); forceStopInteractions(); }}
           onMouseDown={(e) => { e.stopPropagation(); }}
+          onMouseUp={(e) => { e.stopPropagation(); forceStopInteractions(); }}
           onTouchStart={(e) => { e.stopPropagation(); }}
-          onTouchEnd={(e) => { e.stopPropagation(); }}
+          onTouchEnd={(e) => { e.stopPropagation(); forceStopInteractions(); }}
           className="inline-flex items-center justify-center rounded-full bg-secondary/70 hover:bg-secondary/80 text-secondary-foreground w-[60px] h-[60px] shadow-lg active:brightness-[.95] attention-pulse"
           aria-label="Exit fullscreen"
           title="Exit fullscreen"

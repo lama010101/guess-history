@@ -100,7 +100,8 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
   const mountedRef = useRef(true);
   const refreshInFlightRef = useRef(false);
   const queuedRefreshRef = useRef(false);
-  const pollIntervalRef = useRef<number | null>(null);
+  const pollTimeoutRef = useRef<number | null>(null);
+  const pollAttemptRef = useRef(0);
 
   useEffect(() => () => { mountedRef.current = false; }, []);
 
@@ -271,7 +272,7 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       }
 
       // 4. Unify participants: union of session_players and scoreboard rows
-      const playersArr: Array<any> = Array.isArray(spRows) ? spRows : [];
+      const rosterArr: Array<any> = Array.isArray(spRows) ? spRows : [];
       const rrByUser = new Map<string, any>((rrRows || []).map((r: any) => [String(r.user_id), r]));
       const syncByUser = new Map<string, any>((syncRows || []).map((r: any) => [String(r.user_id), r]));
 
@@ -309,8 +310,9 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       const roundResultUserIds = (rrRows || []).map((r: any) => String(r.user_id));
       const syncUserIds = (syncRows || []).map((s: any) => String(s.user_id));
       const hintUserIds = Array.from(hintsByUser.keys());
+      const rosterUserIds = rosterArr.map((p) => String(p.user_id));
       const allUserIds = Array.from(new Set<string>([
-        ...playersArr.map((p) => String(p.user_id)),
+        ...rosterUserIds,
         ...scoreboardRows.map((s) => String(s.user_id)),
         ...roundResultUserIds,
         ...syncUserIds,
@@ -355,17 +357,97 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
         }
       }
 
-      let mergedPeers: PeerRoundRow[] = allUserIds.map((uid) => {
-        const sp = playersArr.find(p => String(p.user_id) === uid);
-        const sb = sbByUser.get(uid);
-        const rr = rrByUser.get(uid);
-        const sync = syncByUser.get(uid);
+      const basePeers: PeerRoundRow[] = rosterUserIds.map((uid) => {
+        const rosterEntry = rosterArr.find(p => String(p.user_id) === uid);
         const profile = profileByUser.get(uid);
         const resolvedAvatar = pickFirstString(
           profile?.avatar_image_url,
           profile?.avatar_url,
           profile?.avatar_id ? avatarById.get(String(profile.avatar_id)) ?? null : null,
         );
+        return {
+          userId: uid,
+          displayName: (rosterEntry?.display_name ?? profile?.display_name ?? 'Player') as string,
+          avatarUrl: resolvedAvatar,
+          score: 0,
+          accuracy: 0,
+          xpTotal: 0,
+          xpDebt: 0,
+          whenXpDebt: 0,
+          whereXpDebt: 0,
+          accDebt: 0,
+          whenAccDebt: 0,
+          whereAccDebt: 0,
+          xpWhere: null,
+          xpWhen: null,
+          locationAccuracy: null,
+          timeAccuracy: null,
+          distanceKm: null,
+          guessYear: null,
+          guessLat: null,
+          guessLng: null,
+          actualLat: null,
+          actualLng: null,
+          submitted: false,
+          ready: false,
+          hintsUsed: 0,
+          whenHints: 0,
+          whereHints: 0,
+          netAccuracy: 0,
+        } as PeerRoundRow;
+      });
+
+      const ensurePeer = (uid: string): PeerRoundRow => {
+        const existing = basePeers.find((p) => p.userId === uid);
+        if (existing) return existing;
+        const profile = profileByUser.get(uid);
+        const resolvedAvatar = pickFirstString(
+          profile?.avatar_image_url,
+          profile?.avatar_url,
+          profile?.avatar_id ? avatarById.get(String(profile.avatar_id)) ?? null : null,
+        );
+        const displayName = profile?.display_name ?? 'Player';
+        const fallbackPeer: PeerRoundRow = {
+          userId: uid,
+          displayName,
+          avatarUrl: resolvedAvatar,
+          score: 0,
+          accuracy: 0,
+          xpTotal: 0,
+          xpDebt: 0,
+          whenXpDebt: 0,
+          whereXpDebt: 0,
+          accDebt: 0,
+          whenAccDebt: 0,
+          whereAccDebt: 0,
+          xpWhere: null,
+          xpWhen: null,
+          locationAccuracy: null,
+          timeAccuracy: null,
+          distanceKm: null,
+          guessYear: null,
+          guessLat: null,
+          guessLng: null,
+          actualLat: null,
+          actualLng: null,
+          submitted: false,
+          ready: false,
+          hintsUsed: 0,
+          whenHints: 0,
+          whereHints: 0,
+          netAccuracy: 0,
+        };
+        basePeers.push(fallbackPeer);
+        return fallbackPeer;
+      };
+
+      const mergedPeers: PeerRoundRow[] = allUserIds.map((uid) => {
+        const peer = ensurePeer(uid);
+        const sp = rosterArr.find(p => String(p.user_id) === uid);
+        const sb = sbByUser.get(uid);
+        const rr = rrByUser.get(uid);
+        const sync = syncByUser.get(uid);
+        const profile = profileByUser.get(uid);
         const hasRoundResult = !!rr;
         const scoreboardSubmissionIndicators = [
           sb?.accuracy,
@@ -374,7 +456,8 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
           sb?.xp_debt,
           sb?.acc_debt,
         ];
-        const hasScoreboardEntry = scoreboardSubmissionIndicators.some((value) => value != null);
+        const hasScoreboardRow = !!sb;
+        const hasScoreboardEntry = hasScoreboardRow || scoreboardSubmissionIndicators.some((value) => value != null);
         const hasSyncSnapshot = !!sync;
         const hintAgg = hintsByUser.get(uid);
         const rawHintsUsedCandidates = [
@@ -389,13 +472,37 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
           if (!Number.isFinite(parsed) || parsed < 0) return acc;
           return Math.max(acc ?? 0, parsed);
         }, null);
-        const rawAccuracy = Number(
-          sb?.accuracy ?? rr?.accuracy ?? (
-            sync?.location_accuracy != null && sync?.time_accuracy != null
-              ? (Number(sync.location_accuracy) + Number(sync.time_accuracy)) / 2
-              : 0
-          )
-        );
+        const scoreboardAccuracyRaw = sb?.accuracy;
+        const rrAccuracyRaw = rr?.accuracy;
+        const derivedAccuracyFromSnapshot = (sync?.location_accuracy != null && sync?.time_accuracy != null)
+          ? (Number(sync.location_accuracy) + Number(sync.time_accuracy)) / 2
+          : null;
+        const derivedAccuracyFromRound = (resolvedLocationAccuracy != null && resolvedTimeAccuracy != null)
+          ? (resolvedLocationAccuracy + resolvedTimeAccuracy) / 2
+          : null;
+
+        let resolvedAccuracy = Number.isFinite(Number(scoreboardAccuracyRaw)) ? Number(scoreboardAccuracyRaw) : NaN;
+        const rrAccuracyCandidate = Number.isFinite(Number(rrAccuracyRaw)) ? Number(rrAccuracyRaw) : NaN;
+        const snapshotAccuracyCandidate = Number.isFinite(Number(derivedAccuracyFromSnapshot)) ? Number(derivedAccuracyFromSnapshot) : NaN;
+        const roundAccuracyCandidate = Number.isFinite(Number(derivedAccuracyFromRound)) ? Number(derivedAccuracyFromRound) : NaN;
+
+        if (!Number.isFinite(resolvedAccuracy) || (resolvedAccuracy === 0 && Number.isFinite(rrAccuracyCandidate) && rrAccuracyCandidate > 0)) {
+          resolvedAccuracy = rrAccuracyCandidate;
+        }
+
+        if ((!Number.isFinite(resolvedAccuracy) || resolvedAccuracy === 0) && Number.isFinite(snapshotAccuracyCandidate) && snapshotAccuracyCandidate > 0) {
+          resolvedAccuracy = snapshotAccuracyCandidate;
+        }
+
+        if ((!Number.isFinite(resolvedAccuracy) || resolvedAccuracy === 0) && Number.isFinite(roundAccuracyCandidate) && roundAccuracyCandidate > 0) {
+          resolvedAccuracy = roundAccuracyCandidate;
+        }
+
+        if (!Number.isFinite(resolvedAccuracy)) {
+          resolvedAccuracy = 0;
+        }
+
+        const rawAccuracy = resolvedAccuracy;
         const rawAccDebt = Number(sb?.acc_debt ?? rr?.acc_debt ?? 0);
 
         const resolvedDistanceKm = rr?.distance_km != null
@@ -416,11 +523,34 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
         const resolvedTimeAccuracy = rr?.time_accuracy != null
           ? Number(rr.time_accuracy)
           : (sync?.time_accuracy != null ? Number(sync.time_accuracy) : null);
-        const resolvedXpTotal = sb?.xp_total != null
+        let resolvedXpTotal = sb?.xp_total != null
           ? Number(sb.xp_total)
           : (rr?.xp_total != null
             ? Number(rr.xp_total)
             : (sync?.xp_total != null ? Number(sync.xp_total) : 0));
+
+        const scoreboardScoreRaw = sb?.score;
+        const rrScoreRaw = rr?.score ?? rr?.xp_total ?? null;
+        const snapshotScoreRaw = sync?.xp_total ?? null;
+        let resolvedScore = Number.isFinite(Number(scoreboardScoreRaw)) ? Number(scoreboardScoreRaw) : NaN;
+        const rrScoreCandidate = Number.isFinite(Number(rrScoreRaw)) ? Number(rrScoreRaw) : NaN;
+        const snapshotScoreCandidate = Number.isFinite(Number(snapshotScoreRaw)) ? Number(snapshotScoreRaw) : NaN;
+
+        if (!Number.isFinite(resolvedScore) || (resolvedScore === 0 && Number.isFinite(rrScoreCandidate) && rrScoreCandidate > 0)) {
+          resolvedScore = rrScoreCandidate;
+        }
+
+        if ((!Number.isFinite(resolvedScore) || resolvedScore === 0) && Number.isFinite(snapshotScoreCandidate) && snapshotScoreCandidate > 0) {
+          resolvedScore = snapshotScoreCandidate;
+        }
+
+        if (!Number.isFinite(resolvedScore)) {
+          resolvedScore = 0;
+        }
+
+        if (resolvedXpTotal === 0 && resolvedScore > 0) {
+          resolvedXpTotal = resolvedScore;
+        }
 
         const whenAccDebt = hintAgg?.whenAccDebt ?? 0;
         const whereAccDebt = hintAgg?.whereAccDebt ?? 0;
@@ -434,14 +564,17 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
           : (whenAccDebt + whereAccDebt);
         const rawXpDebt = Number(sb?.xp_debt ?? 0);
         const netAccuracy = Math.max(0, rawAccuracy - Math.max(0, totalDebt));
+        peer.displayName = (sp?.display_name ?? sb?.display_name ?? profile?.display_name ?? sync?.display_name ?? peer.displayName ?? 'Unknown') as string;
+        peer.avatarUrl = peer.avatarUrl
+          ?? pickFirstString(
+            profile?.avatar_image_url,
+            profile?.avatar_url,
+            profile?.avatar_id ? avatarById.get(String(profile.avatar_id)) ?? null : null,
+          );
         return {
-          userId: uid,
-          displayName: (sp?.display_name ?? sb?.display_name ?? profile?.display_name ?? sync?.display_name ?? 'Unknown') as string,
-          avatarUrl: resolvedAvatar,
-          score: Number(sb?.score ?? 0),
-          accuracy: Number(sb?.accuracy ?? (resolvedLocationAccuracy != null && resolvedTimeAccuracy != null
-            ? (resolvedLocationAccuracy + resolvedTimeAccuracy) / 2
-            : 0)),
+          ...peer,
+          score: resolvedScore,
+          accuracy: rawAccuracy,
           xpTotal: resolvedXpTotal,
           xpDebt: (Number.isFinite(rawXpDebt) && rawXpDebt > 0) ? rawXpDebt : (hintsByUser.get(uid)?.xpDebt ?? 0),
           whenXpDebt,
@@ -468,64 +601,45 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
         } as PeerRoundRow;
       });
 
-      // 4b. Final fallback: if still empty, derive from session_players alone
-      if ((!mergedPeers || mergedPeers.length === 0) && playersArr.length > 0) {
-        mergedPeers = playersArr.map((sp: any) => {
-          const profile = profileByUser.get(String(sp.user_id));
-          const resolvedAvatar = profile?.avatar_image_url
-            ?? profile?.avatar_url
-            ?? (profile?.avatar_id ? avatarById.get(String(profile.avatar_id)) ?? null : null);
-          return {
-            userId: sp.user_id,
-            displayName: sp.display_name || profile?.display_name || 'Unknown',
-            avatarUrl: resolvedAvatar,
-            score: 0,
-            accuracy: 0,
-            xpTotal: 0,
-            xpDebt: 0,
-            accDebt: 0,
-            xpWhere: null,
-            xpWhen: null,
-            locationAccuracy: null,
-            timeAccuracy: null,
-            distanceKm: null,
-            guessYear: null,
-            guessLat: null,
-            guessLng: null,
-            actualLat: null,
-            actualLng: null,
-            submitted: false,
-            ready: false,
-            hintsUsed: 0,
-            whenAccDebt: 0,
-            whereAccDebt: 0,
-            whenHints: 0,
-            whereHints: 0,
-            netAccuracy: 0,
-          } as PeerRoundRow;
-        });
-      }
+      const finalPeers = mergedPeers.map((peer) => {
+        const sync = syncByUser.get(peer.userId);
+        const sb = sbByUser.get(peer.userId);
+        if (!peer.avatarUrl) {
+          const profile = profileByUser.get(peer.userId);
+          peer.avatarUrl = pickFirstString(
+            profile?.avatar_image_url,
+            profile?.avatar_url,
+            profile?.avatar_id ? avatarById.get(String(profile.avatar_id)) ?? null : null,
+          );
+        }
+        if (!peer.displayName || peer.displayName.trim().length === 0) {
+          peer.displayName = (sync?.display_name ?? sb?.display_name ?? 'Player') as string;
+        }
+        return peer;
+      });
 
       // DEV diagnostics: verify consistency across sources and presence of current user
       if (isDev) {
         try {
-          const uniqIds = Array.from(new Set<string>(mergedPeers.map(p => String(p.userId))));
-          const spCount = Array.isArray(playersArr) ? new Set(playersArr.map((p: any) => String(p.user_id))).size : 0;
+          const uniqIds = Array.from(new Set<string>(finalPeers.map(p => String(p.userId))));
+          const rosterCount = rosterUserIds.length;
           const sbCount = new Set((scoreboardRows || []).map((s: any) => String(s.user_id))).size;
           const rrCount = rrByUser.size;
           const syncCount = syncByUser.size;
           const hintCount = hintsByUser.size;
           let selfId: string | null = null;
           try { const { data: { user } } = await supabase.auth.getUser(); selfId = user?.id ?? null; } catch {}
-          const selfPeer = selfId ? mergedPeers.find(p => p.userId === selfId) : null;
+          const selfPeer = selfId ? finalPeers.find(p => p.userId === selfId) : null;
           console.debug('[useRoundPeers] merge summary', {
             roomId,
             roundNumber: oneBasedRound,
-            sources: { session_players: spCount, scoreboard: sbCount, round_results: rrCount, sync_round_scores: syncCount, round_hints: hintCount },
-            mergedCount: mergedPeers.length,
-            mergedIds: uniqIds,
+            sources: { roster: rosterCount, scoreboard: sbCount, round_results: rrCount, sync_round_scores: syncCount, round_hints: hintCount },
+            finalCount: finalPeers.length,
+            finalIds: uniqIds,
+            rosterIds: rosterUserIds,
             hasSelf: !!selfPeer,
             selfSubmitted: selfPeer?.submitted ?? null,
+            avatarsPresent: finalPeers.filter(p => !!p.avatarUrl).length,
           });
         } catch {}
       }
@@ -558,8 +672,8 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       };
 
       if (mountedRef.current) {
-        setPeers(mergedPeers);
-        setExpectedParticipantCount(allUserIds.length);
+        setPeers(finalPeers);
+        setExpectedParticipantCount(rosterUserIds.length);
         const lbTotal = buildLeaderboard(peer => (typeof peer.netAccuracy === 'number' ? peer.netAccuracy : null));
         const lbTime = buildLeaderboard(
           peer => {
@@ -607,6 +721,8 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
             refresh();
           }
         });
+      } else {
+        pollAttemptRef.current = 0;
       }
     }
   }, [roomId, roundNumber]);
@@ -641,9 +757,9 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
   }, [roomId, roundNumber, refresh]);
 
   useEffect(() => {
-    if (pollIntervalRef.current != null) {
-      window.clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
+    if (pollTimeoutRef.current != null) {
+      window.clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
     }
 
     if (!roomId || roundNumber == null) {
@@ -654,24 +770,26 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
     const waitingForPeers = (expected > 0 ? peers.length < expected : peers.length === 0)
       || peers.some((peer) => !peer.submitted);
     if (!waitingForPeers) {
+      pollAttemptRef.current = 0;
       return;
     }
 
-    if (pollIntervalRef.current != null) {
-      window.clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
-    }
+    const attempt = pollAttemptRef.current;
+    const baseDelay = Math.min(12000, 2000 * Math.pow(1.6, attempt));
+    const jitter = Math.random() * 500;
+    const delay = baseDelay + jitter;
 
     if (typeof window !== 'undefined') {
-      pollIntervalRef.current = window.setInterval(() => {
+      pollTimeoutRef.current = window.setTimeout(() => {
+        pollAttemptRef.current = attempt + 1;
         refresh();
-      }, 4000);
+      }, delay);
     }
 
     return () => {
-      if (pollIntervalRef.current != null) {
-        window.clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
+      if (pollTimeoutRef.current != null) {
+        window.clearTimeout(pollTimeoutRef.current);
+        pollTimeoutRef.current = null;
       }
     };
   }, [roomId, roundNumber, peers, refresh, expectedParticipantCount]);
@@ -693,6 +811,25 @@ export function useRoundPeers(roomId: string | null, roundNumber: number | null)
       rosterHandle.release();
     };
   }, [roomId, refresh]);
+
+  useEffect(() => {
+    if (!roomId || roundNumber == null) return;
+
+    const oneBasedRound = Math.max(1, Number(roundNumber));
+    const handle = acquireChannel(`sync_round_scores:${roomId}:${oneBasedRound}`);
+    handle.channel.on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'sync_round_scores',
+      filter: `room_id=eq.${roomId},round_number=eq.${oneBasedRound}`,
+    }, () => {
+      refresh();
+    });
+
+    return () => {
+      handle.release();
+    };
+  }, [roomId, roundNumber, refresh]);
 
   return useMemo(() => ({ peers, isLoading, error, refresh, miniLeaderboards }), [peers, isLoading, error, refresh, miniLeaderboards]);
 }

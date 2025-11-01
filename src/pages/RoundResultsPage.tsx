@@ -587,24 +587,19 @@ const RoundResultsPage = () => {
     const distanceKm = ctxResult.distanceKm ?? null;
     const yearDifference = guessYear == null ? null : Math.abs(actualYear - guessYear);
 
-    const locationAccuracy = distanceKm == null
-      ? 0
-      : (ctxResult.locationAccuracy !== undefined
-          ? Math.round(ctxResult.locationAccuracy)
-          : ctxResult.xpWhere !== undefined
-            ? Math.round(ctxResult.xpWhere)
-            : Math.round(calculateLocationAccuracy(distanceKm)));
+    const rawLocationAccuracy = ctxResult.locationAccuracy ?? ctxResult.xpWhere ?? (distanceKm != null ? calculateLocationAccuracy(distanceKm) : null);
+    const locationAccuracy = rawLocationAccuracy == null ? 0 : Math.max(0, Math.round(rawLocationAccuracy));
 
-    const timeAccuracy = guessYear == null
-      ? 0
-      : (ctxResult.timeAccuracy !== undefined
-          ? Math.round(ctxResult.timeAccuracy)
-          : ctxResult.xpWhen !== undefined
-            ? Math.round(ctxResult.xpWhen)
-            : Math.round(calculateTimeAccuracy(guessYear, actualYear)));
+    const rawTimeAccuracy = ctxResult.timeAccuracy ?? ctxResult.xpWhen ?? (guessYear != null ? calculateTimeAccuracy(guessYear, actualYear) : null);
+    const timeAccuracy = rawTimeAccuracy == null ? 0 : Math.max(0, Math.round(rawTimeAccuracy));
 
-    const xpWhere = ctxResult.xpWhere ?? (distanceKm == null ? 0 : Math.round(calculateLocationAccuracy(distanceKm)));
-    const xpWhen = ctxResult.xpWhen ?? (guessYear == null ? 0 : Math.round(calculateTimeAccuracy(guessYear, actualYear)));
+    const xpWhere = ctxResult.xpWhere !== undefined
+      ? Math.max(0, Math.round(ctxResult.xpWhere))
+      : (rawLocationAccuracy == null ? 0 : Math.max(0, Math.round(rawLocationAccuracy)));
+
+    const xpWhen = ctxResult.xpWhen !== undefined
+      ? Math.max(0, Math.round(ctxResult.xpWhen))
+      : (rawTimeAccuracy == null ? 0 : Math.max(0, Math.round(rawTimeAccuracy)));
 
     const hintsUsed = ctxResult.hintsUsed ?? 0;
     const totalXpDebt = debts.reduce((sum, d) => sum + (d.xpDebt || 0), 0);

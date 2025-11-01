@@ -139,7 +139,7 @@ const FinalScoreboard: React.FC<FinalScoreboardProps> = ({ roomId, className }) 
   return (
     <div className={cn('w-full rounded-xl border border-neutral-800 bg-[#333333] p-4 text-white', className)}>
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-        <h3 className="text-center text-2xl sm:text-3xl font-bold uppercase lg:text-left">Final Leaderboard</h3>
+        <h3 className="text-center text-2xl sm:text-3xl font-bold uppercase lg:text-left">Leaderboard</h3>
         {rows && rows.length > 0 ? (
           <span className="text-xs text-neutral-400 text-center lg:text-right">Sorted by net accuracy, then XP.</span>
         ) : null}

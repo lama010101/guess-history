@@ -1,3 +1,9 @@
+### Fullscreen Exit Interaction Reset (2025-11-01)
+
+- **Component**: `src/components/layouts/FullscreenZoomableImage.tsx`
+  - The bottom-center **Exit fullscreen** button now calls `forceStopInteractions()` before invoking `onExit()`. This clears drag/pinch state, inertia loops, and autopan timers so the next view regains pointer control instantly on touch devices.
+  - If you add new interaction modes (e.g., multi-touch gestures), ensure they also reset inside `forceStopInteractions()` so exit taps never get swallowed by lingering pointer captures.
+
 ### Compete Round Results Peer Merge (2025-10-31)
 
 - **Component**: `src/pages/compete/results/CompeteSyncRoundResultsPage.tsx`

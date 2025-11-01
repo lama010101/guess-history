@@ -86,6 +86,7 @@ export interface GameLayout1Props {
   submissionNotice?: string | null;
   timerEnabled?: boolean;
   roundTimerSec?: number;
+  waitingPeerTimerCap?: number | null;
 }
 
 const GameLayout1: React.FC<GameLayout1Props> = ({
@@ -127,6 +128,7 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
   submissionNotice = null,
   timerEnabled: overrideTimerEnabled,
   roundTimerSec: overrideRoundTimerSec,
+  waitingPeerTimerCap,
 }) => {
   const [isImageFullScreen, setIsImageFullScreen] = useState(true);
   const [currentGuess, setCurrentGuess] = useState<GuessCoordinates | null>(null);
@@ -460,9 +462,11 @@ const GameLayout1: React.FC<GameLayout1Props> = ({
 
   const waitingCountdown = useMemo(() => {
     if (!hudTimerEnabled || !waitingForPeers) return null;
-    const seconds = Math.max(0, Math.min(15, Math.ceil(remainingTime)));
+    if (!Number.isFinite(remainingTime)) return null;
+    const raw = waitingPeerTimerCap != null ? Math.min(waitingPeerTimerCap, Math.ceil(remainingTime)) : Math.ceil(remainingTime);
+    const seconds = Math.max(0, raw);
     return formatTime(seconds);
-  }, [hudTimerEnabled, waitingForPeers, remainingTime]);
+  }, [hudTimerEnabled, waitingForPeers, remainingTime, waitingPeerTimerCap]);
 
   if (!image) {
     return (

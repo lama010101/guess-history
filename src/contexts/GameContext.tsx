@@ -197,6 +197,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     loadedIndices: preparedLoadedIndices,
   } = useGamePreparation();
 
+  // Track membership registration to avoid redundant upserts
+  const membershipEnsuredRef = React.useRef(false);
+
   // Ensure the current user is registered as a participant of a multiplayer room
   const ensureSessionMembership = useCallback(async (targetRoomId: string, providedUserId?: string) => {
     try {
@@ -224,8 +227,18 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       const { error: upsertErr } = await supabase
         .from('session_players')
         .upsert({ room_id: targetRoomId, user_id: userId, display_name: displayName }, { onConflict: 'room_id,user_id' });
-      if (upsertErr) {
-        console.warn('[GameContext] ensureSessionMembership: upsert failed', upsertErr);
+      let sessionUpsertSucceeded = false;
+      if (!upsertErr) {
+        sessionUpsertSucceeded = true;
+      }
+      const { error: syncUpsertErr } = await (supabase as any)
+        .from('sync_room_players')
+        .upsert({ room_id: targetRoomId, user_id: userId, display_name: displayName }, { onConflict: 'room_id,user_id' });
+      if (syncUpsertErr) {
+        console.warn('[GameContext] ensureSessionMembership: sync_room_players upsert failed', syncUpsertErr);
+      }
+      if (sessionUpsertSucceeded && !syncUpsertErr) {
+        membershipEnsuredRef.current = true;
       }
     } catch (e) {
       console.warn('[GameContext] ensureSessionMembership failed', e);

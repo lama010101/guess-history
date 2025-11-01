@@ -191,9 +191,25 @@ const ResultsLayout2: React.FC<ResultsLayoutProps> = ({
   const lbSelfTotal = leaderboards?.total.find(r => r.userId === selfLbUserId)?.value;
   const lbSelfWhen = leaderboards?.when.find(r => r.userId === selfLbUserId)?.value;
   const lbSelfWhere = leaderboards?.where.find(r => r.userId === selfLbUserId)?.value;
-  const displayNetAccuracy = lbSelfTotal != null ? Math.max(0, Math.round(Number(lbSelfTotal))) : Math.round(netAccuracy);
-  const displayNetTimeAccuracy = lbSelfWhen != null ? Math.max(0, Math.round(Number(lbSelfWhen))) : Math.round(netTimeAccuracy);
-  const displayNetLocationAccuracy = lbSelfWhere != null ? Math.max(0, Math.round(Number(lbSelfWhere))) : Math.round(netLocationAccuracy);
+
+  const resolveSelfMetric = (lbValue: number | undefined, fallback: number) => {
+    if (lbValue == null) {
+      return Math.max(0, Math.round(fallback));
+    }
+    const numeric = Number(lbValue);
+    if (!Number.isFinite(numeric)) {
+      return Math.max(0, Math.round(fallback));
+    }
+    const rounded = Math.max(0, Math.round(numeric));
+    if (rounded === 0 && fallback > 0) {
+      return Math.max(0, Math.round(fallback));
+    }
+    return rounded;
+  };
+
+  const displayNetAccuracy = resolveSelfMetric(lbSelfTotal, netAccuracy);
+  const displayNetTimeAccuracy = resolveSelfMetric(lbSelfWhen, netTimeAccuracy);
+  const displayNetLocationAccuracy = resolveSelfMetric(lbSelfWhere, netLocationAccuracy);
 
   const correctLat = result?.eventLat ?? 0;
   const correctLng = result?.eventLng ?? 0;

@@ -1149,7 +1149,7 @@ const Room: React.FC = () => {
         .room-timer .slider-thumb { background: #101316; border-color: #22d3ee; box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.25); }
         .room-timer .slider-thumb:focus-visible { outline: none; }
       `}</style>
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-28 pt-6 lg:gap-8">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 pb-28 pt-6 lg:gap-8">
         <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-black/90 px-4 py-3 shadow-[0_4px_24px_rgba(0,0,0,0.35)] backdrop-blur">
           <div className="flex w-full items-center gap-3">
             <button
@@ -1166,8 +1166,8 @@ const Room: React.FC = () => {
             <div className="hidden w-[52px] sm:block" aria-hidden="true" />
           </div>
         </div>
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] lg:gap-8">
-          <div className="flex flex-col gap-6">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] lg:gap-8">
+          <div className="flex flex-col gap-3 lg:gap-6">
             <section className="rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
               <div className="flex w-full flex-wrap items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2 text-base font-semibold text-white">
@@ -1313,9 +1313,143 @@ const Room: React.FC = () => {
                 </div>
               )}
             </section>
+
+            <section className="hidden lg:block rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-white" />
+                  <h2 className="text-base font-semibold text-white">Players ({playerCount})</h2>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-neutral-400">
+                  <span>Room {roomCode.toUpperCase()} · Status: {status}</span>
+                  <button
+                    type="button"
+                    onClick={() => setPlayersCollapsed((prev) => !prev)}
+                    className="text-neutral-300 hover:text-white"
+                    aria-label={playersCollapsed ? 'Expand players list' : 'Collapse players list'}
+                  >
+                    {playersCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              {!playersCollapsed && (
+                <>
+                  {extendedRoster.length > 0 ? (
+                    <div className="mt-4 space-y-3">
+                      {extendedRoster.map((r: any, index: number) => {
+                        const isYou = r.id === ownId;
+                        const showReadyTag = r.ready && typeof r._inviteId !== 'string' && !isYou;
+                        const rosterSeed = r.userId || r.id || r.name;
+                        return (
+                          <div key={`${r.id}-${index}`} className="flex flex-wrap items-center gap-3 rounded-xl border border-[#3f424b] bg-[#1d2026] px-4 py-3">
+                            <div className="flex min-w-0 flex-1 items-center gap-3">
+                              <div
+                                className="rounded-full p-[2.5px]"
+                                style={{ background: getAvatarFrameGradient(rosterSeed) }}
+                              >
+                                <Avatar className="h-10 w-10 border border-[#1d2026] bg-[#262930]">
+                                  <AvatarImage src={r.avatarUrl ?? undefined} alt={`${r.name} avatar`} />
+                                  <AvatarFallback className="bg-transparent text-sm font-semibold text-white">
+                                    {getInitial(r.name)}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <GradientName seed={rosterSeed} className="truncate text-sm font-semibold">
+                                    {isYou ? `(You) ${r.name}` : r.name}
+                                  </GradientName>
+                                  {r.host && <span className="flex-none rounded-full bg-[#22d3ee]/20 px-2 py-0.5 text-[10px] font-semibold text-[#22d3ee]">Host</span>}
+                                  {typeof r._inviteId === 'string' && <span className="flex-none rounded-full bg-[#f97316]/15 px-2 py-0.5 text-[10px] font-semibold text-[#f97316]">Invited</span>}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="ml-auto flex shrink-0 items-center gap-3">
+                              {typeof r._inviteId === 'string' ? (
+                                isHost && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-8 w-8 text-red-300 hover:text-red-200"
+                                    onClick={() => cancelInvite(r._inviteId)}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                )
+                              ) : isYou ? (
+                                <button
+                                  type="button"
+                                  onClick={toggleReady}
+                                  disabled={status !== 'open'}
+                                  className={`rounded-xl px-4 py-1.5 text-xs font-semibold shadow-lg transition-colors ${ownReady ? 'bg-[#22d96d] text-black hover:bg-[#1fb862]' : 'attention-pulse bg-[#22d3ee] text-black hover:bg-[#1cbfdb]'}`}
+                                  style={(!ownReady
+                                    ? ({ '--attention-pulse-shadow-color': 'rgba(34, 211, 238, 0.35)' } as React.CSSProperties)
+                                    : undefined)}
+                                >
+                                  {ownReady ? 'Ready!' : 'Ready?'}
+                                </button>
+                              ) : (
+                                <>
+                                  {showReadyTag ? (
+                                    <span className="rounded-full bg-[#22d96d]/20 px-2 py-0.5 text-[10px] font-semibold text-[#22d96d]">Ready!</span>
+                                  ) : (
+                                    !r.ready && <span className="text-sm font-semibold text-neutral-200">Not ready</span>
+                                  )}
+                                  {isHost && r.id !== ownId && (
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-8 w-8 text-red-300 hover:text-red-200"
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent className="max-w-md border border-[#3f424b] bg-[#1d2026] text-white">
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Remove player?</AlertDialogTitle>
+                                          <AlertDialogDescription className="text-sm text-neutral-300">
+                                            {r.name?.trim().length
+                                              ? `Are you sure you want to remove ${r.name.trim()} from this room?`
+                                              : 'Are you sure you want to remove this player from the room?'}
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel className="border border-white/15 bg-transparent text-white hover:bg-white/10">
+                                            Cancel
+                                          </AlertDialogCancel>
+                                          <AlertDialogAction
+                                            onClick={() => {
+                                              removeRosterEntry(r.id, r.name);
+                                              kickPlayer(r.id);
+                                            }}
+                                            className="bg-[#ef4444] text-white hover:bg-[#dc2626]"
+                                          >
+                                            Remove player
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="mt-4 text-sm text-neutral-400">Waiting for players...</div>
+                  )}
+                </>
+              )}
+            </section>
+
+            {renderChatCard('hidden lg:block')}
           </div>
 
-          <aside className="flex flex-col gap-6">
+          <aside className="flex flex-col gap-3 lg:gap-6">
             {isHost && (
               <Accordion
                 type="single"
@@ -1461,11 +1595,9 @@ const Room: React.FC = () => {
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
-            </section>
+            )}
 
-            {renderChatCard('hidden lg:block')}
-
-            <section className="rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
+            <section className="lg:hidden rounded-2xl border border-[#3f424b] bg-[#333333] p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-white" />
